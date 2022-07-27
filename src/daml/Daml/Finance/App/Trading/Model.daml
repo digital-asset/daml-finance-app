@@ -1,0 +1,107 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Trading.Model where
+
+import DA.Set (singleton)
+import Daml.Finance.Interface.Asset.Account qualified as Account (K)
+import Daml.Finance.Interface.Asset.Fungible qualified as Fungible (I, Split(..), SplitResult(..))
+import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (Q, qty)
+import Daml.Finance.Interface.Common.Types (Parties)
+import Daml.Finance.Interface.Settlement.Instructable qualified as Instructable (I, Instruct(..))
+import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (I, Allocate(..), Approve(..))
+import Daml.Finance.Interface.Settlement.Settleable qualified as Settleable (I)
+import Daml.Finance.Interface.Settlement.Types (Step(..))
+
+data Side
+    = Buy
+    | Sell
+  deriving (Eq, Show)
+
+data FillResult = FillResult
+  with
+    orderOpt : Optional (ContractId Order, Order)
+    settleableCid : ContractId Settleable.I
+    instructionCid : ContractId Instruction.I
+  deriving (Eq, Show)
+
+template Order
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Text
+    timestamp : Time
+    listingId : Text
+    quantity : Instrument.Q
+    side : Side
+    price : Instrument.Q
+    collateralCid : ContractId Fungible.I
+    account : Account.K
+    observers : Parties
+  where
+    signatory operator, provider, customer
+    observer observers
+
+    key (operator, provider, id) : (Party, Party, Text)
+    maintainer key._1
+
+    choice Fill : FillResult
+      with
+        instructableCid : ContractId Instructable.I
+        other : Order
+      controller provider
+      do
+        let
+          amount = min quantity.amount other.quantity.amount
+          remaining = quantity.amount - amount
+          deliverable = if side == Buy then price.unit else quantity.unit
+          step = Step with sender = singleton customer; receiver = singleton other.customer; quantity = Instrument.qty amount deliverable
+        (settleableCid, [instructionCid]) <- exercise instructableCid Instructable.Instruct with id; settler = singleton provider; steps = [step]
+        if remaining == 0.0
+        then do
+          instructionCid <- exercise instructionCid Instruction.Allocate with transferableCid = toInterfaceContractId collateralCid
+          pure FillResult with orderOpt = None; settleableCid; instructionCid
+        else do
+          Fungible.SplitResult [splitCid] (Some restCid) <- exercise collateralCid Fungible.Split with amounts = [ amount ]
+          instructionCid <- exercise instructionCid Instruction.Allocate with transferableCid = toInterfaceContractId splitCid
+          let new = this with quantity.amount = remaining; collateralCid = restCid
+          newCid <- create new
+          pure FillResult with orderOpt = Some (newCid, new); settleableCid; instructionCid
+
+    nonconsuming choice ApproveInstruction : ContractId Instruction.I
+      with
+        instructionCid : ContractId Instruction.I
+      controller provider
+      do
+        exercise instructionCid Instruction.Approve with receiverAccount = account
+
+template CreateOrderRequest
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Text
+    timestamp : Time
+    listingId : Text
+    quantity : Instrument.Q
+    side : Side
+    price : Instrument.Q
+    collateralCid : ContractId Fungible.I
+    account : Account.K
+    orderCids : [ContractId Order]
+    observers : Parties
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, id) : (Party, Party, Text)
+    maintainer key._1
+
+template CancelOrderRequest
+  with
+    provider : Party
+    customer : Party
+    operator : Party
+    orderCid : ContractId Order
+  where
+    signatory provider, customer

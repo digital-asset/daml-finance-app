@@ -1,0 +1,21 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Data.HolidayCalendar where
+
+import DA.Set (Set)
+import Daml.Finance.Common.Date.Calendar (HolidayCalendarData)
+
+type T = HolidayCalendar
+
+template HolidayCalendar
+  with
+    provider : Party
+    calendar : HolidayCalendarData
+    observers : Set Party
+  where
+    signatory provider
+    observer observers
+
+    key (provider, calendar.id) : (Party, Text)
+    maintainer key._1

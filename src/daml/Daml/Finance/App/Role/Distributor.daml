@@ -1,0 +1,170 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Role.Distributor where
+
+import Daml.Finance.App.Distribution.Auction.Auto.Service qualified as AuctionAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Distribution.Bidding.Auto.Service qualified as BiddingAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Approve(..), Offer(..), Request, Service, Terminate(..))
+
+template Role
+  with
+    operator : Party
+    provider : Party
+  where
+    signatory operator, provider
+
+    key (operator, provider) :  (Party, Party)
+    maintainer key._1
+
+    nonconsuming choice OfferAuctionService : ContractId Auction.Offer
+      with
+        customer : Party
+      controller provider
+      do
+        create Auction.Offer with ..
+
+    nonconsuming choice ApproveAuctionServiceRequest : ContractId Auction.Service
+      with
+        auctionServiceRequestCid : ContractId Auction.Request
+      controller provider
+      do
+        exercise auctionServiceRequestCid Auction.Approve with ..
+
+    nonconsuming choice TerminateAuctionService : ()
+      with
+        customer : Party
+      controller provider
+      do
+        exerciseByKey @Auction.Service (operator, provider, customer) Auction.Terminate with actor = provider
+
+    nonconsuming choice OfferAuctionAutoService : ContractId AuctionAuto.Offer
+      with
+        customer : Party
+      controller provider
+      do
+        create AuctionAuto.Offer with ..
+
+    nonconsuming choice ApproveAuctionAutoServiceRequest : ContractId AuctionAuto.Service
+      with
+        auctionServiceRequestCid : ContractId AuctionAuto.Request
+      controller provider
+      do
+        exercise auctionServiceRequestCid AuctionAuto.Approve with ..
+
+    nonconsuming choice TerminateAuctionAutoService : ()
+      with
+        customer : Party
+      controller provider
+      do
+        exerciseByKey @AuctionAuto.Service (operator, provider, customer) AuctionAuto.Terminate with actor = provider
+
+    nonconsuming choice OfferBiddingService : ContractId Bidding.Offer
+      with
+        customer : Party
+      controller provider
+      do
+        create Bidding.Offer with ..
+
+    nonconsuming choice ApproveBiddingServiceRequest : ContractId Bidding.Service
+      with
+        biddingServiceRequestCid : ContractId Bidding.Request
+      controller provider
+      do
+        exercise biddingServiceRequestCid Bidding.Approve with ..
+
+    nonconsuming choice TerminateBiddingService : ()
+      with
+        customer : Party
+      controller provider
+      do
+        exerciseByKey @Bidding.Service (operator, provider, customer) Bidding.Terminate with actor = provider
+
+    nonconsuming choice OfferBiddingAutoService : ContractId BiddingAuto.Offer
+      with
+        customer : Party
+      controller provider
+      do
+        create BiddingAuto.Offer with ..
+
+    nonconsuming choice ApproveBiddingAutoServiceRequest : ContractId BiddingAuto.Service
+      with
+        biddingServiceRequestCid : ContractId BiddingAuto.Request
+      controller provider
+      do
+        exercise biddingServiceRequestCid BiddingAuto.Approve with ..
+
+    nonconsuming choice TerminateBiddingAutoService : ()
+      with
+        customer : Party
+      controller provider
+      do
+        exerciseByKey @BiddingAuto.Service (operator, provider, customer) BiddingAuto.Terminate with actor = provider
+
+    nonconsuming choice OfferSubscriptionService : ContractId Subscription.Offer
+      with
+        customer : Party
+        public : Party
+      controller provider
+      do
+        create Subscription.Offer with ..
+
+    nonconsuming choice ApproveSubscriptionServiceRequest : ContractId Subscription.Service
+      with
+        subscriptionServiceRequestCid : ContractId Subscription.Request
+      controller provider
+      do
+        exercise subscriptionServiceRequestCid Subscription.Approve with ..
+
+    nonconsuming choice TerminateSubscriptionService : ()
+      with
+        customer : Party
+      controller provider
+      do
+        exerciseByKey @Subscription.Service (operator, provider, customer) Subscription.Terminate with actor = provider
+
+    choice Terminate : ()
+      with
+        actor : Party
+      controller actor
+      do
+        assert $ actor == operator || actor == provider
+        pure ()
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+  where
+    signatory operator
+    observer provider
+
+    choice Accept : ContractId Role
+      controller provider
+      do
+        create Role with ..
+
+    choice Decline : ()
+      controller provider
+      do
+        return ()
+
+template Request
+  with
+    provider : Party
+    operator : Party
+  where
+    signatory provider
+    observer operator
+
+    choice Approve : ContractId Role
+      controller operator
+      do
+        create Role with ..
+
+    choice Reject : ()
+      controller operator
+      do
+        return ()

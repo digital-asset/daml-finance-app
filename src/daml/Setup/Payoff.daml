@@ -1,0 +1,377 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Setup.Payoff where
+
+import ContingentClaims.Claim (Claim, Claim(..), at, (<=), and, or)
+import ContingentClaims.Observation (Observation(..))
+import ContingentClaims.Financial (forward, fixed, floating, swap, european, bermudan)
+import DA.Date (DayOfWeek(..), Month(..), addDays, date, monthDayCount, toGregorian)
+import DA.List (last)
+import DA.Time (time)
+import Daml.Finance.Common.Date.Calendar
+import Daml.Finance.Common.Date.RollConvention
+import Daml.Finance.Common.Date.Schedule
+import Daml.Finance.Common.Date.DayCount
+import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (K, Q)
+import Prelude hiding (and, or, (<=))
+
+type C = Claim Time Decimal Instrument.K Text
+
+t : Date -> Time
+t d = time d 12 00 00
+
+payment : Instrument.K -> Decimal -> C
+payment ccy qty =
+  Scale (Const qty) (One ccy)
+
+delivery : Instrument.K -> Decimal -> C
+delivery asset qty =
+  Give $ Scale (Const qty) (One asset)
+
+futurePayment : Instrument.K -> Decimal -> Date -> C
+futurePayment ccy qty d =
+  When (at $ t d) $ payment ccy qty
+
+futureDelivery : Instrument.K -> Decimal -> Date -> C
+futureDelivery asset qty d =
+  When (at $ t d) $ delivery asset qty
+
+dvp : Instrument.K -> Decimal -> Instrument.K -> Decimal -> C
+dvp asset assetQty ccy ccyQty =
+  delivery asset assetQty `and` payment ccy ccyQty
+
+futureDvp : Instrument.K -> Decimal -> Instrument.K -> Decimal -> Date -> C
+futureDvp asset assetQty ccy ccyQty d =
+  When (at $ t d) $ dvp asset assetQty ccy ccyQty
+
+floatingStream : Observation Time Decimal Text -> Instrument.K -> [Time] -> C
+floatingStream rate ccy dates =
+  case dates of
+    d :: rest -> forward d rate (One ccy) `and` floatingStream rate ccy rest
+    [] -> Zero
+
+fixedStream : Decimal -> Instrument.K -> [Time] -> C
+fixedStream rate ccy dates = floatingStream (Const rate) ccy dates
+
+bond : Instrument.K -> Decimal -> Decimal -> [Date] -> C
+bond ccy notional coupon dates =
+  fixed notional (notional * coupon) ccy (map t dates)
+
+callOptionPhysical : Instrument.K -> Decimal -> Instrument.K -> Decimal -> Date -> C
+callOptionPhysical asset assetQty ccy ccyQty maturity =
+  european (t maturity) $ dvp ccy ccyQty asset assetQty
+
+putOptionPhysical : Instrument.K -> Decimal -> Instrument.K -> Decimal -> Date -> C
+putOptionPhysical asset assetQty ccy ccyQty maturity =
+  european (t maturity) $ dvp asset assetQty ccy ccyQty
+
+callOptionCash : Text -> Instrument.K -> Decimal -> Date -> C
+callOptionCash underlying ccy strike maturity =
+  european (t maturity) $ Scale (Observe underlying - Const strike) (One ccy)
+
+putOptionCash : Text -> Instrument.K -> Decimal -> Date -> C
+putOptionCash underlying ccy strike maturity =
+  european (t maturity) $ Scale (Const strike - Observe underlying) (One ccy)
+
+callOptionCashAuto : Text -> Instrument.K -> Decimal -> Date -> C
+callOptionCashAuto underlying ccy strike maturity =
+  let
+    predicate = Const strike <= Observe underlying
+    cash = (Observe underlying) - Const strike
+  in When (at $ t maturity) $ Cond predicate (Scale cash $ One ccy) Zero
+
+putOptionCashAuto : Text -> Instrument.K -> Decimal -> Date -> C
+putOptionCashAuto underlying ccy strike maturity =
+  let
+    predicate = Observe underlying <= Const strike
+    cash = (Const strike) - (Observe underlying)
+  in When (at $ t maturity) $ Cond predicate (Scale cash $ One ccy) Zero
+
+kiPutOptionCashAuto : Text -> Instrument.K -> Decimal -> Decimal -> Date -> Date -> C
+kiPutOptionCashAuto underlying ccy strike barrier barrierStartDate maturity =
+  let
+    und = Observe underlying
+    optionPredicate = und <= Const strike
+    cash = (Const strike) - und
+    barrierPredicate = und <= (Const barrier)
+  in When (at $ t barrierStartDate) $ When barrierPredicate $ When (at $ t maturity) $ Cond optionPredicate (Scale cash $ One ccy) Zero
+
+callOptionPhysicalAuto : Text -> Instrument.K -> Decimal -> Instrument.K -> Decimal -> Decimal -> Date -> C
+callOptionPhysicalAuto assetObs asset assetQty ccy ccyQty strike maturity =
+  let
+    predicate = Const strike <= Observe assetObs
+    payoff = dvp ccy ccyQty asset assetQty
+  in When (at $ t maturity) $ Cond predicate payoff Zero
+
+putOptionPhysicalAuto : Text -> Instrument.K -> Decimal -> Instrument.K -> Decimal -> Decimal -> Date -> C
+putOptionPhysicalAuto assetObs asset assetQty ccy ccyQty strike maturity =
+  let
+    predicate = Observe assetObs <= Const strike
+    payoff = dvp asset assetQty ccy ccyQty
+  in When (at $ t maturity) $ Cond predicate payoff Zero
+
+reverseConvertibleExplicit : Text -> Instrument.K -> Instrument.K -> Decimal -> Decimal -> Decimal -> Date -> C
+reverseConvertibleExplicit assetObs asset ccy notional strike interest maturity =
+  let
+    payment = (1.0 + interest) * notional
+    deposit = futurePayment ccy payment maturity
+    put = putOptionPhysicalAuto assetObs asset (notional / strike) ccy payment strike maturity
+  in deposit `and` (Give put)
+
+reverseConvertible : Text -> Instrument.K -> Instrument.K -> Decimal -> Decimal -> Decimal -> Date -> C
+reverseConvertible assetObs asset ccy notional strike interest maturity =
+  let
+    conversionCondition = Observe assetObs <= Const strike
+    conversionPayout = Scale (Const notional / Const strike) (One asset)
+    principalPayout = Scale (Const (notional * (1.0 + interest))) (One ccy)
+  in When (at $ t maturity) $ Cond conversionCondition conversionPayout principalPayout
+
+rc : Text -> Instrument.K -> Decimal -> Decimal -> [Date] -> C
+rc asset ccy coupon strike dates =
+  let
+    bondLeg = bond ccy strike coupon dates
+    put = putOptionCashAuto asset ccy strike (last dates)
+  in And bondLeg (Give put) []
+
+brc : Text -> Instrument.K -> Decimal -> Decimal -> Decimal -> Date -> [Date] -> C
+brc asset ccy coupon strike barrier barrierStartDate dates =
+  let
+    bondLeg = bond ccy strike coupon dates
+    kiPut = kiPutOptionCashAuto asset ccy strike barrier barrierStartDate (last dates)
+  in And bondLeg (Give kiPut) []
+
+call : Instrument.K -> Text -> Decimal -> C
+call ccy underlying strike =
+  let
+    payoff = (Observe underlying) - (Const strike)
+    payout = Scale payoff (One ccy)
+  in payout `or` Zero
+
+put : Instrument.K -> Text -> Decimal -> C
+put ccy underlying strike =
+  let
+    payoff = Const strike - Observe underlying
+    payout = Scale payoff (One ccy)
+  in payout `or` Zero
+
+turboCall : Instrument.K -> Text -> Decimal -> Decimal -> Date -> C
+turboCall ccy underlying strike barrier startDate =
+  let
+    option = call ccy underlying strike
+    barrierCondition = Observe underlying <= Const barrier
+  in Until barrierCondition $ Anytime (at $ t startDate) option
+
+inverseConvertibleExplicit : Text -> Instrument.K -> Instrument.K -> Decimal -> Decimal -> Decimal -> Date -> C
+inverseConvertibleExplicit assetObs asset ccy notional strike interest maturity =
+  let
+    interestAmount = notional * strike * interest
+    deposit = When (at $ t maturity) $ Scale (Const notional) (One asset) `and` Scale (Const interestAmount) (One ccy)
+    call = callOptionPhysicalAuto assetObs asset notional ccy (notional * strike + interestAmount) strike maturity
+  in deposit `and` (Give call)
+
+inverseConvertible : Text -> Instrument.K -> Instrument.K -> Decimal -> Decimal -> Decimal -> Date -> C
+inverseConvertible assetObs asset ccy notional strike interest maturity =
+  let
+    interestAmount = notional * strike * interest
+    conversionCondition = Const strike <= Observe assetObs
+    conversionPayout = Scale (Const notional * Const strike) (One ccy)
+    principalPayout = Scale (Const notional) (One asset) `and` Scale (Const interestAmount) (One ccy)
+  in When (at $ t maturity) $ Cond conversionCondition conversionPayout principalPayout
+
+binaryCallOption : Text -> Instrument.K -> Decimal -> Date -> C
+binaryCallOption underlying ccy strike expiry =
+  When (at $ t expiry) $ Cond (Const strike <= Observe underlying) (One ccy) Zero `or` Zero
+
+koPutWarrant : Decimal -> Decimal -> Text -> Instrument.K -> C
+koPutWarrant barrier strike underlying ccy  =
+  Cond (Observe underlying <= Const barrier) (Scale (Const strike + (Observe underlying)) (One ccy) `or` Zero) Zero
+
+convertibleShare : Instrument.K -> Instrument.K -> Date -> C
+convertibleShare from to conversionDate =
+  When (at $ t conversionDate) $ (Give (One from) `and` (One to)) `or` (One from)
+
+interestRateSwap : Text -> Decimal -> Instrument.K -> [Date] -> C
+interestRateSwap floatingRateId fixedRate ccyId fixingDates =
+  let
+    floatObs = Observe floatingRateId
+    floatingLeg = floatingStream floatObs ccyId
+    fixedLeg = fixedStream fixedRate ccyId
+  in swap floatingLeg fixedLeg (map t fixingDates)
+
+basisSwap : Text -> Text -> Decimal -> Instrument.K -> [Date] -> C
+basisSwap floatingRateId1 floatingRateId2 spread ccyId fixingDates =
+  let
+    floatObs1 = Observe floatingRateId1
+    floatingLeg1 = floatingStream floatObs1 ccyId
+    floatObs2 = Observe floatingRateId2 + Const spread
+    floatingLeg2 = floatingStream floatObs2 ccyId
+  in swap floatingLeg1 floatingLeg2 (map t fixingDates)
+
+bermudanSwaption : Text -> Decimal -> Instrument.K -> Decimal -> [Date] -> [Date] -> C
+bermudanSwaption floatingRateId fixedRate fixedCcyId principal fixingDates exerciseDates =
+  let
+    floatObs = Observe floatingRateId
+    floatingLeg = floating (Const 0.0) floatObs fixedCcyId
+    fixedLeg = fixed principal fixedRate fixedCcyId
+  in bermudan (map t exerciseDates) $ swap floatingLeg fixedLeg (map t fixingDates)
+
+convertibleNote : Text -> Instrument.K -> Instrument.K -> Decimal -> Decimal -> Date -> Decimal -> Decimal -> C
+convertibleNote underlyingObs underlying ccy principal discount maturity interest cap =
+  let
+    conversionCondition = Observe underlyingObs <= Const cap
+    conversionPayout = Scale (Const (principal * (1.0 + interest)) / (Observe underlyingObs * Const (1.0 - discount))) (One underlying)
+    cappedPayout = Scale (Const (principal * (1.0 + interest)) / (Const cap * Const (1.0 - discount))) (One underlying)
+  in When (at $ t maturity) $ Cond conversionCondition conversionPayout cappedPayout
+
+accumulator : Text -> Instrument.K -> Instrument.K -> Decimal -> Decimal -> Decimal -> Decimal -> [Date] -> C
+accumulator assetObs asset ccy strike aboveBuyQty belowBuyQty knockOutLevel dates =
+  let
+    koCondition = Const knockOutLevel <= Observe assetObs
+    qtyCondition = Const strike <= Observe assetObs
+    abovePayment = Scale (Observe assetObs * Const aboveBuyQty) (One ccy)
+    belowPayment = Scale (Observe assetObs * Const belowBuyQty) (One ccy)
+    aboveDelivery = Scale (Const aboveBuyQty) (One asset)
+    belowDelivery = Scale (Const belowBuyQty) (One asset)
+    aboveDvp = Give abovePayment `and` aboveDelivery
+    belowDvp = Give belowPayment `and` belowDelivery
+    accumulate d = When (at $ t d) $ Cond qtyCondition aboveDvp belowDvp
+    accumulator d c = (accumulate d) `and` c
+    (h :: t) = dates
+    first = accumulate h
+    claims = foldr accumulator first t
+  in Until koCondition claims
+
+decumulator : Text -> Instrument.K -> Instrument.K -> Decimal -> Decimal -> Decimal -> Decimal -> [Date] -> C
+decumulator assetObs asset ccy strike aboveSellQty belowSellQty knockOutLevel dates =
+  let
+    koCondition = Observe assetObs <= Const knockOutLevel
+    qtyCondition = Observe assetObs <= Const strike
+    abovePayment = Scale (Observe assetObs * Const aboveSellQty) (One ccy)
+    belowPayment = Scale (Observe assetObs * Const belowSellQty) (One ccy)
+    aboveDelivery = Scale (Const aboveSellQty) (One asset)
+    belowDelivery = Scale (Const belowSellQty) (One asset)
+    aboveDvp = Give aboveDelivery `and` abovePayment
+    belowDvp = Give belowDelivery `and` belowPayment
+    accumulate d = When (at $ t d) $ Cond qtyCondition belowDvp aboveDvp
+    accumulator d c = (accumulate d) `and` c
+    (h :: t) = dates
+    first = accumulate h
+    claims = foldr accumulator first t
+  in Until koCondition claims
+
+buyWriteNote : Date -> Date -> Date -> Text -> Instrument.K -> Decimal -> Decimal -> Decimal -> C
+buyWriteNote issueDate endDate maturityDate und ccy couponRatePerAnnum denominationCcy capPrice =
+  let
+    (iy, im, id) = toGregorian issueDate
+    (my, mm, md) = toGregorian maturityDate
+    (py, pm, pd) = case mm of
+      Jan -> (my - 1, Dec, monthDayCount my Dec)
+      Feb -> (my, Jan, monthDayCount my Jan)
+      Mar -> (my, Feb, monthDayCount my Feb)
+      Apr -> (my, Mar, monthDayCount my Mar)
+      May -> (my, Apr, monthDayCount my Apr)
+      Jun -> (my, May, monthDayCount my May)
+      Jul -> (my, Jun, monthDayCount my Jun)
+      Aug -> (my, Jul, monthDayCount my Jul)
+      Sep -> (my, Aug, monthDayCount my Aug)
+      Oct -> (my, Sep, monthDayCount my Sep)
+      Nov -> (my, Oct, monthDayCount my Oct)
+      Dec -> (my, Nov, monthDayCount my Nov)
+    firstRegularPeriodStartDate = Some $ date iy im (monthDayCount iy im)
+    lastRegularPeriodEndDate = Some $ date py pm pd
+    refAssetRatio = 1.0
+    dayAdjustment = FOLLOWING
+
+    calendar = HolidayCalendarData with
+        id = "dummy"
+        weekend = [Saturday,Sunday]
+        holidays = []
+    frequency = Frequency with
+        period = M
+        periodMultiplier = 1
+        rollConvention = EOM
+    paymentSchedule = PeriodicSchedule with
+      effectiveDate = issueDate
+      terminationDate = maturityDate
+      firstRegularPeriodStartDate
+      lastRegularPeriodEndDate
+      frequency = frequency
+      businessDayAdjustment = BusinessDayAdjustment with
+        calendarIds = ["dummy"]
+        convention = dayAdjustment
+      effectiveDateBusinessDayAdjustment = None
+      terminationDateBusinessDayAdjustment = None
+      stubPeriodType = None
+    rolledSchedule = createSchedule [calendar] paymentSchedule
+
+    -- Coupon payments (accrual is happening on adjusted dates, should confirm if this is correct)
+    paymentDates = map (\period -> period.adjustedEndDate) rolledSchedule
+    dcfs = map (\period -> calcDcf Basis_30360 period.adjustedStartDate period.adjustedEndDate) rolledSchedule
+
+    mapper paymentDate dcf =
+      When (at $ t paymentDate) $
+      Scale (Const $ dcf * couponRatePerAnnum * denominationCcy) $
+      One ccy
+
+    cCoupon = mconcat $ zipWith mapper paymentDates dcfs
+
+    -- Payment at maturity
+    cPayoff =
+      When (at $ t endDate) $
+      Cond (Const capPrice <= Observe und)
+        (Scale (Const refAssetRatio * Const capPrice ) $ When (at $ t maturityDate) $ One ccy)
+        (Scale (Const refAssetRatio * Observe und ) $ When (at $ t maturityDate) $ One ccy)
+
+  in And cCoupon cPayoff []
+
+-- | Multiple delivery locations
+ngMultiLocation : Date -> Date -> [Instrument.Q] -> Decimal -> Instrument.K -> C
+ngMultiLocation startDate endDate deliveries price ccy =
+  let
+    total = sum $ map (.amount) deliveries
+    dates = rollDaily startDate endDate
+    mapper date =
+      let
+        receiveC = mconcat $ map (\q -> Scale (Const q.amount) $ One q.unit) deliveries
+        giveC = Scale (Const total * Const price) $ One ccy
+      in When (at $ t date) $ receiveC `and` Give giveC
+    claim = mconcat $ map mapper dates
+  in claim
+
+-- | Location / Pricing options
+ngLocationPricingOption : Date -> Date -> Decimal -> Instrument.K -> Text -> Instrument.K -> Text -> Instrument.K -> C
+ngLocationPricingOption startDate endDate quantity location1 price1 location2 price2 ccy =
+  let
+    dates = rollDaily startDate endDate
+    c1 = Scale (Const quantity) $ and (One location1) $ Give $ Scale (Observe price1) (One ccy)
+    c2 = Scale (Const quantity) $ and (One location2) $ Give $ Scale (Observe price2) (One ccy)
+    claim = mconcat $ map (\date -> When (at $ t date) $ c1 `or` c2 ) dates
+  in claim
+
+-- | Capped price
+ngCapped : Date -> Date -> Decimal -> Instrument.K -> Text -> Decimal -> Instrument.K -> C
+ngCapped startDate endDate quantity asset price cap ccy =
+  let
+    dates = rollDaily startDate endDate
+    mapper date =
+      let
+        priceC = Cond (Const cap <= Observe price) (Scale (Const cap) $ One ccy) (Scale (Observe price) $ One ccy)
+        receiveC = Scale (Const quantity) $ One asset
+        giveC = Scale (Const quantity) priceC
+      in When (at $ t date) $ receiveC `and` Give giveC
+    claim = mconcat $ map mapper dates
+  in claim
+
+-- | Price-conditional location
+ngConditionalLocation : Date -> Date -> Decimal -> Instrument.K -> Text -> Decimal -> Instrument.K -> Text -> Instrument.K -> C
+ngConditionalLocation startDate endDate quantity location1 price1 price1Cap location2 price2 ccy =
+  let
+    dates = rollDaily startDate endDate
+    c1 = Scale (Const quantity) $ and (One location1) $ Give $ Scale (Observe price1) (One ccy)
+    c2 = Scale (Const quantity) $ and (One location2) $ Give $ Scale (Observe price2) (One ccy)
+    claim = mconcat $ map (\date -> When (at $ t date) $ Cond (Observe price1 <= Const price1Cap) c1 c2) dates
+  in claim
+
+rollDaily : Date -> Date -> [Date]
+rollDaily d end = if d > end then [] else d :: rollDaily (addDays d 1) end

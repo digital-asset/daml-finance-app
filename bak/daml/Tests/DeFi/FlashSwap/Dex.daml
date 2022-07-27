@@ -1,0 +1,118 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Tests.DeFi.FlashSwap.Dex where
+
+import DA.Set (empty, fromList, singleton, toList)
+import Daml.Finance.Interface.Common.Types (Parties)
+import Daml.Finance.Interface.Common.Disclosure (Disclosable, Disclose(..))
+import Daml.Finance.Interface.Asset.Fungible (Fungible, Split(..))
+import Daml.Finance.Interface.Asset.Holding (Issue(..))
+import Daml.Finance.Interface.Asset.Transferable (Transferable, Transfer(..))
+import Daml.Script
+import DeFi.FlashSwap.Dex
+import DeFi.FlashSwap.Dvp
+import DeFi.Interface.FlashSwapAction
+import Tests.Setup
+
+-- settle trade where left counterparty has committed
+-- alice *<-> ccp
+template PayAndSettleDvp with
+    ccp : Parties
+    dvpAllocatedCid : ContractId Dvp
+    tokenOutQuantity : Decimal
+  where
+    signatory ccp
+
+    implements FlashSwapAction where
+      let action = \paymentCid -> do
+          (dvpCid, rest1Cids) <- exercise dvpAllocatedCid Pay with actors = ccp, tokenCid = paymentCid
+          (payedCid, deliveredCid) <- exercise dvpCid Settle with actors = ccp
+          -- Split to match tokenOutQuantity
+          let deliveredFungibleCid : ContractId Fungible = coerceContractId deliveredCid
+          tokenOutCid :: rest2Cids <- exercise deliveredFungibleCid Split with quantities = [tokenOutQuantity]
+          return (coerceContractId tokenOutCid, payedCid :: (rest1Cids <> map coerceContractId rest2Cids))
+
+{- Alice *<-> Bob <=>* DEX
+
+    Bob can use the DEX to swap X for Y, or alternatively use a Dvp he has
+    with Alice (where Alice has already allocated X) to make a FlashSwap as
+    follows :
+    1. Bob first prepares an instance of a PayAndSettleDvp (which implements
+        the FlashSwapAction interface), i.e., the Dvp with Alice is
+        payed-and-settled using Y to receive X.
+    2. Bob then exercise the FlashSwap choice on the DEX with the
+        PayAndSettleDvp (as FlashSwapActin instance). As a consequence, Bob
+        first receives Y from the DEX, then Bob uses Y to pay-and-settle the
+        Dvp with Alice to get X, and finally Bob hands in X to the DEX pool.
+-}
+testFlashSwapDex : Script ()
+testFlashSwapDex = do
+  LedgerParties{..} <- setupParties
+  LedgerTokens{..} <- setupTokens LedgerParties{..}
+
+  -- Variables
+  let
+    sharesIssued = 1_000.0
+
+  -- Create holdings
+  shareTokenCid <- submitMulti (toList consortium) [] do exerciseCmd shareInstrumentCid Issue with quantity = sharesIssued
+  ethTokenCid <- submit custodian1 do exerciseCmd ethInstrumentCid Issue with quantity = 10_000.0
+  let ethTokenCid2 : ContractId Transferable = coerceContractId ethTokenCid
+  ethTokenCid3 <- submitMulti (custodian1 :: toList consortium) [] do exerciseCmd ethTokenCid2 Transfer with newOwners = consortium
+  let ethTokenCid4 : ContractId Disclosable = coerceContractId ethTokenCid3
+  ethTokenCid5 <- submitMulti (toList consortium) [] do exerciseCmd ethTokenCid4 Disclose with newObservers = singleton public
+  usdcTokenCid <- submit custodian2 do exerciseCmd usdcInstrumentCid Issue with quantity = 42_390_000.0
+  let usdcTokenCid2 : ContractId Transferable = coerceContractId usdcTokenCid
+  usdcTokenCid3 <- submitMulti (custodian2 :: toList consortium) [] do exerciseCmd usdcTokenCid2 Transfer with newOwners = consortium
+  let usdcTokenCid4 : ContractId Disclosable = coerceContractId usdcTokenCid3
+  usdcTokenCid5 <- submitMulti (toList consortium) [] do exerciseCmd usdcTokenCid4 Disclose with newObservers = singleton public
+
+  -- Create DEX
+  let
+    share = (sharesIssued, shareInstrumentCid)
+    pool1 = Pool with tokenCid = coerceContractId ethTokenCid5; instrumentCid = ethInstrumentCid
+    pool2 = Pool with tokenCid = coerceContractId usdcTokenCid5; instrumentCid = usdcInstrumentCid
+  dexCid <- submitMulti (toList consortium) [] do createCmd Dex with id = "ETH/USDC DEX"; consortium; share; pool1; pool2; fee = 0.003; public
+
+  -- Create Alice's holdings
+  aliceEthCid <- submit custodian1 do exerciseCmd ethInstrumentCid Issue with quantity = 20.0
+  let aliceEthTransferable : ContractId Transferable = coerceContractId aliceEthCid
+  aliceEthCid <- submitMulti [custodian1, alice] [] do exerciseCmd aliceEthTransferable Transfer with newOwners = singleton alice
+
+  -- Alice swaps via DEX
+  (dexCid, aliceUsdcCid :: _) <- submitMulti [alice, public] [public] do exerciseCmd dexCid Swap with actors = fromList [alice, public]; xTokenCid = aliceEthCid
+  (dexCid, aliceEthCid2 :: _) <- submitMulti [alice, public] [public] do exerciseCmd dexCid Swap with actors = fromList [alice, public]; xTokenCid = aliceUsdcCid
+
+  -- Create Bob's holdings
+  bobEthCid <- submit custodian1 do exerciseCmd ethInstrumentCid Issue with quantity = 10.0
+  let bobEthTransferable : ContractId Transferable = coerceContractId bobEthCid
+  bobEthCid <- submitMulti [custodian1, bob] [] do exerciseCmd bobEthTransferable Transfer with newOwners = singleton bob
+  bobUsdcCid <- submit custodian2 do exerciseCmd usdcInstrumentCid Issue with quantity = 42_390.0
+  let bobUsdcTransferable : ContractId Transferable = coerceContractId bobUsdcCid
+  bobUsdcCid <- submitMulti [custodian2, bob] [] do exerciseCmd bobUsdcTransferable Transfer with newOwners = singleton bob
+
+  -- Bob deposits to DEX
+  (dexCid, bobShareCid, _) <- submitMulti [bob, public] [public] do exerciseCmd dexCid Deposit with actors = fromList [bob, public]; token1Cid = bobEthCid; token2Cid = bobUsdcCid
+
+  -- Bob withdraws from DEX
+  let bobShareFungibleCid : ContractId Fungible = coerceContractId bobShareCid
+  [splitCid, restCid] <- map coerceContractId <$> submit bob do exerciseCmd bobShareFungibleCid Split with quantities = [0.1]
+  (dexCid, bobEthCid2, bobUsdcCid2) <- submitMulti [bob] [public] do exerciseCmd dexCid Withdraw with actors = singleton bob; shareCid = splitCid
+
+  -- Bob and Alice do a Dvp
+  let
+    delivery = Allocation with tokenCid = None; required = (10.0, ethInstrumentCid); beneficiary = singleton bob
+    payment = Allocation with tokenCid = None; required = (26_000.0, usdcInstrumentCid); beneficiary = singleton alice
+  dvpCid <- submitMulti [alice, bob] [] do createCmd Dvp with delivery; payment; settlementParticipant = empty; public
+
+  -- Alice allocates the Dvp
+  (dvpAllocatedCid, _) <- submitMulti [alice, public] [] do exerciseCmd dvpCid Deliver with actors = fromList [alice, public]; tokenCid = aliceEthCid2
+
+  -- Bob prepares flash swap action
+  payAndSettleDvpCid <- toInterfaceContractId <$> submitMulti [bob, public] [] do createCmd PayAndSettleDvp with ccp = fromList [bob, public]; dvpAllocatedCid; tokenOutQuantity = 10.0
+
+  -- bob can flash swap
+  submitMulti [bob, public] [public] do exerciseCmd dexCid FlashSwap with actors = fromList [bob, public]; xAsset = (10.0, ethInstrumentCid); actionCid = payAndSettleDvpCid
+
+  return ()

@@ -1,0 +1,112 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Custody.Service where
+
+import Daml.Finance.Interface.Asset.Account qualified as Account (Credit(..), Debit(..), K, R)
+import Daml.Finance.Interface.Asset.Holding qualified as Holding (I)
+import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (K, Q)
+import Daml.Finance.Interface.Asset.Util (getAccount)
+import Daml.Finance.App.Custody.Model qualified as Custody
+import Daml.Finance.App.Util (fetchAndArchive)
+import Prelude hiding (lookup)
+
+template Service
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, customer) : (Party, Party, Party)
+    maintainer key._1
+
+    nonconsuming choice RequestDeposit : ContractId Custody.DepositRequest
+      with
+        quantity : Instrument.Q
+        account : Account.K
+      controller customer
+      do
+        create Custody.DepositRequest with ..
+
+    nonconsuming choice RequestWithdrawal : ContractId Custody.WithdrawalRequest
+      with
+        instrument : Instrument.K
+        holdingCid : ContractId Holding.I
+      controller customer
+      do
+        create Custody.WithdrawalRequest with ..
+
+    nonconsuming choice Deposit : ContractId Holding.I
+      with
+        depositRequestCid : ContractId Custody.DepositRequest
+      controller provider
+      do
+        Custody.DepositRequest{quantity; account} <- fetchAndArchive depositRequestCid
+        (_, ref) <- fetchByKey @Account.R account
+        exercise ref.cid Account.Credit with quantity
+
+    nonconsuming choice Withdrawal : ()
+      with
+        withdrawalRequestCid : ContractId Custody.WithdrawalRequest
+      controller provider
+      do
+        Custody.WithdrawalRequest{holdingCid} <- fetchAndArchive withdrawalRequestCid
+        holding <- fetch holdingCid
+        let account = getAccount holding
+        (_, ref) <- fetchByKey @Account.R account
+        exercise ref.cid Account.Debit with holdingCid
+
+    choice Terminate : ()
+      with
+        actor : Party
+      controller actor
+      do
+        assert $ actor == operator || actor == provider || actor == customer
+        pure ()
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider
+    observer customer
+
+    choice Accept : ContractId Service
+      controller customer
+      do
+        create Service with ..
+
+    choice Decline : ()
+      controller customer
+      do pure ()
+
+    choice Withdraw : ()
+      controller provider
+      do pure ()
+
+template Request
+  with
+    customer : Party
+    provider : Party
+  where
+    signatory customer
+    observer provider
+
+    choice Cancel : ()
+      controller customer
+      do pure ()
+
+    choice Reject : ()
+      controller provider
+      do pure ()
+
+    choice Approve : ContractId Service
+      with
+        operator : Party
+      controller operator, provider
+      do
+        create Service with ..

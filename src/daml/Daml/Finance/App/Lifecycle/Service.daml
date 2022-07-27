@@ -1,0 +1,155 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Lifecycle.Service where
+
+import ContingentClaims.Claim (Claim)
+import ContingentClaims.Lifecycle qualified as Lifecycle
+import ContingentClaims.Math.Stochastic (Expr)
+import ContingentClaims.Observation (Observation(..))
+import ContingentClaims.Util (expiry, fixings, payoffs)
+import DA.Set (singleton)
+import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (K)
+import Daml.Finance.Interface.Lifecycle.Effect (Effect)
+import Daml.Finance.Interface.Lifecycle.Clock qualified as Clock (I)
+import Daml.Finance.Interface.Lifecycle.Event qualified as Event (I)
+import Daml.Finance.Interface.Lifecycle.Observable qualified as Interface (Observable, Observe(..), view)
+import Daml.Finance.Interface.Lifecycle.Lifecyclable qualified as Interface (Lifecyclable, Lifecycle(..))
+import Daml.Finance.App.Lifecycle.Pricing qualified as Pricing
+
+template Service
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, customer) : (Party, Party, Party)
+    maintainer key._1
+
+    nonconsuming choice PreviewLifecycle : (Claim Time Decimal Instrument.K Text, [Lifecycle.Pending Time Instrument.K])
+      with
+        today : Time
+        observableCids : [ContractId Interface.Observable]
+        claims : Claim Time Decimal Instrument.K Text
+      controller customer
+      do
+        observables <- zip observableCids <$> mapA fetch observableCids
+        let
+          spot id t = do
+            let Some (obsCid, obs) = find (\(_, o) -> (Interface.view o).obsKey == id) observables
+            exercise obsCid Interface.Observe with party = singleton customer; t
+        Lifecycle.Result{remaining, pending} <- Lifecycle.lifecycle spot claims today
+        pure (remaining, pending)
+
+    nonconsuming choice Lifecycle : (ContractId Interface.Lifecyclable, [ContractId Effect])
+      with
+        ruleName : Text
+        eventCid : ContractId Event.I
+        clockCid : ContractId Clock.I
+        observableCids : [ContractId Interface.Observable]
+        lifecyclableCid : ContractId Interface.Lifecyclable
+      controller customer
+      do
+        exercise lifecyclableCid Interface.Lifecycle with ruleName; settler = singleton provider; eventCid; clockCid; observableCids
+
+    nonconsuming choice Expiry : Optional Time
+      with
+        claims : Claim Time Decimal Instrument.K Text
+      controller customer
+      do
+        pure $ expiry claims
+
+    nonconsuming choice Underlying : [Instrument.K]
+      with
+        claims : Claim Time Decimal Instrument.K Text
+      controller customer
+        do
+          pure $ snd <$> payoffs claims
+
+    nonconsuming choice Payoffs : [(Observation Time Decimal Text, Instrument.K)]
+      with
+        claims : Claim Time Decimal Instrument.K Text
+      controller customer
+        do
+          pure $ payoffs claims
+
+    nonconsuming choice Fixings : [Time]
+      with
+        claims : Claim Time Decimal Instrument.K Text
+      controller customer
+        do
+          pure $ fixings claims
+
+    nonconsuming choice Multipliers : [Decimal]
+      with
+        claims : Claim Time Decimal Instrument.K Text
+      controller customer
+        do
+          let getConst : (Observation Time Decimal a, b) -> [Decimal]
+              getConst (Const x, _) = [x]
+              getConst _            = []
+          return $ concatMap getConst $ payoffs claims
+
+    nonconsuming choice PreviewPricing : (Expr Text, Text)
+      with
+        ccy : Text
+        claims : Claim Text Decimal Text Text
+      controller customer
+      do
+        let formula = Pricing.valueClaim ccy claims
+        pure (formula, Pricing.print formula)
+
+    choice Terminate : ()
+      with
+        actor : Party
+      controller actor
+      do
+        assert $ actor == operator || actor == provider || actor == customer
+        pure ()
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider
+    observer customer
+
+    choice Accept : ContractId Service
+      controller customer
+      do
+        create Service with ..
+
+    choice Decline : ()
+      controller customer
+      do pure ()
+
+    choice Withdraw : ()
+      controller provider
+      do pure ()
+
+template Request
+  with
+    customer : Party
+    provider : Party
+  where
+    signatory customer
+    observer provider
+
+    choice Cancel : ()
+      controller customer
+      do pure ()
+
+    choice Reject : ()
+      controller provider
+      do pure ()
+
+    choice Approve : ContractId Service
+      with
+        operator : Party
+      controller operator, provider
+      do
+        create Service with ..

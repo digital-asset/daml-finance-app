@@ -1,0 +1,67 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Distribution.Subscription.Util where
+
+import DA.Foldable (forA_)
+import DA.Functor (void)
+import DA.Optional (optionalToList)
+import DA.Set (singleton)
+import Daml.Finance.Interface.Asset.Account qualified as Account (R)
+import Daml.Finance.Interface.Asset.Fungible (Fungible, Split(..))
+import Daml.Finance.Interface.Asset.Lockable (Unlock(..))
+import Daml.Finance.Interface.Common.Disclosure (RemoveObserver(..))
+import Daml.Finance.Interface.Settlement.Instructable (Instructable, Instruct(..))
+import Daml.Finance.Interface.Settlement.Instruction (Allocate(..), Approve(..))
+import Daml.Finance.Interface.Settlement.Settleable (Settle(..))
+import Daml.Finance.Interface.Settlement.Types (Step(..))
+import Daml.Finance.App.Distribution.Subscription.Model (AllocateInstruction(..), ApproveInstruction(..), Offering, Subscription, UnlockHolding(..))
+
+settleSubscription : ContractId Instructable -> Offering -> (Decimal, Optional (ContractId Fungible)) -> (ContractId Subscription, Subscription) -> Update (Decimal, Optional (ContractId Fungible))
+settleSubscription instructableCid offering (remainingQuantity, issuerHoldingCidOpt) (subscriptionCid, subscription) = do
+  if remainingQuantity == 0.0
+  then do pure (remainingQuantity, issuerHoldingCidOpt)
+  else do
+    -- Instruct
+    let
+      Some issuerHoldingCid = issuerHoldingCidOpt
+      allocatedQuantity = offering.asset with amount = min remainingQuantity subscription.quantity
+      payedQuantity = offering.price with amount = allocatedQuantity.amount * offering.price.amount
+      delivery = Step with sender = singleton offering.issuer; receiver = singleton subscription.investor; quantity = allocatedQuantity
+      payment = Step with sender = singleton subscription.investor; receiver = singleton offering.issuer; quantity = payedQuantity
+    (settleableCid, [deliveryCid, paymentCid]) <- exercise instructableCid Instruct with settler = singleton offering.provider; id = offering.offeringId; steps = [delivery, payment]
+
+    -- Settle
+    allocatedHoldingCid :: remainingIssuerHoldingCids <-
+      if remainingQuantity == allocatedQuantity.amount
+      then do pure $ [issuerHoldingCid]
+      else do (\r -> r.splitCids <> optionalToList r.rest) <$> exercise issuerHoldingCid Split with amounts = [allocatedQuantity.amount]
+    paymentHoldingCid :: remainingInvestorHoldingCids <-
+      if allocatedQuantity.amount == subscription.quantity
+      then do pure [subscription.holdingCid]
+      else do (\r -> r.splitCids <> optionalToList r.rest) <$> exercise subscription.holdingCid Split with amounts = [payedQuantity.amount]
+    -- paymentHolding <- fetch paymentHoldingCid
+    -- paymentAccountCid <- getAccountCid paymentHolding
+    deliveryCid <- exercise deliveryCid Allocate with transferableCid = toInterfaceContractId allocatedHoldingCid
+    exercise subscriptionCid ApproveInstruction with instructionCid = deliveryCid; receiverAccount = subscription.accountKey
+    paymentCid <- exercise subscriptionCid AllocateInstruction with instructionCid = paymentCid; transferableCid = toInterfaceContractId paymentHoldingCid
+    exercise paymentCid Approve with receiverAccount = offering.issuerAccount
+    transferredCids <- exercise settleableCid Settle
+    forA_ transferredCids $ \cid -> exercise subscriptionCid UnlockHolding with lockableCid = toInterfaceContractId cid
+
+    -- Process remainders
+    let
+      remainingIssuerHoldingCid =
+        case remainingIssuerHoldingCids of
+          [] -> None
+          hCid :: _ -> Some hCid
+    case remainingInvestorHoldingCids of
+      [] -> do pure ()
+      hCid :: _ -> do void $ exercise hCid Unlock
+
+    -- Undisclose accounts (doesn't quite work)
+    (_, accountProxy) <- fetchByKey @Account.R subscription.accountKey
+    exercise accountProxy.cid RemoveObserver with observerToRemove = (offering.offeringId, singleton offering.issuer)
+    -- exercise paymentAccountCid RemoveObserver with observerToRemove = (offering.offeringId, singleton offering.issuer)
+
+    pure (max 0.0 $ remainingQuantity - subscription.quantity, remainingIssuerHoldingCid)

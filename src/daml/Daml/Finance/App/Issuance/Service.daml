@@ -1,0 +1,120 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Issuance.Service where
+
+import Daml.Finance.Interface.Asset.Account qualified as Account (Credit(..), Debit(..), K, R)
+import Daml.Finance.Interface.Asset.Holding (Holding)
+import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (Q)
+import Daml.Finance.Interface.Asset.Util (getAccount, getAmount)
+import Daml.Finance.App.Issuance.Model (CreateIssuanceRequest(..), ReduceIssuanceRequest(..), Issuance(..))
+import Daml.Finance.App.Util (fetchAndArchive)
+
+template Service
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, customer) : (Party, Party, Party)
+    maintainer key._1
+
+    nonconsuming choice RequestCreateIssuance : ContractId CreateIssuanceRequest
+      with
+        id : Text
+        quantity : Instrument.Q
+        account : Account.K
+      controller customer
+      do
+        create CreateIssuanceRequest with ..
+
+    nonconsuming choice RequestReduceIssuance : ContractId ReduceIssuanceRequest
+      with
+        id : Text
+        holdingCid : ContractId Holding
+      controller customer
+      do
+        create ReduceIssuanceRequest with ..
+
+    nonconsuming choice CreateIssuance : (ContractId Issuance, ContractId Holding)
+      with
+        createIssuanceRequestCid : ContractId CreateIssuanceRequest
+      controller provider
+      do
+        CreateIssuanceRequest{id; account; quantity} <- fetchAndArchive createIssuanceRequestCid
+        issuanceCid <- create Issuance with operator; provider; customer; id; quantity
+
+        (_, ref) <- fetchByKey @Account.R account
+        transferableCid <- exercise ref.cid Account.Credit with quantity
+        pure (issuanceCid, transferableCid)
+
+    nonconsuming choice ReduceIssuance : ContractId Issuance
+      with
+        reduceIssuanceRequestCid : ContractId ReduceIssuanceRequest
+      controller provider
+      do
+        ReduceIssuanceRequest{id; holdingCid} <- fetchAndArchive reduceIssuanceRequestCid
+        holding <- fetch holdingCid
+        let
+          amount = getAmount holding
+          account = getAccount holding
+        (_, ref) <- fetchByKey @Account.R account
+        exercise ref.cid Account.Debit with holdingCid
+        (issuanceCid, issuance) <- fetchByKey @Issuance (operator, provider, id)
+        archive issuanceCid
+        create issuance with quantity = (issuance.quantity with amount = issuance.quantity.amount - amount)
+
+    choice Terminate : ()
+      with
+        actor : Party
+      controller actor
+      do
+        assert $ actor == operator || actor == provider || actor == customer
+        pure ()
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider
+    observer customer
+
+    choice Accept : ContractId Service
+      controller customer
+      do
+        create Service with ..
+
+    choice Decline : ()
+      controller customer
+      do pure ()
+
+    choice Withdraw : ()
+      controller provider
+      do pure ()
+
+template Request
+  with
+    customer : Party
+    provider : Party
+  where
+    signatory customer
+    observer provider
+
+    choice Cancel : ()
+      controller customer
+      do pure ()
+
+    choice Reject : ()
+      controller provider
+      do pure ()
+
+    choice Approve : ContractId Service
+      with
+        operator : Party
+      controller operator, provider
+      do
+        create Service with ..

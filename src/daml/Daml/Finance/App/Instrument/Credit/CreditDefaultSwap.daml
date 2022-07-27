@@ -1,0 +1,51 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Instrument.Credit.CreditDefaultSwap where
+
+import ContingentClaims.Observation (Observation(..))
+import ContingentClaims.Claim (Claim(..), Inequality(..), and)
+import Daml.Finance.App.Data.HolidayCalendar (HolidayCalendar)
+import Daml.Finance.Interface.Asset.Instrument (Instrument)
+import Daml.Finance.Common.Date.Calendar (BusinessDayConventionEnum)
+import Daml.Finance.Common.Date.RollConvention (PeriodEnum)
+import Daml.Finance.App.Instrument.Util (stream, rollout, adjustCoupon)
+import Prelude hiding (and)
+template Factory
+  with
+    party : Party
+  where
+    signatory party
+
+    key party : Party
+    maintainer key
+
+    nonconsuming choice Create : Claim Date Decimal (ContractId Instrument) Text
+        with
+          issueDate : Date
+          maturityDate : Date
+          couponPeriod : PeriodEnum
+          couponPeriodMultiplier : Int
+          couponPerAnnum : Decimal
+          currency : ContractId Instrument
+          underlying : ContractId Instrument
+          defaultProb : Text
+          recoveryRate : Text
+          isCashSettled : Bool
+          calendarIds : [Text]
+          convention : BusinessDayConventionEnum
+        controller party
+        do
+          calendars <- mapA (\id -> fetchByKey @HolidayCalendar (party, id)) calendarIds
+          let
+            calendarData = map ((.calendar) . (._2)) calendars
+            dates = rollout issueDate maturityDate couponPeriod couponPeriodMultiplier calendarData convention
+            coupon = adjustCoupon couponPerAnnum couponPeriod couponPeriodMultiplier
+            coupons = stream coupon currency dates
+            defaultCondition = Lte (Const 1.0, Observe defaultProb)
+            paymentLeg = Until defaultCondition coupons
+            cashPayment = Add (Const 1.0, Neg (Observe recoveryRate))
+            cashSettlement = Scale cashPayment $ One currency
+            physicalSettlement = Give (One underlying) `and` One currency
+            creditLeg = When defaultCondition $ if isCashSettled then cashSettlement else physicalSettlement
+          pure $ paymentLeg `and` creditLeg

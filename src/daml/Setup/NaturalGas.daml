@@ -1,0 +1,98 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Setup.NaturalGas where
+
+import DA.Date (addDays, toDateUTC)
+import DA.Map (fromList)
+import DA.Set (empty, singleton)
+import DA.Time (time)
+import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (qty)
+import Daml.Finance.RefData.Observation (Observation(..))
+import Daml.Finance.RefData.Time.DateClock (DateClock(..), DateClockUpdateEvent(..), Unit(..))
+import Daml.Finance.Settlement.Batch (BatchFactory(..))
+import Daml.Script (Script, createCmd, submitMulti)
+import Setup.Payoff (ngCapped, ngConditionalLocation, ngLocationPricingOption, ngMultiLocation)
+import Setup.Util.Common (allocateParties)
+import Setup.Util.Role (createCustodianRole, createOperatorRole)
+import Setup.Util.Service (createCustodyService, createIssuanceService, createLifecycleService)
+import Setup.Util.Workflow (createAccount, deposit, originate, originateDerivative)
+
+naturalGasDemo : Script [(Text, Party)]
+naturalGasDemo  = do
+  parties <- allocateParties ["Operator", "Public", "CentralBank", "Seller", "Buyer"]
+  let [operator, public, centralBank, seller, buyer] = map snd parties
+
+  -- Roles
+  createOperatorRole operator
+  createCustodianRole operator centralBank
+  createCustodianRole operator seller
+
+  -- Services
+  createCustodyService operator centralBank seller
+  createCustodyService operator centralBank buyer
+  createCustodyService operator seller buyer
+
+  createIssuanceService operator seller seller
+  createLifecycleService operator seller seller
+
+  -- Settlement factory
+  submit seller do createCmd BatchFactory with requestor = singleton seller
+
+  t <- getTime
+  let
+    today = toDateUTC t
+    t1 = addDays today 1
+    t1t = time t1 12 0 0
+    t3 = addDays today 3
+    observers = [public]
+    co = singleton buyer
+    pr = singleton seller
+    p = singleton public
+    cb = singleton centralBank
+
+  -- Create clock and events
+  let clock = DateClock with u = Unit t1, id = "Clock", provider = singleton seller, observers = empty
+  submitMulti [seller] [] do createCmd clock
+  submitMulti [seller] [] do createCmd DateClockUpdateEvent with clock; id = "Update to " <> show t1
+
+  -- Create accounts
+  sellerCashAccount    <- createAccount centralBank seller "Seller@CentralBank"
+  buyerCashAccount    <- createAccount centralBank buyer "Buyer@CentralBank"
+  buyerSecAccount     <- createAccount seller buyer "Buyer@Seller"
+
+  -- Base Instruments
+  usd     <- originate            cb cb p "USD"
+  z4200L  <- originate            pr pr p "Z4200L"
+  z4GEN   <- originate            pr pr p "Z4GEN"
+  z4300L  <- originate            pr pr p "Z4300L"
+
+  -- Structured Instruments
+  let
+    gdTgp219 = "GD TGP 24-219 + 0"
+    gdTgp300 = "GD TGP 24-300 + 0"
+    deliveries =
+      [ Instrument.qty 2_000.0 z4200L
+      , Instrument.qty 4_000.0 z4GEN
+      , Instrument.qty 4_000.0 z4300L ]
+
+  ng1 <- originateDerivative  pr pr p "Multi-location Fixed-Price Daily"    $ ngMultiLocation         t1 t3 deliveries 5.25 usd
+  ng2 <- originateDerivative  pr pr p "Location/Pricing Option Daily"       $ ngLocationPricingOption t1 t3  5_000.0 z4200L gdTgp219 z4GEN gdTgp300 usd
+  ng3 <- originateDerivative  pr pr p "Capped Pricing Daily"                $ ngCapped                t1 t3 10_000.0 z4200L gdTgp219 5.75 usd
+  ng4 <- originateDerivative  pr pr p "Price-conditional Location Daily"    $ ngConditionalLocation   t1 t3 10_000.0 z4200L gdTgp219 5.50 z4GEN gdTgp300 usd
+
+  buyerCashCid <- deposit operator centralBank buyer  (Instrument.qty 1_000_000.0 usd) buyerCashAccount
+  buyerSecCid1 <- deposit operator seller buyer       (Instrument.qty 1.0 ng1) buyerSecAccount
+  -- buyerSecCid2 <- deposit operator seller buyer       (qty 1.0 ng2) buyerSecAccount
+  buyerSecCid2 <- deposit operator seller buyer       (Instrument.qty 1.0 ng3) buyerSecAccount
+  buyerSecCid2 <- deposit operator seller buyer       (Instrument.qty 1.0 ng4) buyerSecAccount
+
+  let
+    observers = fromList [("Public", singleton $ singleton public)]
+    obs =
+      [ Observation with provider = singleton seller; obsKey = gdTgp219; observations = fromList [(t1t, 6.00)]; observers
+      , Observation with provider = singleton seller; obsKey = gdTgp300; observations = fromList [(t1t, 5.90)]; observers ]
+
+  obsCids <- mapA (\f -> submitMulti [seller] [] do createCmd f) obs
+
+  pure parties

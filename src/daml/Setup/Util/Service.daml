@@ -1,0 +1,96 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Setup.Util.Service where
+
+import DA.Set (singleton)
+import Daml.Finance.App.Custody.Service qualified as Custody (Accept(..), Service)
+import Daml.Finance.App.Issuance.Auto.Service qualified as IssuanceAuto (Accept(..), Service)
+import Daml.Finance.App.Issuance.Service qualified as Issuance (Accept(..), Service)
+import Daml.Finance.App.BackToBack.Service qualified as BackToBack (Accept(..), Service)
+import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Accept(..), Service)
+import Daml.Finance.App.Trading.Auto.Service qualified as TradingAuto (Accept(..), Service)
+import Daml.Finance.App.Trading.Service qualified as Trading (Accept(..), Service)
+import Daml.Finance.App.Listing.Auto.Service qualified as ListingAuto (Accept(..), Service)
+import Daml.Finance.App.Listing.Service qualified as Listing (Accept(..), Service)
+import Daml.Finance.App.Distribution.Auction.Auto.Service qualified as AuctionAuto (Accept(..), Service)
+import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (Accept(..), Service)
+import Daml.Finance.App.Distribution.Bidding.Auto.Service qualified as BiddingAuto (Accept(..), Service)
+import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Accept(..), Service)
+import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Accept(..), Service)
+import Daml.Finance.App.Role.Custodian qualified as Custodian (OfferBackToBackService(..), OfferCustodyService(..), OfferIssuanceAutoService(..), OfferIssuanceService(..), OfferLifecycleService(..), Role)
+import Daml.Finance.App.Role.Distributor qualified as Distributor (OfferAuctionAutoService(..), OfferAuctionService(..), OfferBiddingAutoService(..), OfferBiddingService(..), OfferSubscriptionService(..), Role)
+import Daml.Finance.App.Role.Exchange qualified as Exchange (OfferListingAutoService(..), OfferListingService(..), OfferTradingAutoService(..), OfferTradingService(..), Role)
+import Daml.Finance.Settlement.Batch (BatchFactory(..))
+import Daml.Script (Script, createCmd, exerciseByKeyCmd, exerciseCmd)
+
+createCustodyService : Party -> Party -> Party -> Script (ContractId Custody.Service)
+createCustodyService operator custodian customer = do
+  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferCustodyService with customer
+  submit customer do exerciseCmd offerCid Custody.Accept
+
+createIssuanceService : Party -> Party -> Party -> Script (ContractId Issuance.Service)
+createIssuanceService operator custodian customer = do
+  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferIssuanceService with ..
+  submit customer do exerciseCmd offerCid Issuance.Accept
+
+createIssuanceAutoService : Party -> Party -> Party -> Script (ContractId IssuanceAuto.Service)
+createIssuanceAutoService operator custodian customer = do
+  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferIssuanceAutoService with ..
+  submit customer do exerciseCmd offerCid IssuanceAuto.Accept
+
+createBackToBackIssuanceService : Party -> Party -> Party -> Party -> Script (ContractId BackToBack.Service)
+createBackToBackIssuanceService operator custodian customer public = do
+  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferBackToBackService with ..
+  submit customer do exerciseCmd offerCid BackToBack.Accept
+
+createLifecycleService : Party -> Party -> Party -> Script (ContractId Lifecycle.Service)
+createLifecycleService operator custodian customer = do
+  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferLifecycleService with ..
+  submit customer do exerciseCmd offerCid Lifecycle.Accept
+
+createTradingService : Party -> Party -> Party -> Script (ContractId Trading.Service)
+createTradingService operator exchange customer = do
+  instructableCid <- toInterfaceContractId <$> submit exchange do createCmd BatchFactory with requestor = singleton exchange
+  offerCid <- submit exchange do exerciseByKeyCmd @Exchange.Role (operator, exchange) Exchange.OfferTradingService with customer; instructableCid
+  submit customer do exerciseCmd offerCid Trading.Accept
+
+createTradingAutoService : Party -> Party -> Party -> Script (ContractId TradingAuto.Service)
+createTradingAutoService operator exchange customer = do
+  offerCid <- submit exchange do exerciseByKeyCmd @Exchange.Role (operator, exchange) Exchange.OfferTradingAutoService with ..
+  submit customer do exerciseCmd offerCid TradingAuto.Accept
+
+createListingService : Party -> Party -> Party -> Script (ContractId Listing.Service)
+createListingService operator exchange customer = do
+  offerCid <- submit exchange do exerciseByKeyCmd @Exchange.Role (operator, exchange) Exchange.OfferListingService with ..
+  submit customer do exerciseCmd offerCid Listing.Accept
+
+createListingAutoService : Party -> Party -> Party -> Script (ContractId ListingAuto.Service)
+createListingAutoService operator exchange customer = do
+  offerCid <- submit exchange do exerciseByKeyCmd @Exchange.Role (operator, exchange) Exchange.OfferListingAutoService with ..
+  submit customer do exerciseCmd offerCid ListingAuto.Accept
+
+createAuctionService : Party -> Party -> Party -> Script (ContractId Auction.Service)
+createAuctionService operator distributor customer = do
+  offerCid <- submit distributor do exerciseByKeyCmd @Distributor.Role (operator, distributor) Distributor.OfferAuctionService with customer
+  submit customer do exerciseCmd offerCid Auction.Accept
+
+createAuctionAutoService : Party -> Party -> Party -> Script (ContractId AuctionAuto.Service)
+createAuctionAutoService operator distributor customer = do
+  offerCid <- submit distributor do exerciseByKeyCmd @Distributor.Role (operator, distributor) Distributor.OfferAuctionAutoService with customer
+  submit customer do exerciseCmd offerCid AuctionAuto.Accept
+
+createBiddingService : Party -> Party -> Party -> Script (ContractId Bidding.Service)
+createBiddingService operator distributor customer = do
+  offerCid <- submit distributor do exerciseByKeyCmd @Distributor.Role (operator, distributor) Distributor.OfferBiddingService with ..
+  submit customer do exerciseCmd offerCid Bidding.Accept
+
+createBiddingAutoService : Party -> Party -> Party -> Script (ContractId BiddingAuto.Service)
+createBiddingAutoService operator distributor customer = do
+  offerCid <- submit distributor do exerciseByKeyCmd @Distributor.Role (operator, distributor) Distributor.OfferBiddingAutoService with ..
+  submit customer do exerciseCmd offerCid BiddingAuto.Accept
+
+createSubscriptionService : Party -> Party -> Party -> Party -> Script (ContractId Subscription.Service)
+createSubscriptionService operator distributor customer public = do
+  offerCid <- submit distributor do exerciseByKeyCmd @Distributor.Role (operator, distributor) Distributor.OfferSubscriptionService with customer; public
+  submit customer do exerciseCmd offerCid Subscription.Accept

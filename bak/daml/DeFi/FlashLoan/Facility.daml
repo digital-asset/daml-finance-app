@@ -1,0 +1,43 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module DeFi.FlashLoan.Facility where
+
+import DA.Set (union)
+import Daml.Finance.Interface.Common.Types (Parties)
+import Daml.Finance.Interface.Common.Disclosure (Disclose(..))
+import Daml.Finance.Interface.Asset.Holding (Instrument, Issue(..), Deissue(..))
+import Daml.Finance.Interface.Asset.Transferable (Transferable, Transfer(..))
+import DeFi.Interface.FlashSwapAction
+
+template Facility
+  with
+    provider : Parties
+    instrumentCid : ContractId Instrument
+    public : Party
+  where
+    signatory provider
+    observer public
+
+    nonconsuming choice FlashLoan : [ContractId Transferable]
+      with
+        actors : Parties
+        quantity : Decimal
+        actionCid : ContractId FlashSwapAction
+      controller actors
+      do
+        -- Lend
+        tokenInCid <- exercise instrumentCid Issue with quantity
+        let tokenInTransferableCid : ContractId Transferable = coerceContractId tokenInCid
+        tokenInCid <- exercise tokenInTransferableCid Disclose with newObservers = actors
+
+        -- Act (authorization of providers are not being used here)
+        -- NOTE: Implicit assumption that the instrument issues a Transferable
+        (tokenOutCid, restCids) <- exercise actionCid Execute with choiceControllers = union provider actors; tokenIn = (quantity, instrumentCid); tokenInCid = coerceContractId tokenInCid; tokenOut = (quantity, instrumentCid)
+
+        -- Repay
+        tokenOutCid <- exercise tokenOutCid Transfer with newOwners = provider
+        exercise instrumentCid Deissue with holdingCid = coerceContractId tokenOutCid
+
+        -- Return rest
+        pure restCids

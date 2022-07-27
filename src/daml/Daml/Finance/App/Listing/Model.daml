@@ -1,0 +1,46 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Listing.Model where
+
+import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (K)
+import Daml.Finance.Interface.Common.Types (Parties)
+
+type T = Listing
+
+template Listing
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Text
+    tradedInstrument : Instrument.K
+    quotedInstrument : Instrument.K
+    observers : Parties
+  where
+    signatory operator, provider, customer
+    observer observers
+
+    key (operator, provider, id) : (Party, Party, Text)
+    maintainer key._1, key._2
+
+template CreateListingRequest
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Text
+    tradedInstrument : Instrument.K
+    quotedInstrument : Instrument.K
+    observers : Parties
+  where
+    signatory operator, provider, customer
+
+template DeleteListingRequest
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    listingCid : ContractId Listing
+  where
+    signatory operator, provider, customer

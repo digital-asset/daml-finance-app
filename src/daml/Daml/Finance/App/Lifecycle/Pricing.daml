@@ -1,0 +1,52 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Lifecycle.Pricing where
+
+import ContingentClaims.Claim
+import ContingentClaims.MathML qualified as MathML
+import ContingentClaims.Math.Stochastic (fapf, simplify, riskless, gbm, Expr(..), IsIdentifier(..), Process)
+import Prelude hiding (max)
+
+disc : Text -> Process Text
+disc asset = riskless ("r_" <> asset)
+
+exch : Text -> a -> Process Text
+exch asset _ = gbm ("μ_" <> asset) ("σ_" <> asset)
+
+value : Text -> Process Text
+value obs = gbm ("μ_" <> obs) ("σ_" <> obs)
+
+t : Text
+t = "t"  -- today
+
+t' : Text
+t' = "T" -- maturity
+
+instance IsIdentifier Text where
+  localVar i = "τ_" <> show i
+
+instance Additive (Expr t) where
+  a + b = Sum [a, b]
+  negate = Neg
+  aunit = Const 0.0
+
+instance Multiplicative (Expr t) where
+  (*) = curry Mul
+  x ^ y = curry Pow x $ Const (intToDecimal y)
+  munit = Const 1.0
+
+instance Divisible (Expr t) where
+  x / y = curry Mul x . curry Pow y . Neg . Const $ 1.0
+
+instance Number (Expr t) where
+
+max : Expr t -> Expr t -> Expr t
+max x y = I (x, y) * x + I (y, x) * y
+
+print : Expr Text -> Text
+print = show . MathML.presentation
+
+valueClaim : Text -> Claim Text Decimal Text Text -> Expr Text
+valueClaim ccy claim =
+  simplify $ fapf ccy disc exch value t $ claim

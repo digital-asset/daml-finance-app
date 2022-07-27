@@ -1,0 +1,98 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Tests.Setup where
+
+import DA.Set (Set, fromList, singleton, toList)
+import Daml.Finance.Asset.Instrument (Instrument(..))
+import Daml.Finance.Interface.Common.Types (Parties)
+import Daml.Finance.Interface.Asset.Holding qualified as Interface (Instrument)
+import Daml.Script
+-- import DeFi.FlashSwap.Dvp (Allocation(..), Dvp(..))
+
+data LedgerParties = LedgerParties
+  with
+    alice : Party
+    bob : Party
+    charlie : Party
+    dave : Party
+    erin : Party
+    public : Party
+    bank1 : Party
+    bank2 : Party
+    bank3 : Party
+    bank4 : Party
+    bank5 : Party
+    consortium : Set Party
+    custodian1 : Party
+    custodian2 : Party
+    reuters : Party
+    registrar : Party
+    ccp : Party
+    sp : Party
+    delegee : Party
+
+data LedgerTokens = LedgerTokens
+  with
+    shareInstrumentCid : ContractId Instrument
+    ethInstrumentCid : ContractId Instrument
+    usdcInstrumentCid : ContractId Instrument
+
+setupParties : Script LedgerParties
+setupParties : Script (LedgerParties) = do
+  let createParty = \label -> allocatePartyWithHint label (PartyIdHint label)
+  public <- createParty "Public"
+  [alice, bob, charlie, dave, erin] <- mapA createParty ["Alice", "Bob", "Charlie", "Dave", "Erin"]
+  [bank1, bank2, bank3, bank4, bank5] <- mapA createParty ["Bank1", "Bank2", "Bank3", "Bank4", "Bank5"]
+  let consortium = fromList [bank1, bank2, bank3, bank4, bank5]
+  [custodian1, custodian2] <- mapA createParty ["Custodian1", "Custodian2"]
+  reuters <- createParty "Reuters"
+  [registrar, ccp, sp, delegee] <- mapA createParty ["Registrar", "CCP", "SP", "Delegee"]
+  pure LedgerParties {..}
+
+setupTokens : LedgerParties -> Script LedgerTokens
+setupTokens LedgerParties{..} = do
+  shareInstrumentCid <- toInterfaceContractId <$> submitMulti (toList consortium) [] do createCmd Instrument with registrar = consortium; issuer = consortium; id = "ETH/USDC Share Token"; observers = singleton public
+  ethInstrumentCid <- toInterfaceContractId <$> submitMulti [custodian1] [] do createCmd Instrument with registrar = singleton custodian1; issuer = singleton custodian1; id = "ETH"; observers = singleton public
+  usdcInstrumentCid <- toInterfaceContractId <$> submitMulti [custodian2] [] do createCmd Instrument with registrar = singleton custodian2; issuer = singleton custodian2; id = "USDC"; observers = singleton public
+  pure LedgerTokens {..}
+
+createDvp : Party -> (Decimal, ContractId Instrument) -> Party -> (Decimal, ContractId Instrument) -> Parties -> Party -> Script (ContractId Dvp)
+createDvp deliverer deliveryRequirement payer paymentRequirement settlementParticipant public = do
+  let
+    delivery = Allocation with tokenCid = None; required = deliveryRequirement; beneficiary = singleton payer
+    payment  = Allocation with tokenCid = None; required = paymentRequirement; beneficiary = singleton deliverer
+  submitMulti [deliverer, payer] [] do createCmd Dvp with delivery; payment; settlementParticipant; public
+
+-- createEquityDvp sp tokens account1 beneficicary1 owners1 account2 beneficiary2 owners2 = do
+--   f1Cid <- toInterfaceContractId <$> submitMulti (S.toList $ S.union account1.owners account2.owners) [] do
+--     createCmd EquityFactory with
+--       providers = S.union account1.owners account2.owners
+--       equity = Equity with
+--         details = ()
+--         asset = tokens.eth.asset
+--         account = account1
+--         observers = S.fromList $ optionalToList sp
+--   f2Cid <- toInterfaceContractId <$> submitMulti (S.toList $ S.union account1.owners account2.owners) [] do
+--     createCmd EquityFactory with
+--       providers = S.union account1.owners account2.owners
+--       equity = Equity  with
+--         details = ()
+--         asset = tokens.usdc.asset
+--         account = account2
+--         observers = S.fromList $ optionalToList sp
+--   submitMulti (
+--       S.toList $ S.union account1.owners account2.owners
+--     ) [] do
+--     createCmd Dvp with
+--       delivery = Allocation
+--         (TokenGenericData tokens.eth.asset account1)
+--         None
+--         f1Cid
+--         beneficicary1
+--       payment = Allocation
+--         (TokenGenericData tokens.usdc.asset account2)
+--         None
+--         f2Cid
+--         beneficiary2
+--       settlementParticipant = S.fromList $ optionalToList sp

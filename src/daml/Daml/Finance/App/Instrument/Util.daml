@@ -1,0 +1,50 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Instrument.Util where
+
+import ContingentClaims.Observation (Observation(..))
+import ContingentClaims.Claim (Claim(..), Inequality(..))
+import DA.Date (toGregorian)
+import Daml.Finance.Interface.Asset.Instrument (Instrument)
+import Daml.Finance.Common.Date.Calendar (BusinessDayConventionEnum, BusinessDayAdjustment(..), HolidayCalendarData)
+import Daml.Finance.Common.Date.RollConvention (PeriodEnum(..), RollConventionEnum(DOM))
+import Daml.Finance.Common.Date.Schedule (createSchedule, Frequency(..), PeriodicSchedule(..))
+
+rollout : Date -> Date -> PeriodEnum -> Int -> [HolidayCalendarData] -> BusinessDayConventionEnum -> [Date]
+rollout first last period periodMultiplier calendars dayConvention =
+  let
+    calendarIds = map (.id) calendars
+    (y, m, d) = toGregorian first
+    periodicSchedule = PeriodicSchedule with
+      effectiveDate = first
+      terminationDate = last
+      firstRegularPeriodStartDate = None
+      lastRegularPeriodEndDate = None
+      frequency = Frequency with period; periodMultiplier; rollConvention = DOM d
+      businessDayAdjustment = BusinessDayAdjustment with calendarIds; convention = dayConvention
+      effectiveDateBusinessDayAdjustment = None
+      terminationDateBusinessDayAdjustment = None
+      stubPeriodType = None
+    schedule = createSchedule calendars periodicSchedule
+    dates = map (.adjustedEndDate) schedule
+  in dates
+
+adjustCoupon : Decimal -> PeriodEnum -> Int -> Decimal
+adjustCoupon couponPerAnnum couponPeriod couponPeriodMultiplier =
+  case couponPeriod of
+    D -> error "Daily coupon period not supported"
+    W -> error "Weekly coupon period not supported"
+    M -> couponPerAnnum * (intToDecimal couponPeriodMultiplier / 12.0)
+    Y -> couponPerAnnum
+
+at : Date -> Inequality Date Decimal Text
+at t = TimeGte t
+
+stream : Decimal -> (ContractId Instrument) -> [Date] -> Claim Date Decimal (ContractId Instrument) Text
+stream amount ccy dates =
+  let payment d = When (at d) $ Scale (Const amount) $ One ccy
+  in case map payment dates of
+    [] -> Zero
+    [c] -> c
+    c1 :: c2 :: rest -> And c1 c2 rest

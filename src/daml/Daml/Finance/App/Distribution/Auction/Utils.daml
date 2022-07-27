@@ -1,0 +1,81 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Distribution.Auction.Utils where
+
+import DA.Set (singleton)
+import Daml.Finance.Interface.Asset.Account qualified as Account (K)
+import Daml.Finance.Interface.Asset.Fungible (Fungible, Split(..))
+import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (qty)
+import Daml.Finance.Interface.Asset.Util (getAmount, getInstrument)
+import Daml.Finance.Interface.Settlement.Instructable (Instructable, Instruct(..))
+import Daml.Finance.Interface.Settlement.Instruction (Allocate(..), Approve(..))
+import Daml.Finance.Interface.Settlement.Settleable (Settleable)
+import Daml.Finance.Interface.Settlement.Types (Step(..))
+import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding
+import Daml.Finance.App.Distribution.Bidding.Model qualified as Bidding (AllocateInstruction(..), Allocation(..), ApproveInstruction(..), Bid(..), SettleAllocation(..))
+
+-- | Takes a list and splits it based off a predicate.
+splitList : (a -> Bool) -> [a] -> [Either a a]
+splitList p xs = foldr (\x acc -> if p x then Right x :: acc else Left x :: acc) [] xs
+
+-- -- | Updates a bid's status
+-- updateBidStatus : Bidding.Status -> ContractId Bidding.Bid -> Update (ContractId Bidding.Bid)
+-- updateBidStatus newStatus bidCid =
+--     exercise bidCid Bidding.UpdateStatus with newStatus
+
+-- -- | Reject a bid
+-- rejectBid : Bidding.Status -> Bidding.Bid -> Update (ContractId Bidding.Bid, ContractId Transferable)
+-- rejectBid newStatus Bidding.Bid{operator, provider, customer, auctionId} = do
+--     (bidCid, _) <- fetchByKey @Bidding.Bid (customer, auctionId)
+--     exerciseByKey @Bidding.Service (operator, provider, customer) Bidding.RejectAllocation with bidCid; newStatus
+
+-- | A map/accumulator function for processing a submitted bid.
+-- Accepts the remaining quantity and price as an accululator along the current Bid as input
+-- Output is the updated accululator (if applicable) along with the Bid mapped to an Allocation (depending on the accumulator and bid information)
+dutchAuction : (Decimal, Decimal) -> (ContractId Bidding.Bid, Bidding.Bid) -> ((Decimal, Decimal), Bidding.Allocation)
+dutchAuction acc@(0.0, _)   (bidCid, bid) = (acc, Bidding.Allocation with amount = 0.0; bidCid; bid)
+dutchAuction (remaining, _) (bidCid, bid) =
+  let
+    amount = bid.details.quantity.amount
+    bidPrice = bid.details.price.amount
+  in
+    if remaining >= amount
+    then ((remaining - amount, bidPrice), Bidding.Allocation with amount; bidCid; bid)
+    else ((0.0, bidPrice), Bidding.Allocation with amount = remaining; bidCid; bid)
+
+-- | An accumulator function which processes generates the settlement instruction for both an issuer and a bidder based of the output of the dutch auction
+generateSettlementInstruction : ContractId Instructable -> Account.K -> (Optional (ContractId Fungible), [ContractId Settleable]) -> Bidding.SettleAllocation -> Update (Optional (ContractId Fungible), [ContractId Settleable])
+generateSettlementInstruction _ _ (None, _) _ = error "Auction:generateSettlementInstruction - Issuers AssetDeposit has no remaining units to allocate"
+generateSettlementInstruction instructableCid issuerAccount (Some issuerDepositCid, settleableCids) Bidding.SettleAllocation{allocation, price, issuer} = do
+  let
+    allocatedAmount = allocation.amount
+    allocatedNotional = allocation.amount * price
+
+  -- | Process bid side
+  bid <- fetch allocation.bidCid
+  (bidCid, bidDepositCid) <- exerciseByKey @Bidding.Service (bid.operator, bid.provider, bid.customer) Bidding.ProcessAllocation with bidCid = allocation.bidCid; amount = allocatedAmount; price
+  let
+    buyer = bid.customer
+    payment = Step with sender = singleton bid.customer; receiver = singleton issuer; quantity = (Instrument.qty allocatedNotional bid.details.price.unit)
+
+  -- | Process issuer side
+  -- 1/ Extract their deposit
+  -- 2/ Split allocation quantity from this deposit, get the deposit matching the allocation. Can only result in either :
+      -- two asset deposits - One with the allocation, one with the remaining
+      -- one asset deposit - Occurs when processing the last bid when the auction is fully allocated
+  -- 3/ Create the settlement details for delivery of the asset to the buyer
+  splitResult <- exercise issuerDepositCid Split with amounts = [allocatedAmount]
+  let
+    seller = issuer
+    [allocatedDepositCid] = splitResult.splitCids
+  allocatedDeposit <- fetch allocatedDepositCid
+  let delivery = Step with sender = singleton issuer; receiver = singleton buyer; quantity = (Instrument.qty (getAmount allocatedDeposit) (getInstrument allocatedDeposit))
+
+  (settleableCid, [deliveryCid, paymentCid]) <- exercise instructableCid Instruct with settler = singleton issuer; id = bid.auctionId <> "-" <> partyToText buyer; steps = [delivery, payment]
+  deliveryCid <- exercise deliveryCid Allocate with transferableCid = toInterfaceContractId allocatedDepositCid
+  exercise bidCid Bidding.ApproveInstruction with instructionCid = deliveryCid; account = bid.receivableAccount
+  paymentCid <- exercise bidCid Bidding.AllocateInstruction with instructionCid = paymentCid; transferableCid = toInterfaceContractId bidDepositCid
+  exercise paymentCid Approve with receiverAccount = issuerAccount
+
+  pure (splitResult.rest, settleableCid :: settleableCids)

@@ -1,0 +1,167 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Role.Custodian where
+
+import Daml.Finance.App.BackToBack.Service qualified as BackToBack (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Custody.Service qualified as Custody (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Issuance.Auto.Service qualified as IssuanceAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Issuance.Service qualified as Issuance (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Approve(..), Offer(..), Request, Service, Terminate(..))
+
+template Role
+  with
+    operator : Party
+    provider : Party
+  where
+    signatory operator, provider
+
+    key (operator, provider) :  (Party, Party)
+    maintainer key._1
+
+    nonconsuming choice OfferCustodyService : ContractId Custody.Offer
+      with
+        customer : Party
+      controller provider
+      do
+        create Custody.Offer with ..
+
+    nonconsuming choice ApproveCustodyRequest : ContractId Custody.Service
+      with
+        custodyRequestCid : ContractId Custody.Request
+      controller provider
+      do
+        exercise custodyRequestCid Custody.Approve with ..
+
+    nonconsuming choice TerminateCustodyService : ()
+      with
+        customer : Party
+      controller provider
+      do
+        exerciseByKey @Custody.Service (operator, provider, customer) Custody.Terminate with actor = provider
+
+    nonconsuming choice OfferIssuanceService : ContractId Issuance.Offer
+      with
+        customer : Party
+      controller provider
+      do
+        create Issuance.Offer with ..
+
+    nonconsuming choice ApproveIssuanceRequest : ContractId Issuance.Service
+      with
+        issuanceServiceRequestCid : ContractId Issuance.Request
+      controller provider
+      do
+        exercise issuanceServiceRequestCid Issuance.Approve with ..
+
+    nonconsuming choice TerminateIssuanceService : ()
+      with
+        customer : Party
+      controller provider
+      do
+        exerciseByKey @Issuance.Service (operator, provider, customer) Issuance.Terminate with actor = provider
+
+    nonconsuming choice OfferIssuanceAutoService : ContractId IssuanceAuto.Offer
+      with
+        customer : Party
+      controller provider
+      do
+        create IssuanceAuto.Offer with ..
+
+    nonconsuming choice ApproveIssuanceAutoRequest : ContractId IssuanceAuto.Service
+      with
+        issuanceServiceRequestCid : ContractId IssuanceAuto.Request
+      controller provider
+      do
+        exercise issuanceServiceRequestCid IssuanceAuto.Approve with ..
+
+    nonconsuming choice TerminateIssuanceAutoService : ()
+      with
+        customer : Party
+      controller provider
+      do
+        exerciseByKey @IssuanceAuto.Service (operator, provider, customer) IssuanceAuto.Terminate with actor = provider
+
+    nonconsuming choice OfferBackToBackService : ContractId BackToBack.Offer
+      with
+        customer : Party
+        public : Party
+      controller provider
+      do
+        create BackToBack.Offer with ..
+
+    nonconsuming choice ApproveBackToBackRequest : ContractId BackToBack.Service
+      with
+        backToBackServiceRequestCid : ContractId BackToBack.Request
+      controller provider
+      do
+        exercise backToBackServiceRequestCid BackToBack.Approve with ..
+
+    nonconsuming choice TerminateBackToBackService : ()
+      with
+        customer : Party
+      controller provider
+      do
+        exerciseByKey @BackToBack.Service (operator, provider, customer) BackToBack.Terminate with actor = provider
+
+    nonconsuming choice OfferLifecycleService : ContractId Lifecycle.Offer
+      with
+        customer : Party
+      controller provider
+      do
+        create Lifecycle.Offer with ..
+
+    nonconsuming choice ApproveLifecycleRequest : ContractId Lifecycle.Service
+      with
+        lifecycleServiceRequestCid : ContractId Lifecycle.Request
+      controller provider
+      do
+        exercise lifecycleServiceRequestCid Lifecycle.Approve with ..
+
+    nonconsuming choice TerminateLifecycleService : ()
+      with
+        customer : Party
+      controller provider
+      do
+        exerciseByKey @Lifecycle.Service (operator, provider, customer) Lifecycle.Terminate with actor = provider
+
+    choice TerminateRole: ()
+      controller operator
+      do
+        return ()
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+  where
+    signatory operator
+    observer provider
+
+    choice Accept : ContractId Role
+      controller provider
+      do
+        create Role with ..
+
+    choice Decline : ()
+      controller provider
+      do
+        return ()
+
+template Request
+  with
+    provider : Party
+    operator : Party
+  where
+    signatory provider
+    observer operator
+
+    choice Approve : ContractId Role
+      controller operator
+      do
+        create Role with ..
+
+    choice Reject : ()
+      controller operator
+      do
+        return ()

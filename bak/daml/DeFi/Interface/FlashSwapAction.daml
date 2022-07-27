@@ -1,0 +1,48 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module DeFi.Interface.FlashSwapAction where
+
+import DA.Assert
+import DA.Set (Set)
+import DA.Set qualified as S
+import Daml.Finance.Interface.Asset.Holding (Instrument, getQuantity, getTypeRep)
+import Daml.Finance.Interface.Asset.Transferable (Transferable, getInstrument)
+
+type Input = ContractId Transferable
+type Output = (ContractId Transferable, [ContractId Transferable])
+
+interface FlashSwapAction where
+  action : Input -> Update Output
+
+  choice Execute : Output
+    with
+      choiceControllers : Set Party
+      tokenIn : (Decimal, ContractId Instrument)
+      tokenInCid : ContractId Transferable
+      tokenOut : (Decimal, ContractId Instrument)
+    controller choiceControllers
+    do
+      -- restrict signatories
+      S.fromList (signatory this) === choiceControllers
+
+      -- check input
+      transferableIn <- fetch tokenInCid
+      let instrumentInCid = getInstrument transferableIn
+      instrumentIn <- fetch instrumentInCid
+      getQuantity transferableIn === fst tokenIn
+      instrumentInCid === snd tokenIn
+      assertMsg "Input Transferable has wrong type" $ getTypeRep instrumentIn == interfaceTypeRep transferableIn
+
+      -- execute action
+      (tokenOutCid, extraCids) <- action this tokenInCid
+
+      -- check output
+      transferableOut <- fetch tokenOutCid
+      let instrumentOutCid = getInstrument transferableOut
+      instrumentOut <- fetch instrumentOutCid
+      getQuantity transferableOut === fst tokenOut
+      instrumentOutCid === snd tokenOut
+      assertMsg "Output Transferable has wrong type" $ getTypeRep instrumentOut == interfaceTypeRep transferableOut
+
+      return (tokenOutCid, extraCids)

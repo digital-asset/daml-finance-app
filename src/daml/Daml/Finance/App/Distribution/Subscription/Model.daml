@@ -1,0 +1,106 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Distribution.Subscription.Model where
+
+import DA.Set (singleton)
+import Daml.Finance.Interface.Asset.Account qualified as Account (K, R)
+import Daml.Finance.Interface.Asset.Fungible qualified as Fungible (I)
+import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (Q)
+import Daml.Finance.Interface.Asset.Lockable qualified as Lockable (I, Lock(..), Unlock(..))
+import Daml.Finance.Interface.Asset.Transferable qualified as Transferable (I)
+import Daml.Finance.Interface.Asset.Util (getAccount)
+import Daml.Finance.Interface.Common.Disclosure qualified as Disclosure (AddObserver(..))
+import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..), I)
+
+data Status
+    = Open
+    | Closed
+  deriving (Eq, Show)
+
+data BackToBack = BackToBack
+  with
+    party : Party
+    issuerReceivableAccount : Account.K
+    issuerDeliverableCid : ContractId Fungible.I
+    b2bReceivableAccount : Account.K
+    b2bDeliverableCid : ContractId Fungible.I
+  deriving (Eq, Show)
+
+template Offering
+  with
+    operator : Party
+    provider : Party
+    issuer : Party
+    public : Party
+    offeringId : Text
+    asset : Instrument.Q
+    price : Instrument.Q
+    issuerHoldingCid : ContractId Fungible.I
+    issuerAccount : Account.K
+    backToBack : Optional BackToBack
+    status : Status
+  where
+    signatory operator, provider, issuer
+    observer public
+
+    key (provider, offeringId) : (Party, Text)
+    maintainer key._1
+
+    nonconsuming choice Subscribe : ContractId Subscription
+      with
+        investor : Party
+        quantity : Decimal
+        investorHoldingCid : ContractId Fungible.I
+        investorAccount : Account.K
+      controller investor
+      do
+        -- Disclose holding
+        investorHolding <- fetch investorHoldingCid
+        investorHoldingCid : ContractId Fungible.I <- coerceContractId <$> exercise investorHoldingCid Disclosure.AddObserver with actor = singleton investor; observerToAdd = (offeringId, singleton issuer)
+        -- Disclose delivering securities account
+        let investorSendingAccount = getAccount investorHolding
+        (_, delRef) <- fetchByKey @Account.R investorSendingAccount
+        exercise delRef.cid Disclosure.AddObserver with actor = singleton investor; observerToAdd = (offeringId, singleton issuer)
+        -- Disclose receiving cash account
+        (_, recRef) <- fetchByKey @Account.R investorAccount
+        exercise recRef.cid Disclosure.AddObserver with actor = singleton investor; observerToAdd = (offeringId, singleton issuer)
+        -- Lock holding
+        investorHoldingCid <- coerceContractId <$> exercise investorHoldingCid Lockable.Lock with newLocker = singleton issuer
+        create Subscription with holdingCid = investorHoldingCid; accountKey = investorAccount; ..
+
+template Subscription
+  with
+    operator : Party
+    provider : Party
+    issuer : Party
+    investor : Party
+    offeringId : Text
+    quantity : Decimal
+    holdingCid : ContractId Fungible.I
+    accountKey : Account.K
+  where
+    signatory operator, provider, issuer, investor
+
+    nonconsuming choice ApproveInstruction : ContractId Instruction.I
+      with
+        instructionCid : ContractId Instruction.I
+        receiverAccount : Account.K
+      controller provider
+      do
+        exercise instructionCid Instruction.Approve with receiverAccount
+
+    nonconsuming choice AllocateInstruction : ContractId Instruction.I
+      with
+        instructionCid : ContractId Instruction.I
+        transferableCid : ContractId Transferable.I
+      controller provider
+      do
+        exercise instructionCid Instruction.Allocate with transferableCid
+
+    nonconsuming choice UnlockHolding : ContractId Lockable.I
+      with
+        lockableCid : ContractId Lockable.I
+      controller provider
+      do
+        exercise lockableCid Lockable.Unlock

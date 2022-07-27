@@ -1,0 +1,53 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Distribution.Auction.Model where
+
+import Daml.Finance.Interface.Asset.Account qualified as Account (K)
+import Daml.Finance.Interface.Asset.Fungible qualified as Fungible (I)
+import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (K, Q)
+
+type T = Auction
+
+data Status
+    = Open
+    | PartiallyAllocated with
+        finalPrice : Decimal
+        remaining : Decimal
+    | FullyAllocated with
+        finalPrice : Decimal
+    | NoValidBids
+  deriving (Eq, Show)
+
+template Auction
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Text
+    quantity : Instrument.Q
+    currency : Instrument.K
+    floor : Decimal
+    collateralCid : ContractId Fungible.I
+    receivableAccount : Account.K
+    status : Status
+  where
+    signatory operator, provider, customer
+    ensure quantity.amount > 0.0
+
+    key (operator, provider, id) : (Party, Party, Text)
+    maintainer key._1
+
+template CreateAuctionRequest
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Text
+    quantity : Instrument.Q
+    currency : Instrument.K
+    floor : Decimal
+    collateralCid : ContractId Fungible.I
+    receivableAccount : Account.K
+  where
+    signatory operator, provider, customer

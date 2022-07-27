@@ -1,0 +1,147 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Role.Exchange where
+
+import Daml.Finance.App.Listing.Auto.Service qualified as ListingAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Listing.Service qualified as Listing (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Trading.Auto.Service qualified as TradingAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Trading.Service qualified as Trading (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.Interface.Settlement.Instructable qualified as Instructable (I)
+
+template Role
+  with
+    operator : Party
+    provider : Party
+  where
+    signatory operator, provider
+
+    key (operator, provider) : (Party, Party)
+    maintainer key._1
+
+    nonconsuming choice OfferTradingService : ContractId Trading.Offer
+      with
+        customer : Party
+        instructableCid : ContractId Instructable.I
+      controller provider
+      do
+        create Trading.Offer with operator; provider; customer; instructableCid
+
+    nonconsuming choice ApproveTradingServiceRequest : ContractId Trading.Service
+      with
+        tradingRequestCid : ContractId Trading.Request
+        instructableCid : ContractId Instructable.I
+      controller provider
+      do
+        exercise tradingRequestCid Trading.Approve with operator; instructableCid
+
+    nonconsuming choice TerminateTradingService : ()
+      with
+        customer : Party
+      controller provider
+      do
+        exerciseByKey @Trading.Service (operator, provider, customer) Trading.Terminate with actor = provider
+
+    nonconsuming choice OfferTradingAutoService : ContractId TradingAuto.Offer
+      with
+        customer : Party
+      controller provider
+      do
+        create TradingAuto.Offer with ..
+
+    nonconsuming choice ApproveTradingAutoServiceRequest : ContractId TradingAuto.Service
+      with
+        tradingRequestCid : ContractId TradingAuto.Request
+      controller provider
+      do
+        exercise tradingRequestCid TradingAuto.Approve with ..
+
+    nonconsuming choice TerminateTradingAutoService : ()
+      with
+        customer : Party
+      controller provider
+      do
+        exerciseByKey @TradingAuto.Service (operator, provider, customer) TradingAuto.Terminate with actor = provider
+
+    nonconsuming choice OfferListingService : ContractId Listing.Offer
+      with
+        customer : Party
+      controller provider
+      do
+        create Listing.Offer with ..
+
+    nonconsuming choice ApproveListingServiceRequest : ContractId Listing.Service
+      with
+        listingRequestCid : ContractId Listing.Request
+      controller provider
+      do
+        exercise listingRequestCid Listing.Approve with ..
+
+    nonconsuming choice TerminateListingService : ()
+      with
+        customer : Party
+      controller provider
+      do
+        exerciseByKey @Listing.Service (operator, provider, customer) Listing.Terminate with actor = provider
+
+    nonconsuming choice OfferListingAutoService : ContractId ListingAuto.Offer
+      with
+        customer : Party
+      controller provider
+      do
+        create ListingAuto.Offer with ..
+
+    nonconsuming choice ApproveListingAutoServiceRequest : ContractId ListingAuto.Service
+      with
+        listingRequestCid : ContractId ListingAuto.Request
+      controller provider
+      do
+        exercise listingRequestCid ListingAuto.Approve with ..
+
+    nonconsuming choice TerminateListingAutoService : ()
+      with
+        customer : Party
+      controller provider
+      do
+        exerciseByKey @ListingAuto.Service (operator, provider, customer) ListingAuto.Terminate with actor = provider
+
+    choice TerminateRole : ()
+      controller operator
+      do
+        return ()
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+  where
+    signatory operator
+    observer provider
+
+    choice Accept : ContractId Role
+      controller provider
+      do
+        create Role with ..
+
+    choice Decline : ()
+      controller provider
+      do
+        return ()
+
+template Request
+  with
+    provider : Party
+    operator : Party
+  where
+    signatory provider
+    observer operator
+
+    choice Approve : ContractId Role
+      controller operator
+      do
+        create Role with ..
+
+    choice Reject : ()
+      controller operator
+      do
+        return ()

@@ -1,0 +1,145 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.BackToBack.Service where
+
+import DA.List (head)
+import DA.Set (fromList, singleton)
+import Daml.Finance.App.Distribution.Subscription.Model (BackToBack, Offering(..))
+import Daml.Finance.App.Issuance.Model (Issuance(..))
+import Daml.Finance.Interface.Asset.Account qualified as Account (Credit(..), K, R)
+import Daml.Finance.Interface.Asset.Fungible qualified as Fungible (Split(..))
+import Daml.Finance.Interface.Asset.Holding qualified as Holding (I)
+import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (Q)
+import Daml.Finance.Interface.Asset.Lockable qualified as Lockable (Lock(..), Unlock(..))
+import Daml.Finance.Interface.Asset.Transferable qualified as Transferable (I)
+import Daml.Finance.Interface.Asset.Util (getAmount)
+import Daml.Finance.Interface.Common.Disclosure qualified as Disclosure (AddObserver(..))
+import Daml.Finance.Interface.Settlement.Instructable qualified as Instructable (I, Instruct(..))
+import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..))
+import Daml.Finance.Interface.Settlement.Settleable qualified as Settleable (Settle(..))
+import Daml.Finance.Interface.Settlement.Types (Step(..))
+
+template Service
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    public : Party
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, customer) : (Party, Party, Party)
+    maintainer key._1
+
+    nonconsuming choice CreateIssuance : (ContractId Issuance, ContractId Holding.I, ContractId Holding.I)
+      with
+        id : Text
+        quantity : Instrument.Q
+        customerAccount : Account.K
+        providerAccount : Account.K
+      controller customer
+      do
+        (_, customerRef) <- fetchByKey @Account.R customerAccount
+        customerHoldingCid <- exercise customerRef.cid Account.Credit with quantity
+        (_, providerRef) <- fetchByKey @Account.R providerAccount
+        providerHoldingCid <- exercise providerRef.cid Account.Credit with quantity
+        providerHoldingCid <- coerceContractId <$> exercise providerHoldingCid Disclosure.AddObserver with actor = singleton provider; observerToAdd = (id, singleton customer)
+        issuanceCid <- create Issuance with operator; provider; customer; id; quantity
+        pure (issuanceCid, customerHoldingCid, providerHoldingCid)
+
+    nonconsuming choice LockOffering : BackToBack
+      with
+        backToBack : BackToBack
+      controller customer
+      do
+        b2bDeliverableCid <- coerceContractId <$> exercise backToBack.b2bDeliverableCid Lockable.Lock with newLocker = fromList [customer]
+        issuerDeliverableCid <- coerceContractId <$> exercise backToBack.issuerDeliverableCid Lockable.Lock with newLocker = fromList [provider]
+        pure backToBack with b2bDeliverableCid; issuerDeliverableCid
+
+    nonconsuming choice SettleOffering : [ContractId Transferable.I]
+      with
+        instructableCid : ContractId Instructable.I
+        offeringCid : ContractId Offering
+        totalQuantity : Decimal
+      controller customer
+      do
+        offering <- fetch offeringCid
+        let
+          Some b2b = offering.backToBack
+          totalNotional = totalQuantity * offering.price.amount
+          delivery = Step with sender = singleton b2b.party; receiver = singleton offering.issuer; quantity = (offering.asset with amount = totalQuantity)
+          payment = Step with sender = singleton offering.issuer; receiver = singleton b2b.party; quantity = (offering.price with amount = totalNotional)
+        (batchCid, [deliveryCid, paymentCid]) <- exercise instructableCid Instructable.Instruct with settler = singleton offering.issuer; id = offering.offeringId; steps = [ delivery, payment ]
+
+        b2bDeliverable <- fetch b2b.b2bDeliverableCid
+        b2bSizedDeliverableCid <-
+          if getAmount b2bDeliverable > totalQuantity
+          then head . (.splitCids) <$> exercise b2b.b2bDeliverableCid Fungible.Split with amounts = [ totalQuantity ]
+          else pure b2b.b2bDeliverableCid
+        issuerDeliverable <- fetch b2b.issuerDeliverableCid
+        issuerSizedDeliverableCid <-
+          if getAmount issuerDeliverable > totalNotional
+          then head . (.splitCids) <$> exercise b2b.issuerDeliverableCid Fungible.Split with amounts = [ totalNotional ]
+          else pure b2b.issuerDeliverableCid
+        deliveryCid <- exercise deliveryCid Instruction.Allocate with transferableCid = coerceContractId b2bSizedDeliverableCid
+        deliveryCid <- exercise deliveryCid Instruction.Approve with receiverAccount = b2b.issuerReceivableAccount
+        paymentCid <- exercise paymentCid Instruction.Allocate with transferableCid = coerceContractId issuerSizedDeliverableCid
+        paymentCid <- exercise paymentCid Instruction.Approve with receiverAccount = b2b.b2bReceivableAccount
+        deliveredCids <- exercise batchCid Settleable.Settle
+        mapA (\cid -> coerceContractId <$> exercise cid Lockable.Unlock) deliveredCids
+
+    choice Terminate : ()
+      with
+        actor : Party
+      controller actor
+      do
+        assert $ actor == operator || actor == customer || actor == provider
+        pure ()
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    public : Party
+  where
+    signatory operator, provider
+    observer customer
+
+    choice Accept : ContractId Service
+      controller customer
+      do
+        create Service with ..
+
+    choice Decline : ()
+      controller customer
+      do pure ()
+
+    choice Withdraw : ()
+      controller provider
+      do pure ()
+
+template Request
+  with
+    customer : Party
+    provider : Party
+    public : Party
+  where
+    signatory customer
+    observer provider
+
+    choice Cancel : ()
+      controller customer
+      do pure ()
+
+    choice Reject : ()
+      controller provider
+      do pure ()
+
+    choice Approve : ContractId Service
+      with
+        operator : Party
+      controller operator, provider
+      do
+        create Service with ..

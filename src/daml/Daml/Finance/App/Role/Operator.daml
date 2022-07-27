@@ -1,0 +1,59 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Role.Operator where
+
+import Daml.Finance.App.Role.Custodian qualified as Custodian (Approve(..), Offer(..), Request, Role)
+import Daml.Finance.App.Role.Distributor qualified as Distributor (Approve(..), Offer(..), Request, Role)
+import Daml.Finance.App.Role.Exchange qualified as Exchange (Approve(..), Offer(..), Request, Role)
+
+template Role
+  with
+    operator : Party
+  where
+    signatory operator
+
+    key operator : Party
+    maintainer key
+
+    nonconsuming choice OfferCustodianRole : ContractId Custodian.Offer
+      with
+        provider : Party
+      controller operator
+      do
+        create Custodian.Offer with ..
+
+    nonconsuming choice ApproveCustodianRequest : ContractId Custodian.Role
+      with
+        custodianRequestCid : ContractId Custodian.Request
+      controller operator
+      do
+        exercise custodianRequestCid Custodian.Approve
+
+    nonconsuming choice OfferExchangeRole : ContractId Exchange.Offer
+      with
+        provider : Party
+      controller operator
+      do
+        create Exchange.Offer with ..
+
+    nonconsuming choice ApproveExchangeRequest : ContractId Exchange.Role
+      with
+        exchangeRequestCid : ContractId Exchange.Request
+      controller operator
+      do
+        exercise exchangeRequestCid Exchange.Approve
+
+    nonconsuming choice OfferDistributorRole : ContractId Distributor.Offer
+      with
+        provider : Party
+      controller operator
+      do
+        create Distributor.Offer with ..
+
+    nonconsuming choice ApproveDistributorRequest : ContractId Distributor.Role
+      with
+        distributorRequestCid : ContractId Distributor.Request
+      controller operator
+      do
+        exercise distributorRequestCid Distributor.Approve

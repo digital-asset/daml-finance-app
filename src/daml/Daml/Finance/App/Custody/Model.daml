@@ -1,0 +1,27 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Custody.Model where
+
+import Daml.Finance.Interface.Asset.Account qualified as Account (K)
+import Daml.Finance.Interface.Asset.Holding (Holding)
+import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (Q)
+
+template DepositRequest
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    quantity : Instrument.Q
+    account : Account.K
+  where
+    signatory operator, provider, customer
+
+template WithdrawalRequest
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    holdingCid : ContractId Holding
+  where
+    signatory operator, provider, customer

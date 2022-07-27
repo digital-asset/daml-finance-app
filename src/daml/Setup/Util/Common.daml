@@ -1,0 +1,33 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Setup.Util.Common where
+
+import DA.List (head)
+import DA.Optional (fromOptional)
+import Daml.Finance.Asset.Holding qualified as Holding (T)
+import Daml.Finance.Interface.Asset.Fungible qualified as Fungible (Split(..), SplitResult(..))
+import Daml.Finance.Interface.Asset.Holding qualified as Holding (I)
+import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (Q)
+import Daml.Script
+
+allocateParties : [Text] -> Script [(Text, Party)]
+allocateParties partyNames = do
+  existingParties <- listKnownParties
+  let
+    allocate party =
+      case find (\d -> (fromOptional "" d.displayName) == party) existingParties of
+        Some detail -> do pure detail.party
+        None -> do allocatePartyWithHint party $ PartyIdHint party
+  parties <- mapA allocate partyNames
+  pure $ zip partyNames parties
+
+getHolding : Party -> Instrument.Q -> Script (ContractId Holding.I)
+getHolding party quantity = do
+  (holdingCid, holding) <- head <$> queryFilter @Holding.T party (\h -> h.instrument == quantity.unit && h.amount >= quantity.amount)
+  if holding.amount > quantity.amount
+  then do
+    Fungible.SplitResult{splitCids} <- submit party do exerciseCmd holdingCid Fungible.Split with amounts = [ quantity.amount ]
+    pure $ (toInterfaceContractId . head) splitCids
+  else do
+    pure $ toInterfaceContractId holdingCid

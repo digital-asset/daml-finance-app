@@ -1,0 +1,33 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Setup.Util.Role where
+
+import DA.Set (singleton)
+import Daml.Finance.Settlement.Batch (BatchFactory(..))
+import Daml.Script
+import Daml.Finance.App.Role.Operator qualified as Operator (OfferCustodianRole(..), OfferDistributorRole(..), OfferExchangeRole(..), Role(..))
+import Daml.Finance.App.Role.Custodian qualified as Custodian (Accept(..), Role)
+import Daml.Finance.App.Role.Distributor qualified as Distributor (Accept(..), Role)
+import Daml.Finance.App.Role.Exchange qualified as Exchange (Accept(..), Role)
+
+createOperatorRole : Party -> Script (ContractId Operator.Role)
+createOperatorRole operator = do
+  submit operator do createCmd Operator.Role with operator
+
+createCustodianRole : Party -> Party -> Script (ContractId Custodian.Role)
+createCustodianRole operator custodian = do
+  offerCid <- submit operator do exerciseByKeyCmd @Operator.Role operator Operator.OfferCustodianRole with provider = custodian
+  submit custodian do exerciseCmd offerCid Custodian.Accept
+
+createExchangeRole : Party -> Party -> Script (ContractId Exchange.Role)
+createExchangeRole operator exchange = do
+  offerCid <- submit operator do exerciseByKeyCmd @Operator.Role operator Operator.OfferExchangeRole with provider = exchange
+  submit exchange do exerciseCmd offerCid Exchange.Accept
+
+createDistributorRole : Party -> Party -> Script (ContractId Distributor.Role)
+createDistributorRole operator distributor = do
+  offerCid    <- submit operator    do exerciseByKeyCmd @Operator.Role operator Operator.OfferDistributorRole with provider = distributor
+  roleCid     <- submit distributor do exerciseCmd offerCid Distributor.Accept
+  submit distributor do createCmd BatchFactory with requestor = singleton distributor
+  pure roleCid
