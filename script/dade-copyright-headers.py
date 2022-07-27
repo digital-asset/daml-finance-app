@@ -75,7 +75,7 @@ def chdir_to_toplevel():
   toplevel = subprocess                                    \
     .check_output(["git", "rev-parse", "--show-toplevel"], universal_newlines=True) \
     .strip()
-  os.chdir(toplevel + "/apps/marketplace-demo")
+  os.chdir(toplevel)
 
 # Find all files from the provided directory (defaults to '.')
 # using git ls-files, ignoring all prefixes specified in the root
