@@ -3,7 +3,6 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { FormControl, Button, Grid, Paper, Typography, InputLabel, Select, MenuItem, MenuProps, Table, TableBody, TableRow, TableCell, TextField, Accordion, AccordionSummary, AccordionDetails, CircularProgress } from "@mui/material";
-// import { MathComponent } from "mathjax-react";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
