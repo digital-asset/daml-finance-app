@@ -4,54 +4,12 @@
 module Setup.Demo where
 
 import Daml.Script
--- import Setup.NaturalGas (naturalGasDemo)
-import Setup.Standard (standardDemo)
+import Setup.NaturalGas (naturalGasDemo)
+-- import Setup.Standard (standardDemo)
 -- import Setup.StructuredNotes (structuredNotesDemo)
 
 demo : Script [(Text, Party)]
 demo = do
-  standardDemo
+  -- standardDemo
   -- structuredNotesDemo
-  -- naturalGasDemo
-  -- defi parties
-
--- defi : Parties -> Script()
--- defi Parties{..}= do
-
---   let
---     consortium1 = fromList [bank1, bank2, bank3]
---     consortium2 = fromList [bank1, bank2]
---     consortium3 = fromList [bank2, bank3]
---     consortium4 = fromList [bank1, bank3]
-
---   usdc  <- originateToken operator (singleton cashProvider)   (singleton cashProvider)  (singleton public) "USDC"
---   btc   <- originateToken operator (singleton custodian1)     (singleton custodian1)    (singleton public) "BTC"
---   eth   <- originateToken operator (singleton custodian2)     (singleton custodian2)    (singleton public) "ETH"
---   sol   <- originateToken operator (singleton custodian3)     (singleton custodian3)    (singleton public) "SOL"
---   bnb   <- originateToken operator (singleton custodian3)     (singleton custodian3)    (singleton public) "BNB"
---   lpt1  <- originateToken operator consortium1                consortium1               (singleton public) "LPT1"
---   lpt2  <- originateToken operator consortium2                consortium2               (singleton public) "LPT2"
---   lpt3  <- originateToken operator consortium3                consortium3               (singleton public) "LPT3"
---   lpt4  <- originateToken operator consortium4                consortium4               (singleton public) "LPT4"
-
---   deposit operator cashProvider alice    (100_000_000.0, usdc)
---   deposit operator cashProvider bob      (100_000_000.0, usdc)
---   deposit operator cashProvider charlie  (100_000_000.0, usdc)
-
---   createDex "DEX-BTC-USDC" public consortium1 (48_750_000.0, lpt1) custodian1 (  1_000.0, btc) cashProvider (48_750_000.0, usdc)
---   createDex "DEX-ETH-USDC" public consortium2 (42_390_000.0, lpt2) custodian2 ( 10_000.0, eth) cashProvider (42_390_000.0, usdc)
---   createDex "DEX-SOL-USDC" public consortium3 (41_050_000.0, lpt3) custodian3 (200_000.0, sol) cashProvider (40_000_000.0, usdc)
---   createDex "DEX-BNB-USDC" public consortium4 (56_173_000.0, lpt4) custodian3 (100_000.0, bnb) cashProvider (56_173_000.0, usdc)
---   pure ()
-
--- createDex : Text -> Party -> Set Party -> (Decimal, ContractId Instrument) -> Party -> (Decimal, ContractId Instrument) -> Party -> (Decimal, ContractId Instrument) -> Script (ContractId Dex)
--- createDex id public consortium token issuer1 asset1 issuer2 asset2 = do
---   tokenCid  <- submitMulti (toList consortium)  [] do exerciseCmd (snd token) Issue with quantity = fst token
---   asset1Cid <- submitMulti [issuer1]            [] do exerciseCmd (snd asset1) Issue with quantity = fst asset1
---   asset1Cid <- transferHolding (insert issuer1 consortium) asset1Cid consortium
---   asset2Cid <- submitMulti [issuer2]            [] do exerciseCmd (snd asset2) Issue with quantity = fst asset2
---   asset2Cid <- transferHolding (insert issuer2 consortium) asset2Cid consortium
---   let
---     pool1 = Pool with tokenCid = asset1Cid; instrumentCid = snd asset1
---     pool2 = Pool with tokenCid = asset2Cid; instrumentCid = snd asset2
---   submitMulti (toList consortium) [] do createCmd Dex with id; consortium; public; share = token; pool1; pool2; fee = 0.01
+  naturalGasDemo

@@ -1,31 +1,16 @@
 [{
   "_1": "Operator",
-  "_2": "Operator::1220c9fbc9eb0baf2555e92c30296fff971a0395cc1d64710a8837e63955d6ca2754"
+  "_2": "Operator::12205d2502cf51a729973076f969ce1a2db52523a377ded0baf7769d0c4cc8623cfe"
 }, {
   "_1": "Public",
-  "_2": "Public::1220c9fbc9eb0baf2555e92c30296fff971a0395cc1d64710a8837e63955d6ca2754"
+  "_2": "Public::12205d2502cf51a729973076f969ce1a2db52523a377ded0baf7769d0c4cc8623cfe"
 }, {
   "_1": "CentralBank",
-  "_2": "CentralBank::1220c9fbc9eb0baf2555e92c30296fff971a0395cc1d64710a8837e63955d6ca2754"
+  "_2": "CentralBank::12205d2502cf51a729973076f969ce1a2db52523a377ded0baf7769d0c4cc8623cfe"
 }, {
-  "_1": "Registry",
-  "_2": "Registry::1220c9fbc9eb0baf2555e92c30296fff971a0395cc1d64710a8837e63955d6ca2754"
+  "_1": "Seller",
+  "_2": "Seller::12205d2502cf51a729973076f969ce1a2db52523a377ded0baf7769d0c4cc8623cfe"
 }, {
-  "_1": "Exchange",
-  "_2": "Exchange::1220c9fbc9eb0baf2555e92c30296fff971a0395cc1d64710a8837e63955d6ca2754"
-}, {
-  "_1": "Agent",
-  "_2": "Agent::1220c9fbc9eb0baf2555e92c30296fff971a0395cc1d64710a8837e63955d6ca2754"
-}, {
-  "_1": "Issuer",
-  "_2": "Issuer::1220c9fbc9eb0baf2555e92c30296fff971a0395cc1d64710a8837e63955d6ca2754"
-}, {
-  "_1": "Alice",
-  "_2": "Alice::1220c9fbc9eb0baf2555e92c30296fff971a0395cc1d64710a8837e63955d6ca2754"
-}, {
-  "_1": "Bob",
-  "_2": "Bob::1220c9fbc9eb0baf2555e92c30296fff971a0395cc1d64710a8837e63955d6ca2754"
-}, {
-  "_1": "Charlie",
-  "_2": "Charlie::1220c9fbc9eb0baf2555e92c30296fff971a0395cc1d64710a8837e63955d6ca2754"
+  "_1": "Buyer",
+  "_2": "Buyer::12205d2502cf51a729973076f969ce1a2db52523a377ded0baf7769d0c4cc8623cfe"
 }]
