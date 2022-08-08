@@ -13,7 +13,7 @@ import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/Claims
 import { claimToNode, findObservables } from "../../components/Claims/util";
 import { render } from "../../components/Claims/renderScenario";
 import { ExpandMore } from "@mui/icons-material";
-import { createSet, dedup } from "../../util";
+import { dedup } from "../../util";
 import { emptyMap } from "@daml/types";
 import { Observation } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefData/Observation";
 
@@ -109,7 +109,7 @@ export const Scenario : React.FC = () => {
     const res : Result[] = [];
     for (let fixing = min; fixing <= max; fixing += step) {
       const prices = emptyMap<string, string>().set(expiry, fixing.toString());
-      const observable = await ledger.create(Observation, { provider: createSet([party]), obsKey: observables[0], observations: prices, observers: emptyMap<any, any>() })
+      const observable = await ledger.create(Observation, { provider: party, obsKey: observables[0], observations: prices, observers: emptyMap<any, any>() })
       const [ { _2: result }, ] = await ledger.exercise(Service.PreviewLifecycle, services[0].contractId, { today: expiry, observableCids: [observable.contractId], claims: asset.payload.claims });
       await ledger.archive(Observation, observable.contractId);
       res.push({ fixing, payouts: result.map(r => ({ amount: parseFloat(r.amount), asset: r.asset.id.label })) });

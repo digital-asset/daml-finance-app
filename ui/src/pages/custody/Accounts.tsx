@@ -5,7 +5,7 @@ import React from "react";
 import { Table, TableBody, TableCell, TableRow, TableHead, Grid, Paper, Typography } from "@mui/material";
 import { useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
-import { getName, parties } from "../../util";
+import { getName } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { Account } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Account";
 
@@ -16,8 +16,8 @@ export const Accounts : React.FC = () => {
   const { contracts: accounts, loading: l1 } = useStreamQueries(Account);
   if (l1) return (<Spinner />);
 
-  const providerServices = accounts.filter(s => s.payload.custodian.map.has(party));
-  const customerServices = accounts.filter(s => s.payload.owner.map.has(party));
+  const custodianAccounts = accounts.filter(s => s.payload.custodian === party);
+  const ownerAccounts = accounts.filter(s => s.payload.owner === party);
 
   return (
     <>
@@ -35,11 +35,11 @@ export const Accounts : React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {customerServices.map((c, i) => (
+                  {ownerAccounts.map((c, i) => (
                     <TableRow key={i} className={classes.tableRow}>
-                      <TableCell key={0} className={classes.tableCell}>{parties(c.payload.custodian)}</TableCell>
+                      <TableCell key={0} className={classes.tableCell}>{getName(c.payload.custodian)}</TableCell>
                       <TableCell key={1} className={classes.tableCell}>{c.payload.id}</TableCell>
-                      <TableCell key={2} className={classes.tableCell}>{c.signatories.map(getName)}</TableCell>
+                      <TableCell key={2} className={classes.tableCell}>{c.signatories.map(getName).join(", ")}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -58,11 +58,11 @@ export const Accounts : React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {providerServices.map((c, i) => (
+                  {custodianAccounts.map((c, i) => (
                     <TableRow key={i} className={classes.tableRow}>
-                      <TableCell key={0} className={classes.tableCell}>{parties(c.payload.owner)}</TableCell>
+                      <TableCell key={0} className={classes.tableCell}>{getName(c.payload.owner)}</TableCell>
                       <TableCell key={1} className={classes.tableCell}>{c.payload.id}</TableCell>
-                      <TableCell key={2} className={classes.tableCell}>{c.signatories.map(getName)}</TableCell>
+                      <TableCell key={2} className={classes.tableCell}>{c.signatories.map(getName).join(", ")}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

@@ -13,10 +13,10 @@ import DA.Optional (whenSome)
 import DA.Set (fromList, singleton)
 import Daml.Finance.Interface.Asset.Account qualified as Account (K, R)
 import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (K, Q)
-import Daml.Finance.Interface.Asset.Lockable qualified as Lockable (Lock(..), Unlock(..))
+import Daml.Finance.Interface.Asset.Lockable qualified as Lockable (Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Asset.Fungible qualified as Fungible (I)
 import Daml.Finance.Interface.Asset.Util (getAccount)
-import Daml.Finance.Interface.Common.Disclosure qualified as Disclosure (AddObserver(..))
+import Daml.Finance.Interface.Common.Disclosure qualified as Disclosure (AddObservers(..), I)
 import Daml.Finance.Interface.Settlement.Instructable qualified as Instructable (I)
 import Daml.Finance.Interface.Settlement.Settleable qualified as Settleable (Settle(..))
 import Daml.Finance.App.Distribution.Auction.Model (Auction(..), CreateAuctionRequest(..), Status(..))
@@ -50,15 +50,15 @@ template Service
       do
         -- Disclose holding
         collateral <- fetch collateralCid
-        collateralCid <- coerceContractId <$> exercise collateralCid Disclosure.AddObserver with actor = singleton customer; observerToAdd = (id, fromList [provider])
+        collateralCid <- coerceContractId <$> exercise (coerceContractId collateralCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (id, fromList [provider])
 
         -- Disclose delivering securities account
         (_, delRef) <- fetchByKey @Account.R $ getAccount collateral
-        exercise delRef.cid Disclosure.AddObserver with actor = singleton customer; observerToAdd = (id, fromList [provider])
+        exercise (coerceContractId delRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (id, fromList [provider])
 
         -- Disclose receiving cash account
         (_, recRef) <- fetchByKey @Account.R receivableAccount
-        exercise recRef.cid Disclosure.AddObserver with actor = singleton customer; observerToAdd = (id, singleton provider)
+        exercise (coerceContractId recRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (id, singleton provider)
 
         create CreateAuctionRequest with operator; provider; customer; id; quantity; currency; floor; collateralCid; receivableAccount
 
@@ -75,7 +75,7 @@ template Service
       controller provider
       do
         CreateAuctionRequest{id; quantity; currency; floor; collateralCid; receivableAccount} <- fetchAndArchive createAuctionRequestCid
-        collateralCid <- coerceContractId <$> exercise collateralCid Lockable.Lock with newLocker = fromList [ provider ]
+        collateralCid <- coerceContractId <$> exercise (coerceContractId collateralCid : ContractId Lockable.I) Lockable.Acquire with newLocker = fromList [ provider ]; context = id; lockType = Lockable.Semaphore
         create Auction with operator; provider; customer; id; quantity; currency; floor; collateralCid; receivableAccount; status = Open
 
     nonconsuming choice RejectAuction : ()
@@ -92,15 +92,15 @@ template Service
         bidCids : [ContractId Bidding.Bid]
       controller provider
       do
-        auction@Auction{floor, quantity, collateralCid, status} <- fetch auctionCid
-        assertMsg "Auction already successfully processed" (status `elem` [Open, NoValidBids])
+        auction <- fetch auctionCid
+        assertMsg "Auction already successfully processed" (auction.status `elem` [Open, NoValidBids])
 
         bids <- zip bidCids <$> forA bidCids fetch
         -- Split bids on those above / below the floor price -> Sort valid bids descendingly -> Execute Auction -> Split auction result on allocated / unallocated (ie, zero allocation)
         let
-          (invalidBids, validBids) = partitionEithers $ splitList (\(_, bid) -> bid.details.price.amount >= floor) bids
+          (invalidBids, validBids) = partitionEithers $ splitList (\(_, bid) -> bid.details.price.amount >= auction.floor) bids
           sortedBids = sortOn (\(_, bid) -> Down bid.details) validBids
-          ((remaining, finalPrice), allocations) = mapAccumL dutchAuction (quantity.amount, 0.0) sortedBids
+          ((remaining, finalPrice), allocations) = mapAccumL dutchAuction (auction.quantity.amount, 0.0) sortedBids
           (allocatedBids, unallocatedBids) = partitionEithers $ splitList (\allocation -> allocation.amount == 0.0) allocations
 
         -- Return assets of all invalid and unallocated bids. Also update their bid status accordingly
@@ -109,18 +109,18 @@ template Service
 
         -- Generate Settlement instructions for allocated bids
         let settleAllocations = (\allocation -> Bidding.SettleAllocation with allocation; price = finalPrice; issuer = customer) <$> allocatedBids
-        (remainingDepositCidOpt, settleableCids) <- foldlA (generateSettlementInstruction instructableCid auction.receivableAccount) (Some collateralCid, []) settleAllocations
+        (remainingDepositCidOpt, settleableCids) <- foldlA (generateSettlementInstruction instructableCid auction.receivableAccount) (Some auction.collateralCid, []) settleAllocations
 
         -- Settle transfers
         forA_ settleableCids (`exercise` Settleable.Settle)
         -- Return unallocated deposit back to the customer
         whenSome remainingDepositCidOpt \depositCid -> do
-          exercise depositCid Lockable.Unlock
+          exercise (coerceContractId depositCid : ContractId Lockable.I) Lockable.Release with context = auction.id
           pure ()
 
         -- Update Auction contract with the outcome of the auction processing
         let newStatus = if
-              | remaining == quantity.amount -> NoValidBids
+              | remaining == auction.quantity.amount -> NoValidBids
               | remaining > 0.0 -> PartiallyAllocated with finalPrice; remaining
               | otherwise -> FullyAllocated with finalPrice
         archive auctionCid

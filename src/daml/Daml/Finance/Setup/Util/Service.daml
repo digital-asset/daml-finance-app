@@ -1,7 +1,7 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module Setup.Util.Service where
+module Daml.Finance.Setup.Util.Service where
 
 import DA.Set (singleton)
 import Daml.Finance.App.Custody.Service qualified as Custody (Accept(..), Service)
@@ -51,7 +51,7 @@ createLifecycleService operator custodian customer = do
 
 createTradingService : Party -> Party -> Party -> Script (ContractId Trading.Service)
 createTradingService operator exchange customer = do
-  instructableCid <- toInterfaceContractId <$> submit exchange do createCmd BatchFactory with requestor = singleton exchange
+  instructableCid <- toInterfaceContractId <$> submit exchange do createCmd BatchFactory with requestors = singleton exchange
   offerCid <- submit exchange do exerciseByKeyCmd @Exchange.Role (operator, exchange) Exchange.OfferTradingService with customer; instructableCid
   submit customer do exerciseCmd offerCid Trading.Accept
 

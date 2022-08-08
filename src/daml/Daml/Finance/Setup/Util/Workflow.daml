@@ -1,15 +1,11 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module Setup.Util.Workflow where
+module Daml.Finance.Setup.Util.Workflow where
 
-import ContingentClaims.Claim (Claim)
-import DA.Date (date, Month(..))
 import DA.List (head)
-import DA.Map qualified as Map
-import DA.Set (singleton, toList, union)
-import DA.Text (sha256)
-import DA.Time (time)
+import DA.Map qualified as M
+import DA.Set (Set)
 import Daml.Finance.App.Custody.Service qualified as Custody (Deposit(..), RequestDeposit(..), Service)
 import Daml.Finance.App.Distribution.Bidding.Model qualified as Bidding (Bid)
 import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (CreateBid(..), RequestCreateBid(..), S)
@@ -21,65 +17,74 @@ import Daml.Finance.App.Listing.Model qualified as Listing (T)
 import Daml.Finance.App.Listing.Service qualified as Listing (CreateListing(..), RequestCreateListing(..), Service)
 import Daml.Finance.App.Trading.Model qualified as Trading (Order, Side(..))
 import Daml.Finance.App.Trading.Service qualified as Trading (CreateOrder(..), RequestCreateOrder(..), Service)
-import Daml.Finance.Asset.Account (Account(..))
+import Daml.Finance.Asset.Account qualified as Account (Factory(..))
 import Daml.Finance.Asset.Instrument (Instrument(..))
 import Daml.Finance.Derivative.Instrument qualified as Derivative (Instrument(..))
-import Daml.Finance.Interface.Common.Types (Parties)
-import Daml.Finance.Interface.Asset.Account qualified as Account (K, R, Reference(..), View(..), toKey)
+import Daml.Finance.Interface.Asset.Account qualified as Account (K, View(..), R, toKey)
+import Daml.Finance.Interface.Asset.Factory.Account qualified as Account (Create(..), F)
+import Daml.Finance.Interface.Asset.Factory.Holding qualified as Holding (F)
 import Daml.Finance.Interface.Asset.Fungible qualified as Fungible (I)
 import Daml.Finance.Interface.Asset.Holding qualified as Holding (I)
-import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (K, Q, Reference(..), View(..))
+import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (I, K, Q, Reference(..), View(..))
 import Daml.Finance.Interface.Asset.Transferable qualified as Transferable (I, Transfer(..))
 import Daml.Finance.Interface.Asset.Types (Id(..))
+import Daml.Finance.Interface.Common.Types (Parties)
+import Daml.Finance.Interface.Derivative.Types (C)
 import Daml.Finance.Settlement.Batch (BatchFactory)
+import Daml.Finance.Setup.Util.Common (getHolding)
 import Daml.Script (Script, createCmd, exerciseCmd, exerciseByKeyCmd, query, queryFilter, submitMulti)
-import Setup.Util.Common (getHolding)
 
-createAccount : Party -> Party -> Text -> Script Account.K
-createAccount custodian owner id = do
-  let
-    v = Account.View with custodian = singleton custodian; id; owner = singleton owner
-  accountCid <- toInterfaceContractId <$> submitMulti (toList $ union v.custodian v.owner) [] do
-    createCmd Account with custodian = v.custodian; owner = v.owner; id = v.id; observers = Map.empty
-  accountProxyCid <- submitMulti (toList $ union v.custodian v.owner) [] do
-    createCmd Account.Reference with accountView = v; cid = accountCid; observers = Map.empty
-  pure $ Account.toKey v
+-- | Create factory for `Account`.
+createFactory : Party -> [(Text, Set Parties)] -> Script (ContractId Account.Factory)
+createFactory provider observers = submitMulti [provider] [] do
+  createCmd Account.Factory with provider; observers = M.fromList observers
 
-originateDerivative : Parties -> Parties -> Parties -> Text -> Claim Time Decimal Instrument.K Text -> Script Instrument.K
-originateDerivative depository issuer observers label claims = do
+-- | Create `Account`.
+createAccount : [Party] -> ContractId Account.F -> ContractId Holding.F -> [(Text, Set Parties)] -> Party -> Party -> Text -> Script Account.K
+createAccount readAs factoryCid holdingFactoryCid obs custodian owner id = do
   let
-    id = Id with label; version = sha256 $ show claims
-    instrumentView = Instrument.View with depository; issuer; id
-    instrument = Derivative.Instrument with depository; issuer; id; claims; lastEventTimestamp = time (date 1970 Jan 1) 0 0 0; observers = Map.fromList [("", singleton observers)]
-  cid <- toInterfaceContractId <$> submitMulti (toList $ union depository issuer) [] do createCmd instrument
-  let ref = Instrument.Reference with instrumentView; cid; observers = Map.fromList [("", singleton observers)]
-  submitMulti (toList $ union depository issuer) [] do createCmd ref
+    v = Account.View with custodian; owner; id; holdingFactoryCid
+    k = Account.toKey v
+  submitMulti [v.custodian, v.owner] readAs do
+    exerciseCmd factoryCid Account.Create with account = k; holdingFactoryCid; observers = M.fromList obs
+  pure k
+
+createReference : ContractId Instrument.I -> Party -> Party -> Id -> Time -> [(Text, Set Parties)] -> Script Instrument.K
+createReference cid depository issuer id validAsOf observers = do
+  let
+    instrumentView = Instrument.View with depository; issuer; id; validAsOf
+    ref = Instrument.Reference with instrumentView; cid; observers = M.fromList observers
+  submitMulti [depository, issuer] [] do createCmd ref
   pure $ key ref
 
-originate : Parties -> Parties -> Parties -> Text -> Script Instrument.K
-originate depository issuer observers label = do
-  let
-    id = Id with label; version = sha256 label
-    instrumentView = Instrument.View with depository; issuer; id
-    instrument = Instrument with depository; issuer; id; observers = Map.fromList [("", singleton observers)]
-  cid <- toInterfaceContractId <$> submitMulti (toList $ union depository issuer) [] do createCmd instrument
-  let ref = Instrument.Reference with instrumentView; cid; observers = Map.fromList [("", singleton observers)]
-  submitMulti (toList $ union depository issuer) [] do createCmd ref
-  pure $ key ref
+-- | Originate an `Instrument`.
+originate : Party -> Party -> [(Text, Set Parties)] -> Time -> Text -> Script Instrument.K
+originate depository issuer observers validAsOf label = do
+  let id = Id with label; version = "0"
+  cid <- coerceContractId <$> submitMulti [depository, issuer] [] do
+    createCmd Instrument with depository; issuer; id; observers = M.fromList observers; validAsOf
+  createReference cid depository issuer id validAsOf observers
+
+originateDerivative : Party -> Party -> [(Text, Set Parties)] -> Time -> Text -> C -> Script Instrument.K
+originateDerivative depository issuer observers acquisitionTime label claims = do
+  let id = Id with label; version = "0"
+  cid <- coerceContractId <$> submitMulti [depository, issuer] [] do
+    createCmd Derivative.Instrument with depository; issuer; id; acquisitionTime; claims; observers = M.fromList observers; lastEventTimestamp = acquisitionTime
+  createReference cid depository issuer id acquisitionTime observers
 
 transfer : Party -> Account.K -> ContractId Transferable.I -> Script (ContractId Transferable.I)
 transfer from toAccount depositCid = do
-  submitMulti (from :: toList toAccount.owner) [] do exerciseCmd depositCid Transferable.Transfer with newOwnerAccount = toAccount
+  submitMulti [from, toAccount.owner] [] do exerciseCmd depositCid Transferable.Transfer with newOwnerAccount = toAccount
 
-deposit : Party -> Party -> Party -> Instrument.Q -> Account.K -> Script (ContractId Holding.I)
-deposit operator provider customer quantity account = do
+deposit : Party -> Party -> Party -> Party -> Instrument.Q -> Account.K -> Script (ContractId Holding.I)
+deposit operator provider customer public quantity account = do
   depositRequestCid <- submit customer do exerciseByKeyCmd @Custody.Service (operator, provider, customer) Custody.RequestDeposit with quantity; account
-  submit provider do exerciseByKeyCmd @Custody.Service (operator, provider, customer) Custody.Deposit with depositRequestCid
+  submitMulti [provider] [public] do exerciseByKeyCmd @Custody.Service (operator, provider, customer) Custody.Deposit with depositRequestCid
 
-issue : Party -> Party -> Party -> Text -> Instrument.Q -> Account.K -> Script (ContractId Issuance.T, ContractId Holding.I)
-issue operator provider customer id quantity account = do
+issue : Party -> Party -> Party -> Party -> Text -> Instrument.Q -> Account.K -> Script (ContractId Issuance.T, ContractId Holding.I)
+issue operator provider customer public id quantity account = do
   createIssuanceRequestCid <- submit customer do exerciseByKeyCmd @Issuance.Service (operator, provider, customer) Issuance.RequestCreateIssuance with id; quantity; account
-  submit provider do exerciseByKeyCmd @Issuance.Service (operator, provider, customer) Issuance.CreateIssuance with ..
+  submitMulti [provider] [public] do exerciseByKeyCmd @Issuance.Service (operator, provider, customer) Issuance.CreateIssuance with ..
 
 list : Party -> Party -> Party -> Text -> Instrument.K -> Instrument.K -> Parties -> Script (ContractId Listing.T)
 list operator provider customer id tradedInstrument quotedInstrument observers = do

@@ -17,7 +17,7 @@ import { useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
 import { Instrument } from "@daml.js/daml-finance-derivative/lib/Daml/Finance/Derivative/Instrument";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { parties, version } from "../../util";
+import { getName, version } from "../../util";
 
 export const Instruments : React.FC = () => {
   const classes = useStyles();
@@ -45,8 +45,8 @@ export const Instruments : React.FC = () => {
                 <TableBody>
                   {instruments.map((c, i) => (
                     <TableRow key={i} className={classes.tableRow}>
-                      <TableCell key={0} className={classes.tableCell}>{parties(c.payload.issuer)}</TableCell>
-                      <TableCell key={1} className={classes.tableCell}>{parties(c.payload.depository)}</TableCell>
+                      <TableCell key={0} className={classes.tableCell}>{getName(c.payload.issuer)}</TableCell>
+                      <TableCell key={1} className={classes.tableCell}>{getName(c.payload.depository)}</TableCell>
                       <TableCell key={2} className={classes.tableCell}>{c.payload.id.label}</TableCell>
                       <TableCell key={3} className={classes.tableCell}>{version(c.payload.id)}</TableCell>
                       <TableCell key={4} className={classes.tableCell}>

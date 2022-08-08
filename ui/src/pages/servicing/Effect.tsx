@@ -7,12 +7,14 @@ import { useParty, useLedger, useStreamQueries } from "@daml/react";
 import { Typography, Grid, Table, TableBody, TableCell, TableRow, Paper, Button, TableHead } from "@mui/material";
 import { useParams } from "react-router-dom";
 import useStyles from "../styles";
-import { fmt, id, setEquals } from "../../util";
-import { Holding } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Holding";
+import { fmt, getName, id } from "../../util";
+import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fungible";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { createSet, keyEquals, parties, version } from "../../util";
+import { keyEquals, version } from "../../util";
 import { Effect as EffectContract } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/Effect";
-import { Batch, BatchFactory } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Batch";
+import { Batch } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Batch";
+import { Rule } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/SettlementRule";
+import { CreateEvent } from "@daml/ledger";
 
 export const Effect : React.FC = () => {
   const classes = useStyles();
@@ -20,8 +22,8 @@ export const Effect : React.FC = () => {
   const ledger = useLedger();
   const party = useParty();
   const { contracts: effects, loading: l1 } = useStreamQueries(EffectContract);
-  const { contracts: holdings, loading: l2 } = useStreamQueries(Holding);
-  const { contracts: factories, loading: l3 } = useStreamQueries(BatchFactory);
+  const { contracts: holdings, loading: l2 } = useStreamQueries(Fungible);
+  const { contracts: rules, loading: l3 } = useStreamQueries(Rule);
   const { contracts: batches, loading: l4 } = useStreamQueries(Batch);
   const { contractId } = useParams<any>();
 
@@ -31,16 +33,21 @@ export const Effect : React.FC = () => {
   if (l1 || l2 || l3 || l4) return (<Spinner />);
   if (!effect) return (<div style={{display: 'flex', justifyContent: 'center', marginTop: 350 }}><h1>Effect [{contractId}] not found</h1></div>);
 
-  const filteredHoldings = holdings.filter(c => keyEquals(c.payload.instrument, effect.payload.consumed[0].unit) && !setEquals(c.payload.account.custodian, c.payload.account.owner));
+  const filteredHoldings = holdings.filter(c => keyEquals(c.payload.instrument, effect.payload.targetInstrument) && c.payload.account.custodian !== c.payload.account.owner);
   const filteredBatches = batches.filter(c => c.payload.id === effect.payload.id);
 
   const claimEffect = async () => {
-    const arg = {
-      actor: createSet([party]),
-      instructableCid: factories[0].contractId,
-      holdingCids: filteredHoldings.map(c => c.contractId)
-    }
-    await ledger.exercise(EffectContract.Claim, effect.contractId, arg);
+    const claimHolding = async (holding : CreateEvent<Fungible>) => {
+      const rule = rules.find(c => c.payload.custodian === holding.payload.account.custodian && c.payload.owner === holding.payload.account.owner && c.payload.instrumentLabel === effect.payload.targetInstrument.id.label);
+      if (!rule) throw new Error("Couldn't find lifecycle settlement rule for instrument " + effect.payload.targetInstrument.id.label);
+      const arg = {
+        claimer: party,
+        holdingCids: [holding.contractId],
+        effectCid: effect.contractId
+      }
+      await ledger.exercise(Rule.Claim, rule.contractId, arg);
+    };
+    Promise.all(filteredHoldings.map(c => claimHolding(c)));
   };
 
   return (
@@ -56,11 +63,11 @@ export const Effect : React.FC = () => {
                 <TableBody>
                   <TableRow key={0} className={classes.tableRow}>
                     <TableCell key={0} className={classes.tableCellSmall}><b>Provider</b></TableCell>
-                    <TableCell key={1} className={classes.tableCellSmall}>{parties(effect.payload.provider)}</TableCell>
+                    <TableCell key={1} className={classes.tableCellSmall}>{getName(effect.payload.provider)}</TableCell>
                   </TableRow>
                   <TableRow key={1} className={classes.tableRow}>
                     <TableCell key={0} className={classes.tableCellSmall}><b>Settler</b></TableCell>
-                    <TableCell key={1} className={classes.tableCellSmall}>{parties(effect.payload.settler)}</TableCell>
+                    <TableCell key={1} className={classes.tableCellSmall}>{getName(effect.payload.settler)}</TableCell>
                   </TableRow>
                   <TableRow key={2} className={classes.tableRow}>
                     <TableCell key={0} className={classes.tableCellSmall}><b>Target</b></TableCell>
@@ -131,8 +138,8 @@ export const Effect : React.FC = () => {
                 <TableBody>
                   {filteredHoldings.map((c, i) => (
                     <TableRow key={i} className={classes.tableRow}>
-                      <TableCell key={0} className={classes.tableCell}>{parties(c.payload.account.custodian)}</TableCell>
-                      <TableCell key={1} className={classes.tableCell}>{parties(c.payload.account.owner)}</TableCell>
+                      <TableCell key={0} className={classes.tableCell}>{getName(c.payload.account.custodian)}</TableCell>
+                      <TableCell key={1} className={classes.tableCell}>{getName(c.payload.account.owner)}</TableCell>
                       <TableCell key={2} className={classes.tableCell}>{c.payload.account.id}</TableCell>
                       <TableCell key={4} className={classes.tableCell}>{c.payload.instrument.id.label}</TableCell>
                       <TableCell key={5} className={classes.tableCell}>{version(c.payload.instrument.id)}</TableCell>
@@ -158,11 +165,11 @@ export const Effect : React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredBatches.flatMap(b => b.payload.stepsWithInstructionId).filter(s => !setEquals(s._1.sender, s._1.receiver)).map((c, i) => (
+                  {filteredBatches.flatMap(b => b.payload.stepsWithInstructionId).filter(s => s._1.sender !== s._1.receiver).map((c, i) => (
                     <TableRow key={i} className={classes.tableRow}>
                       <TableCell key={0} className={classes.tableCell}>{c._2}</TableCell>
-                      <TableCell key={1} className={classes.tableCell}>{parties(c._1.sender)}</TableCell>
-                      <TableCell key={2} className={classes.tableCell}>{parties(c._1.receiver)}</TableCell>
+                      <TableCell key={1} className={classes.tableCell}>{getName(c._1.sender)}</TableCell>
+                      <TableCell key={2} className={classes.tableCell}>{getName(c._1.receiver)}</TableCell>
                       <TableCell key={3} className={classes.tableCell} align="right">{fmt(c._1.quantity.amount)}</TableCell>
                       <TableCell key={4} className={classes.tableCell}>{c._1.quantity.unit.id.label}</TableCell>
                       <TableCell key={5} className={classes.tableCell}>{version(c._1.quantity.unit.id)}</TableCell>

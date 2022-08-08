@@ -9,7 +9,7 @@ import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Typography, Grid, Paper, Select, MenuItem, TextField, Button, MenuProps, FormControl, InputLabel, IconButton, Box } from "@mui/material";
 import useStyles from "../../styles";
 import { claimToNode } from "../../../components/Claims/util";
-import { Holding } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Holding";
+import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fungible";
 import { CreateOffering, Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Service";
 import { Service as B2BService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/BackToBack/Service";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
@@ -18,7 +18,7 @@ import { Instrument } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/I
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../../components/Claims/ClaimsTreeBuilder";
 import { Reference as AccountReference } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Account";
-import { createKeyBase, createKeyDerivative, getHolding, setEquals } from "../../../util";
+import { createKeyBase, createKeyDerivative, getHolding } from "../../../util";
 import { BackToBack } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Model";
 
 export const New : React.FC = () => {
@@ -40,7 +40,7 @@ export const New : React.FC = () => {
   const { contracts: b2bServices, loading: l2 } = useStreamQueries(B2BService);
   const { contracts: derivatives, loading: l3 } = useStreamQueries(Derivative);
   const { contracts: instruments, loading: l4 } = useStreamQueries(Instrument);
-  const { contracts: holdings, loading: l5 } = useStreamQueries(Holding);
+  const { contracts: holdings, loading: l5 } = useStreamQueries(Fungible);
   const { contracts: accounts, loading: l6 } = useStreamQueries(AccountReference);
 
   const myServices = services.filter(s => s.payload.customer === party);
@@ -49,7 +49,7 @@ export const New : React.FC = () => {
 
   const soldInst = derivatives.find(c => c.payload.id.label === offeredInstLabel);
   const priceInst = instruments.find(c => c.payload.id.label === priceInstLabel);
-  const myHoldings = holdings.filter(c => c.payload.account.owner.map.has(party));
+  const myHoldings = holdings.filter(c => c.payload.account.owner === party);
   const myHoldingLabels = myHoldings.map(c => c.payload.instrument.id.label).filter((v, i, a) => a.indexOf(v) === i);
   const baseKeys = instruments.map(c => ({ depository: c.payload.depository, issuer: c.payload.issuer, id: c.payload.id}));
   const canRequest = !!offeredInstLabel && !!soldInst && !!priceInstLabel && !!priceInst && !!amount && !!price;
@@ -66,27 +66,29 @@ export const New : React.FC = () => {
       .filter(c => c.payload.instrument.id.label === offeredInstLabel)
       .find(c => parseFloat(c.payload.amount) >= parseFloat(amount));
     if (!soldInst || !priceInst || !holding) return;
-    const customerAccount = accounts.find(c => setEquals(c.payload.accountView.custodian, priceInst.payload.depository) && c.payload.accountView.owner.map.has(party))?.key;
+    const customerAccount = accounts.find(c => c.payload.accountView.custodian === priceInst.payload.depository && c.payload.accountView.owner === party)?.key;
     const holdingCid = await getHolding(ledger, myHoldings, parseFloat(amount), createKeyDerivative(soldInst));
     if (!customerAccount) return;
     if (hasB2B) {
       const notional = parseFloat(amount) * parseFloat(price);
       const b2b = myB2BServices[0].payload.provider;
-      const b2bReceivableAccount = accounts.find(c => setEquals(c.payload.accountView.custodian, priceInst.payload.depository) && c.payload.accountView.owner.map.has(b2b))?.key;
-      const b2bHoldings = holdings.filter(c => c.payload.account.owner.map.has(b2b));
-      const issuerReceivableAccount = accounts.find(c => c.payload.accountView.custodian.map.has(b2b) && c.payload.accountView.owner.map.has(party))?.key;
+      const b2bReceivableAccount = accounts.find(c => c.payload.accountView.custodian === priceInst.payload.depository && c.payload.accountView.owner === b2b)?.key;
+      const b2bHoldings = holdings.filter(c => c.payload.account.owner === b2b);
+      const issuerReceivableAccount = accounts.find(c => c.payload.accountView.custodian === b2b && c.payload.accountView.owner === party)?.key;
       if (!b2bReceivableAccount || !issuerReceivableAccount) return;
       const b2bDeliverableCid = await getHolding(ledger, b2bHoldings, parseFloat(amount), createKeyDerivative(soldInst));
       const issuerDeliverableCid = await getHolding(ledger, myHoldings, notional, createKeyBase(priceInst));
+      const offeringId = uuidv4();
       const backToBack : BackToBack = {
         party: b2b,
+        offeringId,
         issuerReceivableAccount,
         issuerDeliverableCid,
         b2bReceivableAccount,
         b2bDeliverableCid
       };
       const arg : CreateOffering = {
-        offeringId: uuidv4(),
+        offeringId,
         asset: { amount: amount, unit: { depository: soldInst.payload.depository, issuer: soldInst.payload.issuer, id: soldInst.payload.id} },
         price: { amount: price, unit: { depository: priceInst.payload.depository, issuer: priceInst.payload.issuer, id: priceInst.payload.id} },
         customerHoldingCid: holdingCid,

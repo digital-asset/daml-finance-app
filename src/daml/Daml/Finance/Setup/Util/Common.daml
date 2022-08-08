@@ -1,11 +1,11 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module Setup.Util.Common where
+module Daml.Finance.Setup.Util.Common where
 
 import DA.List (head)
 import DA.Optional (fromOptional)
-import Daml.Finance.Asset.Holding qualified as Holding (T)
+import Daml.Finance.Asset.Fungible qualified as Fungible (T)
 import Daml.Finance.Interface.Asset.Fungible qualified as Fungible (Split(..), SplitResult(..))
 import Daml.Finance.Interface.Asset.Holding qualified as Holding (I)
 import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (Q)
@@ -24,7 +24,7 @@ allocateParties partyNames = do
 
 getHolding : Party -> Instrument.Q -> Script (ContractId Holding.I)
 getHolding party quantity = do
-  (holdingCid, holding) <- head <$> queryFilter @Holding.T party (\h -> h.instrument == quantity.unit && h.amount >= quantity.amount)
+  (holdingCid, holding) <- head <$> queryFilter @Fungible.T party (\h -> h.instrument == quantity.unit && h.amount >= quantity.amount)
   if holding.amount > quantity.amount
   then do
     Fungible.SplitResult{splitCids} <- submit party do exerciseCmd holdingCid Fungible.Split with amounts = [ quantity.amount ]

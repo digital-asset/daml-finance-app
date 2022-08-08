@@ -3,7 +3,6 @@
 
 module Daml.Finance.App.Trading.Model where
 
-import DA.Set (singleton)
 import Daml.Finance.Interface.Asset.Account qualified as Account (K)
 import Daml.Finance.Interface.Asset.Fungible qualified as Fungible (I, Split(..), SplitResult(..))
 import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (Q, qty)
@@ -56,8 +55,8 @@ template Order
           amount = min quantity.amount other.quantity.amount
           remaining = quantity.amount - amount
           deliverable = if side == Buy then price.unit else quantity.unit
-          step = Step with sender = singleton customer; receiver = singleton other.customer; quantity = Instrument.qty amount deliverable
-        (settleableCid, [instructionCid]) <- exercise instructableCid Instructable.Instruct with id; settler = singleton provider; steps = [step]
+          step = Step with sender = customer; receiver = other.customer; quantity = Instrument.qty amount deliverable
+        (settleableCid, [instructionCid]) <- exercise instructableCid Instructable.Instruct with id; settler = provider; steps = [step]
         if remaining == 0.0
         then do
           instructionCid <- exercise instructionCid Instruction.Allocate with transferableCid = toInterfaceContractId collateralCid

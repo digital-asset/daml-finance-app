@@ -31,7 +31,7 @@ export const Requests : React.FC = () => {
 
   const createIssuance = async (c : CreateEvent<CreateIssuanceRequest>) => {
     const service = providerServices.find(s => s.payload.customer === c.payload.customer);
-    const account = accounts.find(c => c.payload.custodian.map.has(party) && c.payload.owner.map.has(party));
+    const account = accounts.find(c => c.payload.custodian === party && c.payload.owner === party);
     if (!service || !account) return;
     await ledger.exercise(Service.CreateIssuance, service.contractId, { createIssuanceRequestCid: c.contractId });
     navigate("/issuance/issuances");

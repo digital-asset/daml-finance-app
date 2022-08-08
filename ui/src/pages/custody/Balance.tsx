@@ -5,7 +5,7 @@ import React from "react";
 import { Table, TableBody, TableCell, TableRow, TableHead, Grid, Paper, Typography } from "@mui/material";
 import { useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
-import { Holding } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Holding";
+import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fungible";
 import { fmt } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
 
@@ -23,12 +23,12 @@ export const Balance : React.FC = () => {
   const classes = useStyles();
   const party = useParty();
 
-  const { contracts: holdings, loading: l1 } = useStreamQueries(Holding);
+  const { contracts: holdings, loading: l1 } = useStreamQueries(Fungible);
   if (l1) return (<Spinner />);
 
-  const assetsAndLiabilities = holdings.filter(c => !c.payload.account.custodian.map.has(party) || !c.payload.account.owner.map.has(party));
-  const assets = assetsAndLiabilities.filter(c => c.payload.account.owner.map.has(party));
-  const liabilities = assetsAndLiabilities.filter(c => c.payload.account.custodian.map.has(party));
+  const assetsAndLiabilities = holdings.filter(c => c.payload.account.custodian === party || c.payload.account.owner === party);
+  const assets = assetsAndLiabilities.filter(c => c.payload.account.owner === party);
+  const liabilities = assetsAndLiabilities.filter(c => c.payload.account.custodian === party);
 
   const entries : BalanceEntry[] = [];
   for (let i = 0; i < assets.length; i++) {

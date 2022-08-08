@@ -5,9 +5,9 @@ import React from "react";
 import { Table, TableBody, TableCell, TableRow, TableHead, Grid, Paper, Typography } from "@mui/material";
 import { useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
-import { fmt, setEquals } from "../../util";
+import { fmt, getName } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { parties, version } from "../../util";
+import { version } from "../../util";
 import { Instruction } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Instruction";
 import { DateClock } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefData/Time/DateClock";
 
@@ -20,7 +20,7 @@ export const Settlement : React.FC = () => {
 
   if (l1 || l2 || !clock) return (<Spinner />);
 
-  const filtered = instructions.filter(c => !setEquals(c.payload.step.sender, c.payload.step.receiver));
+  const filtered = instructions.filter(c => c.payload.step.sender !== c.payload.step.receiver);
 
   return (
     <>
@@ -44,8 +44,8 @@ export const Settlement : React.FC = () => {
                   {filtered.map((c, i) => (
                     <TableRow key={i} className={classes.tableRow}>
                       <TableCell key={0} className={classes.tableCell}>{c.payload.id}</TableCell>
-                      <TableCell key={1} className={classes.tableCell}>{parties(c.payload.step.sender)}</TableCell>
-                      <TableCell key={2} className={classes.tableCell}>{parties(c.payload.step.receiver)}</TableCell>
+                      <TableCell key={1} className={classes.tableCell}>{getName(c.payload.step.sender)}</TableCell>
+                      <TableCell key={2} className={classes.tableCell}>{getName(c.payload.step.receiver)}</TableCell>
                       <TableCell key={3} className={classes.tableCell} align="right">{fmt(c.payload.step.quantity.amount)}</TableCell>
                       <TableCell key={4} className={classes.tableCell}>{c.payload.step.quantity.unit.id.label}</TableCell>
                       <TableCell key={5} className={classes.tableCell}>{version(c.payload.step.quantity.unit.id)}</TableCell>
