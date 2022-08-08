@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Build
-daml build --project-root ../package/main/daml/Daml.Finance.App
-daml build --project-root ../package/main/daml/Daml.Finance.App.Setup
+DAML_PROJECT=../package/main/daml/Daml.Finance.App daml build
+DAML_PROJECT=../package/main/daml/Daml.Finance.Setup daml build
 
 if [[ -d ../.dars ]]; then
   rm -r ../.dars

@@ -9,7 +9,7 @@ import { Bid } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Grid, Paper, Typography, Table, TableRow, TableCell, TableBody, TextField, Button } from "@mui/material";
 import { useParams } from "react-router-dom";
-import { Holding } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Holding";
+import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fungible";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Bidding/Service";
 import { Service as AutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Bidding/Auto/Service";
 import { claimToNode } from "../../../components/Claims/util";
@@ -18,7 +18,7 @@ import { Instrument as Derivative } from "@daml.js/daml-finance-derivative/lib/D
 import { Instrument } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Instrument";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../../components/Claims/ClaimsTreeBuilder";
-import { createKeyBase, fmt, getHolding, getName, setEquals } from "../../../util";
+import { createKeyBase, fmt, getHolding, getName } from "../../../util";
 import { Reference } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Account";
 import { Message } from "../../../components/Message/Message";
 
@@ -35,7 +35,7 @@ export const BiddingAuction : React.FC = () => {
   const { contracts: services, loading: l1 } = useStreamQueries(Service);
   const { contracts: autoServices, loading: l2 } = useStreamQueries(AutoService);
   const { contracts: auctions, loading: l3 } = useStreamQueries(Auction);
-  const { contracts: holdings, loading: l4 } = useStreamQueries(Holding);
+  const { contracts: holdings, loading: l4 } = useStreamQueries(Fungible);
   const { contracts: bids, loading: l5 } = useStreamQueries(Bid);
   const { contracts: derivatives, loading: l6 } = useStreamQueries(Derivative);
   const { contracts: instruments, loading: l7 } = useStreamQueries(Instrument);
@@ -51,7 +51,7 @@ export const BiddingAuction : React.FC = () => {
 
   const myServices = services.filter(c => c.payload.customer === party);
   const myAutoServices = autoServices.filter(c => c.payload.customer === party);
-  const myHoldings = holdings.filter(c => c.payload.account.owner.map.has(party));
+  const myHoldings = holdings.filter(c => c.payload.account.owner === party);
   const auction = auctions.find(b => b.contractId === contractId);
   const baseKeys = instruments.map(createKeyBase);
 
@@ -63,7 +63,7 @@ export const BiddingAuction : React.FC = () => {
 
   const requestCreateBid = async () => {
     const volume = price * amount;
-    const receivableAccount = accounts.find(c => c.payload.accountView.owner.map.has(party) && setEquals(c.payload.accountView.custodian, auctionedInstrument.payload.depository))?.key;
+    const receivableAccount = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === auctionedInstrument.payload.depository)?.key;
     const collateralCid = await getHolding(ledger, myHoldings, volume, auction.payload.currency);
     if (!receivableAccount) return;
     const arg = {

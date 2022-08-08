@@ -4,7 +4,7 @@
 module Daml.Finance.App.Instrument.Util where
 
 import ContingentClaims.Observation (Observation(..))
-import ContingentClaims.Claim (Claim(..), Inequality(..))
+import ContingentClaims.Claim (Claim, Inequality(..), one, scale, when)
 import DA.Date (toGregorian)
 import Daml.Finance.Interface.Asset.Instrument (Instrument)
 import Daml.Finance.Common.Date.Calendar (BusinessDayConventionEnum, BusinessDayAdjustment(..), HolidayCalendarData)
@@ -43,8 +43,5 @@ at t = TimeGte t
 
 stream : Decimal -> (ContractId Instrument) -> [Date] -> Claim Date Decimal (ContractId Instrument) Text
 stream amount ccy dates =
-  let payment d = When (at d) $ Scale (Const amount) $ One ccy
-  in case map payment dates of
-    [] -> Zero
-    [c] -> c
-    c1 :: c2 :: rest -> And c1 c2 rest
+  let payment d = when (at d) $ scale (Const amount) $ one ccy
+  in mconcat $ map payment dates

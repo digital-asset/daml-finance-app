@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { v4 as uuidv4 } from "uuid";
-import { Claim, Inequality } from "@daml.js/contingent-claims/lib/ContingentClaims/Claim";
+import { Claim, Inequality } from "@daml.js/contingent-claims/lib/ContingentClaims/Internal/Claim";
 import { Observation } from "@daml.js/contingent-claims/lib/ContingentClaims/Observation";
 import { Decimal, Time } from "@daml/types";
 import { ClaimTreeNode } from "./ClaimsTreeBuilder";

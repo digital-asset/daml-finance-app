@@ -28,14 +28,15 @@ for dependency_path in "${dependencies[@]}"; do
     then
       repo_name="daml-finance"
       package_name=`echo ${package_name//-/.} | sed -e "s/\b\(.\)/\u\1/g"`
-      download_path="https://github.com/DACH-NY/${repo_name}/releases/download/${package_name}/${version}/${file_name}"
+      package_name=`echo ${package_name/Refdata/RefData}`
+      download_path="https://github.com/digital-asset/${repo_name}/releases/download/${package_name}/${version}/${file_name}"
     else
       repo_name=${package_name}
       download_path="https://github.com/digital-asset/${repo_name}/releases/download/v${version}/${file_name}"
     fi
 
     echo "Downloading ${file_name} from Github repository at ${download_path}."
-    curl -Lf# $download_path -o ${root_dir}/${dependency_path}
+    curl -Lsf# $download_path -o ${root_dir}/${dependency_path}
 
     echo -e "\nDependency ${file_name} downloaded successfully and saved to ${root_dir}/${dependency_path}.\n"
   fi

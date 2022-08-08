@@ -3,7 +3,6 @@
 
 module Daml.Finance.App.Distribution.Auction.Utils where
 
-import DA.Set (singleton)
 import Daml.Finance.Interface.Asset.Account qualified as Account (K)
 import Daml.Finance.Interface.Asset.Fungible (Fungible, Split(..))
 import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (qty)
@@ -57,7 +56,7 @@ generateSettlementInstruction instructableCid issuerAccount (Some issuerDepositC
   (bidCid, bidDepositCid) <- exerciseByKey @Bidding.Service (bid.operator, bid.provider, bid.customer) Bidding.ProcessAllocation with bidCid = allocation.bidCid; amount = allocatedAmount; price
   let
     buyer = bid.customer
-    payment = Step with sender = singleton bid.customer; receiver = singleton issuer; quantity = (Instrument.qty allocatedNotional bid.details.price.unit)
+    payment = Step with sender = bid.customer; receiver = issuer; quantity = (Instrument.qty allocatedNotional bid.details.price.unit)
 
   -- | Process issuer side
   -- 1/ Extract their deposit
@@ -70,9 +69,9 @@ generateSettlementInstruction instructableCid issuerAccount (Some issuerDepositC
     seller = issuer
     [allocatedDepositCid] = splitResult.splitCids
   allocatedDeposit <- fetch allocatedDepositCid
-  let delivery = Step with sender = singleton issuer; receiver = singleton buyer; quantity = (Instrument.qty (getAmount allocatedDeposit) (getInstrument allocatedDeposit))
+  let delivery = Step with sender = issuer; receiver = buyer; quantity = (Instrument.qty (getAmount allocatedDeposit) (getInstrument allocatedDeposit))
 
-  (settleableCid, [deliveryCid, paymentCid]) <- exercise instructableCid Instruct with settler = singleton issuer; id = bid.auctionId <> "-" <> partyToText buyer; steps = [delivery, payment]
+  (settleableCid, [deliveryCid, paymentCid]) <- exercise instructableCid Instruct with settler = issuer; id = bid.auctionId <> "-" <> partyToText buyer; steps = [delivery, payment]
   deliveryCid <- exercise deliveryCid Allocate with transferableCid = toInterfaceContractId allocatedDepositCid
   exercise bidCid Bidding.ApproveInstruction with instructionCid = deliveryCid; account = bid.receivableAccount
   paymentCid <- exercise bidCid Bidding.AllocateInstruction with instructionCid = paymentCid; transferableCid = toInterfaceContractId bidDepositCid

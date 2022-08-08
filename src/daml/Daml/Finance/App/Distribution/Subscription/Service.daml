@@ -9,11 +9,11 @@ import DA.Set (fromList, singleton)
 import Daml.Finance.App.BackToBack.Service qualified as BackToBack
 import Daml.Finance.App.Distribution.Subscription.Model (BackToBack, Offering(..), Status(..), Subscription)
 import Daml.Finance.App.Distribution.Subscription.Util (settleSubscription)
-import Daml.Finance.Interface.Common.Disclosure qualified as Disclosure (AddObserver(..))
+import Daml.Finance.Interface.Common.Disclosure qualified as Disclosure (AddObservers(..), I)
 import Daml.Finance.Interface.Asset.Account qualified as Account (K, R)
 import Daml.Finance.Interface.Asset.Fungible qualified as Fungible (I)
 import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Asset.Lockable qualified as Lockable (Lock(..), Unlock(..))
+import Daml.Finance.Interface.Asset.Lockable qualified as Lockable (Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Asset.Util (getAccount)
 import Daml.Finance.Interface.Settlement.Instructable qualified as Instructable (I)
 
@@ -41,16 +41,16 @@ template Service
       do
         -- Disclose holding
         customerHolding <- fetch customerHoldingCid
-        customerHoldingCid : ContractId Fungible.I <- coerceContractId <$> exercise customerHoldingCid Disclosure.AddObserver with actor = singleton customer; observerToAdd = (offeringId, singleton provider)
+        customerHoldingCid : ContractId Fungible.I <- coerceContractId <$> exercise (coerceContractId customerHoldingCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (offeringId, singleton provider)
         -- Disclose delivering securities account
         let customerSendingAccount = getAccount customerHolding
         (_, delRef) <- fetchByKey @Account.R customerSendingAccount
-        exercise delRef.cid Disclosure.AddObserver with actor = singleton customer; observerToAdd = (offeringId, singleton provider)
+        exercise (coerceContractId delRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (offeringId, singleton provider)
         -- Disclose receiving cash account
         (_, recRef) <- fetchByKey @Account.R customerAccount
-        exercise recRef.cid Disclosure.AddObserver with actor = singleton customer; observerToAdd = (offeringId, singleton provider)
+        exercise (coerceContractId recRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (offeringId, singleton provider)
         -- Lock holding
-        customerHoldingCid <- coerceContractId <$> exercise customerHoldingCid Lockable.Lock with newLocker = fromList [ provider ]
+        customerHoldingCid <- coerceContractId <$> exercise (coerceContractId customerHoldingCid : ContractId Lockable.I) Lockable.Acquire with newLocker = fromList [ provider ]; context = offeringId; lockType = Lockable.Semaphore
 
         -- Lock back-to-back assets
         lockedB2b <-
@@ -92,7 +92,7 @@ template Service
 
         -- Unlock remaining issuer holding
         whenSome remainingIssuerHoldingCidOpt \holdingCid -> do
-          exercise holdingCid Lockable.Unlock
+          exercise (coerceContractId holdingCid : ContractId Lockable.I) Lockable.Release with context = offering.offeringId
           pure ()
 
         create offering with status = Closed

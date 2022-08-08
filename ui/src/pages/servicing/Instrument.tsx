@@ -12,7 +12,7 @@ import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycl
 import { Spinner } from "../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
 import { C, claimToNode } from "../../components/Claims/util";
-import { id, parties, version } from "../../util";
+import { getName, id, version } from "../../util";
 import { Effect } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/Effect";
 import { DateClock, DateClockUpdateEvent } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefData/Time/DateClock";
 import { Pending } from "@daml.js/contingent-claims/lib/ContingentClaims/Lifecycle";
@@ -40,7 +40,7 @@ export const Instrument : React.FC = () => {
   const { contractId } = useParams<any>();
 
   const cid = contractId?.replace("_", "#");
-  const instrument = derivatives.find(c => c.contractId === cid && c.payload.issuer.map.has(party));
+  const instrument = derivatives.find(c => c.contractId === cid && c.payload.issuer === party);
 
   useEffect(() => {
     if (!!instrument) setNode1(claimToNode(instrument.payload.claims));
@@ -92,11 +92,11 @@ export const Instrument : React.FC = () => {
                     <TableBody>
                       <TableRow key={0} className={classes.tableRow}>
                         <TableCell key={0} className={classes.tableCellSmall}><b>Depository</b></TableCell>
-                        <TableCell key={1} className={classes.tableCellSmall}>{parties(instrument.payload.depository)}</TableCell>
+                        <TableCell key={1} className={classes.tableCellSmall}>{getName(instrument.payload.depository)}</TableCell>
                       </TableRow>
                       <TableRow key={1} className={classes.tableRow}>
                         <TableCell key={0} className={classes.tableCellSmall}><b>Issuer</b></TableCell>
-                        <TableCell key={1} className={classes.tableCellSmall}>{parties(instrument.payload.issuer)}</TableCell>
+                        <TableCell key={1} className={classes.tableCellSmall}>{getName(instrument.payload.issuer)}</TableCell>
                       </TableRow>
                       <TableRow key={2} className={classes.tableRow}>
                         <TableCell key={0} className={classes.tableCellSmall}><b>Instrument</b></TableCell>
@@ -130,8 +130,8 @@ export const Instrument : React.FC = () => {
                       {pending.map((c, i) => (
                         <TableRow key={i} className={classes.tableRow}>
                           <TableCell key={0} className={classes.tableCell}>{c.t}</TableCell>
-                          <TableCell key={1} className={classes.tableCell}>{parseFloat(c.amount) < 0 ? "Counterparty" : parties(instrument.payload.issuer)}</TableCell>
-                          <TableCell key={2} className={classes.tableCell}>{parseFloat(c.amount) < 0 ? parties(instrument.payload.issuer) : "Counterparty"}</TableCell>
+                          <TableCell key={1} className={classes.tableCell}>{parseFloat(c.amount) < 0 ? "Counterparty" : getName(instrument.payload.issuer)}</TableCell>
+                          <TableCell key={2} className={classes.tableCell}>{parseFloat(c.amount) < 0 ? getName(instrument.payload.issuer) : "Counterparty"}</TableCell>
                           <TableCell key={3} className={classes.tableCell}>{(Math.abs(parseFloat(c.amount))).toFixed(5)}</TableCell>
                           <TableCell key={4} className={classes.tableCell}>{c.asset.id.label}</TableCell>
                         </TableRow>
@@ -158,7 +158,7 @@ export const Instrument : React.FC = () => {
                         <TableRow key={i} className={classes.tableRow}>
                           <TableCell key={0} className={classes.tableCellSmall}>Counterparty</TableCell>
                           <TableCell key={1} className={classes.tableCellSmall}>{"=>"}</TableCell>
-                          <TableCell key={2} className={classes.tableCellSmall}>{parties(effect.payload.provider)}</TableCell>
+                          <TableCell key={2} className={classes.tableCellSmall}>{getName(effect.payload.provider)}</TableCell>
                           <TableCell key={3} className={classes.tableCellSmall}>{(Math.abs(parseFloat(c.amount))).toFixed(5)}</TableCell>
                           <TableCell key={4} className={classes.tableCellSmall}>{c.unit.id.label}</TableCell>
                           <TableCell key={5} className={classes.tableCellSmall}>{version(c.unit.id)}</TableCell>
@@ -166,7 +166,7 @@ export const Instrument : React.FC = () => {
                       ))}
                       {effect.payload.produced.map((c, i) => (
                         <TableRow key={effect.payload.consumed.length + i} className={classes.tableRow}>
-                          <TableCell key={0} className={classes.tableCellSmall}>{parties(effect.payload.provider)}</TableCell>
+                          <TableCell key={0} className={classes.tableCellSmall}>{getName(effect.payload.provider)}</TableCell>
                           <TableCell key={1} className={classes.tableCellSmall}>{"=>"}</TableCell>
                           <TableCell key={2} className={classes.tableCellSmall}>Counterparty</TableCell>
                           <TableCell key={3} className={classes.tableCellSmall}>{(Math.abs(parseFloat(c.amount))).toFixed(5)}</TableCell>

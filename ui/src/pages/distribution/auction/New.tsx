@@ -8,7 +8,7 @@ import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Typography, Grid, Paper, Select, MenuItem, TextField, Button, MenuProps, FormControl, InputLabel, IconButton, Box } from "@mui/material";
 import useStyles from "../../styles";
 import { claimToNode } from "../../../components/Claims/util";
-import { Holding } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Holding";
+import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fungible";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Service";
 import { Service as AutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Auto/Service";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
@@ -17,7 +17,7 @@ import { Instrument } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/I
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../../components/Claims/ClaimsTreeBuilder";
 import { Reference } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Account";
-import { createKeyBase, createKeyDerivative, getHolding, setEquals } from "../../../util";
+import { createKeyBase, createKeyDerivative, getHolding } from "../../../util";
 
 export const New : React.FC = () => {
   const classes = useStyles();
@@ -39,14 +39,14 @@ export const New : React.FC = () => {
   const { contracts: autoServices, loading: l2 } = useStreamQueries(AutoService);
   const { contracts: derivatives, loading: l3 } = useStreamQueries(Derivative);
   const { contracts: instruments, loading: l4 } = useStreamQueries(Instrument);
-  const { contracts: holdings, loading: l5 } = useStreamQueries(Holding);
+  const { contracts: holdings, loading: l5 } = useStreamQueries(Fungible);
   const { contracts: accounts, loading: l6 } = useStreamQueries(Reference);
 
   const myServices = services.filter(s => s.payload.customer === party);
   const myAutoServices = autoServices.filter(s => s.payload.customer === party);
   const instrument = derivatives.find(c => c.payload.id.label === instrumentLabel);
   const currency = instruments.find(c => c.payload.id.label === currencyLabel);
-  const myHoldings = holdings.filter(c => c.payload.account.owner.map.has(party));
+  const myHoldings = holdings.filter(c => c.payload.account.owner === party);
   const myHoldingLabels = myHoldings.map(c => c.payload.instrument.id.label).filter((v, i, a) => a.indexOf(v) === i);
   const baseKeys = instruments.map(c => ({ depository: c.payload.depository, issuer: c.payload.issuer, id: c.payload.id}));
   const canRequest = !!instrumentLabel && !!instrument && !!currencyLabel && !!currency && !!id && !!amount && !!floor;
@@ -63,7 +63,7 @@ export const New : React.FC = () => {
     const instrumentKey = createKeyDerivative(instrument);
     const currencyKey = createKeyBase(currency);
     const collateralCid = await getHolding(ledger, myHoldings, parseFloat(amount), instrumentKey);
-    const receivableAccount = accounts.find(c => setEquals(c.payload.accountView.custodian, currency.payload.depository) && c.payload.accountView.owner.map.has(party))?.key;
+    const receivableAccount = accounts.find(c => c.payload.accountView.custodian === currency.payload.depository && c.payload.accountView.owner === party)?.key;
     if (!receivableAccount) return;
     const arg = {
       id,

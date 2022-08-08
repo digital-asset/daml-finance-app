@@ -12,7 +12,7 @@ import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribu
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { BatchFactory } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Batch";
 import { Offering as OfferingContract, Subscription } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Model";
-import { Holding } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Holding";
+import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fungible";
 import { Reference as AccountReference } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Account";
 import { fmt, getHolding, getName } from "../../../util";
 import { Message } from "../../../components/Message/Message";
@@ -32,7 +32,7 @@ export const Offering : React.FC = () => {
   const { contracts: offerings, loading: l2 } = useStreamQueries(OfferingContract);
   const { contracts: allSubscriptions, loading: l3 } = useStreamQueries(Subscription);
   const { contracts: instructables, loading: l4 } = useStreamQueries(BatchFactory);
-  const { contracts: holdings, loading: l5 } = useStreamQueries(Holding);
+  const { contracts: holdings, loading: l5 } = useStreamQueries(Fungible);
   const { contracts: accounts, loading: l6 } = useStreamQueries(AccountReference);
 
   const offering = offerings.find(c => c.contractId === cid);
@@ -44,7 +44,7 @@ export const Offering : React.FC = () => {
   const providerServices = services.filter(s => s.payload.provider === party);
   const isProvider = providerServices.length > 0;
   const service = providerServices[0];
-  const myHoldings = holdings.filter(c => c.payload.account.owner.map.has(party));
+  const myHoldings = holdings.filter(c => c.payload.account.owner === party);
   const subscriptions = allSubscriptions.filter(c => c.payload.offeringId === offering.payload.offeringId);
   const filledPerc = 100.0 * subscriptions.reduce((a, b) => a + parseFloat(b.payload.quantity), 0) / parseFloat(offering.payload.asset.amount);
 
@@ -57,8 +57,8 @@ export const Offering : React.FC = () => {
 
   const subscribe = async () => {
     const notional = quantity * parseFloat(offering.payload.price.amount);
-    const holding = holdings.find(c => c.payload.account.owner.map.has(party) && parseFloat(c.payload.amount) >= notional && c.payload.locker.map.keys.length === 0);
-    const investorAccount = accounts.find(c => c.payload.accountView.custodian.map.has(offering.payload.issuer) && c.payload.accountView.owner.map.has(party))?.key;
+    const holding = holdings.find(c => c.payload.account.owner === party && parseFloat(c.payload.amount) >= notional && !c.payload.lock);
+    const investorAccount = accounts.find(c => c.payload.accountView.custodian === offering.payload.issuer && c.payload.accountView.owner === party)?.key;
     if (!holding || !investorAccount) return;
     const investorHoldingCid = await getHolding(ledger, myHoldings, notional, offering.payload.price.unit);
     const arg = { investor: party, quantity: quantity.toString(), investorHoldingCid, investorAccount };

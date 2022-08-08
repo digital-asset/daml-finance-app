@@ -9,9 +9,9 @@ import DA.Set (singleton)
 import Daml.Finance.Interface.Asset.Account qualified as Account (K, exerciseInterfaceByKey)
 import Daml.Finance.Interface.Asset.Fungible qualified as Fungible (I)
 import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Asset.Lockable qualified as Lockable (Lock(..), Unlock(..))
+import Daml.Finance.Interface.Asset.Lockable qualified as Lockable (Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Asset.Util (getAccount)
-import Daml.Finance.Interface.Common.Disclosure qualified as Disclosure (I, AddObserver(..), RemoveObserver(..))
+import Daml.Finance.Interface.Common.Disclosure qualified as Disclosure (I, AddObservers(..), RemoveObservers(..))
 import Daml.Finance.Interface.Common.Types (Parties)
 import Daml.Finance.Interface.Settlement.Instructable qualified as Instructable (I)
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Approve(..))
@@ -46,9 +46,9 @@ template Service
       do
         timestamp <- getTime
         collateral <- fetch collateralCid
-        disclosedCollateralCid <- coerceContractId <$> exercise collateralCid Disclosure.AddObserver with actor = singleton customer; observerToAdd = (id, singleton provider)
-        Account.exerciseInterfaceByKey @Disclosure.I (getAccount collateral) (singleton customer) Disclosure.AddObserver with actor = singleton customer; observerToAdd = (id, singleton provider)
-        Account.exerciseInterfaceByKey @Disclosure.I account (singleton customer) Disclosure.AddObserver with actor = singleton customer; observerToAdd = (id, singleton provider)
+        disclosedCollateralCid <- coerceContractId <$> exercise (coerceContractId collateralCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (id, singleton provider)
+        Account.exerciseInterfaceByKey @Disclosure.I (getAccount collateral) customer Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (id, singleton provider)
+        Account.exerciseInterfaceByKey @Disclosure.I account customer Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (id, singleton provider)
         create CreateOrderRequest with operator; provider; customer; id; timestamp; listingId; quantity; price; side; collateralCid = disclosedCollateralCid; account; orderCids; observers
 
     nonconsuming choice RequestCancelOrder : ContractId CancelOrderRequest
@@ -64,7 +64,7 @@ template Service
       controller provider
       do
         CreateOrderRequest{operator; provider; customer; id; timestamp; listingId; quantity; price; side; collateralCid; account; orderCids; observers} <- fetchAndArchive createOrderRequestCid
-        lockedCollateralCid : ContractId Fungible.I <- coerceContractId <$> exercise collateralCid Lockable.Lock with newLocker = (singleton provider)
+        lockedCollateralCid : ContractId Fungible.I <- coerceContractId <$> exercise (coerceContractId collateralCid : ContractId Lockable.I) Lockable.Acquire with newLocker = (singleton provider); context = id; lockType = Lockable.Semaphore
         orderCid <- create Order with operator; provider; customer; id; timestamp; listingId; quantity; price; side; collateralCid = lockedCollateralCid; account; observers
         exercise self ExecuteOrder with orderCid; orderCids
 
@@ -75,7 +75,7 @@ template Service
       do
         CancelOrderRequest{orderCid} <- fetchAndArchive cancelOrderRequestCid
         order <- fetchAndArchive orderCid
-        exercise order.collateralCid Lockable.Unlock
+        exercise (coerceContractId order.collateralCid : ContractId Lockable.I) Lockable.Release with context = order.id
         pure ()
 
     nonconsuming choice ExecuteOrder : Optional (ContractId Order, Order)
@@ -100,19 +100,18 @@ template Service
                 FillResult{orderOpt; settleableCid; instructionCid} <- exercise myCid Fill with instructableCid; other
                 exercise otherCid ApproveInstruction with instructionCid
                 [transferableCid] <- exercise settleableCid Settleable.Settle
-                -- TODO: Only works once we remove the owner as controller from Unlock (update Daml.Finance to get that in)
-                -- exercise transferableCid Lockable.Unlock
+                exercise (coerceContractId transferableCid : ContractId Lockable.I) Lockable.Release with context = my.id
                 FillResult{orderOpt = otherOpt; settleableCid; instructionCid} <- exercise otherCid Fill with instructableCid; other = my
                 exercise instructionCid Instruction.Approve with receiverAccount = my.account
                 [transferableCid] <- exercise settleableCid Settleable.Settle
-                exercise transferableCid Lockable.Unlock
+                exercise (coerceContractId transferableCid : ContractId Lockable.I) Lockable.Release with context = other.id
                 when (isNone orderOpt) do
-                  Account.exerciseInterfaceByKey @Disclosure.I my.account (singleton provider) Disclosure.RemoveObserver with observerToRemove = (my.id, singleton provider)
-                  Account.exerciseInterfaceByKey @Disclosure.I (getAccount myCollateral) (singleton provider) Disclosure.RemoveObserver with observerToRemove = (my.id, singleton provider)
+                  Account.exerciseInterfaceByKey @Disclosure.I my.account provider Disclosure.RemoveObservers with observersToRemove = (my.id, singleton provider)
+                  Account.exerciseInterfaceByKey @Disclosure.I (getAccount myCollateral) provider Disclosure.RemoveObservers with observersToRemove = (my.id, singleton provider)
                   pure ()
                 when (isNone otherOpt) do
-                  Account.exerciseInterfaceByKey @Disclosure.I other.account (singleton provider) Disclosure.RemoveObserver with observerToRemove = (other.id, singleton provider)
-                  Account.exerciseInterfaceByKey @Disclosure.I (getAccount otherCollateral) (singleton provider) Disclosure.RemoveObserver with observerToRemove = (other.id, singleton provider)
+                  Account.exerciseInterfaceByKey @Disclosure.I other.account provider Disclosure.RemoveObservers with observersToRemove = (other.id, singleton provider)
+                  Account.exerciseInterfaceByKey @Disclosure.I (getAccount otherCollateral) provider Disclosure.RemoveObservers with observersToRemove = (other.id, singleton provider)
                   pure ()
                 pure orderOpt
         foldlA match (Some (orderCid, order)) orders

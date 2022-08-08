@@ -39,8 +39,8 @@ template Service
         let
           spot id t = do
             let Some (obsCid, obs) = find (\(_, o) -> (Interface.view o).obsKey == id) observables
-            exercise obsCid Interface.Observe with party = singleton customer; t
-        Lifecycle.Result{remaining, pending} <- Lifecycle.lifecycle spot claims today
+            exercise obsCid Interface.Observe with actors = singleton customer; t
+        Lifecycle.Result{remaining, pending} <- Lifecycle.lifecycle spot claims today today
         pure (remaining, pending)
 
     nonconsuming choice Lifecycle : (ContractId Interface.Lifecyclable, [ContractId Effect])
@@ -52,7 +52,7 @@ template Service
         lifecyclableCid : ContractId Interface.Lifecyclable
       controller customer
       do
-        exercise lifecyclableCid Interface.Lifecycle with ruleName; settler = singleton provider; eventCid; clockCid; observableCids
+        exercise lifecyclableCid Interface.Lifecycle with ruleName; settler = provider; eventCid; clockCid; observableCids
 
     nonconsuming choice Expiry : Optional Time
       with

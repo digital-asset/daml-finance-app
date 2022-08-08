@@ -15,7 +15,6 @@ import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance
 import { Service as B2BService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/BackToBack/Service";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
-import { values } from "../../util";
 import { Reference as AccountReference } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Account";
 
 export const New : React.FC = () => {
@@ -36,7 +35,7 @@ export const New : React.FC = () => {
   const { contracts: derivatives, loading: l3 } = useStreamQueries(Derivative);
   const { contracts: accounts, loading: l4 } = useStreamQueries(AccountReference);
 
-  const instruments = derivatives.filter(c => values(c.payload.issuer).includes(party));
+  const instruments = derivatives.filter(c => c.payload.issuer === party);
   const instrument = instruments.find(c => c.payload.id.label === assetLabel);
   const hasB2B = b2bServices.length > 0;
 
@@ -54,8 +53,8 @@ export const New : React.FC = () => {
   const requestIssuance = async () => {
     // TODO: Accounts should be selectable
     if (hasB2B && isB2B) {
-      const customerAccount = accounts.find(c => c.payload.accountView.custodian.map.has(party) && c.payload.accountView.owner.map.has(party));
-      const providerAccount = accounts.find(c => c.payload.accountView.custodian.map.has(myB2BServices[0].payload.provider) && c.payload.accountView.owner.map.has(myB2BServices[0].payload.provider));
+      const customerAccount = accounts.find(c => c.payload.accountView.custodian === party && c.payload.accountView.owner === party);
+      const providerAccount = accounts.find(c => c.payload.accountView.custodian === myB2BServices[0].payload.provider && c.payload.accountView.owner === myB2BServices[0].payload.provider);
       if (!instrument || !customerAccount || !providerAccount) return;
       const arg = {
         id: uuidv4(),
@@ -65,7 +64,7 @@ export const New : React.FC = () => {
       };
       await ledger.exercise(B2BService.CreateIssuance, myB2BServices[0].contractId, arg);
     } else {
-      const account = accounts.find(c => c.payload.accountView.custodian.map.has(myDirectServices[0].payload.provider) && c.payload.accountView.owner.map.has(party));
+      const account = accounts.find(c => c.payload.accountView.custodian === myDirectServices[0].payload.provider && c.payload.accountView.owner === party);
       if (!instrument || !account) return;
       const arg = {
         id: uuidv4(),

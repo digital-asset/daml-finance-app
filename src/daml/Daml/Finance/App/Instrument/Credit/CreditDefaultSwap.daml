@@ -4,7 +4,7 @@
 module Daml.Finance.App.Instrument.Credit.CreditDefaultSwap where
 
 import ContingentClaims.Observation (Observation(..))
-import ContingentClaims.Claim (Claim(..), Inequality(..), and)
+import ContingentClaims.Claim (Claim, Inequality(..), and, give, one, scale, until, when)
 import Daml.Finance.App.Data.HolidayCalendar (HolidayCalendar)
 import Daml.Finance.Interface.Asset.Instrument (Instrument)
 import Daml.Finance.Common.Date.Calendar (BusinessDayConventionEnum)
@@ -43,9 +43,9 @@ template Factory
             coupon = adjustCoupon couponPerAnnum couponPeriod couponPeriodMultiplier
             coupons = stream coupon currency dates
             defaultCondition = Lte (Const 1.0, Observe defaultProb)
-            paymentLeg = Until defaultCondition coupons
+            paymentLeg = until defaultCondition coupons
             cashPayment = Add (Const 1.0, Neg (Observe recoveryRate))
-            cashSettlement = Scale cashPayment $ One currency
-            physicalSettlement = Give (One underlying) `and` One currency
-            creditLeg = When defaultCondition $ if isCashSettled then cashSettlement else physicalSettlement
+            cashSettlement = scale cashPayment $ one currency
+            physicalSettlement = give (one underlying) `and` one currency
+            creditLeg = when defaultCondition $ if isCashSettled then cashSettlement else physicalSettlement
           pure $ paymentLeg `and` creditLeg

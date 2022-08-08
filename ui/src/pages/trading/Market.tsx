@@ -14,10 +14,10 @@ import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Trading/
 import { Service as AutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Trading/Auto/Service";
 import { CreateEvent } from "@daml/ledger";
 import { ContractId } from "@daml/types";
-import { createSet, fmt, getParty, setEquals, values } from "../../util";
+import { createSet, fmt, getParty } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { Percentage } from "../../components/Slider/Percentage";
-import { Holding } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Holding";
+import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fungible";
 import { Reference } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Account";
 
 export const Market : React.FC = () => {
@@ -64,7 +64,7 @@ export const Market : React.FC = () => {
   const { contracts: services, loading: l1 } = useStreamQueries(Service);
   const { contracts: autoServices, loading: l2 } = useStreamQueries(AutoService);
   const { contracts: listings, loading: l3 } = useStreamQueries(ListingContract);
-  const { contracts: holdings, loading: l4 } = useStreamQueries(Holding);
+  const { contracts: holdings, loading: l4 } = useStreamQueries(Fungible);
   const { contracts: accounts, loading: l5 } = useStreamQueries(Reference);
   const { contracts: orders, loading: l6 } = useStreamQueries(Order);
   const { contractId } = useParams<any>();
@@ -85,18 +85,18 @@ export const Market : React.FC = () => {
   const bids = limits.filter(c => c.payload.side === Side.Buy).sort((a, b) => parseFloat(b.payload.price.amount) - parseFloat(a.payload.price.amount));
   const asks = limits.filter(c => c.payload.side === Side.Sell).sort((a, b) => parseFloat(b.payload.price.amount) - parseFloat(a.payload.price.amount));
 
-  const available = holdings.filter(c => values(c.payload.locker).length === 0);
+  const available = holdings.filter(c => !c.payload.lock);
   const tradedHoldings = available.filter(c => c.payload.instrument.id.label === listing.payload.tradedInstrument.id.label); // TODO: Doesn't support instrument versions
   const quotedHoldings = available.filter(c => c.payload.instrument.id.label === listing.payload.quotedInstrument.id.label); // TODO: Doesn't support instrument versions
   const tradedHoldingsTotal = tradedHoldings.reduce((acc, c) => acc + parseFloat(c.payload.amount), 0);
   const quotedHoldingsTotal = quotedHoldings.reduce((acc, c) => acc + parseFloat(c.payload.amount), 0);
   const availableQuantity = isBuy ? fmt(quotedHoldingsTotal) + " " + listing.payload.quotedInstrument.id.label : fmt(tradedHoldingsTotal) + " " + listing.payload.tradedInstrument.id.label;
 
-  const getAsset = async (holdings : CreateEvent<Holding>[], amount : number) : Promise<ContractId<Holding> | null> => {
+  const getAsset = async (holdings : CreateEvent<Fungible>[], amount : number) : Promise<ContractId<Fungible> | null> => {
     const holding = holdings.find(c => parseFloat(c.payload.amount) >= amount);
     if (!holding) return null;
     if (parseFloat(holding.payload.amount) > amount) {
-      const [splitResult, ] = await ledger.exercise(Holding.Split, holding.contractId, { amounts: [amount.toString()] });
+      const [splitResult, ] = await ledger.exercise(Fungible.Split, holding.contractId, { amounts: [amount.toString()] });
       return splitResult.splitCids[0];
     }
     return holding.contractId;
@@ -104,7 +104,7 @@ export const Market : React.FC = () => {
 
   const requestCreateOrder = async () => {
     const collateralCid = isBuy ? await getAsset(quotedHoldings, price * amount) : await getAsset(tradedHoldings, amount);
-    const account = accounts.find(c => setEquals(c.payload.accountView.custodian, listing.payload.tradedInstrument.depository));
+    const account = accounts.find(c => c.payload.accountView.custodian === listing.payload.tradedInstrument.depository);
     const orderCids = isBuy ? asks.map(c => c.contractId) : bids.map(c => c.contractId);
     if (!collateralCid || !account) return;
     const arg = {

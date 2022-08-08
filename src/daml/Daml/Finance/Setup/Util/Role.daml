@@ -1,7 +1,7 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module Setup.Util.Role where
+module Daml.Finance.Setup.Util.Role where
 
 import DA.Set (singleton)
 import Daml.Finance.Settlement.Batch (BatchFactory(..))
@@ -29,5 +29,5 @@ createDistributorRole : Party -> Party -> Script (ContractId Distributor.Role)
 createDistributorRole operator distributor = do
   offerCid    <- submit operator    do exerciseByKeyCmd @Operator.Role operator Operator.OfferDistributorRole with provider = distributor
   roleCid     <- submit distributor do exerciseCmd offerCid Distributor.Accept
-  submit distributor do createCmd BatchFactory with requestor = singleton distributor
+  submit distributor do createCmd BatchFactory with requestors = singleton distributor
   pure roleCid

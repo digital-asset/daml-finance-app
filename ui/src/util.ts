@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Set } from "@daml.js/97b883cd8a2b7f49f90d5d39c981cf6e110cf1f1c64427a28a6d58ec88c43657/lib/DA/Set/Types"
-import { Holding } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Holding";
+import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fungible";
 import { Instrument as Base } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Instrument";
 import { Instrument as Derivative } from "@daml.js/daml-finance-derivative/lib/Daml/Finance/Derivative/Instrument";
 import { InstrumentKey } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Types";
@@ -49,7 +49,7 @@ export const singleton = <T>(value: T) : Set<T> => {
 export const parseDate = (d : Date | null) => (!!d && d.toString() !== "Invalid Date" && new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10)) || "";
 
 export const keyEquals = (k1 : InstrumentKey, k2 : InstrumentKey) : boolean => {
-  return setEquals(k1.depository, k2.depository) && setEquals(k1.issuer, k2.issuer) && k1.id.label === k2.id.label && k1.id.version === k2.id.version;
+  return k1.depository === k2.depository && k1.issuer === k2.issuer && k1.id.label === k2.id.label && k1.id.version === k2.id.version;
 };
 
 export const fmt = (x : number | string, decimals?: number) => {
@@ -97,20 +97,20 @@ export function getTemplateId(t : string) {
   return parts[0] + "." + parts[1];
 }
 
-export const getHolding = async (ledger : Ledger, holdings : CreateEvent<Holding>[], amount : number, instrument: InstrumentKey) : Promise<ContractId<Holding>> => {
-  const filtered = holdings.filter(c => keyEquals(c.payload.instrument, instrument) && c.payload.locker.map.entriesArray().length === 0);
+export const getHolding = async (ledger : Ledger, holdings : CreateEvent<Fungible>[], amount : number, instrument: InstrumentKey) : Promise<ContractId<Fungible>> => {
+  const filtered = holdings.filter(c => keyEquals(c.payload.instrument, instrument) && !c.payload.lock);
   const sum = filtered.reduce((a, b) => a + parseFloat(b.payload.amount), 0);
   if (filtered.length === 0 || sum < amount) throw new Error("Insufficient holdings (" + sum.toFixed(4) + ") found for: " + amount.toFixed(4) + " " + id(instrument.id));
   if (filtered.length === 1 && sum === amount) return filtered[0].contractId;
   if (filtered.length === 1 && sum > amount) {
-    const [ { splitCids, }, ] = await ledger.exercise(Holding.Split, filtered[0].contractId, { amounts: [ amount.toString() ] });
+    const [ { splitCids, }, ] = await ledger.exercise(Fungible.Split, filtered[0].contractId, { amounts: [ amount.toString() ] });
     return splitCids[0];
   }
   const [h, ...t] = filtered;
-  const [fungibleCid, ] = await ledger.exercise(Holding.Merge, h.contractId, { fungibleCids: t.map(c => c.contractId) });
-  const mergedCid = fungibleCid as unknown as ContractId<Holding>;
+  const [fungibleCid, ] = await ledger.exercise(Fungible.Merge, h.contractId, { fungibleCids: t.map(c => c.contractId) });
+  const mergedCid = fungibleCid as unknown as ContractId<Fungible>;
   if (sum === amount) return mergedCid;
 
-  const [ { splitCids, }, ] = await ledger.exercise(Holding.Split, mergedCid, { amounts: [ amount.toString() ] });
+  const [ { splitCids, }, ] = await ledger.exercise(Fungible.Split, mergedCid, { amounts: [ amount.toString() ] });
   return splitCids[0];
 }

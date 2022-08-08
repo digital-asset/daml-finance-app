@@ -7,10 +7,10 @@ import DA.Set (singleton)
 import Daml.Finance.Interface.Asset.Account qualified as Account (K, R)
 import Daml.Finance.Interface.Asset.Fungible qualified as Fungible (I)
 import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Asset.Lockable qualified as Lockable (I, Lock(..), Unlock(..))
+import Daml.Finance.Interface.Asset.Lockable qualified as Lockable (Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Asset.Transferable qualified as Transferable (I)
 import Daml.Finance.Interface.Asset.Util (getAccount)
-import Daml.Finance.Interface.Common.Disclosure qualified as Disclosure (AddObserver(..))
+import Daml.Finance.Interface.Common.Disclosure qualified as Disclosure (AddObservers(..), I)
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..), I)
 
 data Status
@@ -21,6 +21,7 @@ data Status
 data BackToBack = BackToBack
   with
     party : Party
+    offeringId : Text
     issuerReceivableAccount : Account.K
     issuerDeliverableCid : ContractId Fungible.I
     b2bReceivableAccount : Account.K
@@ -57,16 +58,16 @@ template Offering
       do
         -- Disclose holding
         investorHolding <- fetch investorHoldingCid
-        investorHoldingCid : ContractId Fungible.I <- coerceContractId <$> exercise investorHoldingCid Disclosure.AddObserver with actor = singleton investor; observerToAdd = (offeringId, singleton issuer)
+        investorHoldingCid : ContractId Fungible.I <- coerceContractId <$> exercise (coerceContractId investorHoldingCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton investor; observersToAdd = (offeringId, singleton issuer)
         -- Disclose delivering securities account
         let investorSendingAccount = getAccount investorHolding
         (_, delRef) <- fetchByKey @Account.R investorSendingAccount
-        exercise delRef.cid Disclosure.AddObserver with actor = singleton investor; observerToAdd = (offeringId, singleton issuer)
+        exercise (coerceContractId delRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton investor; observersToAdd = (offeringId, singleton issuer)
         -- Disclose receiving cash account
         (_, recRef) <- fetchByKey @Account.R investorAccount
-        exercise recRef.cid Disclosure.AddObserver with actor = singleton investor; observerToAdd = (offeringId, singleton issuer)
+        exercise (coerceContractId recRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton investor; observersToAdd = (offeringId, singleton issuer)
         -- Lock holding
-        investorHoldingCid <- coerceContractId <$> exercise investorHoldingCid Lockable.Lock with newLocker = singleton issuer
+        investorHoldingCid <- coerceContractId <$> exercise (coerceContractId investorHoldingCid : ContractId Lockable.I) Lockable.Acquire with newLocker = singleton issuer; context = offeringId; lockType = Lockable.Semaphore
         create Subscription with holdingCid = investorHoldingCid; accountKey = investorAccount; ..
 
 template Subscription
@@ -103,4 +104,4 @@ template Subscription
         lockableCid : ContractId Lockable.I
       controller provider
       do
-        exercise lockableCid Lockable.Unlock
+        exercise lockableCid Lockable.Release with context = offeringId

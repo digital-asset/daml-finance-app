@@ -9,10 +9,10 @@ import DA.Set (singleton)
 import Daml.Finance.Interface.Asset.Account qualified as Account (K, exerciseInterfaceByKey)
 import Daml.Finance.Interface.Asset.Fungible qualified as Fungible (I, Split(..))
 import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (qty)
-import Daml.Finance.Interface.Asset.Lockable qualified as Lockable (Lock(..), Unlock(..))
+import Daml.Finance.Interface.Asset.Lockable qualified as Lockable (Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Asset.Transferable qualified as Transferable (I)
 import Daml.Finance.Interface.Asset.Util (getAccount, getAmount, getInstrument)
-import Daml.Finance.Interface.Common.Disclosure qualified as Disclosure (AddObserver(..), I)
+import Daml.Finance.Interface.Common.Disclosure qualified as Disclosure (AddObservers(..), I)
 import Daml.Finance.App.Distribution.Auction.Model qualified as Auction (T)
 import Daml.Finance.App.Distribution.Bidding.Model (Bid(..), CreateBidRequest(..), Details(..), Status(..), UpdateStatus(..))
 
@@ -55,13 +55,12 @@ template Service
       do
         CreateBidRequest{auctionId; collateralCid; receivableAccount; price; quantity} <- fetch createBidRequestCid
 
-        collateralCid <- coerceContractId <$> exercise collateralCid Lockable.Lock with newLocker = singleton provider
+        collateralCid <- coerceContractId <$> exercise (coerceContractId collateralCid : ContractId Lockable.I) Lockable.Acquire with newLocker = singleton provider; context = auctionId; lockType = Lockable.Semaphore
         collateral <- fetch collateralCid
 
         -- Disclosure
-        let actor = singleton customer
-        Account.exerciseInterfaceByKey @Disclosure.I (getAccount collateral) actor Disclosure.AddObserver with actor; observerToAdd = (auctionId, singleton provider)
-        Account.exerciseInterfaceByKey @Disclosure.I receivableAccount actor Disclosure.AddObserver with actor; observerToAdd = (auctionId, singleton provider)
+        Account.exerciseInterfaceByKey @Disclosure.I (getAccount collateral) customer Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (auctionId, singleton provider)
+        Account.exerciseInterfaceByKey @Disclosure.I receivableAccount customer Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (auctionId, singleton provider)
 
         time <- getTime
         create Bid with operator; provider; customer; details = (Details with price; quantity; time); auctionId; collateralCid; receivableAccount; status = Pending
@@ -75,7 +74,7 @@ template Service
       do
         -- Fetch Bid -> Extract their deposit -> Split and return unused allocation (if necessary) to the investor -> Update Bid Status
         bid <- fetch bidCid
-        bidCollateralCid : ContractId Fungible.I <- coerceContractId <$> exercise bid.collateralCid Lockable.Unlock
+        bidCollateralCid : ContractId Fungible.I <- coerceContractId <$> exercise (coerceContractId bid.collateralCid : ContractId Lockable.I) Lockable.Release with context = bid.auctionId
         bidCollateral <- fetch bidCollateralCid
         bidCollateralCid <-
           if getAmount bidCollateral > amount * price
@@ -95,7 +94,7 @@ template Service
       controller provider
       do
         bid <- fetch bidCid
-        returnedCollateralCid <- exercise bid.collateralCid Lockable.Unlock
+        returnedCollateralCid <- exercise (coerceContractId bid.collateralCid : ContractId Lockable.I) Lockable.Release with context = bid.auctionId
         newBidCid <- exercise bidCid UpdateStatus with newStatus
         pure (newBidCid, coerceContractId returnedCollateralCid)
 

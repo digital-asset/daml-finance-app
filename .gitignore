@@ -1,5 +1,5 @@
 /.dev
-/.daml
+.daml
 /log
 .DS_Store
 
@@ -21,3 +21,4 @@ yarn.lock
 .vscode/
 daml.js/
 .dars/
+lib/*

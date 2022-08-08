@@ -38,11 +38,12 @@ export const NewCustom : React.FC = () => {
     const claims = nodeToClaim(node);
     if (customerServices.length === 0) return;
     const arg = {
-      depository: singleton(party),
-      issuer: singleton(party),
+      depository: party,
+      issuer: party,
       id: { label, version: uuidv4() },
       claims,
       observers: emptyMap<string, any>().set("", singleton(singleton(getParty("Public")))),
+      acquisitionTime: new Date(1970, 1, 1).toISOString(),
       lastEventTimestamp: new Date(1970, 1, 1).toISOString()
     }
     await ledger.create(Derivative, arg);
