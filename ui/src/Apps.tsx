@@ -7,13 +7,12 @@ import { makeStyles, createStyles } from "@mui/styles";
 import origination from "./images/origination.jpg";
 import issuance from "./images/issuance.jpg";
 import custody from "./images/custody.jpg";
-import distribution from "./images/distribution.png";
+import distribution from "./images/distribution.jpg";
 import lifecycling from "./images/lifecycling.jpg";
 import simulation from "./images/simulation.jpg";
 import listing from "./images/listing.png";
 import trading from "./images/trading.jpg";
-// import defi from "./images/defi.jpg";
-// import network from "./images/network.jpg";
+import network from "./images/network.png";
 import { Header } from "./components/Header/Header";
 import { App } from "./components/Card/App";
 
@@ -34,7 +33,7 @@ export const Apps : React.FC = () => {
             <App label="Simulation"           description="Run market scenarios on your assets"     image={simulation}    path="/simulation/scenario" />
             <App label="Listing"              description="List your assets on trading venues"      image={listing}       path="/listing/listings" />
             <App label="Trading"              description="Trade assets in the secondary market"    image={trading}       path="/trading/markets" />
-            {/* <App label="DeFi"                 description="Access decentralized finance protocols"  image={defi}          path="/defi/trading" /> */}
+            <App label="Network"              description="Explore the distributed ledger network"  image={network}       path="/network/overview" />
           </Grid>
         </Grid>
       </Grid>

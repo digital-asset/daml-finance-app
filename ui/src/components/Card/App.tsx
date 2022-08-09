@@ -19,7 +19,7 @@ export const App : React.FC<AppProps> = ({ label, description, image, path }) =>
   const navigate = useNavigate()
 
   return (
-    <Grid item xs={12} sm={6} md={3} lg={3}>
+    <Grid item xs={12} sm={6} md={4} lg={4}>
       <Card className={classes.card}>
         <Box border={1} borderColor="primary.main" style={{ height: "100%"}}>
           <CardActionArea onClick={() => navigate(path)}>

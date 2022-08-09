@@ -21,7 +21,7 @@ import { Simulation } from "./apps/Simulation";
 import LocalizationProvider from "@mui/lab/LocalizationProvider";
 import AdapterDateFns from "@mui/lab/AdapterDateFns";
 import { useBranding } from "./context/BrandingContext";
-// import { DeFi } from "./apps/DeFi";
+import { Network } from "./apps/Network";
 
 export const Main : React.FC = () => {
   const user = useUserState();
@@ -78,7 +78,7 @@ export const Main : React.FC = () => {
               <Route path="/simulation/*" element={<Simulation />} />
               <Route path="/listing/*" element={<Listing />} />
               <Route path="/trading/*" element={<Trading />} />
-              {/* <Route path="/defi/*" element={<DeFi />} /> */}
+              <Route path="/network/*" element={<Network />} />
               <Route element={<ErrorComponent />} />
             </Routes>
           </HashRouter>
