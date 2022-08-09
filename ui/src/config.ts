@@ -46,10 +46,10 @@ export const scenarios : Scenario[] = [
       [ "Registry",     { x:  400, y:   0 } ],
       [ "Exchange",     { x:  800, y:   0 } ],
       [ "Agent",        { x: 1200, y: 200 } ],
-      [ "Issuer",       { x:    0, y: 400 } ],
+      [ "Issuer",       { x:  200, y: 480 } ],
       [ "Alice",        { x:  400, y: 600 } ],
       [ "Bob",          { x:  800, y: 600 } ],
-      [ "Charlie",      { x: 1200, y: 400 } ]
+      [ "Charlie",      { x: 1000, y: 480 } ]
     ])
   }
 ]
