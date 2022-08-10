@@ -4,23 +4,14 @@
 import React from "react";
 import PlayArrow from "@mui/icons-material/PlayArrow";
 import { RouteEntry } from "../components/Sidebar/RouteEntry";
-// import { Requests } from "../pages/origination/Requests";
-import { Instruments } from "../pages/origination/Instruments";
-// import { Instrument } from "../pages/origination/Instrument";
-import { New } from "../pages/origination/New";
+import { Instruments } from "../pages/structuring/Instruments";
+import { New } from "../pages/structuring/New";
 import { App } from "./App";
-import { Instrument } from "../pages/origination/Instrument";
-import { NewCustom } from "../pages/origination/NewCustom";
-// import { NewBaseInstrument } from "../pages/origination/NewBaseInstrument";
-// import { NewBinaryOption } from "../pages/origination/NewBinaryOption";
-// import { NewFixedRateBond } from "../pages/origination/NewFixedRateBond";
-// import { NewFloatingRateBond } from "../pages/origination/NewFloatingRateBond";
-// import { NewCds } from "../pages/origination/NewCds";
-// import { NewConvertibleNote } from "../pages/origination/NewConvertibleNote";
-// import { NewTotalReturnSwap } from "../pages/origination/NewTotalReturnSwap";
-// import { NewTurboWarrant } from "../pages/origination/NewTurboWarrant";
+import { Instrument } from "../pages/structuring/Instrument";
+import { NewCustom } from "../pages/structuring/NewCustom";
+import { NewFixedRateBond } from "../pages/structuring/NewFixedRateBond";
 
-export const Origination : React.FC = () => {
+export const Structuring : React.FC = () => {
   const entries : RouteEntry[] =
     [ { path: "instruments", element: <Instruments />, label: "Instruments", icon: <PlayArrow/> }
     // , { path: "requests", element: <Requests />, label: "Requests", icon: <PlayArrow/> }

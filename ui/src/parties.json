@@ -1,97 +1,97 @@
 [{
   "scenario": "Default",
   "name": "Operator",
-  "id": "DefaultOperator::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+  "id": "DefaultOperator::1220a2ab99e9cc2bdba264fb2b3defcec6a7eff5fc05e06e73d4e5836e792bc60b6a"
 }, {
   "scenario": "Default",
   "name": "Public",
-  "id": "DefaultPublic::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+  "id": "DefaultPublic::1220a2ab99e9cc2bdba264fb2b3defcec6a7eff5fc05e06e73d4e5836e792bc60b6a"
 }, {
   "scenario": "Default",
   "name": "CentralBank",
-  "id": "DefaultCentralBank::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+  "id": "DefaultCentralBank::1220a2ab99e9cc2bdba264fb2b3defcec6a7eff5fc05e06e73d4e5836e792bc60b6a"
 }, {
   "scenario": "Default",
   "name": "Registry",
-  "id": "DefaultRegistry::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+  "id": "DefaultRegistry::1220a2ab99e9cc2bdba264fb2b3defcec6a7eff5fc05e06e73d4e5836e792bc60b6a"
 }, {
   "scenario": "Default",
   "name": "Exchange",
-  "id": "DefaultExchange::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+  "id": "DefaultExchange::1220a2ab99e9cc2bdba264fb2b3defcec6a7eff5fc05e06e73d4e5836e792bc60b6a"
 }, {
   "scenario": "Default",
   "name": "Agent",
-  "id": "DefaultAgent::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+  "id": "DefaultAgent::1220a2ab99e9cc2bdba264fb2b3defcec6a7eff5fc05e06e73d4e5836e792bc60b6a"
 }, {
   "scenario": "Default",
   "name": "Issuer",
-  "id": "DefaultIssuer::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+  "id": "DefaultIssuer::1220a2ab99e9cc2bdba264fb2b3defcec6a7eff5fc05e06e73d4e5836e792bc60b6a"
 }, {
   "scenario": "Default",
   "name": "Alice",
-  "id": "DefaultAlice::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+  "id": "DefaultAlice::1220a2ab99e9cc2bdba264fb2b3defcec6a7eff5fc05e06e73d4e5836e792bc60b6a"
 }, {
   "scenario": "Default",
   "name": "Bob",
-  "id": "DefaultBob::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+  "id": "DefaultBob::1220a2ab99e9cc2bdba264fb2b3defcec6a7eff5fc05e06e73d4e5836e792bc60b6a"
 }, {
   "scenario": "Default",
   "name": "Charlie",
-  "id": "DefaultCharlie::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+  "id": "DefaultCharlie::1220a2ab99e9cc2bdba264fb2b3defcec6a7eff5fc05e06e73d4e5836e792bc60b6a"
 }, {
   "scenario": "StructuredNotes",
   "name": "Operator",
-  "id": "StructuredNotesOperator::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+  "id": "StructuredNotesOperator::1220a2ab99e9cc2bdba264fb2b3defcec6a7eff5fc05e06e73d4e5836e792bc60b6a"
 }, {
   "scenario": "StructuredNotes",
   "name": "Public",
-  "id": "StructuredNotesPublic::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+  "id": "StructuredNotesPublic::1220a2ab99e9cc2bdba264fb2b3defcec6a7eff5fc05e06e73d4e5836e792bc60b6a"
 }, {
   "scenario": "StructuredNotes",
   "name": "CentralBank",
-  "id": "StructuredNotesCentralBank::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+  "id": "StructuredNotesCentralBank::1220a2ab99e9cc2bdba264fb2b3defcec6a7eff5fc05e06e73d4e5836e792bc60b6a"
 }, {
   "scenario": "StructuredNotes",
   "name": "Depository",
-  "id": "StructuredNotesDepository::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+  "id": "StructuredNotesDepository::1220a2ab99e9cc2bdba264fb2b3defcec6a7eff5fc05e06e73d4e5836e792bc60b6a"
 }, {
   "scenario": "StructuredNotes",
   "name": "Issuer",
-  "id": "StructuredNotesIssuer::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+  "id": "StructuredNotesIssuer::1220a2ab99e9cc2bdba264fb2b3defcec6a7eff5fc05e06e73d4e5836e792bc60b6a"
 }, {
   "scenario": "StructuredNotes",
   "name": "RiskTaker",
-  "id": "StructuredNotesRiskTaker::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+  "id": "StructuredNotesRiskTaker::1220a2ab99e9cc2bdba264fb2b3defcec6a7eff5fc05e06e73d4e5836e792bc60b6a"
 }, {
   "scenario": "StructuredNotes",
   "name": "Alice",
-  "id": "StructuredNotesAlice::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+  "id": "StructuredNotesAlice::1220a2ab99e9cc2bdba264fb2b3defcec6a7eff5fc05e06e73d4e5836e792bc60b6a"
 }, {
   "scenario": "StructuredNotes",
   "name": "Bob",
-  "id": "StructuredNotesBob::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+  "id": "StructuredNotesBob::1220a2ab99e9cc2bdba264fb2b3defcec6a7eff5fc05e06e73d4e5836e792bc60b6a"
 }, {
   "scenario": "StructuredNotes",
   "name": "Charlie",
-  "id": "StructuredNotesCharlie::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+  "id": "StructuredNotesCharlie::1220a2ab99e9cc2bdba264fb2b3defcec6a7eff5fc05e06e73d4e5836e792bc60b6a"
 }, {
   "scenario": "NaturalGas",
   "name": "Operator",
-  "id": "NaturalGasOperator::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+  "id": "NaturalGasOperator::1220a2ab99e9cc2bdba264fb2b3defcec6a7eff5fc05e06e73d4e5836e792bc60b6a"
 }, {
   "scenario": "NaturalGas",
   "name": "Public",
-  "id": "NaturalGasPublic::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+  "id": "NaturalGasPublic::1220a2ab99e9cc2bdba264fb2b3defcec6a7eff5fc05e06e73d4e5836e792bc60b6a"
 }, {
   "scenario": "NaturalGas",
   "name": "CashProvider",
-  "id": "NaturalGasCashProvider::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+  "id": "NaturalGasCashProvider::1220a2ab99e9cc2bdba264fb2b3defcec6a7eff5fc05e06e73d4e5836e792bc60b6a"
 }, {
   "scenario": "NaturalGas",
   "name": "Seller",
-  "id": "NaturalGasSeller::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+  "id": "NaturalGasSeller::1220a2ab99e9cc2bdba264fb2b3defcec6a7eff5fc05e06e73d4e5836e792bc60b6a"
 }, {
   "scenario": "NaturalGas",
   "name": "Buyer",
-  "id": "NaturalGasBuyer::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+  "id": "NaturalGasBuyer::1220a2ab99e9cc2bdba264fb2b3defcec6a7eff5fc05e06e73d4e5836e792bc60b6a"
 }]
