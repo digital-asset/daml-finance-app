@@ -3,13 +3,15 @@
 
 module Daml.Finance.Setup.Demo where
 
--- import Daml.Finance.Setup.NaturalGas (naturalGasDemo)
-import Daml.Finance.Setup.Standard (standardDemo)
--- import Daml.Finance.Setup.StructuredNotes (structuredNotesDemo)
+import Daml.Finance.Setup.Scenario.NaturalGas qualified as NaturalGas
+import Daml.Finance.Setup.Scenario.Default qualified as Default
+import Daml.Finance.Setup.Scenario.StructuredNotes qualified as StructuredNotes
+import Daml.Finance.Setup.Util.Common (PartyInfo)
 import Daml.Script
 
-demo : Script [(Text, Party)]
+demo : Script [PartyInfo]
 demo = do
-  standardDemo
-  -- structuredNotesDemo
-  -- naturalGasDemo
+  p1 <- Default.run
+  p2 <- StructuredNotes.run
+  p3 <- NaturalGas.run
+  pure $ p1 <> p2 <> p3

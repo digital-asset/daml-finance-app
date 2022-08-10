@@ -14,11 +14,12 @@ import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Trading/
 import { Service as AutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Trading/Auto/Service";
 import { CreateEvent } from "@daml/ledger";
 import { ContractId } from "@daml/types";
-import { createSet, fmt, getParty } from "../../util";
+import { createSet, fmt } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { Percentage } from "../../components/Slider/Percentage";
 import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fungible";
 import { Reference } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Account";
+import { useParties } from "../../hooks/Parties";
 
 export const Market : React.FC = () => {
   const classes = useStyles();
@@ -58,6 +59,7 @@ export const Market : React.FC = () => {
     setPercentage(perc);
   }
 
+  const { getParty } = useParties();
   const party = useParty();
   const ledger = useLedger();
 

@@ -22,6 +22,7 @@ import AdapterDateFns from "@mui/lab/AdapterDateFns";
 import { useBranding } from "./context/BrandingContext";
 import { Network } from "./apps/Network";
 import { Root } from "./pages/login/Root";
+import { Portal } from "./pages/login/Portal";
 
 export const Main : React.FC = () => {
   const user = useUserState();
@@ -68,7 +69,7 @@ export const Main : React.FC = () => {
           <HashRouter>
             <Routes>
               <Route path="/" element={<Navigate to="/apps" />} />
-              <Route path="/login" element={<Navigate to="/login/network" />} />
+              <Route path="/login" element={<Portal />} />
               <Route path="/login/*" element={<Root />} />
               <Route path="/apps" element={<Private><Apps /></Private>} />
               <Route path="/origination/*" element={<Origination />} />

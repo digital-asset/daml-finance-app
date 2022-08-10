@@ -10,12 +10,13 @@ import useStyles from "../../styles";
 import { CreateAuctionRequest } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Model";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Service";
 import { Spinner } from "../../../components/Spinner/Spinner";
-import { fmt, getName } from "../../../util";
+import { fmt } from "../../../util";
+import { useParties } from "../../../hooks/Parties";
 
 export const Requests : React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
-
+  const { getName } = useParties();
   const party = useParty();
   const ledger = useLedger();
 

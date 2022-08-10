@@ -1,8 +1,6 @@
 // Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { encode } from 'jwt-simple';
-import partyList from "./parties.json";
 
 type Position = {
   x : number
@@ -17,39 +15,44 @@ export type Scenario = {
 export const httpBaseUrl = undefined;
 export const wsBaseUrl = "ws://localhost:7575/";
 
-export const partyIds : any = {};
-partyList.forEach(p => partyIds[p._1] = p._2);
-export const partyNames : any = {};
-partyList.forEach(p => partyNames[p._2] = p._1);
-
-const createToken = (party : string) => {
-  const payload = {
-    ledgerId: "sandbox",
-    applicationId: "daml-finance-app",
-    admin: true,
-    actAs: [party],
-    readAs: [party, partyIds["Public"]]
-  };
-  return encode({ "https://daml.com/ledger-api": payload }, "secret", "HS256");
-};
-
-export const partyTokens : any = {};
-partyList.forEach(p => partyTokens[p._2] = createToken(p._2));
-
 export const scenarios : Scenario[] = [
   {
-    name: "Standard",
+    name: "Default",
     positions: new Map([
       [ "Operator",     { x:    0, y:   0 } ],
-      [ "Public",       { x:  200, y:   0 } ],
-      [ "CentralBank",  { x:    0, y: 200 } ],
-      [ "Registry",     { x:  400, y:   0 } ],
-      [ "Exchange",     { x:  800, y:   0 } ],
-      [ "Agent",        { x: 1200, y: 200 } ],
-      [ "Issuer",       { x:  200, y: 480 } ],
-      [ "Alice",        { x:  400, y: 600 } ],
-      [ "Bob",          { x:  800, y: 600 } ],
-      [ "Charlie",      { x: 1000, y: 480 } ]
+      [ "Public",       { x:    0, y:   0 } ],
+      [ "CentralBank",  { x:  400, y:   0 } ],
+      [ "Registry",     { x:  800, y:  50 } ],
+      [ "Exchange",     { x:  800, y: 550 } ],
+      [ "Agent",        { x:  400, y: 600 } ],
+      [ "Issuer",       { x: 1200, y: 300 } ],
+      [ "Alice",        { x:    0, y: 300 } ],
+      [ "Bob",          { x:  400, y: 300 } ],
+      [ "Charlie",      { x:  800, y: 300 } ]
+    ])
+  },
+  {
+    name: "Structured Notes",
+    positions: new Map([
+      [ "Operator",     { x:    0, y:   0 } ],
+      [ "Public",       { x:    0, y:   0 } ],
+      [ "Depository",   { x:    0, y:   0 } ],
+      [ "CentralBank",  { x:  200, y:   0 } ],
+      [ "Issuer",       { x:  100, y: 300 } ],
+      [ "RiskTaker",    { x:    0, y: 150 } ],
+      [ "Alice",        { x:  200, y: 450 } ],
+      [ "Bob",          { x:  400, y: 450 } ],
+      [ "Charlie",      { x:  600, y: 450 } ]
+    ])
+  },
+  {
+    name: "Natural Gas",
+    positions: new Map([
+      [ "Operator",     { x:    0, y:   0 } ],
+      [ "Public",       { x:    0, y:   0 } ],
+      [ "CentralBank",  { x:  200, y:   0 } ],
+      [ "Seller",       { x:  400, y: 200 } ],
+      [ "Buyer",        { x:    0, y: 400 } ]
     ])
   }
-]
+];

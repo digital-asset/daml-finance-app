@@ -1,7 +1,7 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module Daml.Finance.Setup.StructuredNotes where
+module Daml.Finance.Setup.Scenario.StructuredNotes where
 
 import ContingentClaims.Financial (unrollDates)
 import DA.Date (Month(..), addDays, date, toDateUTC, toGregorian)
@@ -18,16 +18,16 @@ import Daml.Finance.RefData.Observation (Observation(..))
 import Daml.Finance.RefData.Time.DateClock (DateClock(..), DateClockUpdateEvent(..), Unit(..))
 import Daml.Finance.Settlement.Batch (BatchFactory(..))
 import Daml.Finance.Setup.Payoff (bond, brc, buyWriteNote, futureDvp, putOptionCash, rc)
-import Daml.Finance.Setup.Util.Common (allocateParties)
+import Daml.Finance.Setup.Util.Common (PartyInfo, allocateParties)
 import Daml.Finance.Setup.Util.Role (createCustodianRole, createDistributorRole, createOperatorRole)
 import Daml.Finance.Setup.Util.Service (createBackToBackIssuanceService, createCustodyService, createIssuanceService, createLifecycleService, createSubscriptionService)
 import Daml.Finance.Setup.Util.Workflow (createAccount, createFactory, deposit, originate, originateDerivative)
 import Daml.Script (Script, createCmd, exerciseByKeyCmd, exerciseCmd, submitMulti)
 
-structuredNotesDemo : Script [(Text, Party)]
-structuredNotesDemo  = do
-  parties <- allocateParties ["Operator", "Public", "CentralBank", "Depository", "Issuer", "RiskTaker", "Alice", "Bob", "Charlie"]
-  let [operator, public, centralBank, depository, issuer, riskTaker, alice, bob, charlie] = map snd parties
+run : Script [PartyInfo]
+run  = do
+  parties <- allocateParties "StructuredNotes" ["Operator", "Public", "CentralBank", "Depository", "Issuer", "RiskTaker", "Alice", "Bob", "Charlie"]
+  let [operator, public, centralBank, depository, issuer, riskTaker, alice, bob, charlie] = map (.id) parties
 
   -- Roles
   createOperatorRole operator

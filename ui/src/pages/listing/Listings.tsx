@@ -10,13 +10,14 @@ import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/
 import { Service as AutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Auto/Service";
 import { Listing } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Model";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { getName } from "../../util";
+import { useParties } from "../../hooks/Parties";
 
 export const Listings : React.FC = () => {
   const classes = useStyles();
 
   const party = useParty();
   const ledger = useLedger();
+  const { getName } = useParties();
 
   const { contracts: services, loading: l1 } = useStreamQueries(Service);
   const { contracts: autoServices, loading: l2 } = useStreamQueries(AutoService);

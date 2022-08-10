@@ -17,11 +17,13 @@ import { useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
 import { Instrument } from "@daml.js/daml-finance-derivative/lib/Daml/Finance/Derivative/Instrument";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { getName, version } from "../../util";
+import { version } from "../../util";
+import { useParties } from "../../hooks/Parties";
 
 export const Instruments : React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
+  const { getName } = useParties();
   const { contracts: instruments, loading: l1 } = useStreamQueries(Instrument);
   if (l1) return (<Spinner />);
 

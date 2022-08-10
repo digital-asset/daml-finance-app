@@ -5,22 +5,23 @@ import { useStreamQueries } from "@daml/react";
 import { Service as BackToBackService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/BackToBack/Service"
 import { Service as CustodyService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Custody/Service"
 import { Service as AuctionService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Service"
-import { Service as AuctionAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Auto/Service"
+// import { Service as AuctionAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Auto/Service"
 import { Service as BiddingService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Bidding/Service"
-import { Service as BiddingAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Bidding/Auto/Service"
+// import { Service as BiddingAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Bidding/Auto/Service"
 import { Service as SubscriptionService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Service"
 import { Service as IssuanceService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Service"
-import { Service as IssuanceAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Auto/Service"
+// import { Service as IssuanceAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Auto/Service"
 import { Service as LifecycleService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Service"
 import { Service as ListingService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Service"
-import { Service as ListingAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Auto/Service"
+// import { Service as ListingAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Auto/Service"
 import { Service as TradingService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Trading/Service"
-import { Service as TradingAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Trading/Auto/Service"
+// import { Service as TradingAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Trading/Auto/Service"
 import { CreateEvent } from "@daml/ledger";
-import { dedup, getName } from "../util";
+import { dedup } from "../util";
 import { Edge, EdgeChange, MarkerType, Node, NodeChange, useEdgesState, useNodesState } from "react-flow-renderer";
 import { useEffect, useState } from "react";
 import { Scenario } from "../config";
+import { useParties } from "./Parties";
 
 export type Network = {
   nodes : Node<any>[],
@@ -41,44 +42,45 @@ type GroupedServices = {
 
 export const useNetwork = (scenario : Scenario) : Network => {
 
+  const { getName } = useParties();
   const { contracts: backToBackServices,   loading: l1 } =  useStreamQueries(BackToBackService);
   const { contracts: custodyServices,      loading: l2 } =  useStreamQueries(CustodyService);
   const { contracts: auctionServices,      loading: l3 } =  useStreamQueries(AuctionService);
-  const { contracts: auctionAutoServices,  loading: l4 } =  useStreamQueries(AuctionAutoService);
-  const { contracts: biddingServices,      loading: l5 } =  useStreamQueries(BiddingService);
-  const { contracts: biddingAutoServices,  loading: l6 } =  useStreamQueries(BiddingAutoService);
-  const { contracts: subscriptionServices, loading: l7 } =  useStreamQueries(SubscriptionService);
-  const { contracts: issuanceServices,     loading: l8 } =  useStreamQueries(IssuanceService);
-  const { contracts: issuanceAutoServices, loading: l9 } =  useStreamQueries(IssuanceAutoService);
-  const { contracts: lifecycleServices,    loading: l10 } = useStreamQueries(LifecycleService);
-  const { contracts: listingServices,      loading: l11 } = useStreamQueries(ListingService);
-  const { contracts: listingAutoServices,  loading: l12 } = useStreamQueries(ListingAutoService);
-  const { contracts: tradingServices,      loading: l13 } = useStreamQueries(TradingService);
-  const { contracts: tradingAutoServices,  loading: l14 } = useStreamQueries(TradingAutoService);
+  const { contracts: biddingServices,      loading: l4 } =  useStreamQueries(BiddingService);
+  const { contracts: subscriptionServices, loading: l5 } =  useStreamQueries(SubscriptionService);
+  const { contracts: issuanceServices,     loading: l6 } =  useStreamQueries(IssuanceService);
+  const { contracts: lifecycleServices,    loading: l7 } = useStreamQueries(LifecycleService);
+  const { contracts: listingServices,      loading: l8 } = useStreamQueries(ListingService);
+  const { contracts: tradingServices,      loading: l9 } = useStreamQueries(TradingService);
+  // const { contracts: auctionAutoServices,  loading: l10 } =  useStreamQueries(AuctionAutoService);
+  // const { contracts: biddingAutoServices,  loading: l11 } =  useStreamQueries(BiddingAutoService);
+  // const { contracts: issuanceAutoServices, loading: l12 } =  useStreamQueries(IssuanceAutoService);
+  // const { contracts: listingAutoServices,  loading: l13 } = useStreamQueries(ListingAutoService);
+  // const { contracts: tradingAutoServices,  loading: l14 } = useStreamQueries(TradingAutoService);
 
   const services : CreateEvent<any>[] = Array.prototype.concat.apply([], [
     backToBackServices,
     custodyServices,
     auctionServices,
-    auctionAutoServices,
+    // auctionAutoServices,
     biddingServices,
-    biddingAutoServices,
+    // biddingAutoServices,
     subscriptionServices,
     issuanceServices,
-    issuanceAutoServices,
+    // issuanceAutoServices,
     lifecycleServices,
     listingServices,
-    listingAutoServices,
+    // listingAutoServices,
     tradingServices,
-    tradingAutoServices
+    // tradingAutoServices
   ]);
 
   const createNode = (p : string, i : number) => ({
       id: p,
-      type: "default",
       data: { label: getName(p) },
       position: scenario.positions.get(getName(p)) || { x: 0, y: 0 },
-      style: { width: 160 }
+      style: { zIndex: 0, width: 160, cursor: "pointer" },
+      zIndex: 0
   });
 
   const createEdge = (c : GroupedServices) : Edge => ({
@@ -90,9 +92,12 @@ export const useNetwork = (scenario : Scenario) : Network => {
     labelBgBorderRadius: 4,
     labelBgStyle: c.provider === c.customer ? { fill: "#FFCC00", color: "#fff", fillOpacity: 0.7, transform: "translate(150px)" } : { fill: "#FFCC00", color: "#fff", fillOpacity: 0.7 },
     labelStyle: c.provider === c.customer ? { transform: "translate(150px)" } : {},
-    type: "default",
+    zIndex: 1,
+    type: "floating",
     markerEnd: {
       type: MarkerType.ArrowClosed,
+      strokeWidth: 3,
+      color: "#666"
     },
     // animated: true
   });
@@ -102,7 +107,7 @@ export const useNetwork = (scenario : Scenario) : Network => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!l1 && !l2 && !l3 && !l4 && !l5 && !l6 && !l7 && !l8 && !l9 && !l10 && !l11 && !l12 && !l13 && !l14) {
+    if (!l1 && !l2 && !l3 && !l4 && !l5 && !l6 && !l7 && !l8 && !l9) {
       const groupedServices : GroupedServices[] = [];
       services.forEach(c => {
         const elem = groupedServices.find(e => e.provider === c.payload.provider && e.customer === c.payload.customer);
@@ -114,7 +119,7 @@ export const useNetwork = (scenario : Scenario) : Network => {
       setEdges(groupedServices.map(createEdge));
       setLoading(false);
     };
-  }, [setNodes, setEdges, setLoading, l1, l2, l3, l4, l5, l6, l7, l8, l9, l10, l11, l12, l13, l14]);
+  }, [scenario, setNodes, setEdges, setLoading, l1, l2, l3, l4, l5, l6, l7, l8, l9]);
 
   return { nodes, setNodes, onNodesChange, edges, setEdges, onEdgesChange, loading };
 };

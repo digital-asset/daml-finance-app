@@ -11,11 +11,13 @@ import useStyles from "../../styles";
 import { Auction } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Model";
 import { getAuctionStatus } from "../Utils";
 import { Spinner } from "../../../components/Spinner/Spinner";
-import { fmt, getName } from "../../../util";
+import { fmt } from "../../../util";
+import { useParties } from "../../../hooks/Parties";
 
 export const Auctions : React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
+  const { getName } = useParties();
 
   const { contracts: auctions, loading: l1 } = useStreamQueries(Auction);
   if (l1) return (<Spinner />);

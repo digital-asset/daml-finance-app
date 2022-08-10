@@ -1,7 +1,7 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module Daml.Finance.Setup.NaturalGas where
+module Daml.Finance.Setup.Scenario.NaturalGas where
 
 import DA.Date (addDays, toDateUTC)
 import DA.Map (fromList)
@@ -14,25 +14,25 @@ import Daml.Finance.RefData.Observation (Observation(..))
 import Daml.Finance.RefData.Time.DateClock (DateClock(..), DateClockUpdateEvent(..), Unit(..))
 import Daml.Finance.Settlement.Batch (BatchFactory(..))
 import Daml.Finance.Setup.Payoff (ngCapped, ngConditionalLocation, ngLocationPricingOption, ngMultiLocation)
-import Daml.Finance.Setup.Util.Common (allocateParties)
+import Daml.Finance.Setup.Util.Common (PartyInfo, allocateParties)
 import Daml.Finance.Setup.Util.Role (createCustodianRole, createOperatorRole)
 import Daml.Finance.Setup.Util.Service (createCustodyService, createIssuanceService, createLifecycleService)
 import Daml.Finance.Setup.Util.Workflow (createAccount, createFactory, deposit, originate, originateDerivative)
 import Daml.Script (Script, createCmd, submitMulti)
 
-naturalGasDemo : Script [(Text, Party)]
-naturalGasDemo  = do
-  parties <- allocateParties ["Operator", "Public", "CentralBank", "Seller", "Buyer"]
-  let [operator, public, centralBank, seller, buyer] = map snd parties
+run : Script [PartyInfo]
+run  = do
+  parties <- allocateParties "NaturalGas" ["Operator", "Public", "CashProvider", "Seller", "Buyer"]
+  let [operator, public, cashProvider, seller, buyer] = map (.id) parties
 
   -- Roles
   createOperatorRole operator
-  createCustodianRole operator centralBank
+  createCustodianRole operator cashProvider
   createCustodianRole operator seller
 
   -- Services
-  createCustodyService operator centralBank seller
-  createCustodyService operator centralBank buyer
+  createCustodyService operator cashProvider seller
+  createCustodyService operator cashProvider buyer
   createCustodyService operator seller buyer
 
   createIssuanceService operator seller seller
@@ -60,12 +60,12 @@ naturalGasDemo  = do
   accountFactoryCid <- toInterfaceContractId <$> createFactory operator pub
   holdingFactoryCid <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory with provider = operator; observers = fromList pub
   let createAcc = createAccount [public] accountFactoryCid holdingFactoryCid
-  sellerCashAccount   <- createAcc [] centralBank seller "Seller@CentralBank"
-  buyerCashAccount    <- createAcc [] centralBank buyer "Buyer@CentralBank"
+  sellerCashAccount   <- createAcc [] cashProvider seller "Seller@CashProvider"
+  buyerCashAccount    <- createAcc [] cashProvider buyer "Buyer@CashProvider"
   buyerSecAccount     <- createAcc [] seller buyer "Buyer@Seller"
 
   -- Base Instruments
-  usd     <- originate centralBank centralBank pub todayTime "USD"
+  usd     <- originate cashProvider cashProvider pub todayTime "USD"
   z4200L  <- originate seller      seller      pub todayTime "Z4200L"
   z4GEN   <- originate seller      seller      pub todayTime "Z4GEN"
   z4300L  <- originate seller      seller      pub todayTime "Z4300L"
@@ -95,7 +95,7 @@ naturalGasDemo  = do
   submitMulti [seller, buyer] [] do createCmd Rule with custodian = seller; owner = buyer; claimers = singleton seller; settler = seller; instrumentLabel = ng4Name; instructableCid
 
   -- Positions
-  buyerCashCid <- deposit operator centralBank buyer public (Instrument.qty 1_000_000.0 usd) buyerCashAccount
+  buyerCashCid <- deposit operator cashProvider buyer public (Instrument.qty 1_000_000.0 usd) buyerCashAccount
   buyerSecCid1 <- deposit operator seller buyer      public (Instrument.qty 1.0 ng1) buyerSecAccount
   -- buyerSecCid2 <- deposit operator seller buyer      public    (qty 1.0 ng2) buyerSecAccount
   buyerSecCid2 <- deposit operator seller buyer      public (Instrument.qty 1.0 ng3) buyerSecAccount

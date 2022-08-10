@@ -14,8 +14,9 @@ import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
 import { nodeToClaim } from "../../components/Claims/util";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { createKeyBase, getParty, singleton } from "../../util";
+import { createKeyBase, singleton } from "../../util";
 import { emptyMap } from "@daml/types";
+import { useParties } from "../../hooks/Parties";
 
 export const NewCustom : React.FC = () => {
   const classes = useStyles();
@@ -24,6 +25,7 @@ export const NewCustom : React.FC = () => {
   const [ label, setLabel ] = useState("");
   const [ node, setNode ] = useState<ClaimTreeNode>({ id: uuidv4(), tag: "Claim", type: "Claim", children: [] });
 
+  const { getParty } = useParties();
   const ledger = useLedger();
   const party = useParty();
   const { contracts: services, loading: l1 } = useStreamQueries(Service);

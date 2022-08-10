@@ -1,13 +1,12 @@
 import React from "react";
 import ReactFlow, { Background, Controls, MiniMap } from "react-flow-renderer";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { scenarios } from "../../config";
 import { useNetwork } from "../../hooks/Network";
+import { useScenario } from "../../hooks/Scenario";
 
 export const Overview : React.FC = () => {
-
-  const scenario = scenarios[0];
-  const network = useNetwork(scenario);
+  const scenario = useScenario();
+  const network = useNetwork(scenario.selected);
   if (network.loading) return (<Spinner />);
 
   return (

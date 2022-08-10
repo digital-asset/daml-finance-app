@@ -3,7 +3,7 @@
 
 import React from "react";
 import { NavigateFunction } from "react-router-dom";
-import { getParty, getToken } from "../util";
+import { useParties } from "../hooks/Parties";
 
 const UserStateContext = React.createContext<UserState>({ isAuthenticated: false, name: "", party: "", token: "" });
 const UserDispatchContext = React.createContext<React.Dispatch<any>>({} as React.Dispatch<any>);
@@ -31,6 +31,8 @@ const userReducer = (state : UserState, action : any) => {
 
 const UserProvider : React.FC = ({ children }) => {
   const name = localStorage.getItem("daml.name") || "";
+  const { getParty, getToken } = useParties();
+
   const party = getParty(name);
   const token = getToken(party);
 
@@ -71,14 +73,14 @@ const useUserDispatch = () => {
 const loginUser = async (
     dispatch : React.Dispatch<any>,
     name : string,
+    party : string,
+    token : string,
     navigate : NavigateFunction,
     setError : React.Dispatch<React.SetStateAction<boolean>>) => {
   setError(false);
 
   if (!!name) {
 
-    var party = getParty(name);
-    var token = getToken(party);
     localStorage.setItem("daml.name", name);
 
     dispatch({ type: "LOGIN_SUCCESS", name, party, token });

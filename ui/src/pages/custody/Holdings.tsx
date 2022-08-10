@@ -6,8 +6,9 @@ import { Table, TableBody, TableCell, TableRow, TableHead, Grid, Paper, Typograp
 import { useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
 import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fungible";
-import { fmt, getName } from "../../util";
+import { fmt } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
+import { useParties } from "../../hooks/Parties";
 
 export type HoldingsProps = {
   showAssets : boolean
@@ -26,6 +27,7 @@ type PositionEntry = {
 export const Holdings : React.FC<HoldingsProps> = ({ showAssets }) => {
   const classes = useStyles();
   const party = useParty();
+  const { getName } = useParties();
 
   const { contracts: holdings, loading: l1 } = useStreamQueries(Fungible);
   if (l1) return (<Spinner />);

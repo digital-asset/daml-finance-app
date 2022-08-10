@@ -12,7 +12,7 @@ import useStyles from "../styles";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Service";
 import { CreateListingRequest, DeleteListingRequest, Listing } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Model";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { getName } from "../../util";
+import { useParties } from "../../hooks/Parties";
 
 export const Requests : React.FC = () => {
   const classes = useStyles();
@@ -20,6 +20,7 @@ export const Requests : React.FC = () => {
 
   const party = useParty();
   const ledger = useLedger();
+  const { getName } = useParties();
 
   const { contracts: listingServices, loading: l1 } = useStreamQueries(Service);
   const { contracts: createRequests, loading: l2 } = useStreamQueries(CreateListingRequest);
