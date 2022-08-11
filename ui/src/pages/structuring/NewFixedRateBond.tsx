@@ -70,7 +70,7 @@ export const NewFixedRateBond : React.FC = () => {
 //   }, [ledger, party, issueDate, maturityDate, coupon, couponFrequency, ccyId]);
 
   if (l1 || l2) return <Spinner />;
-  if (services.length === 0) return <Message text="No issuance service found" />
+  if (services.length === 0) return <Message text="No structuring service found" />
 
   const createFixedRateBond = async () => {
     const ccy = instruments.find(c => c.payload.id.label === currency);

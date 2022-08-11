@@ -34,7 +34,7 @@ export const scenarios : Scenario[] = [
       [ "Bob",          { x:  400, y: 300 } ],
       [ "Charlie",      { x:  800, y: 300 } ]
     ]),
-    useNetworkLogin: false
+    useNetworkLogin: true
   },
   {
     name: "Structured Notes",

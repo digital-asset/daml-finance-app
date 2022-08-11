@@ -10,12 +10,16 @@ import { Typography, Grid, Paper, Select, MenuItem, TextField, Button, MenuProps
 import useStyles from "../styles";
 import { claimToNode } from "../../components/Claims/util";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
-import { Instrument as Derivative } from "@daml.js/daml-finance-derivative/lib/Daml/Finance/Derivative/Instrument";
-import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Service";
-import { Service as B2BService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/BackToBack/Service";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
 import { Reference as AccountReference } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Account";
+import { useServices } from "../../context/ServicesContext";
+import { useInstruments } from "../../context/InstrumentsContext";
+import { CreateEvent } from "@daml/ledger";
+import { Service as BackToBack } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/BackToBack/Service";
+import { Service as IssuanceAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Auto/Service";
+import { Service as Issuance } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Service";
+import { Message } from "../../components/Message/Message";
 
 export const New : React.FC = () => {
   const classes = useStyles();
@@ -29,25 +33,28 @@ export const New : React.FC = () => {
 
   const ledger = useLedger();
   const party = useParty();
+  const svc = useServices();
+  const inst = useInstruments();
+  const { contracts: accounts, loading: l1 } = useStreamQueries(AccountReference);
 
-  const { contracts: directServices, loading: l1 } = useStreamQueries(Service);
-  const { contracts: b2bServices, loading: l2 } = useStreamQueries(B2BService);
-  const { contracts: derivatives, loading: l3 } = useStreamQueries(Derivative);
-  const { contracts: accounts, loading: l4 } = useStreamQueries(AccountReference);
+  const instruments : CreateEvent<any>[] = Array.prototype.concat.apply([],[
+    inst.tokens,
+    inst.derivatives,
+    inst.fixedRateBonds
+  ]);
 
-  const instruments = derivatives.filter(c => c.payload.issuer === party);
-  const instrument = instruments.find(c => c.payload.id.label === assetLabel);
-  const hasB2B = b2bServices.length > 0;
+  const myInstruments = instruments.filter(c => c.payload.issuer === party);
+  const instrument = myInstruments.find(c => c.payload.id.label === assetLabel);
 
   useEffect(() => {
-    if (!!instrument) setNode(claimToNode(instrument.payload.claims));
+    if (!!instrument && !!instrument.payload.claims) setNode(claimToNode(instrument.payload.claims));
   }, [instrument]);
 
-  if (l1 || l2 || l3 || l4) return (<Spinner />);
+  if (svc.loading || inst.loading || l1) return (<Spinner />);
+  if (!svc.issuance) return (<Message text="No issuance service found" />);
 
-  const myDirectServices = directServices.filter(s => s.payload.customer === party);
-  const myB2BServices = b2bServices.filter(s => s.payload.customer === party);
-
+  const myB2BServices = svc.backToBack.filter(s => s.payload.customer === party);
+  const hasB2B = myB2BServices.length > 0;
   const canRequest = !!assetLabel && !!instrument && !!quantity;
 
   const requestIssuance = async () => {
@@ -62,18 +69,24 @@ export const New : React.FC = () => {
         customerAccount: customerAccount.key,
         providerAccount: providerAccount.key
       };
-      await ledger.exercise(B2BService.CreateIssuance, myB2BServices[0].contractId, arg);
+      await ledger.exercise(BackToBack.CreateIssuance, myB2BServices[0].contractId, arg);
+      navigate("/issuance/issuances");
     } else {
-      const account = accounts.find(c => c.payload.accountView.custodian === myDirectServices[0].payload.provider && c.payload.accountView.owner === party);
+      const hasAuto = svc.issuanceAuto.length > 0;
+      const myAutoSvc = svc.issuanceAuto.filter(s => s.payload.customer === party)[0];
+      const mySvc = svc.issuance.filter(s => s.payload.customer === party)[0];
+      const custodian = hasAuto ? myAutoSvc.payload.provider : mySvc.payload.provider;
+      const account = accounts.find(c => c.payload.accountView.custodian === custodian && c.payload.accountView.owner === party);
       if (!instrument || !account) return;
       const arg = {
         id: uuidv4(),
         quantity: { amount: quantity, unit: { depository: instrument.payload.depository, issuer: instrument.payload.issuer, id: instrument.payload.id } },
         account: account.key,
       };
-      await ledger.exercise(Service.RequestCreateIssuance, myDirectServices[0].contractId, arg);
+      if (hasAuto) await ledger.exercise(IssuanceAuto.RequestAndCreateIssuance, myAutoSvc.contractId, arg);
+      else await ledger.exercise(Issuance.RequestCreateIssuance, mySvc.contractId, arg);
+      navigate("/issuance/issuances");
     }
-    navigate("/issuance/issuances");
   }
 
   const menuProps : Partial<MenuProps> = { anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" } };

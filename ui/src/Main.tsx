@@ -61,7 +61,6 @@ export const Main : React.FC = () => {
     return createTheme(options)
   }, [branding]);
 
-  console.log(user);
   return (
     <ThemeProvider theme={theme}>
       <LocalizationProvider dateAdapter={AdapterDateFns}>

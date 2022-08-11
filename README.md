@@ -17,27 +17,3 @@ cd ui
 npm install
 npm start
 ```
-
-# Triggers
-
-To compile the triggers, and after any Daml change in the main project, run:
-```
-cd triggers
-daml clean
-daml build
-```
-
-For settlement of auctions run:
-```
-daml trigger --wall-clock-time --dar .daml/dist/daml-finance-app-triggers-0.2.0.dar --trigger-name SettlementInstructionTrigger:handleSettlementInstruction --ledger-host localhost --ledger-port 6865 --ledger-party Agent
-```
-
-For matching orders on the exchange run:
-```
-daml trigger --wall-clock-time --dar .daml/dist/daml-finance-app-triggers-0.2.0.dar --trigger-name MatchingEngine:handleMatching --ledger-host localhost --ledger-port 6865 --ledger-party Exchange
-```
-
-For settling matched trades run:
-```
-daml trigger --wall-clock-time --dar .daml/dist/daml-finance-app-triggers-0.2.0.dar --trigger-name SettlementInstructionTrigger:handleSettlementInstruction --ledger-host localhost --ledger-port 6865 --ledger-party Exchange
-```

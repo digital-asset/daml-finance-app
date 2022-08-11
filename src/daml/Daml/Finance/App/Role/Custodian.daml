@@ -8,6 +8,8 @@ import Daml.Finance.App.Custody.Service qualified as Custody (Approve(..), Offer
 import Daml.Finance.App.Issuance.Auto.Service qualified as IssuanceAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Issuance.Service qualified as Issuance (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Structuring.Auto.Service qualified as StructuringAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Structuring.Service qualified as Structuring (Approve(..), Offer(..), Request, Service, Terminate(..))
 
 template Role
   with
@@ -103,6 +105,48 @@ template Role
       controller provider
       do
         exerciseByKey @BackToBack.Service (operator, provider, customer) BackToBack.Terminate with actor = provider
+
+    nonconsuming choice OfferStructuringService : ContractId Structuring.Offer
+      with
+        customer : Party
+      controller provider
+      do
+        create Structuring.Offer with ..
+
+    nonconsuming choice ApproveStructuringRequest : ContractId Structuring.Service
+      with
+        structuringServiceRequestCid : ContractId Structuring.Request
+      controller provider
+      do
+        exercise structuringServiceRequestCid Structuring.Approve with ..
+
+    nonconsuming choice TerminateStructuringService : ()
+      with
+        customer : Party
+      controller provider
+      do
+        exerciseByKey @Structuring.Service (operator, provider, customer) Structuring.Terminate with actor = provider
+
+    nonconsuming choice OfferStructuringAutoService : ContractId StructuringAuto.Offer
+      with
+        customer : Party
+      controller provider
+      do
+        create StructuringAuto.Offer with ..
+
+    nonconsuming choice ApproveStructuringAutoRequest : ContractId StructuringAuto.Service
+      with
+        structuringServiceRequestCid : ContractId StructuringAuto.Request
+      controller provider
+      do
+        exercise structuringServiceRequestCid StructuringAuto.Approve with ..
+
+    nonconsuming choice TerminateStructuringAutoService : ()
+      with
+        customer : Party
+      controller provider
+      do
+        exerciseByKey @StructuringAuto.Service (operator, provider, customer) StructuringAuto.Terminate with actor = provider
 
     nonconsuming choice OfferLifecycleService : ContractId Lifecycle.Offer
       with

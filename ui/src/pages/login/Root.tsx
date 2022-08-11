@@ -6,6 +6,7 @@ import React from "react";
 import { Route, Routes } from "react-router-dom";
 import { httpBaseUrl, wsBaseUrl } from "../../config";
 import { useParties } from "../../context/PartiesContext";
+import { ServicesProvider } from "../../context/ServicesContext";
 import { Form } from "./Form";
 import { Network } from "./Network";
 
@@ -15,10 +16,12 @@ export const Root : React.FC = () => {
   const token = getToken(operator);
   return (
     <DamlLedger party={operator} token={token} httpBaseUrl={httpBaseUrl} wsBaseUrl={wsBaseUrl}>
-      <Routes>
-        <Route key={"form"} path={"form"} element={<Form />} />
-        <Route key={"network"} path={"network"} element={<Network />} />
-      </Routes>
+      <ServicesProvider>
+        <Routes>
+          <Route key={"form"} path={"form"} element={<Form />} />
+          <Route key={"network"} path={"network"} element={<Network />} />
+        </Routes>
+      </ServicesProvider>
     </DamlLedger>
   );
 }

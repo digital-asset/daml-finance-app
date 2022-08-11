@@ -13,19 +13,25 @@ import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
 import IconButton from "@mui/material/IconButton";
 import KeyboardArrowRight from "@mui/icons-material/KeyboardArrowRight";
-import { useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
-import { Instrument } from "@daml.js/daml-finance-derivative/lib/Daml/Finance/Derivative/Instrument";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { version } from "../../util";
 import { useParties } from "../../context/PartiesContext";
+import { CreateEvent } from "@daml/ledger";
+import { useInstruments } from "../../context/InstrumentsContext";
 
 export const Instruments : React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
   const { getName } = useParties();
-  const { contracts: instruments, loading: l1 } = useStreamQueries(Instrument);
-  if (l1) return (<Spinner />);
+  const inst = useInstruments();
+  if (inst.loading) return (<Spinner />);
+
+  const instruments : CreateEvent<any>[] = Array.prototype.concat.apply([],[
+    inst.tokens,
+    inst.derivatives,
+    inst.fixedRateBonds
+  ]);
 
   return (
     <>

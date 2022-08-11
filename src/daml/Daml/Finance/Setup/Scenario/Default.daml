@@ -15,7 +15,7 @@ import Daml.Finance.RefData.Time.DateClock (DateClock(..), DateClockUpdateEvent(
 import Daml.Finance.Setup.Payoff (basisSwap, bond, callOptionPhysical, callOptionCashAuto, delivery, dvp, futureDvp, interestRateSwap, payment)
 import Daml.Finance.Setup.Util.Common (PartyInfo, allocateParties)
 import Daml.Finance.Setup.Util.Role (createCustodianRole, createDistributorRole, createExchangeRole, createOperatorRole)
-import Daml.Finance.Setup.Util.Service (createAuctionAutoService, createAuctionService, createBiddingAutoService, createBiddingService, createCustodyService, createIssuanceAutoService, createIssuanceService, createLifecycleService, createListingService, createListingAutoService, createTradingAutoService, createTradingService)
+import Daml.Finance.Setup.Util.Service (createAuctionAutoService, createAuctionService, createBiddingAutoService, createBiddingService, createCustodyService, createIssuanceAutoService, createIssuanceService, createLifecycleService, createListingService, createListingAutoService, createStructuringAutoService, createStructuringService, createTradingAutoService, createTradingService)
 import Daml.Finance.Setup.Util.Workflow (createAskOrder, createAuction, createAuctionBid, createBidOrder, createAccount, createFactory, deposit, issue, list, originate, originateDerivative, processAuction)
 import Daml.Script (Script, createCmd, submitMulti)
 
@@ -44,6 +44,8 @@ run  = do
 
   createIssuanceService operator registry issuer
   createIssuanceAutoService operator registry issuer
+  createStructuringService operator registry issuer
+  createStructuringAutoService operator registry issuer
   createLifecycleService operator registry issuer
 
   -- Create exchange services

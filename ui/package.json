@@ -5,6 +5,7 @@
   "dependencies": {
     "@daml.js/daml-finance-app": "file:daml.js/daml-finance-app-0.0.1",
     "@daml.js/daml-finance-asset": "file:daml.js/31c7180a620a34864acb3655da119935ea68f602907163357378cca8156e3df8",
+    "@daml.js/daml-finance-bond": "file:daml.js/e3a45c9b155f6ab0ecb210204698bacfd7e605de18feffdb9fca49cd3486cef2",
     "@daml.js/daml-finance-common": "file:daml.js/f38ad06e09032260fb047a2a5630aade640a09f1a99e7ef77094819ec9478758",
     "@daml.js/daml-finance-derivative": "file:daml.js/146ff4778e24aeb5a1b70588d6856ef4cde79072c017ac46cb87538b51ce54f5",
     "@daml.js/daml-finance-interface-asset": "file:daml.js/c0d91842e259beac7c841862a231359a4004b15ff32fa730c0469f95b0391981",
