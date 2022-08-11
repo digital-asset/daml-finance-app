@@ -17,7 +17,7 @@ import { useUserDispatch, signOut } from "../../context/UserContext";
 import { useBranding } from "../../context/BrandingContext";
 import { Spinner } from "../Spinner/Spinner";
 import { DateClock } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefData/Time/DateClock";
-import { useParties } from "../../hooks/Parties";
+import { useParties } from "../../context/PartiesContext";
 
 interface HeaderProps {
   app : string

@@ -5,7 +5,7 @@ import DamlLedger from "@daml/react";
 import React from "react";
 import { Route, Routes } from "react-router-dom";
 import { httpBaseUrl, wsBaseUrl } from "../../config";
-import { useParties } from "../../hooks/Parties";
+import { useParties } from "../../context/PartiesContext";
 import { Form } from "./Form";
 import { Network } from "./Network";
 
@@ -13,7 +13,8 @@ export const Root : React.FC = () => {
   const { getParty, getToken } = useParties();
   const operator = getParty("Operator");
   const token = getToken(operator);
-
+  console.log(operator);
+  console.log(token);
   return (
     <DamlLedger party={operator} token={token} httpBaseUrl={httpBaseUrl} wsBaseUrl={wsBaseUrl}>
       <Routes>

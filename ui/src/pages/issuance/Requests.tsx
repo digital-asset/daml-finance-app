@@ -13,7 +13,7 @@ import { CreateIssuanceRequest, ReduceIssuanceRequest } from "@daml.js/daml-fina
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Service";
 import { Account } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Account";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { useParties } from "../../hooks/Parties";
+import { useParties } from "../../context/PartiesContext";
 
 export const Requests : React.FC = () => {
   const classes = useStyles();

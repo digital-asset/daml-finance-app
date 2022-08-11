@@ -18,7 +18,7 @@ export const Structuring : React.FC = () => {
     , { path: "new", element: <New />, label: "New", icon: <PlayArrow/> }
     // , { path: "new/base", element: <NewBaseInstrument /> }
     // , { path: "new/binaryoption", element: <NewBinaryOption /> }
-    // , { path: "new/fixedratebond", element: <NewFixedRateBond /> }
+    , { path: "new/fixedratebond", element: <NewFixedRateBond /> }
     // , { path: "new/floatingratebond", element: <NewFloatingRateBond /> }
     // , { path: "new/cds", element: <NewCds /> }
     // , { path: "new/convertiblenote", element: <NewConvertibleNote /> }

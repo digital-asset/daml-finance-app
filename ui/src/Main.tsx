@@ -23,6 +23,7 @@ import { useBranding } from "./context/BrandingContext";
 import { Network } from "./apps/Network";
 import { Root } from "./pages/login/Root";
 import { Portal } from "./pages/login/Portal";
+import { ScenarioProvider } from "./context/ScenarioContext";
 
 export const Main : React.FC = () => {
   const user = useUserState();
@@ -64,27 +65,29 @@ export const Main : React.FC = () => {
   return (
     <ThemeProvider theme={theme}>
       <LocalizationProvider dateAdapter={AdapterDateFns}>
-        <CssBaseline />
-        <DamlLedger party={user.party} token={user.token} httpBaseUrl={httpBaseUrl} wsBaseUrl={wsBaseUrl}>
-          <HashRouter>
-            <Routes>
-              <Route path="/" element={<Navigate to="/apps" />} />
-              <Route path="/login" element={<Portal />} />
-              <Route path="/login/*" element={<Root />} />
-              <Route path="/apps" element={<Private><Apps /></Private>} />
-              <Route path="/structuring/*" element={<Structuring />} />
-              <Route path="/issuance/*" element={<Issuance />} />
-              <Route path="/custody/*" element={<Custody />} />
-              <Route path="/distribution/*" element={<Distribution />} />
-              <Route path="/servicing/*" element={<Servicing />} />
-              <Route path="/simulation/*" element={<Simulation />} />
-              <Route path="/listing/*" element={<Listing />} />
-              <Route path="/trading/*" element={<Trading />} />
-              <Route path="/network/*" element={<Network />} />
-              <Route element={<ErrorComponent />} />
-            </Routes>
-          </HashRouter>
-        </DamlLedger>
+        <ScenarioProvider>
+          <CssBaseline />
+          <DamlLedger party={user.party} token={user.token} httpBaseUrl={httpBaseUrl} wsBaseUrl={wsBaseUrl}>
+            <HashRouter>
+              <Routes>
+                <Route path="/" element={<Navigate to="/apps" />} />
+                <Route path="/login" element={<Portal />} />
+                <Route path="/login/*" element={<Root />} />
+                <Route path="/apps" element={<Private><Apps /></Private>} />
+                <Route path="/structuring/*" element={<Structuring />} />
+                <Route path="/issuance/*" element={<Issuance />} />
+                <Route path="/custody/*" element={<Custody />} />
+                <Route path="/distribution/*" element={<Distribution />} />
+                <Route path="/servicing/*" element={<Servicing />} />
+                <Route path="/simulation/*" element={<Simulation />} />
+                <Route path="/listing/*" element={<Listing />} />
+                <Route path="/trading/*" element={<Trading />} />
+                <Route path="/network/*" element={<Network />} />
+                <Route element={<ErrorComponent />} />
+              </Routes>
+            </HashRouter>
+          </DamlLedger>
+        </ScenarioProvider>
       </LocalizationProvider>
     </ThemeProvider>
   );

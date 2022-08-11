@@ -16,7 +16,7 @@ import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fun
 import { Reference as AccountReference } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Account";
 import { fmt, getHolding } from "../../../util";
 import { Message } from "../../../components/Message/Message";
-import { useParties } from "../../../hooks/Parties";
+import { useParties } from "../../../context/PartiesContext";
 
 export const Offering : React.FC = () => {
   const classes = useStyles();

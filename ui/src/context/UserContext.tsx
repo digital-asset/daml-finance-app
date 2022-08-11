@@ -3,7 +3,7 @@
 
 import React from "react";
 import { NavigateFunction } from "react-router-dom";
-import { useParties } from "../hooks/Parties";
+import { useParties } from "./PartiesContext";
 
 const UserStateContext = React.createContext<UserState>({ isAuthenticated: false, name: "", party: "", token: "" });
 const UserDispatchContext = React.createContext<React.Dispatch<any>>({} as React.Dispatch<any>);

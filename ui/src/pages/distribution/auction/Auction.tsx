@@ -16,7 +16,7 @@ import { Spinner } from "../../../components/Spinner/Spinner";
 import { BatchFactory } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Batch";
 import { fmt } from "../../../util";
 import { Message } from "../../../components/Message/Message";
-import { useParties } from "../../../hooks/Parties";
+import { useParties } from "../../../context/PartiesContext";
 
 export const Auction: React.FC = () => {
   const classes = useStyles();

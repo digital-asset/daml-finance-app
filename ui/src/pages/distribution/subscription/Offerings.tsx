@@ -11,7 +11,7 @@ import useStyles from "../../styles";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { Offering } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Model";
 import { fmt } from "../../../util";
-import { useParties } from "../../../hooks/Parties";
+import { useParties } from "../../../context/PartiesContext";
 
 export const Offerings : React.FC = () => {
   const classes = useStyles();

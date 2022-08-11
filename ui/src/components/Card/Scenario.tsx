@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardActionArea, CardContent, CardMedia, Grid, Typography } from "@mui/material";
 import { Box } from "@mui/system";
 import useStyles from "./styles";
-import { useScenario } from "../../hooks/Scenario";
+import { useScenario } from "../../context/ScenarioContext";
 
 type ScenarioProps = {
   label : string

@@ -7,7 +7,7 @@ import { useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { Account } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Account";
-import { useParties } from "../../hooks/Parties";
+import { useParties } from "../../context/PartiesContext";
 
 export const Accounts : React.FC = () => {
   const classes = useStyles();
