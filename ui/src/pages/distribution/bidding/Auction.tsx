@@ -18,9 +18,10 @@ import { Instrument as Derivative } from "@daml.js/daml-finance-derivative/lib/D
 import { Instrument } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Instrument";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../../components/Claims/ClaimsTreeBuilder";
-import { createKeyBase, fmt, getHolding, getName } from "../../../util";
+import { createKeyBase, fmt, getHolding } from "../../../util";
 import { Reference } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Account";
 import { Message } from "../../../components/Message/Message";
+import { useParties } from "../../../hooks/Parties";
 
 export const BiddingAuction : React.FC = () => {
   const classes = useStyles();
@@ -30,6 +31,7 @@ export const BiddingAuction : React.FC = () => {
   const [ price, setPrice ] = useState<number>(0);
   const [ node, setNode ] = useState<ClaimTreeNode | undefined>();
 
+  const { getName } = useParties();
   const party = useParty();
   const ledger = useLedger();
   const { contracts: services, loading: l1 } = useStreamQueries(Service);

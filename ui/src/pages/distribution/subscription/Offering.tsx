@@ -14,8 +14,9 @@ import { BatchFactory } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/
 import { Offering as OfferingContract, Subscription } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Model";
 import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fungible";
 import { Reference as AccountReference } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Account";
-import { fmt, getHolding, getName } from "../../../util";
+import { fmt, getHolding } from "../../../util";
 import { Message } from "../../../components/Message/Message";
+import { useParties } from "../../../hooks/Parties";
 
 export const Offering : React.FC = () => {
   const classes = useStyles();
@@ -25,6 +26,7 @@ export const Offering : React.FC = () => {
   const { contractId } = useParams<any>();
   const cid = contractId?.replace("_", "#");
 
+  const { getName } = useParties();
   const party = useParty();
   const ledger = useLedger();
 

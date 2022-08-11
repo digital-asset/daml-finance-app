@@ -7,6 +7,7 @@ Copyright © 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All Ri
 
 Console 1:
 ```
+make
 daml start
 ```
 

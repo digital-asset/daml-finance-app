@@ -16,18 +16,20 @@ import KeyboardArrowRight from "@mui/icons-material/KeyboardArrowRight";
 import { useLedger, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { getName, version } from "../../util";
+import { version } from "../../util";
 import { Button } from "@mui/material";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Service";
 import { DateClock, DateClockUpdateEvent } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefData/Time/DateClock";
 import { Observation } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefData/Observation";
 import { Effect } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/Effect";
 import { Instrument } from "@daml.js/daml-finance-derivative/lib/Daml/Finance/Derivative/Instrument";
+import { useParties } from "../../hooks/Parties";
 
 export const Instruments : React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
 
+  const { getName } = useParties();
   const ledger = useLedger();
   const { contracts: instruments, loading: l1 } = useStreamQueries(Instrument);
   const { contracts: services, loading: l2 } = useStreamQueries(Service);

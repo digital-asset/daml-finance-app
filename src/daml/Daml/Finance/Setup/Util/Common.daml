@@ -11,16 +11,23 @@ import Daml.Finance.Interface.Asset.Holding qualified as Holding (I)
 import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (Q)
 import Daml.Script
 
-allocateParties : [Text] -> Script [(Text, Party)]
-allocateParties partyNames = do
+data PartyInfo = PartyInfo
+  with
+    scenario : Text
+    name : Text
+    id : Party
+  deriving (Eq, Show)
+
+allocateParties : Text -> [Text] -> Script [PartyInfo]
+allocateParties scenario partyNames = do
   existingParties <- listKnownParties
   let
     allocate party =
       case find (\d -> (fromOptional "" d.displayName) == party) existingParties of
         Some detail -> do pure detail.party
-        None -> do allocatePartyWithHint party $ PartyIdHint party
+        None -> do allocatePartyWithHint (scenario <> party) $ PartyIdHint (scenario <> party)
   parties <- mapA allocate partyNames
-  pure $ zip partyNames parties
+  pure $ map (\(name, id) -> PartyInfo with scenario; name; id) $ zip partyNames parties
 
 getHolding : Party -> Instrument.Q -> Script (ContractId Holding.I)
 getHolding party quantity = do

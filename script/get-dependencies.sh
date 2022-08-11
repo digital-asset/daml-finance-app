@@ -23,11 +23,11 @@ for dependency_path in "${dependencies[@]}"; do
 
     # Match from the major version until the end of the file name; keep what was matched from the input string; remove the file extension
     version=`awk '{ match($0, /[0-9a-zA-Z]+\..*/) ; $0=substr($0, RSTART, RLENGTH); sub(/.[a-z]+$/, ""); print }' <<< ${file_name}`
-
+#sed -e "s/\b\(.\)/\u\1/g"`
     if [[ ${package_name} == daml* ]];
     then
       repo_name="daml-finance"
-      package_name=`echo ${package_name//-/.} | sed -e "s/\b\(.\)/\u\1/g"`
+      package_name=`echo ${package_name//-/.} | awk 'BEGIN{FS=OFS="."} {for (i=1;i<=NF;i++) {$i=toupper(substr($i,1,1)) substr($i,2)}}1'`
       package_name=`echo ${package_name/Refdata/RefData}`
       download_path="https://github.com/digital-asset/${repo_name}/releases/download/${package_name}/${version}/${file_name}"
     else
@@ -36,7 +36,7 @@ for dependency_path in "${dependencies[@]}"; do
     fi
 
     echo "Downloading ${file_name} from Github repository at ${download_path}."
-    curl -Lsf# $download_path -o ${root_dir}/${dependency_path}
+    curl -Lf# $download_path -o ${root_dir}/${dependency_path}
 
     echo -e "\nDependency ${file_name} downloaded successfully and saved to ${root_dir}/${dependency_path}.\n"
   fi

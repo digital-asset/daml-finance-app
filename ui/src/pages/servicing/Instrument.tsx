@@ -12,13 +12,14 @@ import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycl
 import { Spinner } from "../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
 import { C, claimToNode } from "../../components/Claims/util";
-import { getName, id, version } from "../../util";
+import { id, version } from "../../util";
 import { Effect } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/Effect";
 import { DateClock, DateClockUpdateEvent } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefData/Time/DateClock";
 import { Pending } from "@daml.js/contingent-claims/lib/ContingentClaims/Lifecycle";
 import { Time } from "@daml/types";
 import { InstrumentKey } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Types";
 import { Observation } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefData/Observation";
+import { useParties } from "../../hooks/Parties";
 
 export const Instrument : React.FC = () => {
   const classes = useStyles();
@@ -28,6 +29,7 @@ export const Instrument : React.FC = () => {
   const [ node1, setNode1 ] = useState<ClaimTreeNode | undefined>();
   const [ node2, setNode2 ] = useState<ClaimTreeNode | undefined>();
 
+  const { getName } = useParties();
   const party = useParty();
   const ledger = useLedger();
 

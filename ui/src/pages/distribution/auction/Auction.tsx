@@ -14,12 +14,14 @@ import { Bid } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution
 import { getAuctionStatus, getBidStatus, getBidAllocation } from "../Utils";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { BatchFactory } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Batch";
-import { fmt, getName } from "../../../util";
+import { fmt } from "../../../util";
 import { Message } from "../../../components/Message/Message";
+import { useParties } from "../../../hooks/Parties";
 
 export const Auction: React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
+  const { getName } = useParties();
 
   const { contractId } = useParams<any>();
 

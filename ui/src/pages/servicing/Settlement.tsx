@@ -5,14 +5,16 @@ import React from "react";
 import { Table, TableBody, TableCell, TableRow, TableHead, Grid, Paper, Typography } from "@mui/material";
 import { useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
-import { fmt, getName } from "../../util";
+import { fmt } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { version } from "../../util";
 import { Instruction } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Instruction";
 import { DateClock } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefData/Time/DateClock";
+import { useParties } from "../../hooks/Parties";
 
 export const Settlement : React.FC = () => {
   const classes = useStyles();
+  const { getName } = useParties();
 
   const { contracts: instructions, loading: l1 } = useStreamQueries(Instruction);
   const { contracts: clocks, loading: l2 } = useStreamQueries(DateClock);

@@ -8,18 +8,20 @@ import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
 import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fungible";
 import KeyboardArrowRight from "@mui/icons-material/KeyboardArrowRight";
-import { getName, id, keyEquals } from "../../util";
+import { id, keyEquals } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { Effect } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/Effect";
 import { CreateEvent } from "@daml/ledger";
 import { Batch, BatchFactory } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Batch";
 import { ContractId } from "@daml/types";
+import { useParties } from "../../hooks/Parties";
 
 export const Effects : React.FC = () => {
   const classes = useStyles();
   const party = useParty();
   const ledger = useLedger();
   const navigate = useNavigate();
+  const { getName } = useParties();
 
   const { contracts: effects, loading: l1 } = useStreamQueries(Effect);
   const { contracts: holdings, loading: l2 } = useStreamQueries(Fungible);

@@ -5,7 +5,6 @@ import React from "react";
 import { HashRouter, Route, Routes, Navigate } from "react-router-dom";
 import ErrorComponent from "./pages/error/Error";
 import { useUserState } from "./context/UserContext";
-import { Login } from "./pages/login/Login";
 import { Apps } from "./Apps";
 import DamlLedger from "@daml/react";
 import { httpBaseUrl, wsBaseUrl } from "./config";
@@ -21,7 +20,9 @@ import { Simulation } from "./apps/Simulation";
 import LocalizationProvider from "@mui/lab/LocalizationProvider";
 import AdapterDateFns from "@mui/lab/AdapterDateFns";
 import { useBranding } from "./context/BrandingContext";
-// import { DeFi } from "./apps/DeFi";
+import { Network } from "./apps/Network";
+import { Root } from "./pages/login/Root";
+import { Portal } from "./pages/login/Portal";
 
 export const Main : React.FC = () => {
   const user = useUserState();
@@ -68,7 +69,8 @@ export const Main : React.FC = () => {
           <HashRouter>
             <Routes>
               <Route path="/" element={<Navigate to="/apps" />} />
-              <Route path="/login" element={<Login />} />
+              <Route path="/login" element={<Portal />} />
+              <Route path="/login/*" element={<Root />} />
               <Route path="/apps" element={<Private><Apps /></Private>} />
               <Route path="/origination/*" element={<Origination />} />
               <Route path="/issuance/*" element={<Issuance />} />
@@ -78,7 +80,7 @@ export const Main : React.FC = () => {
               <Route path="/simulation/*" element={<Simulation />} />
               <Route path="/listing/*" element={<Listing />} />
               <Route path="/trading/*" element={<Trading />} />
-              {/* <Route path="/defi/*" element={<DeFi />} /> */}
+              <Route path="/network/*" element={<Network />} />
               <Route element={<ErrorComponent />} />
             </Routes>
           </HashRouter>
@@ -86,22 +88,6 @@ export const Main : React.FC = () => {
       </LocalizationProvider>
     </ThemeProvider>
   );
-
-  // function RootRoute() {
-  //   var userDispatch = useUserDispatch();
-  //   useEffect(() => {
-  //     const url = new URL(window.location.toString());
-  //     const token = url.searchParams.get('token');
-  //     const party = url.searchParams.get('party');
-  //     if (token === null || party === null) return;
-  //     localStorage.setItem("daml.name", party);
-  //     localStorage.setItem("daml.party", party);
-  //     localStorage.setItem("daml.token", token);
-  //     userDispatch({ type: "LOGIN_SUCCESS", name: party, party, token });
-  //   })
-
-  //   return (<Navigate to="/apps" />)
-  // }
 
   function Private({ children } : any) {
     return user.isAuthenticated ? children : <Navigate to="/login" />;

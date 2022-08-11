@@ -1,31 +1,97 @@
 [{
-  "_1": "Operator",
-  "_2": "Operator::1220a4f1432384da3773f101ddd97b15086139b72a71765d64bf961500d5bc23a372"
+  "scenario": "Default",
+  "name": "Operator",
+  "id": "DefaultOperator::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
 }, {
-  "_1": "Public",
-  "_2": "Public::1220a4f1432384da3773f101ddd97b15086139b72a71765d64bf961500d5bc23a372"
+  "scenario": "Default",
+  "name": "Public",
+  "id": "DefaultPublic::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
 }, {
-  "_1": "CentralBank",
-  "_2": "CentralBank::1220a4f1432384da3773f101ddd97b15086139b72a71765d64bf961500d5bc23a372"
+  "scenario": "Default",
+  "name": "CentralBank",
+  "id": "DefaultCentralBank::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
 }, {
-  "_1": "Registry",
-  "_2": "Registry::1220a4f1432384da3773f101ddd97b15086139b72a71765d64bf961500d5bc23a372"
+  "scenario": "Default",
+  "name": "Registry",
+  "id": "DefaultRegistry::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
 }, {
-  "_1": "Exchange",
-  "_2": "Exchange::1220a4f1432384da3773f101ddd97b15086139b72a71765d64bf961500d5bc23a372"
+  "scenario": "Default",
+  "name": "Exchange",
+  "id": "DefaultExchange::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
 }, {
-  "_1": "Agent",
-  "_2": "Agent::1220a4f1432384da3773f101ddd97b15086139b72a71765d64bf961500d5bc23a372"
+  "scenario": "Default",
+  "name": "Agent",
+  "id": "DefaultAgent::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
 }, {
-  "_1": "Issuer",
-  "_2": "Issuer::1220a4f1432384da3773f101ddd97b15086139b72a71765d64bf961500d5bc23a372"
+  "scenario": "Default",
+  "name": "Issuer",
+  "id": "DefaultIssuer::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
 }, {
-  "_1": "Alice",
-  "_2": "Alice::1220a4f1432384da3773f101ddd97b15086139b72a71765d64bf961500d5bc23a372"
+  "scenario": "Default",
+  "name": "Alice",
+  "id": "DefaultAlice::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
 }, {
-  "_1": "Bob",
-  "_2": "Bob::1220a4f1432384da3773f101ddd97b15086139b72a71765d64bf961500d5bc23a372"
+  "scenario": "Default",
+  "name": "Bob",
+  "id": "DefaultBob::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
 }, {
-  "_1": "Charlie",
-  "_2": "Charlie::1220a4f1432384da3773f101ddd97b15086139b72a71765d64bf961500d5bc23a372"
+  "scenario": "Default",
+  "name": "Charlie",
+  "id": "DefaultCharlie::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+}, {
+  "scenario": "StructuredNotes",
+  "name": "Operator",
+  "id": "StructuredNotesOperator::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+}, {
+  "scenario": "StructuredNotes",
+  "name": "Public",
+  "id": "StructuredNotesPublic::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+}, {
+  "scenario": "StructuredNotes",
+  "name": "CentralBank",
+  "id": "StructuredNotesCentralBank::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+}, {
+  "scenario": "StructuredNotes",
+  "name": "Depository",
+  "id": "StructuredNotesDepository::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+}, {
+  "scenario": "StructuredNotes",
+  "name": "Issuer",
+  "id": "StructuredNotesIssuer::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+}, {
+  "scenario": "StructuredNotes",
+  "name": "RiskTaker",
+  "id": "StructuredNotesRiskTaker::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+}, {
+  "scenario": "StructuredNotes",
+  "name": "Alice",
+  "id": "StructuredNotesAlice::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+}, {
+  "scenario": "StructuredNotes",
+  "name": "Bob",
+  "id": "StructuredNotesBob::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+}, {
+  "scenario": "StructuredNotes",
+  "name": "Charlie",
+  "id": "StructuredNotesCharlie::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+}, {
+  "scenario": "NaturalGas",
+  "name": "Operator",
+  "id": "NaturalGasOperator::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+}, {
+  "scenario": "NaturalGas",
+  "name": "Public",
+  "id": "NaturalGasPublic::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+}, {
+  "scenario": "NaturalGas",
+  "name": "CashProvider",
+  "id": "NaturalGasCashProvider::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+}, {
+  "scenario": "NaturalGas",
+  "name": "Seller",
+  "id": "NaturalGasSeller::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
+}, {
+  "scenario": "NaturalGas",
+  "name": "Buyer",
+  "id": "NaturalGasBuyer::122066fbff76e45a56dde39daa68a13a104159e7e524c8367bed5afd302e32402d88"
 }]

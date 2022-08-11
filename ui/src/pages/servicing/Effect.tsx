@@ -7,7 +7,7 @@ import { useParty, useLedger, useStreamQueries } from "@daml/react";
 import { Typography, Grid, Table, TableBody, TableCell, TableRow, Paper, Button, TableHead } from "@mui/material";
 import { useParams } from "react-router-dom";
 import useStyles from "../styles";
-import { fmt, getName, id } from "../../util";
+import { fmt, id } from "../../util";
 import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fungible";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { keyEquals, version } from "../../util";
@@ -15,10 +15,12 @@ import { Effect as EffectContract } from "@daml.js/daml-finance-lifecycle/lib/Da
 import { Batch } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Batch";
 import { Rule } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/SettlementRule";
 import { CreateEvent } from "@daml/ledger";
+import { useParties } from "../../hooks/Parties";
 
 export const Effect : React.FC = () => {
   const classes = useStyles();
 
+  const { getName } = useParties();
   const ledger = useLedger();
   const party = useParty();
   const { contracts: effects, loading: l1 } = useStreamQueries(EffectContract);

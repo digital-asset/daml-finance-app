@@ -8,10 +8,12 @@ import useStyles from "./styles";
 import { useUserDispatch, loginUser } from "../../context/UserContext";
 import { useBranding } from "../../context/BrandingContext";
 import { Box } from "@mui/system";
+import { useParties } from "../../hooks/Parties";
 
-export const Login : React.FC = () => {
+export const Form : React.FC = () => {
   const classes = useStyles();
   const branding = useBranding();
+  const { getParty, getToken } = useParties();
 
   const userDispatch = useUserDispatch();
   const navigate = useNavigate();
@@ -24,7 +26,7 @@ export const Login : React.FC = () => {
   }
 
   const login = async () => {
-    await loginUser(userDispatch, loginValue, navigate, setError);
+    await loginUser(userDispatch, loginValue, getParty(loginValue), getToken(loginValue), navigate, setError);
   }
 
   return (

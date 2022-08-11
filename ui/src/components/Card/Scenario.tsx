@@ -6,23 +6,30 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardActionArea, CardContent, CardMedia, Grid, Typography } from "@mui/material";
 import { Box } from "@mui/system";
 import useStyles from "./styles";
+import { useScenario } from "../../hooks/Scenario";
 
-type AppProps = {
+type ScenarioProps = {
   label : string
   description : string
   image : string
-  path : string
+  width : number
 }
 
-export const App : React.FC<AppProps> = ({ label, description, image, path }) => {
+export const Scenario : React.FC<ScenarioProps> = ({ label, description, image, width }) => {
   const classes = useStyles();
   const navigate = useNavigate()
+  const scenario = useScenario();
+
+  const selectScenario = () => {
+    scenario.select(label);
+    navigate("/login/network");
+  };
 
   return (
-    <Grid item xs={12} sm={6} md={4} lg={4}>
+    <Grid item xs={12} sm={6} md={width} lg={width}>
       <Card className={classes.card}>
         <Box border={1} borderColor="primary.main" style={{ height: "100%"}}>
-          <CardActionArea onClick={() => navigate(path)}>
+          <CardActionArea onClick={selectScenario}>
             <CardMedia className={classes.cardMedia} image={image} title={label} />
             <CardContent>
               <Typography gutterBottom variant="h5" component="h2" className={classes.cardText}>{label}</Typography>

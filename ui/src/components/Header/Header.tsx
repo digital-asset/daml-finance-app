@@ -17,7 +17,7 @@ import { useUserDispatch, signOut } from "../../context/UserContext";
 import { useBranding } from "../../context/BrandingContext";
 import { Spinner } from "../Spinner/Spinner";
 import { DateClock } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefData/Time/DateClock";
-import { getName } from "../../util";
+import { useParties } from "../../hooks/Parties";
 
 interface HeaderProps {
   app : string
@@ -28,6 +28,7 @@ export const Header : React.FC<HeaderProps> = ({ app } : HeaderProps) => {
   const navigate = useNavigate();
   const branding = useBranding();
   const userDispatch = useUserDispatch();
+  const { getName } = useParties();
   const party = useParty();
 
   const { contracts: clocks, loading: l1 } = useStreamQueries(DateClock);

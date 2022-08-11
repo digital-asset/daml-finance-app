@@ -10,11 +10,12 @@ import { useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
 import { Issuance } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Model";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { getName } from "../../util";
+import { useParties } from "../../hooks/Parties";
 
 export const Issuances : React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
+  const { getName } = useParties();
 
   const { contracts: issuances, loading: l1 } = useStreamQueries(Issuance);
   if (l1) return (<Spinner />);

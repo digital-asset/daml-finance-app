@@ -5,13 +5,14 @@ import React from "react";
 import { Table, TableBody, TableCell, TableRow, TableHead, Grid, Paper, Typography } from "@mui/material";
 import { useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
-import { getName } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { Account } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Account";
+import { useParties } from "../../hooks/Parties";
 
 export const Accounts : React.FC = () => {
   const classes = useStyles();
   const party = useParty();
+  const { getName } = useParties();
 
   const { contracts: accounts, loading: l1 } = useStreamQueries(Account);
   if (l1) return (<Spinner />);

@@ -1,7 +1,7 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module Daml.Finance.Setup.Standard where
+module Daml.Finance.Setup.Scenario.Default where
 
 import ContingentClaims.Financial (unrollDates)
 import DA.Date (date, Month(..), toDateUTC, toGregorian)
@@ -13,16 +13,17 @@ import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (qty)
 import Daml.Finance.RefData.Observation (Observation(..))
 import Daml.Finance.RefData.Time.DateClock (DateClock(..), DateClockUpdateEvent(..), Unit(..))
 import Daml.Finance.Setup.Payoff (basisSwap, bond, callOptionPhysical, callOptionCashAuto, delivery, dvp, futureDvp, interestRateSwap, payment)
-import Daml.Finance.Setup.Util.Common (allocateParties)
+import Daml.Finance.Setup.Util.Common (PartyInfo, allocateParties)
 import Daml.Finance.Setup.Util.Role (createCustodianRole, createDistributorRole, createExchangeRole, createOperatorRole)
 import Daml.Finance.Setup.Util.Service (createAuctionAutoService, createAuctionService, createBiddingAutoService, createBiddingService, createCustodyService, createIssuanceAutoService, createIssuanceService, createLifecycleService, createListingService, createListingAutoService, createTradingAutoService, createTradingService)
 import Daml.Finance.Setup.Util.Workflow (createAskOrder, createAuction, createAuctionBid, createBidOrder, createAccount, createFactory, deposit, issue, list, originate, originateDerivative, processAuction)
 import Daml.Script (Script, createCmd, submitMulti)
 
-standardDemo : Script [(Text, Party)]
-standardDemo  = do
-  parties <- allocateParties ["Operator", "Public", "CentralBank", "Registry", "Exchange", "Agent", "Issuer", "Alice", "Bob", "Charlie"]
-  let [operator, public, centralBank, registry, exchange, agent, issuer, alice, bob, charlie] = map snd parties
+run : Script [PartyInfo]
+run  = do
+  let scenario = "Default"
+  parties <- allocateParties scenario ["Operator", "Public", "CentralBank", "Registry", "Exchange", "Agent", "Issuer", "Alice", "Bob", "Charlie"]
+  let [operator, public, centralBank, registry, exchange, agent, issuer, alice, bob, charlie] = map (.id) parties
 
   -- Create roles
   createOperatorRole operator

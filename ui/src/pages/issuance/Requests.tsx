@@ -13,13 +13,14 @@ import { CreateIssuanceRequest, ReduceIssuanceRequest } from "@daml.js/daml-fina
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Service";
 import { Account } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Account";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { getName } from "../../util";
+import { useParties } from "../../hooks/Parties";
 
 export const Requests : React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
   const party = useParty();
   const ledger = useLedger();
+  const { getName } = useParties();
 
   const { contracts: services, loading: l1 } = useStreamQueries(Service);
   const { contracts: createRequests, loading: l2 } = useStreamQueries(CreateIssuanceRequest);

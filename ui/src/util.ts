@@ -9,7 +9,6 @@ import { InstrumentKey } from "@daml.js/daml-finance-interface-asset/lib/Daml/Fi
 import { Id } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Types";
 import Ledger, { CreateEvent } from "@daml/ledger";
 import { ContractId, emptyMap } from "@daml/types";
-import { partyIds, partyNames, partyTokens } from "./config";
 
 export function values<T>(set: Set<T>): T[] {
   const r: T[] = [];
@@ -68,10 +67,6 @@ export const createKeyBase = (c : CreateEvent<Base>) : InstrumentKey => {
   return { depository: c.payload.depository, issuer: c.payload.issuer, id: c.payload.id };
 };
 
-export const parties = (set : Set<string>) : string => {
-  return values(set).map(getName).join(", ");
-};
-
 export const version = (id : Id) : string => {
   return id.version.substring(0, 8) + "..";
 };
@@ -79,18 +74,6 @@ export const version = (id : Id) : string => {
 export const id = (id : Id) : string => {
   return id.label + " (" + version(id) + ")";
 };
-
-export function getParty(name : string) : string {
-  return (partyIds[name] || "") as string;
-}
-
-export function getName(party : string) : string {
-  return (partyNames[party] || "") as string;
-}
-
-export function getToken(party : string) {
-  return (partyTokens[party] || "") as string;
-}
 
 export function getTemplateId(t : string) {
   const parts = t.split(":").slice(1)
