@@ -21,8 +21,9 @@ export const Scenario : React.FC<ScenarioProps> = ({ label, description, image, 
   const scenario = useScenario();
 
   const selectScenario = () => {
-    scenario.select(label);
-    navigate("/login/network");
+    const s = scenario.select(label);
+    if (s.useNetworkLogin) navigate("/login/network");
+    else navigate("/login/form")
   };
 
   return (

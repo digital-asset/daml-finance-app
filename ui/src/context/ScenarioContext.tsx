@@ -11,11 +11,12 @@ type Position = {
 export type Scenario = {
   name : string,
   positions : Map<string, Position>,
+  useNetworkLogin: boolean
 };
 
 export type ScenarioState = {
   selected : Scenario
-  select : (name : string) => void
+  select : (name : string) => Scenario
 }
 
 export const scenarios : Scenario[] = [
@@ -32,7 +33,8 @@ export const scenarios : Scenario[] = [
       [ "Alice",        { x:    0, y: 300 } ],
       [ "Bob",          { x:  400, y: 300 } ],
       [ "Charlie",      { x:  800, y: 300 } ]
-    ])
+    ]),
+    useNetworkLogin: false
   },
   {
     name: "Structured Notes",
@@ -46,7 +48,8 @@ export const scenarios : Scenario[] = [
       [ "Alice",        { x:  200, y: 450 } ],
       [ "Bob",          { x:  400, y: 450 } ],
       [ "Charlie",      { x:  600, y: 450 } ]
-    ])
+    ]),
+    useNetworkLogin: true
   },
   {
     name: "Natural Gas",
@@ -56,19 +59,26 @@ export const scenarios : Scenario[] = [
       [ "CentralBank",  { x:  200, y:   0 } ],
       [ "Seller",       { x:  400, y: 200 } ],
       [ "Buyer",        { x:    0, y: 400 } ]
-    ])
+    ]),
+    useNetworkLogin: true
   }
 ];
 
-const ScenarioContext = React.createContext<ScenarioState>({ selected: scenarios[0], select: _ => {} });
+const ScenarioContext = React.createContext<ScenarioState>({ selected: scenarios[0], select: _ => scenarios[0] });
 
 export const ScenarioProvider : React.FC = ({ children }) => {
-  const [ selected, setSelected ] = useState(scenarios[0]);
+  const scenarioName = localStorage.getItem("daml.scenario") || "Default";
+  const scenario = scenarios.find(s => s.name === scenarioName);
+  if (!scenario) throw new Error("Couldn't find scenario " + scenarioName);
 
-  const select = (name : string) => {
+  const [ selected, setSelected ] = useState(scenario);
+
+  const select = (name : string) : Scenario => {
     const s = scenarios.find(s => s.name === name);
     if (!s) throw new Error("Couldn't find scenario " + name);
+    localStorage.setItem("daml.scenario", name);
     setSelected(s);
+    return s;
   }
 
   return (

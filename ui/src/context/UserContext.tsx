@@ -35,7 +35,7 @@ const UserProvider : React.FC = ({ children }) => {
 
   const party = getParty(name);
   const token = getToken(party);
-
+  
   var [state, dispatch] = React.useReducer(userReducer, {
     isAuthenticated: !!token,
     name: name || "",
@@ -82,7 +82,7 @@ const loginUser = async (
   if (!!name) {
 
     localStorage.setItem("daml.name", name);
-
+  
     dispatch({ type: "LOGIN_SUCCESS", name, party, token });
     setError(false);
     navigate("/apps");
@@ -92,12 +92,11 @@ const loginUser = async (
   }
 }
 
-const signOut = (dispatch : React.Dispatch<any>, navigate : NavigateFunction) => {
+const signOut = (dispatch : React.Dispatch<any>) => {
   // event.preventDefault();
   localStorage.removeItem("daml.name");
 
   dispatch({ type: "SIGN_OUT_SUCCESS" });
-  navigate("/login");
 }
 
 export { UserProvider, useUserState, useUserDispatch, loginUser, signOut };

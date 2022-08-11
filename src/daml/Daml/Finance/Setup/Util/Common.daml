@@ -25,7 +25,7 @@ allocateParties scenario partyNames = do
     allocate party =
       case find (\d -> (fromOptional "" d.displayName) == party) existingParties of
         Some detail -> do pure detail.party
-        None -> do allocatePartyWithHint (scenario <> party) $ PartyIdHint (scenario <> party)
+        None -> do allocatePartyWithHint (party <> "-" <> scenario) $ PartyIdHint (party <> "-" <> scenario)
   parties <- mapA allocate partyNames
   pure $ map (\(name, id) -> PartyInfo with scenario; name; id) $ zip partyNames parties
 

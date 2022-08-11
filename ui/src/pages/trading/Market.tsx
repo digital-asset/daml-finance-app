@@ -120,7 +120,6 @@ export const Market : React.FC = () => {
       orderCids,
       observers: createSet([ getParty("Public") ])
     }
-    console.log(arg);
     if (myAutoServices.length > 0) {
       await ledger.exercise(AutoService.RequestAndCreateOrder, myAutoServices[0].contractId, arg);
     } else {
