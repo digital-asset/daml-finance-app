@@ -10,7 +10,7 @@ import { Spinner } from "../../components/Spinner/Spinner";
 import { version } from "../../util";
 import { Instruction } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Instruction";
 import { DateClock } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefData/Time/DateClock";
-import { useParties } from "../../hooks/Parties";
+import { useParties } from "../../context/PartiesContext";
 
 export const Settlement : React.FC = () => {
   const classes = useStyles();

@@ -1,0 +1,33 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Structuring.Model where
+
+import Daml.Finance.Common.Date.Calendar (BusinessDayConventionEnum)
+import Daml.Finance.Common.Date.DayCount (DayCountConventionEnum)
+import Daml.Finance.Common.Date.RollConvention (PeriodEnum)
+import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (K)
+import Daml.Finance.Interface.Asset.Types (Id)
+import Daml.Finance.Interface.Common.Types (Observers)
+
+template CreateFixedRateBondRequest
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Id
+    couponRate : Decimal
+    issueDate : Date
+    firstCouponDate : Date
+    maturityDate : Date
+    holidayCalendarIds : [Text]
+    calendarDataAgency : Party
+    dayCountConvention : DayCountConventionEnum
+    businessDayConvention : BusinessDayConventionEnum
+    couponPeriod : PeriodEnum
+    couponPeriodMultiplier : Int
+    cashInstrumentCid : Instrument.K
+    observers : Observers
+    lastEventTimestamp : Time
+  where
+    signatory operator, provider, customer

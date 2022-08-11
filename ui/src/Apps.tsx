@@ -4,7 +4,7 @@
 import React from "react";
 import { Grid, Theme } from "@mui/material";
 import { makeStyles, createStyles } from "@mui/styles";
-import origination from "./images/origination.jpg";
+import structuring from "./images/structuring.jpg";
 import issuance from "./images/issuance.jpg";
 import custody from "./images/custody.jpg";
 import distribution from "./images/distribution.jpg";
@@ -25,7 +25,7 @@ export const Apps : React.FC = () => {
       <Grid container direction="column" className={classes.bg}>
         <Grid item xs={12}>
           <Grid container direction="row" spacing={4}>
-            <App label="Structuring "         description="Structure and design new assets"         image={origination}   path="/origination/instruments" />
+            <App label="Structuring "         description="Structure and design new assets"         image={structuring}   path="/structuring/instruments" />
             <App label="Issuance"             description="Issue new assets"                        image={issuance}      path="/issuance/issuances" />
             <App label="Custody"              description="Manage assets in custody"                image={custody}       path="/custody/assets" />
             <App label="Distribution"         description="Distribute assets in the primary market" image={distribution}  path="/distribution/auctions" />

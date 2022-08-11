@@ -1,0 +1,98 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Structuring.Auto.Service where
+
+import Daml.Finance.App.Structuring.Service qualified as S (CreateFixedRateBond(..), RequestCreateFixedRateBond(..), Service)
+import Daml.Finance.Bond.FixedRate (FixedRateBond)
+import Daml.Finance.Common.Date.Calendar (BusinessDayConventionEnum)
+import Daml.Finance.Common.Date.DayCount (DayCountConventionEnum)
+import Daml.Finance.Common.Date.RollConvention (PeriodEnum)
+import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (K)
+import Daml.Finance.Interface.Asset.Types (Id)
+import Daml.Finance.Interface.Common.Types (Observers)
+
+template Service
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, customer) : (Party, Party, Party)
+    maintainer key._1
+
+    nonconsuming choice RequestAndCreateFixedRateBond : (ContractId FixedRateBond)
+      with
+        id : Id
+        couponRate : Decimal
+        issueDate : Date
+        firstCouponDate : Date
+        maturityDate : Date
+        holidayCalendarIds : [Text]
+        calendarDataAgency : Party
+        dayCountConvention : DayCountConventionEnum
+        businessDayConvention : BusinessDayConventionEnum
+        couponPeriod : PeriodEnum
+        couponPeriodMultiplier : Int
+        cashInstrumentCid : Instrument.K
+        observers : Observers
+        lastEventTimestamp : Time
+      controller customer
+      do
+        createFixedRateBondRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreateFixedRateBond with ..
+        exerciseByKey @S.Service (operator, provider, customer) S.CreateFixedRateBond with createFixedRateBondRequestCid
+
+    choice Terminate : ()
+      with
+        actor : Party
+      controller actor
+      do
+        assert $ actor == operator || actor == provider || actor == customer
+        pure ()
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider
+    observer customer
+
+    choice Accept : ContractId Service
+      controller customer
+      do
+        create Service with ..
+
+    choice Decline : ()
+      controller customer
+      do pure ()
+
+    choice Withdraw : ()
+      controller provider
+      do pure ()
+
+template Request
+  with
+    customer : Party
+    provider : Party
+  where
+    signatory customer
+    observer provider
+
+    choice Cancel : ()
+      controller customer
+      do pure ()
+
+    choice Reject : ()
+      controller provider
+      do pure ()
+
+    choice Approve : ContractId Service
+      with
+        operator : Party
+      controller operator, provider
+      do
+        create Service with ..

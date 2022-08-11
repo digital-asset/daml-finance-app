@@ -14,7 +14,7 @@ import { Issuance } from "./apps/Issuance";
 import { Distribution } from "./apps/Distribution";
 import { Listing } from "./apps/Listing";
 import { Trading } from "./apps/Trading";
-import { Origination } from "./apps/Origination";
+import { Structuring } from "./apps/Structuring";
 import { createTheme, CssBaseline, ThemeOptions, ThemeProvider } from "@mui/material";
 import { Simulation } from "./apps/Simulation";
 import LocalizationProvider from "@mui/lab/LocalizationProvider";
@@ -72,7 +72,7 @@ export const Main : React.FC = () => {
               <Route path="/login" element={<Portal />} />
               <Route path="/login/*" element={<Root />} />
               <Route path="/apps" element={<Private><Apps /></Private>} />
-              <Route path="/origination/*" element={<Origination />} />
+              <Route path="/structuring/*" element={<Structuring />} />
               <Route path="/issuance/*" element={<Issuance />} />
               <Route path="/custody/*" element={<Custody />} />
               <Route path="/distribution/*" element={<Distribution />} />

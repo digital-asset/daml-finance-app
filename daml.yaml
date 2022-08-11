@@ -13,6 +13,7 @@ dependencies:
 data-dependencies:
   - lib/contingent-claims-3.0.0.20220721.1.dar
   - lib/daml-finance-asset-0.1.1.dar
+  - lib/daml-finance-bond-0.1.1.dar
   - lib/daml-finance-common-0.1.1.dar
   - lib/daml-finance-derivative-0.1.1.dar
   - lib/daml-finance-interface-asset-0.1.1.dar

@@ -19,7 +19,7 @@ import { Pending } from "@daml.js/contingent-claims/lib/ContingentClaims/Lifecyc
 import { Time } from "@daml/types";
 import { InstrumentKey } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Types";
 import { Observation } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefData/Observation";
-import { useParties } from "../../hooks/Parties";
+import { useParties } from "../../context/PartiesContext";
 
 export const Instrument : React.FC = () => {
   const classes = useStyles();

@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardActionArea, CardContent, CardMedia, Grid, Typography } from "@mui/material";
 import { Box } from "@mui/system";
 import useStyles from "./styles";
-import { useScenario } from "../../hooks/Scenario";
+import { useScenario } from "../../context/ScenarioContext";
 
 type ScenarioProps = {
   label : string
@@ -21,8 +21,9 @@ export const Scenario : React.FC<ScenarioProps> = ({ label, description, image, 
   const scenario = useScenario();
 
   const selectScenario = () => {
-    scenario.select(label);
-    navigate("/login/network");
+    const s = scenario.select(label);
+    if (s.useNetworkLogin) navigate("/login/network");
+    else navigate("/login/form")
   };
 
   return (

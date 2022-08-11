@@ -8,7 +8,7 @@ import useStyles from "../styles";
 import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fungible";
 import { fmt } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { useParties } from "../../hooks/Parties";
+import { useParties } from "../../context/PartiesContext";
 
 export type HoldingsProps = {
   showAssets : boolean

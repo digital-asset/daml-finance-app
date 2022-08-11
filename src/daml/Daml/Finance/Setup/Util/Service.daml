@@ -18,9 +18,11 @@ import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (Accep
 import Daml.Finance.App.Distribution.Bidding.Auto.Service qualified as BiddingAuto (Accept(..), Service)
 import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Accept(..), Service)
 import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Accept(..), Service)
-import Daml.Finance.App.Role.Custodian qualified as Custodian (OfferBackToBackService(..), OfferCustodyService(..), OfferIssuanceAutoService(..), OfferIssuanceService(..), OfferLifecycleService(..), Role)
+import Daml.Finance.App.Role.Custodian qualified as Custodian (OfferBackToBackService(..), OfferCustodyService(..), OfferIssuanceAutoService(..), OfferIssuanceService(..), OfferLifecycleService(..), OfferStructuringService(..), OfferStructuringAutoService(..), Role)
 import Daml.Finance.App.Role.Distributor qualified as Distributor (OfferAuctionAutoService(..), OfferAuctionService(..), OfferBiddingAutoService(..), OfferBiddingService(..), OfferSubscriptionService(..), Role)
 import Daml.Finance.App.Role.Exchange qualified as Exchange (OfferListingAutoService(..), OfferListingService(..), OfferTradingAutoService(..), OfferTradingService(..), Role)
+import Daml.Finance.App.Structuring.Auto.Service qualified as StructuringAuto (Accept(..), Service)
+import Daml.Finance.App.Structuring.Service qualified as Structuring (Accept(..), Service)
 import Daml.Finance.Settlement.Batch (BatchFactory(..))
 import Daml.Script (Script, createCmd, exerciseByKeyCmd, exerciseCmd)
 
@@ -38,6 +40,16 @@ createIssuanceAutoService : Party -> Party -> Party -> Script (ContractId Issuan
 createIssuanceAutoService operator custodian customer = do
   offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferIssuanceAutoService with ..
   submit customer do exerciseCmd offerCid IssuanceAuto.Accept
+
+createStructuringService : Party -> Party -> Party -> Script (ContractId Structuring.Service)
+createStructuringService operator custodian customer = do
+  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferStructuringService with ..
+  submit customer do exerciseCmd offerCid Structuring.Accept
+
+createStructuringAutoService : Party -> Party -> Party -> Script (ContractId StructuringAuto.Service)
+createStructuringAutoService operator custodian customer = do
+  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferStructuringAutoService with ..
+  submit customer do exerciseCmd offerCid StructuringAuto.Accept
 
 createBackToBackIssuanceService : Party -> Party -> Party -> Party -> Script (ContractId BackToBack.Service)
 createBackToBackIssuanceService operator custodian customer public = do

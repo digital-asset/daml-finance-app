@@ -25,7 +25,6 @@ export const FloatingEdge = ({
 
   const p = getEdgeParams(sourceNode, targetNode);
   const [centerX, centerY] = source === target ? [sourceNode.position.x - 190, sourceNode.position.y + 10] : getBezierEdgeCenter(p);
-  if (source === target) console.log(p);
 
   const d = getBezierPath(p);
 

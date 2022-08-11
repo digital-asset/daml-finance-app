@@ -1,0 +1,106 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Structuring.Service where
+
+import Daml.Finance.App.Structuring.Model (CreateFixedRateBondRequest(..))
+import Daml.Finance.App.Util (fetchAndArchive)
+import Daml.Finance.Bond.FixedRate (FixedRateBond(..))
+import Daml.Finance.Common.Date.Calendar (BusinessDayConventionEnum)
+import Daml.Finance.Common.Date.DayCount (DayCountConventionEnum)
+import Daml.Finance.Common.Date.RollConvention (PeriodEnum)
+import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (K)
+import Daml.Finance.Interface.Asset.Types (Id)
+import Daml.Finance.Interface.Common.Types (Observers)
+
+template Service
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, customer) : (Party, Party, Party)
+    maintainer key._1
+
+    nonconsuming choice RequestCreateFixedRateBond : ContractId CreateFixedRateBondRequest
+      with
+        id : Id
+        couponRate : Decimal
+        issueDate : Date
+        firstCouponDate : Date
+        maturityDate : Date
+        holidayCalendarIds : [Text]
+        calendarDataAgency : Party
+        dayCountConvention : DayCountConventionEnum
+        businessDayConvention : BusinessDayConventionEnum
+        couponPeriod : PeriodEnum
+        couponPeriodMultiplier : Int
+        cashInstrumentCid : Instrument.K
+        observers : Observers
+        lastEventTimestamp : Time
+      controller customer
+      do
+        create CreateFixedRateBondRequest with ..
+
+    nonconsuming choice CreateFixedRateBond : ContractId FixedRateBond
+      with
+        createFixedRateBondRequestCid : ContractId CreateFixedRateBondRequest
+      controller provider
+      do
+        CreateFixedRateBondRequest{..} <- fetchAndArchive createFixedRateBondRequestCid
+        create FixedRateBond with depository = provider; issuer = customer; ..
+
+    choice Terminate : ()
+      with
+        actor : Party
+      controller actor
+      do
+        assert $ actor == operator || actor == provider || actor == customer
+        pure ()
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider
+    observer customer
+
+    choice Accept : ContractId Service
+      controller customer
+      do
+        create Service with ..
+
+    choice Decline : ()
+      controller customer
+      do pure ()
+
+    choice Withdraw : ()
+      controller provider
+      do pure ()
+
+template Request
+  with
+    customer : Party
+    provider : Party
+  where
+    signatory customer
+    observer provider
+
+    choice Cancel : ()
+      controller customer
+      do pure ()
+
+    choice Reject : ()
+      controller provider
+      do pure ()
+
+    choice Approve : ContractId Service
+      with
+        operator : Party
+      controller operator, provider
+      do
+        create Service with ..
