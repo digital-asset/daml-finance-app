@@ -18,12 +18,15 @@ const createToken = (party : string, pub : string) => {
 };
 
 export type PartiesState = {
+  partyIds : string[]
+  partyNames : string[]
+  partyTokens : string[]
   getParty : (name : string) => string,
   getName : (id : string) => string,
   getToken : (id : string) => string,
 }
 
-const PartiesContext = React.createContext<PartiesState>({ getParty: (name : string) => "", getName: (id : string) => "", getToken: (id : string) => "" });
+const PartiesContext = React.createContext<PartiesState>({ partyIds: [], partyNames: [], partyTokens: [], getParty: (name : string) => "", getName: (id : string) => "", getToken: (id : string) => "" });
 
 export const PartiesProvider : React.FC = ({ children }) => {
   const scenario = useScenario();
@@ -38,11 +41,10 @@ export const PartiesProvider : React.FC = ({ children }) => {
     const pTokens : any = {};
     filtered.forEach((p : any) => pIds[p.name] = p.id);
     filtered.forEach((p : any) => pNames[p.id] = p.name);
-    filtered.forEach(p => pTokens[p.id] = createToken(p.id, pIds["Public"]));
+    filtered.forEach((p : any) => pTokens[p.id] = createToken(p.id, pIds["Public"]));
     setPartyIds(pIds);
     setPartyNames(pNames);
     setPartyTokens(pTokens);
-    console.log(pNames);
   }, [scenario]);
 
   const getParty = (name : string) => (partyIds[name] || "") as string;
@@ -50,7 +52,7 @@ export const PartiesProvider : React.FC = ({ children }) => {
   const getToken = (id : string) => (partyTokens[id] || "") as string;
 
   return (
-    <PartiesContext.Provider value={{ getParty, getName, getToken }}>
+    <PartiesContext.Provider value={{ partyIds, partyNames, partyTokens, getParty, getName, getToken }}>
         {children}
     </PartiesContext.Provider>
   );

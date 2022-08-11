@@ -3,7 +3,7 @@
 
 import React, { useMemo, useState } from "react";
 import ReactFlow, { Background, Node } from "react-flow-renderer";
-import { Typography } from "@mui/material";
+import { IconButton, Typography } from "@mui/material";
 import useStyles from "./styles";
 import { Box } from "@mui/system";
 import { useNetwork } from "../../hooks/Network";
@@ -14,6 +14,7 @@ import { useNavigate } from "react-router-dom";
 import { FloatingEdge } from "../../components/Network/FloatingEdge";
 import "./index.css"
 import { useParties } from "../../context/PartiesContext";
+import ExitToApp from "@mui/icons-material/ExitToApp";
 
 export const Network : React.FC = () => {
   const classes = useStyles();
@@ -24,7 +25,9 @@ export const Network : React.FC = () => {
   const network = useNetwork();
 
   const onNodeClick = async (event: any, node: Node) => {
-    await loginUser(userDispatch, node.data.label, getParty(node.data.label), getToken(node.data.label), navigate, setError);
+    const party = getParty(node.data.label);
+    const token = getToken(party);
+    await loginUser(userDispatch, node.data.label, party, token, navigate, setError);
   };
 
   const edgeTypes = useMemo(() => ({
@@ -55,6 +58,9 @@ export const Network : React.FC = () => {
           <Background />
         </ReactFlow>
       </Box>
+      <IconButton size="large" color="inherit" onClick={() => navigate("/login")} style={{ position: "absolute", top: "90%", left: "50%", transform: "translate(-50%, 0%)" }}>
+        <ExitToApp fontSize="large" />
+      </IconButton>
     </>
   );
 }

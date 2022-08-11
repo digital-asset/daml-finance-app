@@ -5,14 +5,20 @@ import ReactDOM from "react-dom";
 import { StyledEngineProvider } from "@mui/styled-engine";
 import { BrandingProvider } from "./context/BrandingContext";
 import { UserProvider } from "./context/UserContext";
+import { PartiesProvider } from "./context/PartiesContext";
 import { Main } from "./Main";
+import { ScenarioProvider } from "./context/ScenarioContext";
 
-ReactDOM.render(
+ReactDOM.render((
   <BrandingProvider>
-    <UserProvider>
-      <StyledEngineProvider injectFirst>
-        <Main />
-      </StyledEngineProvider>
-    </UserProvider>
+    <ScenarioProvider>
+      <PartiesProvider>
+        <UserProvider>
+          <StyledEngineProvider injectFirst>
+            <Main />
+          </StyledEngineProvider>
+        </UserProvider>
+      </PartiesProvider>
+    </ScenarioProvider>
   </BrandingProvider>
-, document.getElementById("root"));
+), document.getElementById("root"));

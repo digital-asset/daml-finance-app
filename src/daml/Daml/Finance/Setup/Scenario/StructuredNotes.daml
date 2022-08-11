@@ -26,7 +26,7 @@ import Daml.Script (Script, createCmd, exerciseByKeyCmd, exerciseCmd, submitMult
 
 run : Script [PartyInfo]
 run  = do
-  parties <- allocateParties "StructuredNotes" ["Operator", "Public", "CentralBank", "Depository", "Issuer", "RiskTaker", "Alice", "Bob", "Charlie"]
+  parties <- allocateParties "Structured Notes" ["Operator", "Public", "CentralBank", "Depository", "Issuer", "RiskTaker", "Alice", "Bob", "Charlie"]
   let [operator, public, centralBank, depository, issuer, riskTaker, alice, bob, charlie] = map (.id) parties
 
   -- Roles

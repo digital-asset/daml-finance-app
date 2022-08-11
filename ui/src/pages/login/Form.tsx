@@ -3,12 +3,13 @@
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, TextField, Typography } from "@mui/material";
+import { Button, IconButton, TextField, Typography } from "@mui/material";
 import useStyles from "./styles";
 import { useUserDispatch, loginUser } from "../../context/UserContext";
 import { useBranding } from "../../context/BrandingContext";
 import { Box } from "@mui/system";
 import { useParties } from "../../context/PartiesContext";
+import ExitToApp from "@mui/icons-material/ExitToApp";
 
 export const Form : React.FC = () => {
   const classes = useStyles();
@@ -19,26 +20,28 @@ export const Form : React.FC = () => {
   const navigate = useNavigate();
 
   const [, setError] = useState(false);
-  const [loginValue, setLoginValue] = useState("");
+  const [name, setName] = useState("");
 
   const loginKey = async (e : any) => {
     if (e.key === "Enter") await login();
   }
 
   const login = async () => {
-    await loginUser(userDispatch, loginValue, getParty(loginValue), getToken(loginValue), navigate, setError);
+    const party = getParty(name);
+    const token = getToken(party);
+    await loginUser(userDispatch, name, party, token, navigate, setError);
   }
 
   return (
     <>
       {branding.loginLogo}
-      <Typography variant="h2" style={{ position: "absolute", top: "50%", left: "34%" }}>Digital Market Infrastructure</Typography>
-      <Box className={classes.loginContainer} style={{ top: branding.loginY, left: branding.loginX }}>
+      <Typography variant="h2" style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, 0%)" }}>Digital Market Infrastructure</Typography>
+      <Box className={classes.loginContainer} style={{ position: "absolute", top: branding.loginY, left: "50%", transform: "translate(-50%, 0%)" }}>
         <TextField
           className={classes.loginField}
           // InputProps={{ style: { color: "white" } }}
-          value={loginValue}
-          onChange={e => setLoginValue(e.target.value)}
+          value={name}
+          onChange={e => setName(e.target.value)}
           onKeyDown={loginKey}
           margin="normal"
           placeholder="Username"
@@ -46,7 +49,7 @@ export const Form : React.FC = () => {
         />
         <Button
           className={classes.loginButton}
-          disabled={loginValue.length === 0}
+          disabled={name.length === 0}
           onClick={login}
           variant="contained"
           color="primary"
@@ -56,6 +59,9 @@ export const Form : React.FC = () => {
           Login
         </Button>
       </Box>
+      <IconButton size="large" color="inherit" onClick={() => navigate("/login")} style={{ position: "absolute", top: "90%", left: "50%", transform: "translate(-50%, 0%)" }}>
+        <ExitToApp fontSize="large" />
+      </IconButton>
     </>
   );
 }
