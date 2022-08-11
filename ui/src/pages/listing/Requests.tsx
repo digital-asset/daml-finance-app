@@ -12,7 +12,7 @@ import useStyles from "../styles";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Service";
 import { CreateListingRequest, DeleteListingRequest, Listing } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Model";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { useParties } from "../../hooks/Parties";
+import { useParties } from "../../context/PartiesContext";
 
 export const Requests : React.FC = () => {
   const classes = useStyles();

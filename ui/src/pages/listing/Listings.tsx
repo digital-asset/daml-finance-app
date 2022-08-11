@@ -10,7 +10,7 @@ import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/
 import { Service as AutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Auto/Service";
 import { Listing } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Model";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { useParties } from "../../hooks/Parties";
+import { useParties } from "../../context/PartiesContext";
 
 export const Listings : React.FC = () => {
   const classes = useStyles();

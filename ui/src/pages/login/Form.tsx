@@ -8,7 +8,7 @@ import useStyles from "./styles";
 import { useUserDispatch, loginUser } from "../../context/UserContext";
 import { useBranding } from "../../context/BrandingContext";
 import { Box } from "@mui/system";
-import { useParties } from "../../hooks/Parties";
+import { useParties } from "../../context/PartiesContext";
 
 export const Form : React.FC = () => {
   const classes = useStyles();

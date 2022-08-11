@@ -11,7 +11,7 @@ import { CreateAuctionRequest } from "@daml.js/daml-finance-app/lib/Daml/Finance
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Service";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { fmt } from "../../../util";
-import { useParties } from "../../../hooks/Parties";
+import { useParties } from "../../../context/PartiesContext";
 
 export const Requests : React.FC = () => {
   const classes = useStyles();

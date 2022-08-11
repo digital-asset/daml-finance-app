@@ -15,7 +15,7 @@ import { Effect as EffectContract } from "@daml.js/daml-finance-lifecycle/lib/Da
 import { Batch } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Batch";
 import { Rule } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/SettlementRule";
 import { CreateEvent } from "@daml/ledger";
-import { useParties } from "../../hooks/Parties";
+import { useParties } from "../../context/PartiesContext";
 
 export const Effect : React.FC = () => {
   const classes = useStyles();

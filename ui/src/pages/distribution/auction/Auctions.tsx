@@ -12,7 +12,7 @@ import { Auction } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribu
 import { getAuctionStatus } from "../Utils";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { fmt } from "../../../util";
-import { useParties } from "../../../hooks/Parties";
+import { useParties } from "../../../context/PartiesContext";
 
 export const Auctions : React.FC = () => {
   const classes = useStyles();

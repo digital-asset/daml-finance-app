@@ -18,7 +18,7 @@ import useStyles from "../styles";
 import { Instrument } from "@daml.js/daml-finance-derivative/lib/Daml/Finance/Derivative/Instrument";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { version } from "../../util";
-import { useParties } from "../../hooks/Parties";
+import { useParties } from "../../context/PartiesContext";
 
 export const Instruments : React.FC = () => {
   const classes = useStyles();

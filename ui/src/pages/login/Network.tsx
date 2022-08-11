@@ -13,8 +13,7 @@ import { loginUser, useUserDispatch } from "../../context/UserContext";
 import { useNavigate } from "react-router-dom";
 import { FloatingEdge } from "../../components/Network/FloatingEdge";
 import "./index.css"
-import { useScenario } from "../../hooks/Scenario";
-import { useParties } from "../../hooks/Parties";
+import { useParties } from "../../context/PartiesContext";
 
 export const Network : React.FC = () => {
   const classes = useStyles();
@@ -22,8 +21,7 @@ export const Network : React.FC = () => {
   const navigate = useNavigate();
   const [, setError] = useState(false);
   const { getParty, getToken } = useParties();
-  const scenario = useScenario();
-  const network = useNetwork(scenario.selected);
+  const network = useNetwork();
 
   const onNodeClick = async (event: any, node: Node) => {
     await loginUser(userDispatch, node.data.label, getParty(node.data.label), getToken(node.data.label), navigate, setError);

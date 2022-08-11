@@ -16,7 +16,7 @@ import { nodeToClaim } from "../../components/Claims/util";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { createKeyBase, singleton } from "../../util";
 import { emptyMap } from "@daml/types";
-import { useParties } from "../../hooks/Parties";
+import { useParties } from "../../context/PartiesContext";
 
 export const NewCustom : React.FC = () => {
   const classes = useStyles();

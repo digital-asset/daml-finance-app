@@ -12,7 +12,7 @@ import { getBidStatus, getBidAllocation } from "../Utils";
 import { KeyboardArrowRight } from "@mui/icons-material";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { fmt } from "../../../util";
-import { useParties } from "../../../hooks/Parties";
+import { useParties } from "../../../context/PartiesContext";
 
 export const Auctions: React.FC = () => {
   const classes = useStyles();

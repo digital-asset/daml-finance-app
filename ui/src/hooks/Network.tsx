@@ -20,8 +20,8 @@ import { CreateEvent } from "@daml/ledger";
 import { dedup } from "../util";
 import { Edge, EdgeChange, MarkerType, Node, NodeChange, useEdgesState, useNodesState } from "react-flow-renderer";
 import { useEffect, useState } from "react";
-import { Scenario } from "../config";
-import { useParties } from "./Parties";
+import { useParties } from "../context/PartiesContext";
+import { useScenario } from "../context/ScenarioContext";
 
 export type Network = {
   nodes : Node<any>[],
@@ -40,9 +40,10 @@ type GroupedServices = {
   services : string[]
 };
 
-export const useNetwork = (scenario : Scenario) : Network => {
+export const useNetwork = () : Network => {
 
   const { getName } = useParties();
+  const scenario = useScenario();
   const { contracts: backToBackServices,   loading: l1 } =  useStreamQueries(BackToBackService);
   const { contracts: custodyServices,      loading: l2 } =  useStreamQueries(CustodyService);
   const { contracts: auctionServices,      loading: l3 } =  useStreamQueries(AuctionService);
@@ -78,7 +79,7 @@ export const useNetwork = (scenario : Scenario) : Network => {
   const createNode = (p : string, i : number) => ({
       id: p,
       data: { label: getName(p) },
-      position: scenario.positions.get(getName(p)) || { x: 0, y: 0 },
+      position: scenario.selected.positions.get(getName(p)) || { x: 0, y: 0 },
       style: { zIndex: 0, width: 160, cursor: "pointer" },
       zIndex: 0
   });

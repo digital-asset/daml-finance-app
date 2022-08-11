@@ -16,7 +16,7 @@ import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/Claims
 import { Instrument as Derivative } from "@daml.js/daml-finance-derivative/lib/Daml/Finance/Derivative/Instrument";
 import { Instrument } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Instrument";
 import { createKeyBase, createKeyDerivative, createSet } from "../../util";
-import { useParties } from "../../hooks/Parties";
+import { useParties } from "../../context/PartiesContext";
 
 export const New : React.FC = () => {
   const classes = useStyles();

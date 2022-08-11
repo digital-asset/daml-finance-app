@@ -21,7 +21,7 @@ import { ClaimsTreeBuilder, ClaimTreeNode } from "../../../components/Claims/Cla
 import { createKeyBase, fmt, getHolding } from "../../../util";
 import { Reference } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Account";
 import { Message } from "../../../components/Message/Message";
-import { useParties } from "../../../hooks/Parties";
+import { useParties } from "../../../context/PartiesContext";
 
 export const BiddingAuction : React.FC = () => {
   const classes = useStyles();
