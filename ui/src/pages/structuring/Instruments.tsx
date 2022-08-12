@@ -30,7 +30,10 @@ export const Instruments : React.FC = () => {
   const instruments : CreateEvent<any>[] = Array.prototype.concat.apply([],[
     inst.tokens,
     inst.derivatives,
-    inst.fixedRateBonds
+    inst.fixedRateBonds,
+    inst.floatingRateBonds,
+    inst.inflationLinkedBonds,
+    inst.zeroCouponBonds,
   ]);
 
   return (

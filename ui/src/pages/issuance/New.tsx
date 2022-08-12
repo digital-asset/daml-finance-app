@@ -40,7 +40,10 @@ export const New : React.FC = () => {
   const instruments : CreateEvent<any>[] = Array.prototype.concat.apply([],[
     inst.tokens,
     inst.derivatives,
-    inst.fixedRateBonds
+    inst.fixedRateBonds,
+    inst.floatingRateBonds,
+    inst.inflationLinkedBonds,
+    inst.zeroCouponBonds,
   ]);
 
   const myInstruments = instruments.filter(c => c.payload.issuer === party);

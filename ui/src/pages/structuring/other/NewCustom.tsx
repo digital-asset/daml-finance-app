@@ -7,16 +7,16 @@ import { v4 as uuidv4 } from "uuid";
 import classnames from "classnames";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Typography, Grid, Paper, Button, TextField } from "@mui/material";
-import useStyles from "../styles";
+import useStyles from "../../styles";
 import { Instrument } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Instrument";
 import { Instrument as Derivative } from "@daml.js/daml-finance-derivative/lib/Daml/Finance/Derivative/Instrument";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Service";
-import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
-import { nodeToClaim } from "../../components/Claims/util";
-import { Spinner } from "../../components/Spinner/Spinner";
-import { createKeyBase, singleton } from "../../util";
+import { ClaimsTreeBuilder, ClaimTreeNode } from "../../../components/Claims/ClaimsTreeBuilder";
+import { nodeToClaim } from "../../../components/Claims/util";
+import { Spinner } from "../../../components/Spinner/Spinner";
+import { createKeyBase, singleton } from "../../../util";
 import { emptyMap } from "@daml/types";
-import { useParties } from "../../context/PartiesContext";
+import { useParties } from "../../../context/PartiesContext";
 
 export const NewCustom : React.FC = () => {
   const classes = useStyles();

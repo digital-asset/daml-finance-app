@@ -3,8 +3,11 @@
 
 module Daml.Finance.App.Structuring.Auto.Service where
 
-import Daml.Finance.App.Structuring.Service qualified as S (CreateFixedRateBond(..), RequestCreateFixedRateBond(..), Service)
+import Daml.Finance.App.Structuring.Service qualified as S (CreateFixedRateBond(..), CreateFloatingRateBond(..), CreateInflationLinkedBond(..), CreateZeroCouponBond(..), RequestCreateFixedRateBond(..), RequestCreateFloatingRateBond(..), RequestCreateInflationLinkedBond(..), RequestCreateZeroCouponBond(..), Service)
 import Daml.Finance.Bond.FixedRate (FixedRateBond)
+import Daml.Finance.Bond.FloatingRate (FloatingRateBond(..))
+import Daml.Finance.Bond.InflationLinked (InflationLinkedBond(..))
+import Daml.Finance.Bond.ZeroCoupon (ZeroCouponBond(..))
 import Daml.Finance.Common.Date.Calendar (BusinessDayConventionEnum)
 import Daml.Finance.Common.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Common.Date.RollConvention (PeriodEnum)
@@ -43,6 +46,64 @@ template Service
       do
         createFixedRateBondRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreateFixedRateBond with ..
         exerciseByKey @S.Service (operator, provider, customer) S.CreateFixedRateBond with createFixedRateBondRequestCid
+
+    nonconsuming choice RequestAndCreateFloatingRateBond : (ContractId FloatingRateBond)
+      with
+        id : Id
+        referenceRateId : Text
+        couponSpread : Decimal
+        issueDate : Date
+        firstCouponDate : Date
+        maturityDate : Date
+        holidayCalendarIds : [Text]
+        calendarDataAgency : Party
+        dayCountConvention : DayCountConventionEnum
+        businessDayConvention : BusinessDayConventionEnum
+        couponPeriod : PeriodEnum
+        couponPeriodMultiplier : Int
+        cashInstrumentCid : Instrument.K
+        observers : Observers
+        lastEventTimestamp : Time
+      controller customer
+      do
+        createFloatingRateBondRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreateFloatingRateBond with ..
+        exerciseByKey @S.Service (operator, provider, customer) S.CreateFloatingRateBond with createFloatingRateBondRequestCid
+
+    nonconsuming choice RequestAndCreateInflationLinkedBond : (ContractId InflationLinkedBond)
+      with
+        id : Id
+        inflationIndexId : Text
+        inflationIndexBaseValue : Decimal
+        couponRate : Decimal
+        issueDate : Date
+        firstCouponDate : Date
+        maturityDate : Date
+        holidayCalendarIds : [Text]
+        calendarDataAgency : Party
+        dayCountConvention : DayCountConventionEnum
+        businessDayConvention : BusinessDayConventionEnum
+        couponPeriod : PeriodEnum
+        couponPeriodMultiplier : Int
+        cashInstrumentCid : Instrument.K
+        observers : Observers
+        lastEventTimestamp : Time
+      controller customer
+      do
+        createInflationLinkedBondRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreateInflationLinkedBond with ..
+        exerciseByKey @S.Service (operator, provider, customer) S.CreateInflationLinkedBond with createInflationLinkedBondRequestCid
+
+    nonconsuming choice RequestAndCreateZeroCouponBond : (ContractId ZeroCouponBond)
+      with
+        id : Id
+        issueDate : Date
+        maturityDate : Date
+        cashInstrumentCid : Instrument.K
+        observers : Observers
+        lastEventTimestamp : Time
+      controller customer
+      do
+        createZeroCouponBondRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreateZeroCouponBond with ..
+        exerciseByKey @S.Service (operator, provider, customer) S.CreateZeroCouponBond with createZeroCouponBondRequestCid
 
     choice Terminate : ()
       with

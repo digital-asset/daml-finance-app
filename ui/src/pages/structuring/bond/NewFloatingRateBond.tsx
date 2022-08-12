@@ -7,25 +7,25 @@ import { Typography, Grid, Paper, Select, MenuItem, TextField, Button, MenuProps
 import { v4 as uuidv4 } from "uuid";
 import classnames from "classnames";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
-import useStyles from "../styles";
-import { createKeyBase, parseDate } from "../../util";
-import { RequestAndCreateFixedRateBond, Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service";
+import useStyles from "../../styles";
+import { createKeyBase, parseDate } from "../../../util";
+import { RequestAndCreateFloatingRateBond, Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service";
 import { DatePicker } from "@mui/lab";
-// import { ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
-import { Spinner } from "../../components/Spinner/Spinner";
-import { Message } from "../../components/Message/Message";
+import { Spinner } from "../../../components/Spinner/Spinner";
+import { Message } from "../../../components/Message/Message";
 import { Instrument } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Instrument";
 import { PeriodEnum } from "@daml.js/daml-finance-common/lib/Daml/Finance/Common/Date/RollConvention";
 import { emptyMap } from "@daml/types";
 import { DayCountConventionEnum } from "@daml.js/daml-finance-common/lib/Daml/Finance/Common/Date/DayCount";
 import { BusinessDayConventionEnum } from "@daml.js/daml-finance-common/lib/Daml/Finance/Common/Date/Calendar";
 
-export const NewFixedRateBond : React.FC = () => {
+export const NewFloatingRateBond : React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
 
   const [ label, setLabel ] = useState("");
-  const [ couponRate, setCouponRate ] = useState("");
+  const [ referenceRateId, setReferenceRateId ] = useState("");
+  const [ couponSpread, setCouponSpread ] = useState("");
   const [ issueDate, setIssueDate ] = useState<Date | null>(null);
   const [ firstCouponDate, setFirstCouponDate ] = useState<Date | null>(null);
   const [ maturityDate, setMaturityDate ] = useState<Date | null>(null);
@@ -34,40 +34,14 @@ export const NewFixedRateBond : React.FC = () => {
   const [ businessDayConvention, setBusinessDayConvention ] = useState("");
   const [ couponFrequency, setCouponFrequency ] = useState("Annual");
   const [ currency, setCurrency ] = useState("");
-  // const [ node, setNode ] = useState<ClaimTreeNode | undefined>();
 
-  const canRequest = !!label && !!couponRate && !!issueDate && !!firstCouponDate && !!maturityDate && !!dayCountConvention && businessDayConvention && !!couponFrequency && !!currency;
+  const canRequest = !!label && !!referenceRateId && !!couponSpread && !!issueDate && !!firstCouponDate && !!maturityDate && !!dayCountConvention && businessDayConvention && !!couponFrequency && !!currency;
 
   const ledger = useLedger();
   const party = useParty();
 
   const { contracts: services, loading: l1 } = useStreamQueries(Service);
   const { contracts: instruments, loading: l2 } = useStreamQueries(Instrument);
-
-  // const ids = instruments.map(c => c.payload.id);
-  // const labels = ids.map(c => c.label);
-
-//   useEffect(() => {
-//     if (!issueDate || !maturityDate || !coupon || !ccyId) return;
-//     const createBond = async () => {
-//       const couponPeriod = couponFrequency === "Annual" ? PeriodEnum.Y : PeriodEnum.M;
-//       const couponPeriodMultiplier = couponFrequency === "Annual" ? "1" : (couponFrequency === "Semi-annual" ? "6" : "3");
-//       const arg = {
-//         issueDate: parseDate(issueDate),
-//         maturityDate: parseDate(maturityDate),
-//         couponPeriod,
-//         couponPeriodMultiplier,
-//         couponPerAnnum: coupon,
-//         currency: ccyId,
-//         calendarIds: ["FED"],
-//         convention: BusinessDayConventionEnum.MODFOLLOWING,
-//         observers: []
-//       }
-//       const [c, ] = await ledger.exercise(Service.RequestAndCreateFixedRateBond, services[0].contractId, arg);
-//       setNode(claimToNode(c));
-//     };
-//     createBond();
-//   }, [ledger, party, issueDate, maturityDate, coupon, couponFrequency, ccyId]);
 
   if (l1 || l2) return <Spinner />;
   if (services.length === 0) return <Message text="No structuring service found" />
@@ -77,9 +51,10 @@ export const NewFixedRateBond : React.FC = () => {
     if (!ccy) throw new Error("Couldn't find currency " + currency);
     const couponPeriod = couponFrequency === "Annual" ? PeriodEnum.Y : PeriodEnum.M;
     const couponPeriodMultiplier = couponFrequency === "Annual" ? "1" : (couponFrequency === "Semi-annual" ? "6" : "3");
-    const arg : RequestAndCreateFixedRateBond = {
+    const arg : RequestAndCreateFloatingRateBond = {
       id: { label, version: uuidv4() },
-      couponRate,
+      referenceRateId,
+      couponSpread,
       issueDate: parseDate(issueDate),
       firstCouponDate: parseDate(issueDate),
       maturityDate: parseDate(issueDate),
@@ -93,7 +68,7 @@ export const NewFixedRateBond : React.FC = () => {
       observers: emptyMap(),
       lastEventTimestamp: new Date().toISOString()
     }
-    await ledger.exercise(Service.RequestAndCreateFixedRateBond, services[0].contractId, arg);
+    await ledger.exercise(Service.RequestAndCreateFloatingRateBond, services[0].contractId, arg);
     navigate("/structuring/instruments");
   };
 
@@ -101,7 +76,7 @@ export const NewFixedRateBond : React.FC = () => {
   return (
     <Grid container direction="column" spacing={2}>
       <Grid item xs={12}>
-        <Typography variant="h3" className={classes.heading}>New Bond</Typography>
+        <Typography variant="h3" className={classes.heading}>New Floating Rate Bond</Typography>
       </Grid>
       <Grid item xs={12}>
         <Grid container spacing={4}>
@@ -111,7 +86,18 @@ export const NewFixedRateBond : React.FC = () => {
                 <Paper className={classnames(classes.fullWidth, classes.paper)}>
                   <Typography variant="h5" className={classes.heading}>Parameters</Typography>
                   <TextField className={classes.inputField} fullWidth label="Id" type="text" value={label} onChange={e => setLabel(e.target.value as string)} />
-                  <TextField className={classes.inputField} fullWidth label="Coupon (per annum)" type="number" value={couponRate} onChange={e => setCouponRate(e.target.value as string)} />
+                  <FormControl className={classes.inputField} fullWidth>
+                    <InputLabel className={classes.selectLabel}>Reference Rate Id</InputLabel>
+                    <Select value={referenceRateId} onChange={e => setReferenceRateId(e.target.value as string)} MenuProps={menuProps}>
+                      <MenuItem key={0} value={"USD/LIBOR/1M"}>{"USD/LIBOR/1M"}</MenuItem>
+                      <MenuItem key={1} value={"USD/LIBOR/3M"}>{"USD/LIBOR/3M"}</MenuItem>
+                      <MenuItem key={2} value={"USD/LIBOR/6M"}>{"USD/LIBOR/6M"}</MenuItem>
+                      <MenuItem key={3} value={"EUR/EURIBOR/1M"}>{"EUR/EURIBOR/1M"}</MenuItem>
+                      <MenuItem key={4} value={"EUR/EURIBOR/3M"}>{"EUR/EURIBOR/3M"}</MenuItem>
+                      <MenuItem key={5} value={"EUR/EURIBOR/6M"}>{"EUR/EURIBOR/6M"}</MenuItem>
+                    </Select>
+                  </FormControl>
+                  <TextField className={classes.inputField} fullWidth label="Coupon Spread (per period)" type="number" value={couponSpread} onChange={e => setCouponSpread(e.target.value as string)} />
                   <FormControl className={classes.inputField} fullWidth>
                     <InputLabel className={classes.selectLabel}>Currency</InputLabel>
                     <Select value={currency} onChange={e => setCurrency(e.target.value as string)} MenuProps={menuProps}>
@@ -158,16 +144,6 @@ export const NewFixedRateBond : React.FC = () => {
               </Grid>
             </Grid>
           </Grid>
-          {/* <Grid item xs={9}>
-            <Grid container direction="column" spacing={2}>
-              <Grid item xs={12}>
-                <Paper className={classnames(classes.fullWidth, classes.paper)}>
-                  <Typography variant="h5" className={classes.heading}>Instrument</Typography>
-                  <ClaimsTreeBuilder node={node} setNode={setNode} assets={labels}/>
-                </Paper>
-              </Grid>
-            </Grid>
-          </Grid> */}
         </Grid>
       </Grid>
     </Grid>

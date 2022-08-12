@@ -8,23 +8,21 @@ import { Instruments } from "../pages/structuring/Instruments";
 import { New } from "../pages/structuring/New";
 import { App } from "./App";
 import { Instrument } from "../pages/structuring/Instrument";
-import { NewCustom } from "../pages/structuring/NewCustom";
-import { NewFixedRateBond } from "../pages/structuring/NewFixedRateBond";
+import { NewCustom } from "../pages/structuring/other/NewCustom";
+import { NewFixedRateBond } from "../pages/structuring/bond/NewFixedRateBond";
+import { NewFloatingRateBond } from "../pages/structuring/bond/NewFloatingRateBond";
+import { NewInflationLinkedBond } from "../pages/structuring/bond/NewInflationLinkedBond";
+import { NewZeroCouponBond } from "../pages/structuring/bond/NewZeroCouponBond";
 
 export const Structuring : React.FC = () => {
   const entries : RouteEntry[] =
     [ { path: "instruments", element: <Instruments />, label: "Instruments", icon: <PlayArrow/> }
-    // , { path: "requests", element: <Requests />, label: "Requests", icon: <PlayArrow/> }
     , { path: "new", element: <New />, label: "New", icon: <PlayArrow/> }
-    // , { path: "new/base", element: <NewBaseInstrument /> }
-    // , { path: "new/binaryoption", element: <NewBinaryOption /> }
-    , { path: "new/fixedratebond", element: <NewFixedRateBond /> }
-    // , { path: "new/floatingratebond", element: <NewFloatingRateBond /> }
-    // , { path: "new/cds", element: <NewCds /> }
-    // , { path: "new/convertiblenote", element: <NewConvertibleNote /> }
-    , { path: "new/custom", element: <NewCustom /> }
-    // , { path: "new/totalreturnswap", element: <NewTotalReturnSwap /> }
-    // , { path: "new/turbowarrant", element: <NewTurboWarrant /> }
+    , { path: "new/bond/fixedrate", element: <NewFixedRateBond /> }
+    , { path: "new/bond/floatingrate", element: <NewFloatingRateBond /> }
+    , { path: "new/bond/inflationlinked", element: <NewInflationLinkedBond /> }
+    , { path: "new/bond/zerocoupon", element: <NewZeroCouponBond /> }
+    , { path: "new/other/custom", element: <NewCustom /> }
     , { path: "instruments/:contractId", element: <Instrument /> } ];
-  return <App title="Origination" entries={entries} />;
+  return <App title="Structuring" entries={entries} />;
 }

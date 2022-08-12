@@ -10,12 +10,73 @@ import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (K)
 import Daml.Finance.Interface.Asset.Types (Id)
 import Daml.Finance.Interface.Common.Types (Observers)
 
+template CreateZeroCouponBondRequest
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Id
+    issueDate : Date
+    maturityDate : Date
+    cashInstrumentCid : Instrument.K
+    observers : Observers
+    lastEventTimestamp : Time
+  where
+    signatory operator, provider, customer
+
 template CreateFixedRateBondRequest
   with
     operator : Party
     provider : Party
     customer : Party
     id : Id
+    couponRate : Decimal
+    issueDate : Date
+    firstCouponDate : Date
+    maturityDate : Date
+    holidayCalendarIds : [Text]
+    calendarDataAgency : Party
+    dayCountConvention : DayCountConventionEnum
+    businessDayConvention : BusinessDayConventionEnum
+    couponPeriod : PeriodEnum
+    couponPeriodMultiplier : Int
+    cashInstrumentCid : Instrument.K
+    observers : Observers
+    lastEventTimestamp : Time
+  where
+    signatory operator, provider, customer
+
+template CreateFloatingRateBondRequest
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Id
+    referenceRateId : Text
+    couponSpread : Decimal
+    issueDate : Date
+    firstCouponDate : Date
+    maturityDate : Date
+    holidayCalendarIds : [Text]
+    calendarDataAgency : Party
+    dayCountConvention : DayCountConventionEnum
+    businessDayConvention : BusinessDayConventionEnum
+    couponPeriod : PeriodEnum
+    couponPeriodMultiplier : Int
+    cashInstrumentCid : Instrument.K
+    observers : Observers
+    lastEventTimestamp : Time
+  where
+    signatory operator, provider, customer
+
+template CreateInflationLinkedBondRequest
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Id
+    inflationIndexId : Text
+    inflationIndexBaseValue : Decimal
     couponRate : Decimal
     issueDate : Date
     firstCouponDate : Date

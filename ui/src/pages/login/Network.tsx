@@ -58,7 +58,7 @@ export const Network : React.FC = () => {
           <Background />
         </ReactFlow>
       </Box>
-      <IconButton size="large" color="inherit" onClick={() => navigate("/login")} style={{ position: "absolute", top: "90%", left: "50%", transform: "translate(-50%, 0%)" }}>
+      <IconButton size="large" color="inherit" onClick={() => navigate("/login")} style={{ position: "absolute", top: "93%", left: "50%", transform: "translate(-50%, 0%)" }}>
         <ExitToApp fontSize="large" />
       </IconButton>
     </>
