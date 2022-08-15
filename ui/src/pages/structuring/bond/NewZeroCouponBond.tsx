@@ -3,7 +3,7 @@
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Typography, Grid, Paper, Select, MenuItem, TextField, Button, MenuProps, FormControl, InputLabel } from "@mui/material";
+import { Typography, Grid, Paper, Select, MenuItem, TextField, Button, MenuProps, FormControl, InputLabel, TextFieldProps } from "@mui/material";
 import { v4 as uuidv4 } from "uuid";
 import classnames from "classnames";
 import { useLedger, useStreamQueries } from "@daml/react";
@@ -70,8 +70,8 @@ export const NewZeroCouponBond : React.FC = () => {
                       {instruments.map((c, i) => (<MenuItem key={i} value={c.payload.id.label}>{c.payload.id.label}</MenuItem>))}
                     </Select>
                   </FormControl>
-                  <DatePicker className={classes.inputField} inputFormat="yyyy-MM-dd" label="Issue Date" value={issueDate} onChange={e => setIssueDate(e)} renderInput={(params) => <TextField fullWidth {...params} />} />
-                  <DatePicker className={classes.inputField} inputFormat="yyyy-MM-dd" label="Maturity Date" value={maturityDate} onChange={e => setMaturityDate(e)} renderInput={(params) => <TextField fullWidth {...params} />} />
+                  <DatePicker className={classes.inputField} inputFormat="yyyy-MM-dd" label="Issue Date" value={issueDate} onChange={setIssueDate} renderInput={(props : TextFieldProps) => <TextField {...props} fullWidth />} />
+                  <DatePicker className={classes.inputField} inputFormat="yyyy-MM-dd" label="Maturity Date" value={maturityDate} onChange={setMaturityDate} renderInput={(props : TextFieldProps) => <TextField {...props} fullWidth />} />
                   <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={createFixedRateBond}>Create Instrument</Button>
                 </Paper>
               </Grid>
