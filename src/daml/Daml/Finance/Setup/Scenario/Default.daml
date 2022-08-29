@@ -4,12 +4,14 @@
 module Daml.Finance.Setup.Scenario.Default where
 
 import ContingentClaims.Financial (unrollDates)
-import DA.Date (date, Month(..), toDateUTC, toGregorian)
+import DA.Date (DayOfWeek(Saturday, Sunday), Month(..), date, toDateUTC, toGregorian)
 import DA.Map (fromList)
 import DA.Set (singleton)
 import DA.Time (time)
 import Daml.Finance.Asset.Fungible qualified as Fungible (Factory(..))
+import Daml.Finance.Common.Date.Calendar (HolidayCalendarData(..))
 import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (qty)
+import Daml.Finance.RefData.HolidayCalendar (HolidayCalendar(..))
 import Daml.Finance.RefData.Observation (Observation(..))
 import Daml.Finance.RefData.Time.DateClock (DateClock(..), DateClockUpdateEvent(..), Unit(..))
 import Daml.Finance.Setup.Payoff (basisSwap, bond, callOptionPhysical, callOptionCashAuto, delivery, dvp, futureDvp, interestRateSwap, payment)
@@ -139,7 +141,8 @@ run  = do
     obs =
       [ Observation with provider = issuer; obsKey = libor3M; observations = fromList [(todayTime, 0.0018825)]; observers
       , Observation with provider = issuer; obsKey = libor6M; observations = fromList [(todayTime, 0.0022363)]; observers ]
-
+    calendar = HolidayCalendarData with id = "FED"; weekend = [Saturday, Sunday]; holidays = []
+  calendarCid <- submitMulti [issuer] [] do createCmd HolidayCalendar with agency = issuer; entity = calendar.id; calendar; observers = fromList pub
   obsCids <- mapA (\f -> submitMulti [registry, issuer] [] do createCmd f) obs
 
   let

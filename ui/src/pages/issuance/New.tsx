@@ -39,7 +39,7 @@ export const New : React.FC = () => {
 
   const instruments : CreateEvent<any>[] = Array.prototype.concat.apply([],[
     inst.tokens,
-    inst.derivatives,
+    inst.generics,
     inst.fixedRateBonds,
     inst.floatingRateBonds,
     inst.inflationLinkedBonds,

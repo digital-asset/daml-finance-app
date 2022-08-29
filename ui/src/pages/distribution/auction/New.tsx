@@ -12,13 +12,13 @@ import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fun
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Service";
 import { Service as AutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Auto/Service";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
-import { Instrument as Derivative } from "@daml.js/daml-finance-derivative/lib/Daml/Finance/Derivative/Instrument";
-import { Instrument } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Instrument";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../../components/Claims/ClaimsTreeBuilder";
 import { Reference } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Account";
 import { createKeyBase, createKeyDerivative, createSet, getHolding } from "../../../util";
 import { useParties } from "../../../context/PartiesContext";
+import { useInstruments } from "../../../context/InstrumentsContext";
+import { CreateEvent } from "@daml/ledger";
 
 export const New : React.FC = () => {
   const classes = useStyles();
@@ -36,18 +36,18 @@ export const New : React.FC = () => {
   const ledger = useLedger();
   const party = useParty();
   const { getParty } = useParties();
+  const inst = useInstruments();
 
   const { contracts: services, loading: l1 } = useStreamQueries(Service);
   const { contracts: autoServices, loading: l2 } = useStreamQueries(AutoService);
-  const { contracts: derivatives, loading: l3 } = useStreamQueries(Derivative);
-  const { contracts: instruments, loading: l4 } = useStreamQueries(Instrument);
-  const { contracts: holdings, loading: l5 } = useStreamQueries(Fungible);
-  const { contracts: accounts, loading: l6 } = useStreamQueries(Reference);
+  const { contracts: holdings, loading: l3 } = useStreamQueries(Fungible);
+  const { contracts: accounts, loading: l4 } = useStreamQueries(Reference);
 
+  const instruments : CreateEvent<any>[] = Array.prototype.concat.apply([], [inst.generics, inst.fixedRateBonds, inst.floatingRateBonds, inst.inflationLinkedBonds, inst.zeroCouponBonds]);
   const myServices = services.filter(s => s.payload.customer === party);
   const myAutoServices = autoServices.filter(s => s.payload.customer === party);
-  const instrument = derivatives.find(c => c.payload.id.label === instrumentLabel);
-  const currency = instruments.find(c => c.payload.id.label === currencyLabel);
+  const instrument = instruments.find(c => c.payload.id.label === instrumentLabel);
+  const currency = inst.tokens.find(c => c.payload.id.label === currencyLabel);
   const myHoldings = holdings.filter(c => c.payload.account.owner === party);
   const myHoldingLabels = myHoldings.map(c => c.payload.instrument.id.label).filter((v, i, a) => a.indexOf(v) === i);
   const baseKeys = instruments.map(c => ({ depository: c.payload.depository, issuer: c.payload.issuer, id: c.payload.id}));
@@ -57,7 +57,7 @@ export const New : React.FC = () => {
     if (!!instrument) setNode(claimToNode(instrument.payload.claims));
   }, [instrument]);
 
-  if (l1 || l2 || l3 || l4 || l5 || l6) return (<Spinner />);
+  if (inst.loading || l1 || l2 || l3 || l4) return (<Spinner />);
   if (myServices.length === 0) return (<div style={{display: 'flex', justifyContent: 'center', marginTop: 350 }}><h1>No auction service found for customer: {party}</h1></div>);
 
   const requestCreateAuction = async () => {

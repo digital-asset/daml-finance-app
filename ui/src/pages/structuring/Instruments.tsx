@@ -17,7 +17,6 @@ import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { version } from "../../util";
 import { useParties } from "../../context/PartiesContext";
-import { CreateEvent } from "@daml/ledger";
 import { useInstruments } from "../../context/InstrumentsContext";
 
 export const Instruments : React.FC = () => {
@@ -26,15 +25,6 @@ export const Instruments : React.FC = () => {
   const { getName } = useParties();
   const inst = useInstruments();
   if (inst.loading) return (<Spinner />);
-
-  const instruments : CreateEvent<any>[] = Array.prototype.concat.apply([],[
-    inst.tokens,
-    inst.derivatives,
-    inst.fixedRateBonds,
-    inst.floatingRateBonds,
-    inst.inflationLinkedBonds,
-    inst.zeroCouponBonds,
-  ]);
 
   return (
     <>
@@ -54,7 +44,7 @@ export const Instruments : React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {instruments.map((c, i) => (
+                  {inst.all.map((c, i) => (
                     <TableRow key={i} className={classes.tableRow}>
                       <TableCell key={0} className={classes.tableCell}>{getName(c.payload.issuer)}</TableCell>
                       <TableCell key={1} className={classes.tableCell}>{getName(c.payload.depository)}</TableCell>
