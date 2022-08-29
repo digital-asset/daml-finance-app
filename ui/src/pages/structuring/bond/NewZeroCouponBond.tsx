@@ -41,7 +41,7 @@ export const NewZeroCouponBond : React.FC = () => {
     const arg : RequestAndCreateZeroCouponBond = {
       id: { label, version: uuidv4() },
       issueDate: parseDate(issueDate),
-      maturityDate: parseDate(issueDate),
+      maturityDate: parseDate(maturityDate),
       cashInstrumentCid: createKeyBase(ccy),
       observers: emptyMap(),
       lastEventTimestamp: new Date().toISOString()
