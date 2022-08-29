@@ -8,6 +8,7 @@ module Daml.Finance.App.Distribution.Auction.Auto.Service where
 import Daml.Finance.Interface.Asset.Account qualified as Account (K)
 import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (K, Q)
 import Daml.Finance.Interface.Asset.Fungible qualified as Fungible (I)
+import Daml.Finance.Interface.Common.Types (Parties)
 import Daml.Finance.App.Distribution.Auction.Model (Auction)
 import Daml.Finance.App.Distribution.Auction.Service qualified as S (CreateAuction(..), RequestCreateAuction(..), Service)
 
@@ -32,9 +33,10 @@ template Service
         floor : Decimal
         collateralCid : ContractId Fungible.I
         receivableAccount : Account.K
+        observers : Parties
       controller customer
       do
-        createAuctionRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreateAuction with id; quantity; currency; floor; collateralCid; receivableAccount
+        createAuctionRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreateAuction with id; quantity; currency; floor; collateralCid; receivableAccount; observers
         exerciseByKey @S.Service (operator, provider, customer) S.CreateAuction with createAuctionRequestCid
 
     choice Terminate : ()

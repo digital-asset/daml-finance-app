@@ -32,8 +32,8 @@ export const div      = (lhs : O, rhs : O) : O => ({ tag: "Div", value: { _1: lh
 export const zero : C =  ({ tag: "Zero", value: {} });
 export const one      = (id : InstrumentKey) : C => ({ tag: "One", value: id });
 export const give     = (claim : C) : C => ({ tag: "Give", value: claim });
-export const and      = (claims : C[]) : C => ({ tag: "And", value: { fst: claims[0], snd: claims[1], tail: claims.splice(0, 2) } });
-export const or       = (claims : C[]) : C => ({ tag: "Or", value: { fst: claims[0], snd: claims[1], tail: claims.splice(0, 2) } });
+export const and      = (claims : C[]) : C => ({ tag: "And", value: { fst: claims[0], snd: claims[1], tail: claims.slice(2) } });
+export const or       = (claims : C[]) : C => ({ tag: "Or", value: { fst: claims[0], snd: claims[1], tail: claims.slice(2) } });
 export const scale    = (k : O, claim : C) : C => ({ tag: "Scale", value: { k, claim } });
 export const cond     = (predicate : I, success : C, failure : C) : C => ({ tag: "Cond", value: { predicate, success, failure } });
 export const when     = (predicate : I, claim : C) : C => ({ tag: "When", value: { predicate, claim } });

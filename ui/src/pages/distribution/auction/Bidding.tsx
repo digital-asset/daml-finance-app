@@ -23,10 +23,9 @@ import { Reference } from "@daml.js/daml-finance-interface-asset/lib/Daml/Financ
 import { Message } from "../../../components/Message/Message";
 import { useParties } from "../../../context/PartiesContext";
 
-export const BiddingAuction : React.FC = () => {
+export const Bidding : React.FC = () => {
   const classes = useStyles();
 
-  const { contractId } = useParams<any>();
   const [ amount, setAmount ] = useState<number>(0);
   const [ price, setPrice ] = useState<number>(0);
   const [ node, setNode ] = useState<ClaimTreeNode | undefined>();
@@ -43,6 +42,8 @@ export const BiddingAuction : React.FC = () => {
   const { contracts: instruments, loading: l7 } = useStreamQueries(Instrument);
   const { contracts: accounts, loading: l8 } = useStreamQueries(Reference);
 
+  const { contractId } = useParams<any>();
+  const auction = auctions.find(b => b.contractId === contractId);
   const auctionedInstrument = derivatives.find(c => c.payload.id.label === auction?.payload.quantity.unit.id.label);
 
   useEffect(() => {
@@ -54,7 +55,6 @@ export const BiddingAuction : React.FC = () => {
   const myServices = services.filter(c => c.payload.customer === party);
   const myAutoServices = autoServices.filter(c => c.payload.customer === party);
   const myHoldings = holdings.filter(c => c.payload.account.owner === party);
-  const auction = auctions.find(b => b.contractId === contractId);
   const baseKeys = instruments.map(createKeyBase);
 
   if (services.length === 0) return <Message text="No bidding service found" />

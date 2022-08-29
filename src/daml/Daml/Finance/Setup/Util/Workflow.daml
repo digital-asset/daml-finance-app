@@ -5,7 +5,7 @@ module Daml.Finance.Setup.Util.Workflow where
 
 import DA.List (head)
 import DA.Map qualified as M
-import DA.Set (Set)
+import DA.Set (Set, singleton)
 import Daml.Finance.App.Custody.Service qualified as Custody (Deposit(..), RequestDeposit(..), Service)
 import Daml.Finance.App.Distribution.Bidding.Model qualified as Bidding (Bid)
 import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (CreateBid(..), RequestCreateBid(..), S)
@@ -109,15 +109,15 @@ createBidOrder operator provider customer id = createOrder operator provider cus
 createAskOrder : Party -> Party -> Party -> Text -> Instrument.Q -> Instrument.Q -> Parties -> Script (Optional (ContractId Trading.Order, Trading.Order))
 createAskOrder operator provider customer id = createOrder operator provider customer id Trading.Sell
 
-createAuction : Party -> Party -> Party -> Text -> Instrument.Q -> Instrument.K -> Decimal -> ContractId Fungible.I -> Account.K -> Script (ContractId Auction.T)
-createAuction operator provider customer id quantity currency floor collateralCid receivableAccount = do
-  createAuctionRequestCid <- submit customer do exerciseByKeyCmd @Auction.S (operator, provider, customer) Auction.RequestCreateAuction with id; quantity; currency; floor; collateralCid; receivableAccount
+createAuction : Party -> Party -> Party -> Party -> Text -> Instrument.Q -> Instrument.K -> Decimal -> ContractId Fungible.I -> Account.K -> Script (ContractId Auction.T)
+createAuction operator provider customer public id quantity currency floor collateralCid receivableAccount = do
+  createAuctionRequestCid <- submit customer do exerciseByKeyCmd @Auction.S (operator, provider, customer) Auction.RequestCreateAuction with id; quantity; currency; floor; collateralCid; receivableAccount; observers = singleton public
   submit provider do exerciseByKeyCmd @Auction.S (operator, provider, customer) Auction.CreateAuction with createAuctionRequestCid
 
-createAuctionBid : Party -> Party -> Party -> ContractId Auction.T -> Decimal -> Decimal -> ContractId Fungible.I -> Account.K -> Script (ContractId Bidding.Bid)
-createAuctionBid operator provider customer auctionCid amount price collateralCid receivableAccount = do
-  createBidRequestCid <- submit provider do exerciseByKeyCmd @Bidding.S (operator, provider, customer) Bidding.RequestCreateBid with auctionCid; amount; price; collateralCid; receivableAccount
-  submit customer do exerciseByKeyCmd @Bidding.S (operator, provider, customer) Bidding.CreateBid with createBidRequestCid
+createAuctionBid : Party -> Party -> Party -> Party -> ContractId Auction.T -> Decimal -> Decimal -> ContractId Fungible.I -> Account.K -> Script (ContractId Bidding.Bid)
+createAuctionBid operator provider customer public auctionCid amount price collateralCid receivableAccount = do
+  createBidRequestCid <- submitMulti [customer] [public] do exerciseByKeyCmd @Bidding.S (operator, provider, customer) Bidding.RequestCreateBid with auctionCid; amount; price; collateralCid; receivableAccount
+  submit provider do exerciseByKeyCmd @Bidding.S (operator, provider, customer) Bidding.CreateBid with createBidRequestCid
 
 processAuction : Party -> Party -> Party -> Party -> ContractId Auction.T -> [ContractId Bidding.Bid] -> Script (ContractId Auction.T)
 processAuction operator provider customer public auctionCid bidCids = do

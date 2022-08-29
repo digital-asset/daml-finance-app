@@ -3,31 +3,41 @@
 
 import React, { useEffect, useState } from "react";
 import classnames from "classnames";
-import { useStreamQueries } from "@daml/react";
+import { useLedger } from "@daml/react";
 import { Typography, Grid, Paper } from "@mui/material";
 import { useParams } from "react-router-dom";
 import useStyles from "../styles";
-import { Instrument as Derivative } from "@daml.js/daml-finance-derivative/lib/Daml/Finance/Derivative/Instrument";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
-import { claimToNode } from "../../components/Claims/util";
+import { and, claimToNode } from "../../components/Claims/util";
 import { id } from "../../util";
+import { useInstruments } from "../../context/InstrumentsContext";
+import { useServices } from "../../context/ServicesContext";
+import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Service";
 
 export const Instrument : React.FC = () => {
   const classes = useStyles();
 
+  const ledger = useLedger();
   const [ node, setNode ] = useState<ClaimTreeNode | undefined>();
   const { contractId } = useParams<any>();
   const cid = contractId?.replace("_", "#");
-
-  const { contracts: instruments, loading: l1 } = useStreamQueries(Derivative);
-  const instrument = instruments.find(c => c.contractId === cid);
+  const inst = useInstruments();
+  const svc = useServices();
+  const instrument = inst.all.find(c => c.contractId === cid);
 
   useEffect(() => {
-    if (!!instrument) setNode(claimToNode(instrument.payload.claims));
-  }, [instrument]);
+    const setClaims = async () => {
+      if (!!instrument && svc.structuring.length > 0) {
+        const [res, ] = await ledger.exercise(Service.GetClaims, svc.structuring[0].contractId, { instrumentCid: instrument.contractId })
+        const claims = and(res.map(r => r.claim));
+        setNode(claimToNode(claims));
+      }
+    }
+    setClaims();
+  }, [instrument, ledger, svc]);
 
-  if (l1 || !instrument) return (<Spinner />);
+  if (inst.loading || !instrument) return (<Spinner />);
 
   return (
     <Grid container direction="column" spacing={2}>

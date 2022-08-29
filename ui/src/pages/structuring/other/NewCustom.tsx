@@ -49,7 +49,7 @@ export const NewCustom : React.FC = () => {
       lastEventTimestamp: new Date(1970, 1, 1).toISOString()
     }
     await ledger.create(Derivative, arg);
-    navigate("/origination/instruments");
+    navigate("/structuring/instruments");
   };
 
   return (

@@ -5,15 +5,16 @@ module Daml.Finance.App.Distribution.Bidding.Service where
 
 import DA.Assert ((===))
 import DA.List (head)
+import DA.Optional (fromSome)
 import DA.Set (singleton)
-import Daml.Finance.Interface.Asset.Account qualified as Account (K, exerciseInterfaceByKey)
-import Daml.Finance.Interface.Asset.Fungible qualified as Fungible (I, Split(..))
+import Daml.Finance.Interface.Asset.Account qualified as Account (K, R)
+import Daml.Finance.Interface.Asset.Fungible qualified as Fungible (I, Split(..), SplitResult(..))
 import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (qty)
 import Daml.Finance.Interface.Asset.Lockable qualified as Lockable (Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Asset.Transferable qualified as Transferable (I)
 import Daml.Finance.Interface.Asset.Util (getAccount, getAmount, getInstrument)
-import Daml.Finance.Interface.Common.Disclosure qualified as Disclosure (AddObservers(..), I)
-import Daml.Finance.App.Distribution.Auction.Model qualified as Auction (T)
+import Daml.Finance.Interface.Common.Disclosure qualified as Disclosure (AddObservers(..), I, RemoveObservers(..))
+import Daml.Finance.App.Distribution.Auction.Model qualified as Auction (Fetch(..), T)
 import Daml.Finance.App.Distribution.Bidding.Model (Bid(..), CreateBidRequest(..), Details(..), Status(..), UpdateStatus(..))
 
 type S = Service
@@ -38,11 +39,25 @@ template Service
         receivableAccount : Account.K
       controller customer
       do
-        auction <- fetch auctionCid
+        auction <- exercise auctionCid Auction.Fetch with actor = customer
         collateral <- fetch collateralCid
         getInstrument collateral === auction.currency
         getAmount collateral === price * amount
         assertMsg "Bid amount can't be larger than available size" $ amount <= auction.quantity.amount
+
+        -- Disclose holding
+        investorHolding <- fetch collateralCid
+        investorHoldingCid : ContractId Fungible.I <- coerceContractId <$> exercise (coerceContractId collateralCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (auction.id, singleton provider)
+        -- Disclose delivering securities account
+        let investorSendingAccount = getAccount investorHolding
+        (_, delRef) <- fetchByKey @Account.R investorSendingAccount
+        exercise (coerceContractId delRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (auction.id, singleton provider)
+        -- Disclose receiving cash account
+        (_, recRef) <- fetchByKey @Account.R receivableAccount
+        exercise (coerceContractId recRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (auction.id, singleton provider)
+        -- Lock holding
+        collateralCid <- coerceContractId <$> exercise (coerceContractId investorHoldingCid : ContractId Lockable.I) Lockable.Acquire with newLocker = singleton provider; context = auction.id; lockType = Lockable.Semaphore
+
         let
           quantity = Instrument.qty amount auction.quantity.unit
           priceQty = Instrument.qty price auction.currency
@@ -54,13 +69,6 @@ template Service
       controller provider
       do
         CreateBidRequest{auctionId; collateralCid; receivableAccount; price; quantity} <- fetch createBidRequestCid
-
-        collateralCid <- coerceContractId <$> exercise (coerceContractId collateralCid : ContractId Lockable.I) Lockable.Acquire with newLocker = singleton provider; context = auctionId; lockType = Lockable.Semaphore
-        collateral <- fetch collateralCid
-
-        -- Disclosure
-        Account.exerciseInterfaceByKey @Disclosure.I (getAccount collateral) customer Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (auctionId, singleton provider)
-        Account.exerciseInterfaceByKey @Disclosure.I receivableAccount customer Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (auctionId, singleton provider)
 
         time <- getTime
         create Bid with operator; provider; customer; details = (Details with price; quantity; time); auctionId; collateralCid; receivableAccount; status = Pending
@@ -74,11 +82,14 @@ template Service
       do
         -- Fetch Bid -> Extract their deposit -> Split and return unused allocation (if necessary) to the investor -> Update Bid Status
         bid <- fetch bidCid
-        bidCollateralCid : ContractId Fungible.I <- coerceContractId <$> exercise (coerceContractId bid.collateralCid : ContractId Lockable.I) Lockable.Release with context = bid.auctionId
+        bidCollateralCid : ContractId Disclosure.I <- coerceContractId <$> exercise (coerceContractId bid.collateralCid : ContractId Lockable.I) Lockable.Release with context = bid.auctionId
+        bidCollateralCid <- coerceContractId . fromSome <$> exercise bidCollateralCid Disclosure.RemoveObservers with observersToRemove = (bid.auctionId, singleton provider)
         bidCollateral <- fetch bidCollateralCid
         bidCollateralCid <-
           if getAmount bidCollateral > amount * price
-          then do head . (.splitCids) <$> exercise bidCollateralCid Fungible.Split with amounts = [amount * price]
+          then do
+            Fungible.SplitResult{splitCids, rest} <- exercise bidCollateralCid Fungible.Split with amounts = [amount * price]
+            pure $ head splitCids
           else do pure bidCollateralCid
         let newStatus = if bid.details.quantity.amount == amount
                           then FullAllocation with price

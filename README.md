@@ -3,6 +3,10 @@
 
 Copyright © 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All Rights Reserved. SPDX-License-Identifier: Apache-2.0
 
+# Prerequisites
+
+- [yq](https://github.com/marketplace/actions/yq-portable-yaml-processor)
+
 # Running
 
 Console 1:

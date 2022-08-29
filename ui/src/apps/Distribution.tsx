@@ -13,7 +13,7 @@ import { useParty, useStreamQueries } from "@daml/react";
 import { Service as AuctionService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Service";
 import { Service as SubscriptionService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Service";
 import { Requests } from "../pages/distribution/auction/Requests";
-import { BiddingAuction } from "../pages/distribution/bidding/Auction";
+import { Bidding } from "../pages/distribution/auction/Bidding";
 import { App } from "./App";
 import { Spinner } from "../components/Spinner/Spinner";
 import { Offerings } from "../pages/distribution/subscription/Offerings";
@@ -51,7 +51,7 @@ export const Distribution : React.FC = () => {
     entries.push({ label: "Offerings", path: "offerings", element: <Offerings />, icon: <PlayArrow/>, children: [] });
   }
   entries.push({ path: "auctions/:contractId", element: <Auction /> });
-  entries.push({ path: "auction/:contractId", element: <BiddingAuction /> });
+  entries.push({ path: "auction/:contractId", element: <Bidding /> });
   entries.push({ path: "subscriptions/:contractId", element: <Offering /> });
   entries.push({ path: "new/auction", element: <NewAuction /> });
   entries.push({ path: "new/offering", element: <NewSubscription /> });
