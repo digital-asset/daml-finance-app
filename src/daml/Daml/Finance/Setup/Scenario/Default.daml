@@ -13,7 +13,7 @@ import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (qty)
 import Daml.Finance.RefData.Observation (Observation(..))
 import Daml.Finance.RefData.Time.DateClock (DateClock(..), DateClockUpdateEvent(..), Unit(..))
 import Daml.Finance.Setup.Payoff (basisSwap, bond, callOptionPhysical, callOptionCashAuto, delivery, dvp, futureDvp, interestRateSwap, payment)
-import Daml.Finance.Setup.Util.Common (PartyInfo, allocateParties)
+import Daml.Finance.Setup.Util.Common (PartyInfo, allocateParties, getHolding)
 import Daml.Finance.Setup.Util.Role (createCustodianRole, createDistributorRole, createExchangeRole, createOperatorRole)
 import Daml.Finance.Setup.Util.Service (createAuctionAutoService, createAuctionService, createBiddingAutoService, createBiddingService, createCustodyService, createIssuanceAutoService, createIssuanceService, createLifecycleService, createListingService, createListingAutoService, createStructuringAutoService, createStructuringService, createTradingAutoService, createTradingService)
 import Daml.Finance.Setup.Util.Workflow (createAskOrder, createAuction, createAuctionBid, createBidOrder, createAccount, createFactory, deposit, issue, list, originate, originateDerivative, processAuction)
@@ -145,14 +145,20 @@ run  = do
   let
     doAuction = do
       let quantity = Instrument.qty 1_000_000.0 bnd
-      auctionCid <- createAuction operator agent issuer "AUCTION1" quantity usd 0.95 (coerceContractId ad2) issuerCashAccount
-      aliceBidCid   <- createAuctionBid operator agent alice   auctionCid 500_000.0 1.0  aliceCashCid aliceSecAccount
-      bobBidCid     <- createAuctionBid operator agent bob     auctionCid 400_000.0 0.98 bobCashCid bobSecAccount
-      charlieBidCid <- createAuctionBid operator agent charlie auctionCid 300_000.0 0.99 charlieCashCid charlieSecAccount
-      processAuction operator agent issuer public auctionCid [aliceBidCid, bobBidCid, charlieBidCid]
+      auctionCid    <- createAuction    operator agent issuer  public "AUCTION1" quantity usd 0.95 (coerceContractId ad2) issuerCashAccount
+      -- aliceCollateralCid    <- coerceContractId <$> getHolding alice   (Instrument.qty 500_000.0 usd)
+      -- bobCollateralCid      <- coerceContractId <$> getHolding bob     (Instrument.qty 392_000.0 usd)
+      -- charlieCollateralCid  <- coerceContractId <$> getHolding charlie (Instrument.qty 297_000.0 usd)
+      -- aliceBidCid   <- createAuctionBid operator agent alice   public auctionCid 500_000.0 1.0  aliceCollateralCid aliceSecAccount
+      -- bobBidCid     <- createAuctionBid operator agent bob     public auctionCid 400_000.0 0.98 bobCollateralCid bobSecAccount
+      -- charlieBidCid <- createAuctionBid operator agent charlie public auctionCid 300_000.0 0.99 charlieCollateralCid charlieSecAccount
+      -- processAuction operator agent issuer public auctionCid [aliceBidCid, bobBidCid, charlieBidCid]
+      pure ()
+    doTrade = do
+      list operator exchange issuer "SWAP/USD" swp usd $ singleton public
+      createAskOrder operator exchange issuer "1" (Instrument.qty 5_000_000.0 swp) (Instrument.qty 1.0 usd) $ singleton public
+      createBidOrder operator exchange alice  "2" (Instrument.qty 500_000.0 swp)   (Instrument.qty 1.0 usd) $ singleton public
 
-  list operator exchange issuer "SWAP/USD" swp usd $ singleton public
-  createAskOrder operator exchange issuer "1" (Instrument.qty 5_000_000.0 swp) (Instrument.qty 1.0 usd) $ singleton public
-  createBidOrder operator exchange alice  "2" (Instrument.qty 500_000.0 swp)   (Instrument.qty 1.0 usd) $ singleton public
+  doAuction
 
   pure parties

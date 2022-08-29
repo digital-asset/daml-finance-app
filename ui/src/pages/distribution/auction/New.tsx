@@ -17,7 +17,8 @@ import { Instrument } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/I
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../../components/Claims/ClaimsTreeBuilder";
 import { Reference } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Account";
-import { createKeyBase, createKeyDerivative, getHolding } from "../../../util";
+import { createKeyBase, createKeyDerivative, createSet, getHolding } from "../../../util";
+import { useParties } from "../../../context/PartiesContext";
 
 export const New : React.FC = () => {
   const classes = useStyles();
@@ -34,6 +35,7 @@ export const New : React.FC = () => {
 
   const ledger = useLedger();
   const party = useParty();
+  const { getParty } = useParties();
 
   const { contracts: services, loading: l1 } = useStreamQueries(Service);
   const { contracts: autoServices, loading: l2 } = useStreamQueries(AutoService);
@@ -71,7 +73,8 @@ export const New : React.FC = () => {
       currency: currencyKey,
       floor: floor,
       collateralCid,
-      receivableAccount
+      receivableAccount,
+      observers: createSet([getParty("Public")])
     };
     if (myAutoServices.length > 0) {
       await ledger.exercise(AutoService.RequestAndCreateAuction, myAutoServices[0].contractId, arg);

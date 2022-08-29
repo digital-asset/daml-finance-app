@@ -17,6 +17,7 @@ import { BatchFactory } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/
 import { fmt } from "../../../util";
 import { Message } from "../../../components/Message/Message";
 import { useParties } from "../../../context/PartiesContext";
+import { useServices } from "../../../context/ServicesContext";
 
 export const Auction: React.FC = () => {
   const classes = useStyles();
@@ -27,28 +28,31 @@ export const Auction: React.FC = () => {
 
   const party = useParty();
   const ledger = useLedger();
+  const svc = useServices();
 
-  const { contracts: services, loading: l1 } = useStreamQueries(Service);
-  const { contracts: auctions, loading: l2 } = useStreamQueries(AuctionContract);
-  const { contracts: bids, loading: l3 } = useStreamQueries(Bid);
-  const { contracts: instructables, loading: l4 } = useStreamQueries(BatchFactory);
+  const { contracts: auctions, loading: l1 } = useStreamQueries(AuctionContract);
+  const { contracts: bids, loading: l2 } = useStreamQueries(Bid);
+  const { contracts: factories, loading: l3 } = useStreamQueries(BatchFactory);
 
-  const myServices = services.filter(s => s.payload.customer === party);
+  const services = svc.auction.filter(s => s.payload.customer === party || s.payload.provider === party);
   const auction = auctions.find(c => c.contractId === contractId);
 
-  if (l1 || l2 || l3 || l4) return (<Spinner />);
+  if (svc.loading || l1 || l2 || l3) return (<Spinner />);
   if (!contractId) return <Message text="No contract id provided" />;
   if (!auction) return <Message text="Auction not found" />;
-  if (myServices.length === 0) return <Message text="No auction service found" />;
-  if (instructables.length === 0) return <Message text="No settlement factory found" />;
+  if (services.length === 0) return <Message text="No auction service found" />;
 
+  const service = services[0];
+  const provider = service.payload.provider;
   const filteredBids = bids.filter(c => c.payload.auctionId === auction.payload.id);
   const filledPerc = 100.0 * filteredBids.reduce((a, b) => a + (parseFloat(b.payload.details.price.amount) >= parseFloat(auction.payload.floor) ? parseFloat(b.payload.details.quantity.amount) : 0), 0) / parseFloat(auction.payload.quantity.amount);
   const currentPrice = filteredBids.length === 0 ? 0.0 : filteredBids.reduce((a, b) => parseFloat(b.payload.details.price.amount) >= parseFloat(auction.payload.floor) && parseFloat(b.payload.details.price.amount) < a ? parseFloat(b.payload.details.price.amount) : a, Number.MAX_VALUE);
+  const canClose = auction.payload.status.tag !== "Open" || filteredBids.length === 0 || party !== provider;
 
   const closeAuction = async () => {
+    if (factories.length === 0) return new Error("No settlement factory found");
     const bidCids = filteredBids.map(c => c.contractId);
-    const [result, ] = await ledger.exercise(Service.ProcessAuction, myServices[0].contractId, { instructableCid: instructables[0].contractId, auctionCid: auction.contractId, bidCids });
+    const [result, ] = await ledger.exercise(Service.ProcessAuction, service.contractId, { instructableCid: factories[0].contractId, auctionCid: auction.contractId, bidCids });
     navigate("/distribution/auctions/" + result);
   };
 
@@ -167,7 +171,7 @@ export const Auction: React.FC = () => {
                       }
                     </TableBody>
                   </Table>
-                  <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={auction.payload.status.tag !== "Open" || filteredBids.length === 0} onClick={closeAuction}>Close Auction</Button>
+                  <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={canClose} onClick={closeAuction}>Close Auction</Button>
                 </Paper>
               </Grid>
             </Grid>

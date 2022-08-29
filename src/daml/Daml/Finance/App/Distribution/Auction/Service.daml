@@ -11,12 +11,13 @@ import DA.Foldable (forA_)
 import DA.List (sortOn, mapAccumL)
 import DA.Optional (whenSome)
 import DA.Set (fromList, singleton)
-import Daml.Finance.Interface.Asset.Account qualified as Account (K, R)
+import Daml.Finance.Interface.Asset.Account qualified as Account (K, R, exerciseInterfaceByKey)
 import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (K, Q)
 import Daml.Finance.Interface.Asset.Lockable qualified as Lockable (Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Asset.Fungible qualified as Fungible (I)
 import Daml.Finance.Interface.Asset.Util (getAccount)
-import Daml.Finance.Interface.Common.Disclosure qualified as Disclosure (AddObservers(..), I)
+import Daml.Finance.Interface.Common.Disclosure qualified as Disclosure (AddObservers(..), I, RemoveObservers(..))
+import Daml.Finance.Interface.Common.Types (Parties)
 import Daml.Finance.Interface.Settlement.Instructable qualified as Instructable (I)
 import Daml.Finance.Interface.Settlement.Settleable qualified as Settleable (Settle(..))
 import Daml.Finance.App.Distribution.Auction.Model (Auction(..), CreateAuctionRequest(..), Status(..))
@@ -46,6 +47,7 @@ template Service
         floor : Decimal
         collateralCid : ContractId Fungible.I
         receivableAccount : Account.K
+        observers : Parties
       controller customer
       do
         -- Disclose holding
@@ -60,7 +62,7 @@ template Service
         (_, recRef) <- fetchByKey @Account.R receivableAccount
         exercise (coerceContractId recRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (id, singleton provider)
 
-        create CreateAuctionRequest with operator; provider; customer; id; quantity; currency; floor; collateralCid; receivableAccount
+        create CreateAuctionRequest with operator; provider; customer; id; quantity; currency; floor; collateralCid; receivableAccount; observers
 
     nonconsuming choice CancelAuctionRequest : ()
       with
@@ -74,9 +76,9 @@ template Service
         createAuctionRequestCid : ContractId CreateAuctionRequest
       controller provider
       do
-        CreateAuctionRequest{id; quantity; currency; floor; collateralCid; receivableAccount} <- fetchAndArchive createAuctionRequestCid
+        CreateAuctionRequest{id; quantity; currency; floor; collateralCid; receivableAccount; observers} <- fetchAndArchive createAuctionRequestCid
         collateralCid <- coerceContractId <$> exercise (coerceContractId collateralCid : ContractId Lockable.I) Lockable.Acquire with newLocker = fromList [ provider ]; context = id; lockType = Lockable.Semaphore
-        create Auction with operator; provider; customer; id; quantity; currency; floor; collateralCid; receivableAccount; status = Open
+        create Auction with operator; provider; customer; id; quantity; currency; floor; collateralCid; receivableAccount; status = Open; observers
 
     nonconsuming choice RejectAuction : ()
       with
@@ -93,11 +95,16 @@ template Service
       controller provider
       do
         auction <- fetch auctionCid
+        collateral <- fetch auction.collateralCid
+        bids <- zip bidCids <$> forA bidCids fetch
+        collaterals <- mapA (fetch . (.collateralCid) . snd) bids
         assertMsg "Auction already successfully processed" (auction.status `elem` [Open, NoValidBids])
 
-        bids <- zip bidCids <$> forA bidCids fetch
         -- Split bids on those above / below the floor price -> Sort valid bids descendingly -> Execute Auction -> Split auction result on allocated / unallocated (ie, zero allocation)
         let
+          collateralAccount = getAccount collateral
+          collateralAccounts = map getAccount collaterals
+          receivableAccounts = map ((.receivableAccount) . snd) bids
           (invalidBids, validBids) = partitionEithers $ splitList (\(_, bid) -> bid.details.price.amount >= auction.floor) bids
           sortedBids = sortOn (\(_, bid) -> Down bid.details) validBids
           ((remaining, finalPrice), allocations) = mapAccumL dutchAuction (auction.quantity.amount, 0.0) sortedBids
@@ -107,9 +114,12 @@ template Service
         forA_ invalidBids (\(bidCid, bid) -> exerciseByKey @Bidding.S (bid.operator, bid.provider, bid.customer) Bidding.RejectBid with bidCid; newStatus = Bidding.Invalid)
         forA_ unallocatedBids (\Bidding.Allocation{bidCid, bid} -> exerciseByKey @Bidding.S (bid.operator, bid.provider, bid.customer) Bidding.RejectBid with bidCid; newStatus = Bidding.NoAllocation)
 
+        -- Unlock auction collateral
+        auctionCollateralClid <- coerceContractId <$> exercise (coerceContractId auction.collateralCid : ContractId Lockable.I) Lockable.Release with context = auction.id
+
         -- Generate Settlement instructions for allocated bids
         let settleAllocations = (\allocation -> Bidding.SettleAllocation with allocation; price = finalPrice; issuer = customer) <$> allocatedBids
-        (remainingDepositCidOpt, settleableCids) <- foldlA (generateSettlementInstruction instructableCid auction.receivableAccount) (Some auction.collateralCid, []) settleAllocations
+        (remainingDepositCidOpt, settleableCids) <- foldlA (generateSettlementInstruction instructableCid auction.receivableAccount) (Some auctionCollateralClid, []) settleAllocations
 
         -- Settle transfers
         forA_ settleableCids (`exercise` Settleable.Settle)
@@ -117,6 +127,12 @@ template Service
         whenSome remainingDepositCidOpt \depositCid -> do
           exercise (coerceContractId depositCid : ContractId Lockable.I) Lockable.Release with context = auction.id
           pure ()
+
+        -- Undisclose accounts
+        Account.exerciseInterfaceByKey @Disclosure.I auction.receivableAccount provider Disclosure.RemoveObservers with observersToRemove = (auction.id, singleton provider)
+        Account.exerciseInterfaceByKey @Disclosure.I collateralAccount provider Disclosure.RemoveObservers with observersToRemove = (auction.id, singleton provider)
+        forA_ receivableAccounts (\a -> Account.exerciseInterfaceByKey @Disclosure.I a provider Disclosure.RemoveObservers with observersToRemove = (auction.id, singleton provider))
+        forA_ collateralAccounts (\a -> Account.exerciseInterfaceByKey @Disclosure.I a provider Disclosure.RemoveObservers with observersToRemove = (auction.id, singleton provider))
 
         -- Update Auction contract with the outcome of the auction processing
         let newStatus = if

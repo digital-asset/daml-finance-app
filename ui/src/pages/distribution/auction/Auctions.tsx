@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { Table, TableBody, TableCell, TableRow, TableHead, Grid, Paper, Typography } from "@mui/material";
 import { IconButton } from "@mui/material";
 import { KeyboardArrowRight } from "@mui/icons-material";
-import { useStreamQueries } from "@daml/react";
+import { useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../../styles";
 import { Auction } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Model";
 import { getAuctionStatus } from "../Utils";
@@ -17,6 +17,7 @@ import { useParties } from "../../../context/PartiesContext";
 export const Auctions : React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
+  const party = useParty();
   const { getName } = useParties();
 
   const { contracts: auctions, loading: l1 } = useStreamQueries(Auction);
@@ -49,8 +50,7 @@ export const Auctions : React.FC = () => {
                       <TableCell key={3} className={classes.tableCell}>{fmt(c.payload.floor, 4)} {c.payload.currency.id.label}</TableCell>
                       <TableCell key={4} className={classes.tableCell}>{getAuctionStatus(c.payload.status)}</TableCell>
                       <TableCell key={5} className={classes.tableCell}>
-                        <IconButton color="primary" size="small" component="span" onClick={() => navigate("/distribution/auctions/" + c.contractId)}>
-                          <KeyboardArrowRight fontSize="small"/>
+                        <IconButton color="primary" size="small" component="span" onClick={() => navigate((party === c.payload.provider || party === c.payload.customer ? "/distribution/auctions/" : "/distribution/auction/") + c.contractId)}>                          <KeyboardArrowRight fontSize="small"/>
                         </IconButton>
                       </TableCell>
                     </TableRow>
