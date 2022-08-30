@@ -44,7 +44,7 @@ export const NewCustom : React.FC = () => {
       issuer: party,
       id: { label, version: uuidv4() },
       claims,
-      observers: emptyMap<string, any>().set("", singleton(singleton(getParty("Public")))),
+      observers: emptyMap<string, any>().set("Public", singleton(singleton(getParty("Public")))),
       acquisitionTime: new Date(1970, 1, 1).toISOString(),
       lastEventTimestamp: new Date(1970, 1, 1).toISOString()
     }

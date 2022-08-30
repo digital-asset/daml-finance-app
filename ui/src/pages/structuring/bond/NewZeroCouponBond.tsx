@@ -8,13 +8,14 @@ import { v4 as uuidv4 } from "uuid";
 import classnames from "classnames";
 import { useLedger, useStreamQueries } from "@daml/react";
 import useStyles from "../../styles";
-import { createKeyBase, parseDate } from "../../../util";
+import { createKeyBase, parseDate, singleton } from "../../../util";
 import { RequestAndCreateZeroCouponBond, Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service";
 import { DatePicker } from "@mui/lab";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { Message } from "../../../components/Message/Message";
 import { Instrument } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Instrument";
 import { emptyMap } from "@daml/types";
+import { useParties } from "../../../context/PartiesContext";
 
 export const NewZeroCouponBond : React.FC = () => {
   const classes = useStyles();
@@ -28,6 +29,7 @@ export const NewZeroCouponBond : React.FC = () => {
   const canRequest = !!label && !!issueDate && !!maturityDate && !!currency;
 
   const ledger = useLedger();
+  const { getParty } = useParties();
 
   const { contracts: services, loading: l1 } = useStreamQueries(Service);
   const { contracts: instruments, loading: l2 } = useStreamQueries(Instrument);
@@ -43,7 +45,7 @@ export const NewZeroCouponBond : React.FC = () => {
       issueDate: parseDate(issueDate),
       maturityDate: parseDate(maturityDate),
       cashInstrumentCid: createKeyBase(ccy),
-      observers: emptyMap(),
+      observers: emptyMap<string, any>().set("Public", singleton(singleton(getParty("Public")))),
       lastEventTimestamp: new Date().toISOString()
     }
     await ledger.exercise(Service.RequestAndCreateZeroCouponBond, services[0].contractId, arg);

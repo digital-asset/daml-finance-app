@@ -10,18 +10,19 @@ import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Grid, Paper, Typography, Table, TableRow, TableCell, TableBody, TextField, Button } from "@mui/material";
 import { useParams } from "react-router-dom";
 import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fungible";
+import { Service as Structuring } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Service";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Bidding/Service";
 import { Service as AutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Bidding/Auto/Service";
-import { claimToNode } from "../../../components/Claims/util";
+import { and, claimToNode } from "../../../components/Claims/util";
 import { getBidAllocation, getBidStatus } from "../Utils";
-import { Instrument as Derivative } from "@daml.js/daml-finance-derivative/lib/Daml/Finance/Derivative/Instrument";
-import { Instrument } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Instrument";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../../components/Claims/ClaimsTreeBuilder";
 import { createKeyBase, fmt, getHolding } from "../../../util";
 import { Reference } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Account";
 import { Message } from "../../../components/Message/Message";
 import { useParties } from "../../../context/PartiesContext";
+import { useInstruments } from "../../../context/InstrumentsContext";
+import { useServices } from "../../../context/ServicesContext";
 
 export const Bidding : React.FC = () => {
   const classes = useStyles();
@@ -33,39 +34,44 @@ export const Bidding : React.FC = () => {
   const { getName } = useParties();
   const party = useParty();
   const ledger = useLedger();
-  const { contracts: services, loading: l1 } = useStreamQueries(Service);
-  const { contracts: autoServices, loading: l2 } = useStreamQueries(AutoService);
-  const { contracts: auctions, loading: l3 } = useStreamQueries(Auction);
-  const { contracts: holdings, loading: l4 } = useStreamQueries(Fungible);
-  const { contracts: bids, loading: l5 } = useStreamQueries(Bid);
-  const { contracts: derivatives, loading: l6 } = useStreamQueries(Derivative);
-  const { contracts: instruments, loading: l7 } = useStreamQueries(Instrument);
-  const { contracts: accounts, loading: l8 } = useStreamQueries(Reference);
+  const inst = useInstruments();
+  const svc = useServices();
+  const { contracts: auctions, loading: l1 } = useStreamQueries(Auction);
+  const { contracts: holdings, loading: l2 } = useStreamQueries(Fungible);
+  const { contracts: bids, loading: l3 } = useStreamQueries(Bid);
+  const { contracts: accounts, loading: l4 } = useStreamQueries(Reference);
 
   const { contractId } = useParams<any>();
   const auction = auctions.find(b => b.contractId === contractId);
-  const auctionedInstrument = derivatives.find(c => c.payload.id.label === auction?.payload.quantity.unit.id.label);
+  const instrument = inst.all.find(c => c.payload.id.label === auction?.payload.quantity.unit.id.label);
 
   useEffect(() => {
-    if (!!auctionedInstrument) setNode(claimToNode(auctionedInstrument.payload.claims));
-  }, [auctionedInstrument]);
+    const setClaims = async () => {
+      if (!!instrument && svc.structuring.length > 0) {
+        const [res, ] = await ledger.exercise(Structuring.GetClaims, svc.structuring[0].contractId, { instrumentCid: instrument.contractId })
+        const claims = and(res.map(r => r.claim));
+        setNode(claimToNode(claims));
+      }
+    }
+    setClaims();
+  }, [instrument, ledger, svc]);
 
-  if (l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8) return (<Spinner />);
+  if (inst.loading || svc.loading || l1 || l2 || l3 || l4) return (<Spinner />);
 
-  const myServices = services.filter(c => c.payload.customer === party);
-  const myAutoServices = autoServices.filter(c => c.payload.customer === party);
+  const myServices = svc.bidding.filter(c => c.payload.customer === party);
+  const myAutoServices = svc.biddingAuto.filter(c => c.payload.customer === party);
   const myHoldings = holdings.filter(c => c.payload.account.owner === party);
-  const baseKeys = instruments.map(createKeyBase);
+  const baseKeys = inst.tokens.map(createKeyBase);
 
-  if (services.length === 0) return <Message text="No bidding service found" />
+  if (myServices.length === 0) return <Message text="No bidding service found" />
   if (!auction) return <Message text="Auction not found" />
-  if (!auctionedInstrument) return <Message text="Auctioned instrument not found" />
+  if (!instrument) return <Message text="Auctioned instrument not found" />
 
   const bid = bids.find(b => b.payload.auctionId === auction.payload.id);
 
   const requestCreateBid = async () => {
     const volume = price * amount;
-    const receivableAccount = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === auctionedInstrument.payload.depository)?.key;
+    const receivableAccount = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === instrument.payload.depository)?.key;
     const collateralCid = await getHolding(ledger, myHoldings, volume, auction.payload.currency);
     if (!receivableAccount) return;
     const arg = {
