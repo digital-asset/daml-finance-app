@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from "uuid";
 import classnames from "classnames";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../../styles";
-import { createKeyBase, parseDate } from "../../../util";
+import { createKeyBase, parseDate, singleton } from "../../../util";
 import { RequestAndCreateFloatingRateBond, Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service";
 import { DatePicker } from "@mui/lab";
 import { Spinner } from "../../../components/Spinner/Spinner";
@@ -18,6 +18,7 @@ import { PeriodEnum } from "@daml.js/daml-finance-common/lib/Daml/Finance/Common
 import { emptyMap } from "@daml/types";
 import { DayCountConventionEnum } from "@daml.js/daml-finance-common/lib/Daml/Finance/Common/Date/DayCount";
 import { BusinessDayConventionEnum } from "@daml.js/daml-finance-common/lib/Daml/Finance/Common/Date/Calendar";
+import { useParties } from "../../../context/PartiesContext";
 
 export const NewFloatingRateBond : React.FC = () => {
   const classes = useStyles();
@@ -39,6 +40,7 @@ export const NewFloatingRateBond : React.FC = () => {
 
   const ledger = useLedger();
   const party = useParty();
+  const { getParty } = useParties();
 
   const { contracts: services, loading: l1 } = useStreamQueries(Service);
   const { contracts: instruments, loading: l2 } = useStreamQueries(Instrument);
@@ -65,7 +67,7 @@ export const NewFloatingRateBond : React.FC = () => {
       couponPeriod,
       couponPeriodMultiplier,
       cashInstrumentCid: createKeyBase(ccy),
-      observers: emptyMap(),
+      observers: emptyMap<string, any>().set("Public", singleton(singleton(getParty("Public")))),
       lastEventTimestamp: new Date().toISOString()
     }
     await ledger.exercise(Service.RequestAndCreateFloatingRateBond, services[0].contractId, arg);

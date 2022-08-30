@@ -7,10 +7,8 @@ import classnames from "classnames";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Typography, Grid, Paper, Select, MenuItem, TextField, Button, MenuProps, FormControl, InputLabel, IconButton, Box } from "@mui/material";
 import useStyles from "../../styles";
-import { claimToNode } from "../../../components/Claims/util";
+import { and, claimToNode } from "../../../components/Claims/util";
 import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fungible";
-import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Service";
-import { Service as AutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Auto/Service";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../../components/Claims/ClaimsTreeBuilder";
@@ -19,6 +17,10 @@ import { createKeyBase, createKeyDerivative, createSet, getHolding } from "../..
 import { useParties } from "../../../context/PartiesContext";
 import { useInstruments } from "../../../context/InstrumentsContext";
 import { CreateEvent } from "@daml/ledger";
+import { useServices } from "../../../context/ServicesContext";
+import { Service as Structuring } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Service";
+import { Service as Auction } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Service";
+import { Service as AuctionAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Auto/Service";
 
 export const New : React.FC = () => {
   const classes = useStyles();
@@ -37,27 +39,33 @@ export const New : React.FC = () => {
   const party = useParty();
   const { getParty } = useParties();
   const inst = useInstruments();
+  const svc = useServices();
 
-  const { contracts: services, loading: l1 } = useStreamQueries(Service);
-  const { contracts: autoServices, loading: l2 } = useStreamQueries(AutoService);
-  const { contracts: holdings, loading: l3 } = useStreamQueries(Fungible);
-  const { contracts: accounts, loading: l4 } = useStreamQueries(Reference);
+  const { contracts: holdings, loading: l1 } = useStreamQueries(Fungible);
+  const { contracts: accounts, loading: l2 } = useStreamQueries(Reference);
 
   const instruments : CreateEvent<any>[] = Array.prototype.concat.apply([], [inst.generics, inst.fixedRateBonds, inst.floatingRateBonds, inst.inflationLinkedBonds, inst.zeroCouponBonds]);
-  const myServices = services.filter(s => s.payload.customer === party);
-  const myAutoServices = autoServices.filter(s => s.payload.customer === party);
+  const myServices = svc.auction.filter(s => s.payload.customer === party);
+  const myAutoServices = svc.auctionAuto.filter(s => s.payload.customer === party);
   const instrument = instruments.find(c => c.payload.id.label === instrumentLabel);
   const currency = inst.tokens.find(c => c.payload.id.label === currencyLabel);
   const myHoldings = holdings.filter(c => c.payload.account.owner === party);
   const myHoldingLabels = myHoldings.map(c => c.payload.instrument.id.label).filter((v, i, a) => a.indexOf(v) === i);
-  const baseKeys = instruments.map(c => ({ depository: c.payload.depository, issuer: c.payload.issuer, id: c.payload.id}));
+  const tokenLabels = inst.tokens.map(c => c.payload.id.label);
   const canRequest = !!instrumentLabel && !!instrument && !!currencyLabel && !!currency && !!id && !!amount && !!floor;
 
   useEffect(() => {
-    if (!!instrument) setNode(claimToNode(instrument.payload.claims));
-  }, [instrument]);
+    const setClaims = async () => {
+      if (!!instrument && svc.structuring.length > 0) {
+        const [res, ] = await ledger.exercise(Structuring.GetClaims, svc.structuring[0].contractId, { instrumentCid: instrument.contractId })
+        const claims = and(res.map(r => r.claim));
+        setNode(claimToNode(claims));
+      }
+    }
+    setClaims();
+  }, [instrument, ledger, svc]);
 
-  if (inst.loading || l1 || l2 || l3 || l4) return (<Spinner />);
+  if (inst.loading || l1 || l2) return (<Spinner />);
   if (myServices.length === 0) return (<div style={{display: 'flex', justifyContent: 'center', marginTop: 350 }}><h1>No auction service found for customer: {party}</h1></div>);
 
   const requestCreateAuction = async () => {
@@ -77,10 +85,10 @@ export const New : React.FC = () => {
       observers: createSet([getParty("Public")])
     };
     if (myAutoServices.length > 0) {
-      await ledger.exercise(AutoService.RequestAndCreateAuction, myAutoServices[0].contractId, arg);
+      await ledger.exercise(AuctionAuto.RequestAndCreateAuction, myAutoServices[0].contractId, arg);
       navigate("/distribution/auctions");
     } else {
-      await ledger.exercise(Service.RequestCreateAuction, myServices[0].contractId, arg);
+      await ledger.exercise(Auction.RequestCreateAuction, myServices[0].contractId, arg);
       navigate("/distribution/requests");
     }
   }
@@ -113,7 +121,7 @@ export const New : React.FC = () => {
                     <Box className={classes.fullWidth}>
                       <InputLabel className={classes.selectLabel}>Quoted Asset</InputLabel>
                       <Select className={classes.width90} value={currencyLabel} onChange={e => setCurrencyLabel(e.target.value as string)} MenuProps={menuProps}>
-                        {baseKeys.filter(k => k.id.label !== instrumentLabel).map((k, i) => (<MenuItem key={i} value={k.id.label}>{k.id.label}</MenuItem>))}
+                        {tokenLabels.map(l => (<MenuItem key={l} value={l}>{l}</MenuItem>))}
                       </Select>
                     </Box>
                   </FormControl>

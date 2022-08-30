@@ -61,17 +61,17 @@ template Service
         let
           quantity = Instrument.qty amount auction.quantity.unit
           priceQty = Instrument.qty price auction.currency
-        create CreateBidRequest with operator; provider; customer; auctionId = auction.id; quantity; price = priceQty; collateralCid; receivableAccount
+        create CreateBidRequest with operator; provider; customer; issuer = auction.customer; auctionId = auction.id; quantity; price = priceQty; collateralCid; receivableAccount
 
     nonconsuming choice CreateBid : ContractId Bid
       with
         createBidRequestCid : ContractId CreateBidRequest
       controller provider
       do
-        CreateBidRequest{auctionId; collateralCid; receivableAccount; price; quantity} <- fetch createBidRequestCid
+        CreateBidRequest{issuer; auctionId; collateralCid; receivableAccount; price; quantity} <- fetch createBidRequestCid
 
         time <- getTime
-        create Bid with operator; provider; customer; details = (Details with price; quantity; time); auctionId; collateralCid; receivableAccount; status = Pending
+        create Bid with operator; provider; customer; issuer; details = (Details with price; quantity; time); auctionId; collateralCid; receivableAccount; status = Pending
 
     nonconsuming choice ProcessAllocation : (ContractId Bid, ContractId Fungible.I)
       with
