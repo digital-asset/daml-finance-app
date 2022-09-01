@@ -10,12 +10,10 @@ import { InflationLinkedBond } from "@daml.js/daml-finance-bond/lib/Daml/Finance
 import { ZeroCouponBond } from "@daml.js/daml-finance-bond/lib/Daml/Finance/Bond/ZeroCoupon";
 import { Instrument as Derivative } from "@daml.js/daml-finance-derivative/lib/Daml/Finance/Derivative/Instrument";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
-import { Visibility } from "@mui/icons-material";
-import { Box, Button, FormControl, Grid, IconButton, InputLabel, MenuItem, MenuProps, Paper, Select, TextField, Typography } from "@mui/material";
+import { Box, Button, FormControl, Grid, InputLabel, MenuItem, MenuProps, Paper, Select, TextField, Typography } from "@mui/material";
 import classnames from "classnames";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
 import { createInstrumentKey, createSet } from "../../util";
@@ -28,9 +26,6 @@ export const New : React.FC = () => {
   const [ tradedInstrumentLabel, setTradedAssetLabel ] = useState("");
   const [ quotedInstrumentLabel, setQuotedAssetLabel ] = useState("");
   const [ id, setId ] = useState("");
-
-  const [ showTradedInstrument, setShowTradedAsset ] = useState(false);
-  const [ node, setNode ] = useState<ClaimTreeNode | undefined>();
 
   const { getParty } = useParties();
   const ledger = useLedger();
@@ -66,10 +61,6 @@ export const New : React.FC = () => {
   const quotedInstrument = instruments.find(c => c.payload.id.label === quotedInstrumentLabel);
 
   const canRequest = !!tradedInstrumentLabel && !!tradedInstrument && !!quotedInstrumentLabel && !!quotedInstrument && !!id;
-
-  // useEffect(() => {
-  //   if (!!tradedInstrument) setNode(claimToNode(tradedInstrument.payload.claims));
-  // }, [tradedInstrument]);
 
   if (l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8) return (<Spinner />);
   if (myServices.length === 0) return (<div style={{display: 'flex', justifyContent: 'center', marginTop: 350 }}><h1>No listing service found for customer: {party}</h1></div>);
@@ -110,9 +101,6 @@ export const New : React.FC = () => {
                       <Select variant="standard" className={classes.width90} value={tradedInstrumentLabel} onChange={e => setTradedAssetLabel(e.target.value as string)} MenuProps={menuProps}>
                         {tradableInstruments.filter(c => c.id.label !== quotedInstrumentLabel).map((c, i) => (<MenuItem key={i} value={c.id.label}>{c.id.label}</MenuItem>))}
                       </Select>
-                      <IconButton className={classes.marginLeft10} color="primary" size="small" component="span" onClick={() => setShowTradedAsset(!showTradedInstrument)}>
-                        <Visibility fontSize="small"/>
-                      </IconButton>
                     </Box>
                   </FormControl>
                   <FormControl className={classes.inputField} fullWidth>
@@ -127,17 +115,6 @@ export const New : React.FC = () => {
                   <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={requestListing}>Request Listing</Button>
                 </Paper>
               </Grid>
-            </Grid>
-          </Grid>
-          <Grid item xs={8}>
-            <Grid container direction="column" spacing={2}>
-              {showTradedInstrument && (
-                <Grid item xs={12}>
-                  <Paper className={classnames(classes.fullWidth, classes.paper)}>
-                    <Typography variant="h5" className={classes.heading}>Traded Asset</Typography>
-                    {/* <ClaimsTreeBuilder node={node} setNode={setNode} assets={[]}/> */}
-                  </Paper>
-                </Grid>)}
             </Grid>
           </Grid>
         </Grid>
