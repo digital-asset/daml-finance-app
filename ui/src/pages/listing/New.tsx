@@ -3,19 +3,15 @@
 
 import { Service as AutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Auto/Service";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Service";
-import { Instrument } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Instrument";
-import { FixedRateBond } from "@daml.js/daml-finance-bond/lib/Daml/Finance/Bond/FixedRate";
-import { FloatingRateBond } from "@daml.js/daml-finance-bond/lib/Daml/Finance/Bond/FloatingRate";
-import { InflationLinkedBond } from "@daml.js/daml-finance-bond/lib/Daml/Finance/Bond/InflationLinked";
-import { ZeroCouponBond } from "@daml.js/daml-finance-bond/lib/Daml/Finance/Bond/ZeroCoupon";
-import { Instrument as Derivative } from "@daml.js/daml-finance-derivative/lib/Daml/Finance/Derivative/Instrument";
-import { useLedger, useParty, useStreamQueries } from "@daml/react";
+import { useLedger, useParty } from "@daml/react";
 import { Box, Button, FormControl, Grid, InputLabel, MenuItem, MenuProps, Paper, Select, TextField, Typography } from "@mui/material";
 import classnames from "classnames";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Spinner } from "../../components/Spinner/Spinner";
+import { useInstruments } from "../../context/InstrumentsContext";
 import { useParties } from "../../context/PartiesContext";
+import { useServices } from "../../context/ServicesContext";
 import { createInstrumentKey, createSet } from "../../util";
 import useStyles from "../styles";
 
@@ -30,40 +26,34 @@ export const New : React.FC = () => {
   const { getParty } = useParties();
   const ledger = useLedger();
   const party = useParty();
-  const { contracts: services, loading: l1 } = useStreamQueries(Service);
-  const { contracts: autoServices, loading: l2 } = useStreamQueries(AutoService);
-  const { contracts: instruments, loading: l3 } = useStreamQueries(Instrument);
-  const { contracts: derivatives, loading: l4 } = useStreamQueries(Derivative);
-  const { contracts: fixedRateBonds, loading: l5 } = useStreamQueries(FixedRateBond);
-  const { contracts: floatingRateBonds, loading: l6 } = useStreamQueries(FloatingRateBond);
-  const { contracts: inflationLinkedBonds, loading: l7 } = useStreamQueries(InflationLinkedBond);
-  const { contracts: zeroCouponBonds, loading: l8 } = useStreamQueries(ZeroCouponBond);
+  const inst = useInstruments();
 
-  const myServices = services.filter(s => s.payload.customer === party);
-  const myAutoServices = autoServices.filter(s => s.payload.customer === party);
+  const svc = useServices();
+  const myListingServices = svc.listing.filter(s => s.payload.customer === party);
+  const myAutoListingServices = svc.listingAuto.filter(s => s.payload.customer === party);
 
   const tradableInstruments =
-    derivatives.map(createInstrumentKey)
+    inst.generics.map(createInstrumentKey)
       .concat(
-        fixedRateBonds.map(createInstrumentKey)
+        inst.fixedRateBonds.map(createInstrumentKey)
       )
       .concat(
-        floatingRateBonds.map(createInstrumentKey)
+        inst.floatingRateBonds.map(createInstrumentKey)
       )
       .concat(
-        inflationLinkedBonds.map(createInstrumentKey)
+        inst.inflationLinkedBonds.map(createInstrumentKey)
       )
       .concat(
-        zeroCouponBonds.map(createInstrumentKey)
+        inst.zeroCouponBonds.map(createInstrumentKey)
       )
 
   const tradedInstrument = tradableInstruments.find(k => k.id.label === tradedInstrumentLabel);
-  const quotedInstrument = instruments.find(c => c.payload.id.label === quotedInstrumentLabel);
+  const quotedInstrument = inst.tokens.find(c => c.payload.id.label === quotedInstrumentLabel);
 
   const canRequest = !!tradedInstrumentLabel && !!tradedInstrument && !!quotedInstrumentLabel && !!quotedInstrument && !!id;
 
-  if (l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8) return (<Spinner />);
-  if (myServices.length === 0) return (<div style={{display: 'flex', justifyContent: 'center', marginTop: 350 }}><h1>No listing service found for customer: {party}</h1></div>);
+  if (inst.loading || svc.loading) return (<Spinner />);
+  if (myListingServices.length === 0) return (<div style={{display: 'flex', justifyContent: 'center', marginTop: 350 }}><h1>No listing service found for customer: {party}</h1></div>);
 
   const requestListing = async () => {
     if (!tradedInstrument || !quotedInstrument) return;
@@ -73,11 +63,11 @@ export const New : React.FC = () => {
       quotedInstrument: createInstrumentKey(quotedInstrument),
       observers : createSet([ getParty("Public") ])
     };
-    if (myAutoServices.length > 0) {
-      await ledger.exercise(AutoService.RequestAndCreateListing, myAutoServices[0].contractId, arg);
+    if (myAutoListingServices.length > 0) {
+      await ledger.exercise(AutoService.RequestAndCreateListing, myAutoListingServices[0].contractId, arg);
       navigate("/listing/listings");
     } else {
-      await ledger.exercise(Service.RequestCreateListing, myServices[0].contractId, arg);
+      await ledger.exercise(Service.RequestCreateListing, myListingServices[0].contractId, arg);
       navigate("/listing/requests");
     }
   }
@@ -107,7 +97,7 @@ export const New : React.FC = () => {
                     <Box className={classes.fullWidth}>
                       <InputLabel className={classes.selectLabel}>Quoted Asset</InputLabel>
                       <Select variant="standard" fullWidth value={quotedInstrumentLabel} onChange={e => setQuotedAssetLabel(e.target.value as string)} MenuProps={menuProps}>
-                        {instruments.filter(c => c.payload.id.label !== tradedInstrumentLabel).map((c, i) => (<MenuItem key={i} value={c.payload.id.label}>{c.payload.id.label}</MenuItem>))}
+                        {inst.tokens.filter(c => c.payload.id.label !== tradedInstrumentLabel).map((c, i) => (<MenuItem key={i} value={c.payload.id.label}>{c.payload.id.label}</MenuItem>))}
                       </Select>
                     </Box>
                   </FormControl>
