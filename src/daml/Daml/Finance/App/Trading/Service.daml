@@ -5,7 +5,7 @@ module Daml.Finance.App.Trading.Service where
 
 import DA.Action (foldlA, when)
 import DA.Optional (isNone)
-import DA.Set (singleton)
+import DA.Set (insert, singleton)
 import Daml.Finance.App.Trading.Model (ApproveInstruction(..), CreateOrderRequest(..), CancelOrderRequest(..), Fill(..), FillResult(..), Order(..), Side(..))
 import Daml.Finance.App.Util (fetchAndArchive)
 import Daml.Finance.Interface.Holding.Account qualified as Account (K, exerciseInterfaceByKey)
@@ -46,9 +46,9 @@ template Service
       do
         timestamp <- getTime
         collateral <- fetch collateralCid
-        disclosedCollateralCid <- coerceContractId <$> exercise (coerceContractId collateralCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (id, singleton provider)
-        Account.exerciseInterfaceByKey @Disclosure.I (getAccount collateral) customer Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (id, singleton provider)
-        Account.exerciseInterfaceByKey @Disclosure.I account customer Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (id, singleton provider)
+        disclosedCollateralCid <- coerceContractId <$> exercise (coerceContractId collateralCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (id, provider `insert` observers)
+        Account.exerciseInterfaceByKey @Disclosure.I (getAccount collateral) customer Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (id, provider `insert` observers)
+        Account.exerciseInterfaceByKey @Disclosure.I account customer Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (id, provider `insert` observers)
         create CreateOrderRequest with operator; provider; customer; id; timestamp; listingId; quantity; price; side; collateralCid = disclosedCollateralCid; account; orderCids; observers
 
     nonconsuming choice RequestCancelOrder : ContractId CancelOrderRequest
