@@ -1,12 +1,11 @@
 // Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Set } from "@daml.js/97b883cd8a2b7f49f90d5d39c981cf6e110cf1f1c64427a28a6d58ec88c43657/lib/DA/Set/Types"
+import { Set } from "@daml.js/97b883cd8a2b7f49f90d5d39c981cf6e110cf1f1c64427a28a6d58ec88c43657/lib/DA/Set/Types";
 import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fungible";
 import { Instrument as Base } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Instrument";
 import { Instrument as Derivative } from "@daml.js/daml-finance-derivative/lib/Daml/Finance/Derivative/Instrument";
-import { InstrumentKey } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Types";
-import { Id } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Types";
+import { Id, InstrumentKey } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Types";
 import Ledger, { CreateEvent } from "@daml/ledger";
 import { ContractId, emptyMap } from "@daml/types";
 
@@ -64,6 +63,11 @@ export const createKeyDerivative = (c : CreateEvent<Derivative>) : InstrumentKey
 };
 
 export const createKeyBase = (c : CreateEvent<Base>) : InstrumentKey => {
+  return { depository: c.payload.depository, issuer: c.payload.issuer, id: c.payload.id };
+};
+
+// TODO replace any with base instrument interface once interface subscriptions are available
+export const createInstrumentKey = (c : CreateEvent<any>) : InstrumentKey => {
   return { depository: c.payload.depository, issuer: c.payload.issuer, id: c.payload.id };
 };
 
