@@ -3,9 +3,9 @@
 
 module Daml.Finance.App.Issuance.Model where
 
-import Daml.Finance.Interface.Asset.Account qualified as Account (K)
-import Daml.Finance.Interface.Asset.Holding (Holding)
-import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (Q)
+import Daml.Finance.Interface.Holding.Account qualified as Account (K)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 
 type T = Issuance
 
@@ -39,6 +39,6 @@ template ReduceIssuanceRequest
     provider : Party
     customer : Party
     id : Text
-    holdingCid : ContractId Holding
+    holdingCid : ContractId Holding.I
   where
     signatory operator, provider, customer

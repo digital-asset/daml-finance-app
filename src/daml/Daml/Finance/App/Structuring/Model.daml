@@ -3,22 +3,21 @@
 
 module Daml.Finance.App.Structuring.Model where
 
-import Daml.Finance.Common.Date.Calendar (BusinessDayConventionEnum)
-import Daml.Finance.Common.Date.DayCount (DayCountConventionEnum)
-import Daml.Finance.Common.Date.RollConvention (PeriodEnum)
-import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (K)
-import Daml.Finance.Interface.Asset.Types (Id)
-import Daml.Finance.Interface.Common.Types (Observers)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K)
+import Daml.Finance.Interface.Types.Common (Observers)
+import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum)
+import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
+import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum)
 
 template CreateZeroCouponBondRequest
   with
     operator : Party
     provider : Party
     customer : Party
-    id : Id
+    id : Text
     issueDate : Date
     maturityDate : Date
-    cashInstrumentCid : Instrument.K
+    currency : Instrument.K
     observers : Observers
     lastEventTimestamp : Time
   where
@@ -29,7 +28,7 @@ template CreateFixedRateBondRequest
     operator : Party
     provider : Party
     customer : Party
-    id : Id
+    id : Text
     couponRate : Decimal
     issueDate : Date
     firstCouponDate : Date
@@ -40,7 +39,7 @@ template CreateFixedRateBondRequest
     businessDayConvention : BusinessDayConventionEnum
     couponPeriod : PeriodEnum
     couponPeriodMultiplier : Int
-    cashInstrumentCid : Instrument.K
+    currency : Instrument.K
     observers : Observers
     lastEventTimestamp : Time
   where
@@ -51,7 +50,7 @@ template CreateFloatingRateBondRequest
     operator : Party
     provider : Party
     customer : Party
-    id : Id
+    id : Text
     referenceRateId : Text
     couponSpread : Decimal
     issueDate : Date
@@ -63,7 +62,7 @@ template CreateFloatingRateBondRequest
     businessDayConvention : BusinessDayConventionEnum
     couponPeriod : PeriodEnum
     couponPeriodMultiplier : Int
-    cashInstrumentCid : Instrument.K
+    currency : Instrument.K
     observers : Observers
     lastEventTimestamp : Time
   where
@@ -74,7 +73,7 @@ template CreateInflationLinkedBondRequest
     operator : Party
     provider : Party
     customer : Party
-    id : Id
+    id : Text
     inflationIndexId : Text
     inflationIndexBaseValue : Decimal
     couponRate : Decimal
@@ -87,7 +86,7 @@ template CreateInflationLinkedBondRequest
     businessDayConvention : BusinessDayConventionEnum
     couponPeriod : PeriodEnum
     couponPeriodMultiplier : Int
-    cashInstrumentCid : Instrument.K
+    currency : Instrument.K
     observers : Observers
     lastEventTimestamp : Time
   where

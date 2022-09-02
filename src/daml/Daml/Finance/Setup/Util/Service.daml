@@ -23,7 +23,7 @@ import Daml.Finance.App.Role.Distributor qualified as Distributor (OfferAuctionA
 import Daml.Finance.App.Role.Exchange qualified as Exchange (OfferListingAutoService(..), OfferListingService(..), OfferTradingAutoService(..), OfferTradingService(..), Role)
 import Daml.Finance.App.Structuring.Auto.Service qualified as StructuringAuto (Accept(..), Service)
 import Daml.Finance.App.Structuring.Service qualified as Structuring (Accept(..), Service)
-import Daml.Finance.Settlement.Batch (BatchFactory(..))
+import Daml.Finance.Settlement.Factory (Factory(..))
 import Daml.Script (Script, createCmd, exerciseByKeyCmd, exerciseCmd)
 
 createCustodyService : Party -> Party -> Party -> Script (ContractId Custody.Service)
@@ -63,8 +63,8 @@ createLifecycleService operator custodian customer = do
 
 createTradingService : Party -> Party -> Party -> Script (ContractId Trading.Service)
 createTradingService operator exchange customer = do
-  instructableCid <- toInterfaceContractId <$> submit exchange do createCmd BatchFactory with requestors = singleton exchange
-  offerCid <- submit exchange do exerciseByKeyCmd @Exchange.Role (operator, exchange) Exchange.OfferTradingService with customer; instructableCid
+  settlementFactoryCid <- toInterfaceContractId <$> submit exchange do createCmd Factory with provider = exchange; observers = singleton customer
+  offerCid <- submit exchange do exerciseByKeyCmd @Exchange.Role (operator, exchange) Exchange.OfferTradingService with customer; settlementFactoryCid
   submit customer do exerciseCmd offerCid Trading.Accept
 
 createTradingAutoService : Party -> Party -> Party -> Script (ContractId TradingAuto.Service)

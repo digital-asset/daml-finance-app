@@ -7,18 +7,19 @@ import DA.Foldable (forA_)
 import DA.Functor (void)
 import DA.Optional (optionalToList)
 import DA.Set (singleton)
-import Daml.Finance.Interface.Asset.Account qualified as Account (R)
-import Daml.Finance.Interface.Asset.Fungible qualified as Fungible (I, Split(..))
-import Daml.Finance.Interface.Asset.Lockable qualified as Lockable (I, Release(..))
-import Daml.Finance.Interface.Common.Disclosure qualified as Disclosure (I, RemoveObservers(..))
-import Daml.Finance.Interface.Settlement.Instructable (Instructable, Instruct(..))
+import Daml.Finance.Interface.Holding.Account qualified as Account (R)
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..))
+import Daml.Finance.Interface.Holding.Lockable qualified as Lockable (I, Release(..))
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, RemoveObservers(..))
+import Daml.Finance.Interface.Settlement.Factory (Factory, Instruct(..))
 import Daml.Finance.Interface.Settlement.Instruction (Allocate(..), Approve(..))
-import Daml.Finance.Interface.Settlement.Settleable (Settle(..))
+import Daml.Finance.Interface.Settlement.Batch (Settle(..))
 import Daml.Finance.Interface.Settlement.Types (Step(..))
 import Daml.Finance.App.Distribution.Subscription.Model (AllocateInstruction(..), ApproveInstruction(..), Offering, Subscription, UnlockHolding(..))
+import Daml.Finance.Interface.Types.Common (Id(..))
 
-settleSubscription : ContractId Instructable -> Offering -> (Decimal, Optional (ContractId Fungible.I)) -> (ContractId Subscription, Subscription) -> Update (Decimal, Optional (ContractId Fungible.I))
-settleSubscription instructableCid offering (remainingQuantity, issuerHoldingCidOpt) (subscriptionCid, subscription) = do
+settleSubscription : ContractId Factory -> Offering -> (Decimal, Optional (ContractId Fungible.I)) -> (ContractId Subscription, Subscription) -> Update (Decimal, Optional (ContractId Fungible.I))
+settleSubscription settlementFactoryCid offering (remainingQuantity, issuerHoldingCidOpt) (subscriptionCid, subscription) = do
   if remainingQuantity == 0.0
   then do pure (remainingQuantity, issuerHoldingCidOpt)
   else do
@@ -29,7 +30,7 @@ settleSubscription instructableCid offering (remainingQuantity, issuerHoldingCid
       payedQuantity = offering.price with amount = allocatedQuantity.amount * offering.price.amount
       delivery = Step with sender = offering.issuer; receiver = subscription.investor; quantity = allocatedQuantity
       payment = Step with sender = subscription.investor; receiver = offering.issuer; quantity = payedQuantity
-    (settleableCid, [deliveryCid, paymentCid]) <- exercise instructableCid Instruct with settler = offering.provider; id = offering.offeringId; steps = [delivery, payment]
+    (batchCid, [deliveryCid, paymentCid]) <- exercise settlementFactoryCid Instruct with instructors = singleton offering.provider; settler = offering.provider; id = Id offering.offeringId; steps = [delivery, payment]; description = offering.offeringId
 
     -- Settle
     allocatedHoldingCid :: remainingIssuerHoldingCids <-
@@ -46,7 +47,7 @@ settleSubscription instructableCid offering (remainingQuantity, issuerHoldingCid
     exercise subscriptionCid ApproveInstruction with instructionCid = deliveryCid; receiverAccount = subscription.accountKey
     paymentCid <- exercise subscriptionCid AllocateInstruction with instructionCid = paymentCid; transferableCid = toInterfaceContractId paymentHoldingCid
     exercise paymentCid Approve with receiverAccount = offering.issuerAccount
-    transferredCids <- exercise settleableCid Settle
+    transferredCids <- exercise batchCid Settle
     forA_ transferredCids $ \cid -> exercise subscriptionCid UnlockHolding with lockableCid = toInterfaceContractId cid
 
     -- Process remainders

@@ -5,9 +5,9 @@ module Daml.Finance.App.Issuance.Auto.Service where
 
 import Daml.Finance.App.Issuance.Model (Issuance)
 import Daml.Finance.App.Issuance.Service qualified as S (CreateIssuance(..), ReduceIssuance(..), RequestCreateIssuance(..), RequestReduceIssuance(..), Service)
-import Daml.Finance.Interface.Asset.Account qualified as Account (K)
-import Daml.Finance.Interface.Asset.Holding (Holding)
-import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (Q)
+import Daml.Finance.Interface.Holding.Account qualified as Account (K)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 
 template Service
   with
@@ -20,7 +20,7 @@ template Service
     key (operator, provider, customer) : (Party, Party, Party)
     maintainer key._1
 
-    nonconsuming choice RequestAndCreateIssuance : (ContractId Issuance, ContractId Holding)
+    nonconsuming choice RequestAndCreateIssuance : (ContractId Issuance, ContractId Holding.I)
       with
         id : Text
         quantity : Instrument.Q
@@ -33,7 +33,7 @@ template Service
     nonconsuming choice RequestAndReduceIssuance : ContractId Issuance
       with
         id : Text
-        holdingCid : ContractId Holding
+        holdingCid : ContractId Holding.I
       controller customer
       do
         reduceIssuanceRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestReduceIssuance with id; holdingCid

@@ -7,21 +7,22 @@ import ContingentClaims.Financial (unrollDates)
 import DA.Date (Month(..), addDays, date, toDateUTC, toGregorian)
 import DA.Foldable (mapA_)
 import DA.Map (fromList)
-import DA.Set (singleton)
+import DA.Set (empty, singleton)
 import DA.Time (time)
 import Daml.Finance.App.BackToBack.Service qualified as BackToBack
 import Daml.Finance.App.Distribution.Subscription.Model qualified as Subscription
 import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription
-import Daml.Finance.Asset.Fungible qualified as Fungible (Factory(..))
-import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (qty)
+import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
+import Daml.Finance.Interface.Types.Common (Id(..))
 import Daml.Finance.RefData.Observation (Observation(..))
 import Daml.Finance.RefData.Time.DateClock (DateClock(..), DateClockUpdateEvent(..), Unit(..))
-import Daml.Finance.Settlement.Batch (BatchFactory(..))
+import Daml.Finance.Settlement.Factory (Factory(..))
 import Daml.Finance.Setup.Payoff (bond, brc, buyWriteNote, futureDvp, putOptionCash, rc)
 import Daml.Finance.Setup.Util.Common (PartyInfo, allocateParties)
 import Daml.Finance.Setup.Util.Role (createCustodianRole, createDistributorRole, createOperatorRole)
 import Daml.Finance.Setup.Util.Service (createBackToBackIssuanceService, createCustodyService, createIssuanceService, createLifecycleService, createSubscriptionService)
-import Daml.Finance.Setup.Util.Workflow (createAccount, createFactory, deposit, originate, originateDerivative)
+import Daml.Finance.Setup.Util.Workflow (createAccount, createFactory, deposit, originate, originateGeneric)
 import Daml.Script (Script, createCmd, exerciseByKeyCmd, exerciseCmd, submitMulti)
 
 run : Script [PartyInfo]
@@ -55,7 +56,7 @@ run  = do
 
   createSubscriptionService operator issuer issuer public
 
-  instructableCid <- toInterfaceContractId <$> submit issuer do createCmd BatchFactory with requestors = singleton issuer
+  settlementFactoryCid <- toInterfaceContractId <$> submit issuer do createCmd Factory with provider = issuer; observers = empty
 
   t <- getTime
   let
@@ -67,9 +68,9 @@ run  = do
     pub = [("Public", singleton $ singleton public)]
 
   -- Create clock and events
-  let clock = DateClock with u = Unit today, id = "Clock", provider = issuer, observers = singleton public
+  let clock = DateClock with u = Unit today, id = Id "Clock", provider = issuer, observers = fromList pub
   submitMulti [issuer] [] do createCmd clock
-  submitMulti [issuer] [] do createCmd DateClockUpdateEvent with clock; id = "Update to " <> show today
+  submitMulti [issuer] [] do createCmd DateClockUpdateEvent with clock; id = Id $ "Update to " <> show today
 
   -- Create accounts
   accountFactoryCid <- toInterfaceContractId <$> createFactory operator pub
@@ -98,13 +99,13 @@ run  = do
   -- Instruments
   usd     <- originate            centralBank centralBank pub todayTime "USD"
   tsla    <- originate            depository  issuer      pub todayTime "TSLA"
-  fwd     <- originateDerivative  depository  issuer      pub todayTime "Forward on TSLA"                       $ futureDvp tsla 200.0 usd 100_000.0 today
-  opt     <- originateDerivative  depository  issuer      pub todayTime "Put Option on TSLA"                    $ putOptionCash tslaO usd 1_000.0 maturity
-  bnd     <- originateDerivative  depository  issuer      pub todayTime "Bond 5Y/4.875%"                        $ bond usd 1.0 0.04875 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
-  rc      <- originateDerivative  depository  issuer      pub todayTime "Reverse Convertible on TSLA"           $ rc tslaO usd 0.02 800.0 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
-  brc     <- originateDerivative  depository  issuer      pub todayTime "Barrier Reverse Convertible on TSLA"   $ brc tslaO usd 0.05 800.0 600.0 today $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
-  bwn1    <- originateDerivative  depository  issuer      pub todayTime "Synthetic Buy-Write Notes on AMD"      $ buyWriteNote (date 2022 Jul 16) (date 2023 Jul 19) (date 2023 Jul 23) amd usd 0.1776 91.6300 100.7930 -- Issue size: 77'300
-  bwn2    <- originateDerivative  depository  issuer      pub todayTime "Synthetic Buy-Write Notes on QUALCOMM" $ buyWriteNote (date 2022 Jun 30) (date 2022 Jul 05) (date 2022 Jul 07) qc usd 0.1312 147.2566 161.9823
+  fwd     <- originateGeneric  depository  issuer      pub todayTime "Forward on TSLA"                       $ futureDvp tsla 200.0 usd 100_000.0 today
+  opt     <- originateGeneric  depository  issuer      pub todayTime "Put Option on TSLA"                    $ putOptionCash tslaO usd 1_000.0 maturity
+  bnd     <- originateGeneric  depository  issuer      pub todayTime "Bond 5Y/4.875%"                        $ bond usd 1.0 0.04875 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
+  rc      <- originateGeneric  depository  issuer      pub todayTime "Reverse Convertible on TSLA"           $ rc tslaO usd 0.02 800.0 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
+  brc     <- originateGeneric  depository  issuer      pub todayTime "Barrier Reverse Convertible on TSLA"   $ brc tslaO usd 0.05 800.0 600.0 today $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
+  bwn1    <- originateGeneric  depository  issuer      pub todayTime "Synthetic Buy-Write Notes on AMD"      $ buyWriteNote (date 2022 Jul 16) (date 2023 Jul 19) (date 2023 Jul 23) amd usd 0.1776 91.6300 100.7930 -- Issue size: 77'300
+  bwn2    <- originateGeneric  depository  issuer      pub todayTime "Synthetic Buy-Write Notes on QUALCOMM" $ buyWriteNote (date 2022 Jun 30) (date 2022 Jul 05) (date 2022 Jul 07) qc usd 0.1312 147.2566 161.9823
 
   issuerCashCid1  <- coerceContractId <$> deposit operator centralBank issuer  public (Instrument.qty 4_417_698.0 usd) issuerCashAccount
   aliceCashCid1   <- coerceContractId <$> deposit operator centralBank alice   public (Instrument.qty 1_472_566.0 usd) aliceCashAccount
@@ -124,7 +125,7 @@ run  = do
       submitMulti [issuer] [public] do
         exerciseByKeyCmd @BackToBack.Service (operator, riskTaker, issuer) BackToBack.CreateIssuance
           with
-            id = "ISSUANCE-" <> quantity.unit.id.label
+            id = "ISSUANCE-" <> show quantity.unit.id
             quantity
             customerAccount = issuerOwnAccount
             providerAccount = riskTakerOwnAccount
@@ -132,7 +133,7 @@ run  = do
     subscription asset price issuerCashCid issuerAssetCid riskTakerAssetCid aliceCashCid bobCashCid charlieCashCid = do
       offeringCid <- submit issuer do
         let
-          offeringId = "OFFERING-" <> asset.unit.id.label
+          offeringId = "OFFERING-" <> show asset.unit.id
           backToBack = Some Subscription.BackToBack
             with
               party = riskTaker
@@ -157,7 +158,7 @@ run  = do
       submitMulti [issuer] [public] do
         exerciseByKeyCmd @Subscription.Service (operator, issuer, issuer) Subscription.ProcessOffering
           with
-            instructableCid
+            settlementFactoryCid
             offeringCid
             subscriptionCids = [aliceSubscriptionCid, bobSubscriptionCid, charlieSubscriptionCid]
       pure ()

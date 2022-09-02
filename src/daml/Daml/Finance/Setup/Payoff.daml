@@ -9,11 +9,13 @@ import ContingentClaims.Financial (forward, fixed, floating, swap, european, ber
 import DA.Date (DayOfWeek(..), Month(..), addDays, date, monthDayCount, toGregorian)
 import DA.List (last)
 import DA.Time (time)
-import Daml.Finance.Common.Date.Calendar
-import Daml.Finance.Common.Date.RollConvention
-import Daml.Finance.Common.Date.Schedule
-import Daml.Finance.Common.Date.DayCount
-import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (K, Q)
+import Daml.Finance.Interface.Types.Date.Calendar
+import Daml.Finance.Interface.Types.Date.DayCount
+import Daml.Finance.Interface.Types.Date.RollConvention
+import Daml.Finance.Interface.Types.Date.Schedule
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K, Q)
+import Daml.Finance.Util.Date.DayCount
+import Daml.Finance.Util.Date.Schedule
 import Prelude hiding (and, or, (<=))
 
 type C = Claim Time Decimal Instrument.K Text

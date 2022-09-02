@@ -13,17 +13,20 @@ dependencies:
 data-dependencies:
   - lib/contingent-claims-3.0.0.20220721.1.dar
   - lib/daml-finance-holding-0.1.2.dar
+  - lib/daml-finance-instrument-base-0.1.2.dar
   - lib/daml-finance-instrument-bond-0.1.2.dar
-  - lib/daml-finance-common-0.1.2.dar
-  - lib/daml-finance-instrument-derivative-0.1.2.dar
-  - lib/daml-finance-interface-asset-0.1.2.dar
-  - lib/daml-finance-interface-common-0.1.2.dar
-  - lib/daml-finance-interface-derivative-0.1.2.dar
+  - lib/daml-finance-instrument-generic-0.1.2.dar
+  - lib/daml-finance-interface-holding-0.1.2.dar
+  - lib/daml-finance-interface-instrument-base-0.1.2.dar
+  - lib/daml-finance-interface-instrument-generic-0.1.2.dar
   - lib/daml-finance-interface-lifecycle-0.1.2.dar
   - lib/daml-finance-interface-settlement-0.1.2.dar
+  - lib/daml-finance-interface-types-0.1.2.dar
+  - lib/daml-finance-interface-util-0.1.2.dar
   - lib/daml-finance-lifecycle-0.1.2.dar
   - lib/daml-finance-refdata-0.1.2.dar
   - lib/daml-finance-settlement-0.1.2.dar
+  - lib/daml-finance-util-0.1.2.dar
 start-navigator: no
 sandbox-options:
   - -c=canton.conf

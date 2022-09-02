@@ -3,16 +3,18 @@
 
 module Daml.Finance.App.Distribution.Auction.Utils where
 
-import Daml.Finance.Interface.Asset.Account qualified as Account (K)
-import Daml.Finance.Interface.Asset.Fungible (Fungible, Split(..))
-import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (qty)
-import Daml.Finance.Interface.Asset.Util (getAmount, getInstrument)
-import Daml.Finance.Interface.Settlement.Instructable (Instructable, Instruct(..))
-import Daml.Finance.Interface.Settlement.Instruction (Allocate(..), Approve(..))
-import Daml.Finance.Interface.Settlement.Settleable (Settleable)
-import Daml.Finance.Interface.Settlement.Types (Step(..))
+import DA.Set (singleton)
 import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding
 import Daml.Finance.App.Distribution.Bidding.Model qualified as Bidding (AllocateInstruction(..), Allocation(..), ApproveInstruction(..), Bid(..), SettleAllocation(..))
+import Daml.Finance.Interface.Holding.Account qualified as Account (K)
+import Daml.Finance.Interface.Holding.Fungible (Fungible, Split(..))
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
+import Daml.Finance.Interface.Holding.Util (getAmount, getInstrument)
+import Daml.Finance.Interface.Settlement.Factory (Factory, Instruct(..))
+import Daml.Finance.Interface.Settlement.Instruction (Allocate(..), Approve(..))
+import Daml.Finance.Interface.Settlement.Batch (Batch)
+import Daml.Finance.Interface.Settlement.Types (Step(..))
+import Daml.Finance.Interface.Types.Common (Id(..))
 
 -- | Takes a list and splits it based off a predicate.
 splitList : (a -> Bool) -> [a] -> [Either a a]
@@ -44,9 +46,9 @@ dutchAuction (remaining, _) (bidCid, bid) =
     else ((0.0, bidPrice), Bidding.Allocation with amount = remaining; bidCid; bid)
 
 -- | An accumulator function which processes generates the settlement instruction for both an issuer and a bidder based of the output of the dutch auction
-generateSettlementInstruction : ContractId Instructable -> Account.K -> (Optional (ContractId Fungible), [ContractId Settleable]) -> Bidding.SettleAllocation -> Update (Optional (ContractId Fungible), [ContractId Settleable])
+generateSettlementInstruction : ContractId Factory -> Account.K -> (Optional (ContractId Fungible), [ContractId Batch]) -> Bidding.SettleAllocation -> Update (Optional (ContractId Fungible), [ContractId Batch])
 generateSettlementInstruction _ _ (None, _) _ = error "Auction:generateSettlementInstruction - Issuers AssetDeposit has no remaining units to allocate"
-generateSettlementInstruction instructableCid issuerAccount (Some issuerDepositCid, settleableCids) Bidding.SettleAllocation{allocation, price, issuer} = do
+generateSettlementInstruction settlementFactoryCid issuerAccount (Some issuerDepositCid, batchCids) Bidding.SettleAllocation{allocation, price, issuer} = do
   let
     allocatedAmount = allocation.amount
     allocatedNotional = allocation.amount * price
@@ -69,12 +71,14 @@ generateSettlementInstruction instructableCid issuerAccount (Some issuerDepositC
     seller = issuer
     [allocatedDepositCid] = splitResult.splitCids
   allocatedDeposit <- fetch allocatedDepositCid
-  let delivery = Step with sender = issuer; receiver = buyer; quantity = (Instrument.qty (getAmount allocatedDeposit) (getInstrument allocatedDeposit))
+  let
+    delivery = Step with sender = issuer; receiver = buyer; quantity = (Instrument.qty (getAmount allocatedDeposit) (getInstrument allocatedDeposit))
+    id = bid.auctionId <> "-" <> partyToText buyer
 
-  (settleableCid, [deliveryCid, paymentCid]) <- exercise instructableCid Instruct with settler = issuer; id = bid.auctionId <> "-" <> partyToText buyer; steps = [delivery, payment]
+  (batchCid, [deliveryCid, paymentCid]) <- exercise settlementFactoryCid Instruct with instructors = singleton issuer; settler = issuer; id = Id id ; steps = [delivery, payment]; description = "Settlement of auction " <> id
   deliveryCid <- exercise deliveryCid Allocate with transferableCid = toInterfaceContractId allocatedDepositCid
   exercise bidCid Bidding.ApproveInstruction with instructionCid = deliveryCid; account = bid.receivableAccount
   paymentCid <- exercise bidCid Bidding.AllocateInstruction with instructionCid = paymentCid; transferableCid = toInterfaceContractId bidDepositCid
   exercise paymentCid Approve with receiverAccount = issuerAccount
 
-  pure (splitResult.rest, settleableCid :: settleableCids)
+  pure (splitResult.rest, batchCid :: batchCids)

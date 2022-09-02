@@ -3,20 +3,21 @@
 
 module Daml.Finance.App.Structuring.Service where
 
+import DA.Date (toGregorian)
 import Daml.Finance.App.Structuring.Model (CreateFixedRateBondRequest(..), CreateFloatingRateBondRequest(..), CreateInflationLinkedBondRequest(..), CreateZeroCouponBondRequest(..))
 import Daml.Finance.App.Util (fetchAndArchive)
-import Daml.Finance.Bond.FixedRate (FixedRateBond(..))
-import Daml.Finance.Bond.FloatingRate (FloatingRateBond(..))
-import Daml.Finance.Bond.InflationLinked (InflationLinkedBond(..))
-import Daml.Finance.Bond.ZeroCoupon (ZeroCouponBond(..))
-import Daml.Finance.Common.Date.Calendar (BusinessDayConventionEnum)
-import Daml.Finance.Common.Date.DayCount (DayCountConventionEnum)
-import Daml.Finance.Common.Date.RollConvention (PeriodEnum)
-import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (K)
-import Daml.Finance.Interface.Asset.Types (Id)
-import Daml.Finance.Interface.Common.Types (Observers)
-import Daml.Finance.Interface.Derivative.HasClaims qualified as Derivative (HasClaims, getClaims)
-import Daml.Finance.Interface.Derivative.Types qualified as Derivative (TaggedClaim)
+import Daml.Finance.Instrument.Bond.FixedRate qualified as FixedRateBond (Instrument(..))
+import Daml.Finance.Instrument.Bond.FloatingRate qualified as FloatingRateBond (Instrument(..))
+import Daml.Finance.Instrument.Bond.InflationLinked qualified as InflationLinkedBond (Instrument(..))
+import Daml.Finance.Instrument.Bond.ZeroCoupon qualified as ZeroCouponBond (Instrument(..))
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K)
+import Daml.Finance.Interface.Instrument.Generic.HasClaims qualified as Generic (HasClaims, getClaims)
+import Daml.Finance.Interface.Instrument.Generic.Types qualified as Generic (TaggedClaim)
+import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayAdjustment(..), BusinessDayConventionEnum)
+import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
+import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum, RollConventionEnum(..))
+import Daml.Finance.Interface.Types.Date.Schedule (Frequency(..), PeriodicSchedule(..))
+import Daml.Finance.Interface.Types.Common (Id(..), Observers)
 
 template Service
   with
@@ -29,17 +30,17 @@ template Service
     key (operator, provider, customer) : (Party, Party, Party)
     maintainer key._1
 
-    nonconsuming choice GetClaims : [Derivative.TaggedClaim]
+    nonconsuming choice GetClaims : [Generic.TaggedClaim]
       with
-        instrumentCid : ContractId Derivative.HasClaims
+        instrumentCid : ContractId Generic.HasClaims
       controller customer
       do
         instrument <- fetch instrumentCid
-        Derivative.getClaims instrument
+        Generic.getClaims instrument
 
     nonconsuming choice RequestCreateFixedRateBond : ContractId CreateFixedRateBondRequest
       with
-        id : Id
+        id : Text
         couponRate : Decimal
         issueDate : Date
         firstCouponDate : Date
@@ -50,7 +51,7 @@ template Service
         businessDayConvention : BusinessDayConventionEnum
         couponPeriod : PeriodEnum
         couponPeriodMultiplier : Int
-        cashInstrumentCid : Instrument.K
+        currency : Instrument.K
         observers : Observers
         lastEventTimestamp : Time
       controller customer
@@ -59,7 +60,7 @@ template Service
 
     nonconsuming choice RequestCreateFloatingRateBond : ContractId CreateFloatingRateBondRequest
       with
-        id : Id
+        id : Text
         referenceRateId : Text
         couponSpread : Decimal
         issueDate : Date
@@ -71,7 +72,7 @@ template Service
         businessDayConvention : BusinessDayConventionEnum
         couponPeriod : PeriodEnum
         couponPeriodMultiplier : Int
-        cashInstrumentCid : Instrument.K
+        currency : Instrument.K
         observers : Observers
         lastEventTimestamp : Time
       controller customer
@@ -80,7 +81,7 @@ template Service
 
     nonconsuming choice RequestCreateInflationLinkedBond : ContractId CreateInflationLinkedBondRequest
       with
-        id : Id
+        id : Text
         inflationIndexId : Text
         inflationIndexBaseValue : Decimal
         couponRate : Decimal
@@ -93,7 +94,7 @@ template Service
         businessDayConvention : BusinessDayConventionEnum
         couponPeriod : PeriodEnum
         couponPeriodMultiplier : Int
-        cashInstrumentCid : Instrument.K
+        currency : Instrument.K
         observers : Observers
         lastEventTimestamp : Time
       controller customer
@@ -102,47 +103,50 @@ template Service
 
     nonconsuming choice RequestCreateZeroCouponBond : ContractId CreateZeroCouponBondRequest
       with
-        id : Id
+        id : Text
         issueDate : Date
         maturityDate : Date
-        cashInstrumentCid : Instrument.K
+        currency : Instrument.K
         observers : Observers
         lastEventTimestamp : Time
       controller customer
       do
         create CreateZeroCouponBondRequest with ..
 
-    nonconsuming choice CreateFixedRateBond : ContractId FixedRateBond
+    nonconsuming choice CreateFixedRateBond : ContractId FixedRateBond.Instrument
       with
         createFixedRateBondRequestCid : ContractId CreateFixedRateBondRequest
       controller provider
       do
         CreateFixedRateBondRequest{..} <- fetchAndArchive createFixedRateBondRequestCid
-        create FixedRateBond with depository = provider; issuer = customer; ..
+        let periodicSchedule = createCouponPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
+        create FixedRateBond.Instrument with depository = provider; issuer = customer; id = Id id; version = "0"; calendarDataProvider = provider; description = id; ..
 
-    nonconsuming choice CreateFloatingRateBond : ContractId FloatingRateBond
+    nonconsuming choice CreateFloatingRateBond : ContractId FloatingRateBond.Instrument
       with
         createFloatingRateBondRequestCid : ContractId CreateFloatingRateBondRequest
       controller provider
       do
         CreateFloatingRateBondRequest{..} <- fetchAndArchive createFloatingRateBondRequestCid
-        create FloatingRateBond with depository = provider; issuer = customer; ..
+        let periodicSchedule = createCouponPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
+        create FloatingRateBond.Instrument with depository = provider; issuer = customer; id = Id id; version = "0"; calendarDataProvider = provider; description = id; ..
 
-    nonconsuming choice CreateInflationLinkedBond : ContractId InflationLinkedBond
+    nonconsuming choice CreateInflationLinkedBond : ContractId InflationLinkedBond.Instrument
       with
         createInflationLinkedBondRequestCid : ContractId CreateInflationLinkedBondRequest
       controller provider
       do
         CreateInflationLinkedBondRequest{..} <- fetchAndArchive createInflationLinkedBondRequestCid
-        create InflationLinkedBond with depository = provider; issuer = customer; ..
+        let periodicSchedule = createCouponPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
+        create InflationLinkedBond.Instrument with depository = provider; issuer = customer; id = Id id; version = "0"; calendarDataProvider = provider; description = id; ..
 
-    nonconsuming choice CreateZeroCouponBond : ContractId ZeroCouponBond
+    nonconsuming choice CreateZeroCouponBond : ContractId ZeroCouponBond.Instrument
       with
         createZeroCouponBondRequestCid : ContractId CreateZeroCouponBondRequest
       controller provider
       do
         CreateZeroCouponBondRequest{..} <- fetchAndArchive createZeroCouponBondRequestCid
-        create ZeroCouponBond with depository = provider; issuer = customer; ..
+        create ZeroCouponBond.Instrument with depository = provider; issuer = customer; id = Id id; version = "0"; description = id; ..
 
     choice Terminate : ()
       with
@@ -196,3 +200,27 @@ template Request
       controller operator, provider
       do
         create Service with ..
+
+-- | Create a schedule for the periodic coupon payments.
+createCouponPeriodicSchedule : Date -> [Text] -> BusinessDayConventionEnum -> PeriodEnum -> Int -> Date -> Date -> PeriodicSchedule
+createCouponPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate = do
+  let
+    (y, m, d) = toGregorian firstCouponDate
+    periodicSchedule = PeriodicSchedule with
+      businessDayAdjustment =
+        BusinessDayAdjustment with
+          calendarIds = holidayCalendarIds
+          convention = businessDayConvention
+      effectiveDateBusinessDayAdjustment = None
+      terminationDateBusinessDayAdjustment = None
+      frequency =
+        Frequency with
+          rollConvention = DOM d
+          period = couponPeriod
+          periodMultiplier = couponPeriodMultiplier
+      effectiveDate = issueDate
+      firstRegularPeriodStartDate = Some firstCouponDate
+      lastRegularPeriodEndDate = Some maturityDate
+      stubPeriodType = None
+      terminationDate = maturityDate
+  periodicSchedule

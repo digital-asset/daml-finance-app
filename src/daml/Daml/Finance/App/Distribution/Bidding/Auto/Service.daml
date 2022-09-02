@@ -3,8 +3,8 @@
 
 module Daml.Finance.App.Distribution.Bidding.Auto.Service where
 
-import Daml.Finance.Interface.Asset.Account qualified as Account (K)
-import Daml.Finance.Interface.Asset.Fungible qualified as Fungible (I)
+import Daml.Finance.Interface.Holding.Account qualified as Account (K)
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
 import Daml.Finance.App.Distribution.Auction.Model qualified as Auction (T)
 import Daml.Finance.App.Distribution.Bidding.Model (Bid)
 import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (CreateBid(..), S, RequestCreateBid(..))

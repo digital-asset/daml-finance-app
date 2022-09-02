@@ -1,14 +1,12 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-{-# LANGUAGE MultiWayIf #-}
-
 module Daml.Finance.App.Distribution.Auction.Auto.Service where
 
-import Daml.Finance.Interface.Asset.Account qualified as Account (K)
-import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (K, Q)
-import Daml.Finance.Interface.Asset.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Common.Types (Parties)
+import Daml.Finance.Interface.Holding.Account qualified as Account (K)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K, Q)
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
+import Daml.Finance.Interface.Types.Common (Parties)
 import Daml.Finance.App.Distribution.Auction.Model (Auction)
 import Daml.Finance.App.Distribution.Auction.Service qualified as S (CreateAuction(..), RequestCreateAuction(..), Service)
 

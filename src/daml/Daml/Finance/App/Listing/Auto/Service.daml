@@ -5,8 +5,8 @@ module Daml.Finance.App.Listing.Auto.Service where
 
 import Daml.Finance.App.Listing.Service qualified as S (CreateListing(..), DeleteListing(..), RequestCreateListing(..), RequestDeleteListing(..), Service)
 import Daml.Finance.App.Listing.Model (Listing)
-import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (K)
-import Daml.Finance.Interface.Common.Types (Parties)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K)
+import Daml.Finance.Interface.Types.Common (Parties)
 
 template Service
   with

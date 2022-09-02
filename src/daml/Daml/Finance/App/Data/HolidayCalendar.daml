@@ -4,7 +4,7 @@
 module Daml.Finance.App.Data.HolidayCalendar where
 
 import DA.Set (Set)
-import Daml.Finance.Common.Date.Calendar (HolidayCalendarData)
+import Daml.Finance.Interface.Types.Date.Calendar (HolidayCalendarData)
 
 type T = HolidayCalendar
 
