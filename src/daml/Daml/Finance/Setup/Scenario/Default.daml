@@ -150,19 +150,20 @@ run  = do
     doAuction = do
       let quantity = Instrument.qty 1_000_000.0 bnd
       auctionCid    <- createAuction    operator agent issuer  public "AUCTION1" quantity usd 0.95 (coerceContractId ad2) issuerCashAccount
-      -- aliceCollateralCid    <- coerceContractId <$> getHolding alice   (Instrument.qty 500_000.0 usd)
-      -- bobCollateralCid      <- coerceContractId <$> getHolding bob     (Instrument.qty 392_000.0 usd)
-      -- charlieCollateralCid  <- coerceContractId <$> getHolding charlie (Instrument.qty 297_000.0 usd)
-      -- aliceBidCid   <- createAuctionBid operator agent alice   public auctionCid 500_000.0 1.0  aliceCollateralCid aliceSecAccount
-      -- bobBidCid     <- createAuctionBid operator agent bob     public auctionCid 400_000.0 0.98 bobCollateralCid bobSecAccount
-      -- charlieBidCid <- createAuctionBid operator agent charlie public auctionCid 300_000.0 0.99 charlieCollateralCid charlieSecAccount
-      -- processAuction operator agent issuer public auctionCid [aliceBidCid, bobBidCid, charlieBidCid]
+      aliceCollateralCid    <- coerceContractId <$> getHolding alice   (Instrument.qty 500_000.0 usd)
+      bobCollateralCid      <- coerceContractId <$> getHolding bob     (Instrument.qty 392_000.0 usd)
+      charlieCollateralCid  <- coerceContractId <$> getHolding charlie (Instrument.qty 297_000.0 usd)
+      aliceBidCid   <- createAuctionBid operator agent alice   public auctionCid 500_000.0 1.0  aliceCollateralCid aliceSecAccount
+      bobBidCid     <- createAuctionBid operator agent bob     public auctionCid 400_000.0 0.98 bobCollateralCid bobSecAccount
+      charlieBidCid <- createAuctionBid operator agent charlie public auctionCid 300_000.0 0.99 charlieCollateralCid charlieSecAccount
+      processAuction operator agent issuer public auctionCid [aliceBidCid, bobBidCid, charlieBidCid]
       pure ()
     doTrade = do
       list operator exchange issuer "SWAP/USD" swp usd $ singleton public
-      createAskOrder operator exchange issuer "1" (Instrument.qty 5_000_000.0 swp) (Instrument.qty 1.0 usd) $ singleton public
-      createBidOrder operator exchange alice  "2" (Instrument.qty 500_000.0 swp)   (Instrument.qty 1.0 usd) $ singleton public
+      createAskOrder operator exchange issuer public "1" (Instrument.qty 5_000_000.0 swp) (Instrument.qty 1.0 usd) $ singleton public
+      createBidOrder operator exchange alice  public "2" (Instrument.qty 500_000.0 swp)   (Instrument.qty 1.0 usd) $ singleton public
 
-  doAuction
+  -- doAuction
+  -- doTrade
 
   pure parties

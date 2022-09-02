@@ -12,7 +12,7 @@ import { claimToNode } from "../../components/Claims/util";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
-import { Reference as AccountReference } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Account";
+import { Reference as AccountReference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
 import { useServices } from "../../context/ServicesContext";
 import { useInstruments } from "../../context/InstrumentsContext";
 import { CreateEvent } from "@daml/ledger";
@@ -47,7 +47,7 @@ export const New : React.FC = () => {
   ]);
 
   const myInstruments = instruments.filter(c => c.payload.issuer === party);
-  const instrument = myInstruments.find(c => c.payload.id.label === assetLabel);
+  const instrument = myInstruments.find(c => c.payload.id.unpack === assetLabel);
 
   useEffect(() => {
     if (!!instrument && !!instrument.payload.claims) setNode(claimToNode(instrument.payload.claims));
@@ -68,7 +68,7 @@ export const New : React.FC = () => {
       if (!instrument || !customerAccount || !providerAccount) return;
       const arg = {
         id: uuidv4(),
-        quantity: { amount: quantity, unit: { depository: instrument.payload.depository, issuer: instrument.payload.issuer, id: instrument.payload.id } },
+        quantity: { amount: quantity, unit: { depository: instrument.payload.depository, issuer: instrument.payload.issuer, id: instrument.payload.id, version: instrument.payload.version } },
         customerAccount: customerAccount.key,
         providerAccount: providerAccount.key
       };
@@ -83,7 +83,7 @@ export const New : React.FC = () => {
       if (!instrument || !account) return;
       const arg = {
         id: uuidv4(),
-        quantity: { amount: quantity, unit: { depository: instrument.payload.depository, issuer: instrument.payload.issuer, id: instrument.payload.id } },
+        quantity: { amount: quantity, unit: { depository: instrument.payload.depository, issuer: instrument.payload.issuer, id: instrument.payload.id, version: instrument.payload.version } },
         account: account.key,
       };
       if (hasAuto) await ledger.exercise(IssuanceAuto.RequestAndCreateIssuance, myAutoSvc.contractId, arg);
@@ -109,7 +109,7 @@ export const New : React.FC = () => {
                     <Box className={classes.fullWidth}>
                       <InputLabel className={classes.selectLabel}>Asset</InputLabel>
                       <Select className={classes.width90} value={assetLabel} onChange={e => setAssetLabel(e.target.value as string)} MenuProps={menuProps}>
-                        {instruments.map((c, i) => (<MenuItem key={i} value={c.payload.id.label}>{c.payload.id.label}</MenuItem>))}
+                        {instruments.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
                       </Select>
                       <IconButton className={classes.marginLeft10} color="primary" size="small" component="span" onClick={() => setShowAsset(!showAsset)}>
                         {showAsset ? <VisibilityOff fontSize="small"/> : <Visibility fontSize="small"/>}

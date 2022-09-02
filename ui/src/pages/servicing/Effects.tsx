@@ -6,13 +6,14 @@ import { useNavigate } from "react-router-dom";
 import { Table, TableBody, TableCell, TableRow, TableHead, Grid, Paper, Typography, IconButton, Button } from "@mui/material";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
-import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fungible";
+import { Fungible } from "@daml.js/daml-finance-holding/lib/Daml/Finance/Holding/Fungible";
 import KeyboardArrowRight from "@mui/icons-material/KeyboardArrowRight";
-import { id, keyEquals } from "../../util";
+import { keyEquals, version } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { Effect } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/Effect";
 import { CreateEvent } from "@daml/ledger";
-import { Batch, BatchFactory } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Batch";
+import { Batch } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Batch";
+import { Factory } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Factory";
 import { ContractId } from "@daml/types";
 import { useParties } from "../../context/PartiesContext";
 
@@ -26,7 +27,7 @@ export const Effects : React.FC = () => {
   const { contracts: effects, loading: l1 } = useStreamQueries(Effect);
   const { contracts: holdings, loading: l2 } = useStreamQueries(Fungible);
   const { contracts: batches, loading: l3 } = useStreamQueries(Batch);
-  const { contracts: factories, loading: l4 } = useStreamQueries(BatchFactory);
+  const { contracts: factories, loading: l4 } = useStreamQueries(Factory);
 
   if (l1 || l2 || l3 || l4) return (<Spinner />);
 
@@ -75,7 +76,7 @@ export const Effects : React.FC = () => {
                   <TableRow key={i} className={classes.tableRow}>
                     <TableCell key={0} className={classes.tableCell}>{getName(c.payload.provider)}</TableCell>
                     <TableCell key={1} className={classes.tableCell}>{getName(c.payload.settler)}</TableCell>
-                    <TableCell key={2} className={classes.tableCell}>{id(c.payload.targetInstrument.id)}</TableCell>
+                    <TableCell key={2} className={classes.tableCell}>{c.payload.targetInstrument.id.unpack} ({version(c.payload.targetInstrument)})</TableCell>
                     <TableCell key={3} className={classes.tableCell}>{c.payload.settlementDate}</TableCell>
                     <TableCell key={4} className={classes.tableCell}>{c.payload.consumed.length}</TableCell>
                     <TableCell key={5} className={classes.tableCell}>{c.payload.produced.length}</TableCell>

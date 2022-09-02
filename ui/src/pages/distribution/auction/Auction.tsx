@@ -13,7 +13,7 @@ import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribu
 import { Bid } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Bidding/Model";
 import { getAuctionStatus, getBidStatus, getBidAllocation } from "../Utils";
 import { Spinner } from "../../../components/Spinner/Spinner";
-import { BatchFactory } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Batch";
+import { Factory } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Factory";
 import { fmt } from "../../../util";
 import { Message } from "../../../components/Message/Message";
 import { useParties } from "../../../context/PartiesContext";
@@ -32,7 +32,7 @@ export const Auction: React.FC = () => {
 
   const { contracts: auctions, loading: l1 } = useStreamQueries(AuctionContract);
   const { contracts: bids, loading: l2 } = useStreamQueries(Bid);
-  const { contracts: factories, loading: l3 } = useStreamQueries(BatchFactory);
+  const { contracts: factories, loading: l3 } = useStreamQueries(Factory);
 
   const services = svc.auction.filter(s => s.payload.customer === party || s.payload.provider === party);
   const auction = auctions.find(c => c.contractId === contractId);
@@ -52,7 +52,7 @@ export const Auction: React.FC = () => {
   const closeAuction = async () => {
     if (factories.length === 0) return new Error("No settlement factory found");
     const bidCids = filteredBids.map(c => c.contractId);
-    const [result, ] = await ledger.exercise(Service.ProcessAuction, service.contractId, { instructableCid: factories[0].contractId, auctionCid: auction.contractId, bidCids });
+    const [result, ] = await ledger.exercise(Service.ProcessAuction, service.contractId, { settlementFactoryCid: factories[0].contractId, auctionCid: auction.contractId, bidCids });
     navigate("/distribution/auctions/" + result);
   };
 
@@ -137,11 +137,11 @@ export const Auction: React.FC = () => {
                       </TableRow>
                       <TableRow key={3} className={classes.tableRow}>
                         <TableCell key={0} className={classes.tableCell}><b>Asset</b></TableCell>
-                        <TableCell key={1} className={classes.tableCell}>{fmt(auction.payload.quantity.amount)} {auction.payload.quantity.unit.id.label}</TableCell>
+                        <TableCell key={1} className={classes.tableCell}>{fmt(auction.payload.quantity.amount)} {auction.payload.quantity.unit.id.unpack}</TableCell>
                       </TableRow>
                       <TableRow key={4} className={classes.tableRow}>
                         <TableCell key={0} className={classes.tableCell}><b>Floor</b></TableCell>
-                        <TableCell key={1} className={classes.tableCell}>{auction.payload.floor} {auction.payload.currency.id.label}</TableCell>
+                        <TableCell key={1} className={classes.tableCell}>{auction.payload.floor} {auction.payload.currency.id.unpack}</TableCell>
                       </TableRow>
                       <TableRow key={5} className={classes.tableRow}>
                         <TableCell key={0} className={classes.tableCell}><b>Subscribed %</b></TableCell>
@@ -155,18 +155,18 @@ export const Auction: React.FC = () => {
                         ?
                         <TableRow key={7} className={classes.tableRow}>
                           <TableCell key={0} className={classes.tableCell}><b>Final price</b></TableCell>
-                          <TableCell key={1} className={classes.tableCell}>{getFinalPrice(auction.payload.status)} {auction.payload.currency.id.label}</TableCell>
+                          <TableCell key={1} className={classes.tableCell}>{getFinalPrice(auction.payload.status)} {auction.payload.currency.id.unpack}</TableCell>
                         </TableRow>
                         :
                         <TableRow key={8} className={classes.tableRow}>
                           <TableCell key={0} className={classes.tableCell}><b>Current price</b></TableCell>
-                          <TableCell key={1} className={classes.tableCell}>{currentPrice.toFixed(4)} {auction.payload.currency.id.label}</TableCell>
+                          <TableCell key={1} className={classes.tableCell}>{currentPrice.toFixed(4)} {auction.payload.currency.id.unpack}</TableCell>
                         </TableRow>
                       }
                       {getParticallyAllocatedUnits(auction.payload) &&
                         <TableRow key={9} className={classes.tableRow}>
                           <TableCell key={0} className={classes.tableCell}><b>Allocated</b></TableCell>
-                          <TableCell key={1} className={classes.tableCell}>{getParticallyAllocatedUnits(auction.payload)?.toFixed(4)} {auction.payload.quantity.unit.id.label}</TableCell>
+                          <TableCell key={1} className={classes.tableCell}>{getParticallyAllocatedUnits(auction.payload)?.toFixed(4)} {auction.payload.quantity.unit.id.unpack}</TableCell>
                         </TableRow>
                       }
                     </TableBody>

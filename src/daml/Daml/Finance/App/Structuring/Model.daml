@@ -34,7 +34,7 @@ template CreateFixedRateBondRequest
     firstCouponDate : Date
     maturityDate : Date
     holidayCalendarIds : [Text]
-    calendarDataAgency : Party
+    calendarDataProvider : Party
     dayCountConvention : DayCountConventionEnum
     businessDayConvention : BusinessDayConventionEnum
     couponPeriod : PeriodEnum
@@ -57,7 +57,7 @@ template CreateFloatingRateBondRequest
     firstCouponDate : Date
     maturityDate : Date
     holidayCalendarIds : [Text]
-    calendarDataAgency : Party
+    calendarDataProvider : Party
     dayCountConvention : DayCountConventionEnum
     businessDayConvention : BusinessDayConventionEnum
     couponPeriod : PeriodEnum
@@ -81,7 +81,7 @@ template CreateInflationLinkedBondRequest
     firstCouponDate : Date
     maturityDate : Date
     holidayCalendarIds : [Text]
-    calendarDataAgency : Party
+    calendarDataProvider : Party
     dayCountConvention : DayCountConventionEnum
     businessDayConvention : BusinessDayConventionEnum
     couponPeriod : PeriodEnum

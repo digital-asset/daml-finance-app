@@ -119,7 +119,7 @@ template Service
 
         -- Generate Settlement instructions for allocated bids
         let settleAllocations = (\allocation -> Bidding.SettleAllocation with allocation; price = finalPrice; issuer = customer) <$> allocatedBids
-        (remainingDepositCidOpt, batchCids) <- foldlA (generateSettlementInstruction settlementFactoryCid auction.receivableAccount) (Some auctionCollateralClid, []) settleAllocations
+        (remainingDepositCidOpt, batchCids) <- foldlA (generateSettlementInstruction settlementFactoryCid provider auction.receivableAccount) (Some auctionCollateralClid, []) settleAllocations
 
         -- Settle transfers
         forA_ batchCids (`exercise` Batch.Settle)

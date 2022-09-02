@@ -46,9 +46,9 @@ dutchAuction (remaining, _) (bidCid, bid) =
     else ((0.0, bidPrice), Bidding.Allocation with amount = remaining; bidCid; bid)
 
 -- | An accumulator function which processes generates the settlement instruction for both an issuer and a bidder based of the output of the dutch auction
-generateSettlementInstruction : ContractId Factory -> Account.K -> (Optional (ContractId Fungible), [ContractId Batch]) -> Bidding.SettleAllocation -> Update (Optional (ContractId Fungible), [ContractId Batch])
-generateSettlementInstruction _ _ (None, _) _ = error "Auction:generateSettlementInstruction - Issuers AssetDeposit has no remaining units to allocate"
-generateSettlementInstruction settlementFactoryCid issuerAccount (Some issuerDepositCid, batchCids) Bidding.SettleAllocation{allocation, price, issuer} = do
+generateSettlementInstruction : ContractId Factory -> Party -> Account.K -> (Optional (ContractId Fungible), [ContractId Batch]) -> Bidding.SettleAllocation -> Update (Optional (ContractId Fungible), [ContractId Batch])
+generateSettlementInstruction _ _ _ (None, _) _ = error "Auction:generateSettlementInstruction - Issuers AssetDeposit has no remaining units to allocate"
+generateSettlementInstruction settlementFactoryCid settler issuerAccount (Some issuerDepositCid, batchCids) Bidding.SettleAllocation{allocation, price, issuer} = do
   let
     allocatedAmount = allocation.amount
     allocatedNotional = allocation.amount * price
@@ -75,7 +75,7 @@ generateSettlementInstruction settlementFactoryCid issuerAccount (Some issuerDep
     delivery = Step with sender = issuer; receiver = buyer; quantity = (Instrument.qty (getAmount allocatedDeposit) (getInstrument allocatedDeposit))
     id = bid.auctionId <> "-" <> partyToText buyer
 
-  (batchCid, [deliveryCid, paymentCid]) <- exercise settlementFactoryCid Instruct with instructors = singleton issuer; settler = issuer; id = Id id ; steps = [delivery, payment]; description = "Settlement of auction " <> id
+  (batchCid, [deliveryCid, paymentCid]) <- exercise settlementFactoryCid Instruct with instructors = singleton settler; settler; id = Id id ; steps = [delivery, payment]; description = "Settlement of auction " <> id
   deliveryCid <- exercise deliveryCid Allocate with transferableCid = toInterfaceContractId allocatedDepositCid
   exercise bidCid Bidding.ApproveInstruction with instructionCid = deliveryCid; account = bid.receivableAccount
   paymentCid <- exercise bidCid Bidding.AllocateInstruction with instructionCid = paymentCid; transferableCid = toInterfaceContractId bidDepositCid

@@ -33,7 +33,7 @@ template Service
         firstCouponDate : Date
         maturityDate : Date
         holidayCalendarIds : [Text]
-        calendarDataAgency : Party
+        calendarDataProvider : Party
         dayCountConvention : DayCountConventionEnum
         businessDayConvention : BusinessDayConventionEnum
         couponPeriod : PeriodEnum
@@ -55,7 +55,7 @@ template Service
         firstCouponDate : Date
         maturityDate : Date
         holidayCalendarIds : [Text]
-        calendarDataAgency : Party
+        calendarDataProvider : Party
         dayCountConvention : DayCountConventionEnum
         businessDayConvention : BusinessDayConventionEnum
         couponPeriod : PeriodEnum
@@ -78,7 +78,7 @@ template Service
         firstCouponDate : Date
         maturityDate : Date
         holidayCalendarIds : [Text]
-        calendarDataAgency : Party
+        calendarDataProvider : Party
         dayCountConvention : DayCountConventionEnum
         businessDayConvention : BusinessDayConventionEnum
         couponPeriod : PeriodEnum

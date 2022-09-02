@@ -7,7 +7,7 @@ import { CustomNodeElementProps, Point, TreeNodeDatum } from "react-d3-tree/lib/
 import { useTheme } from "@mui/material";
 import { claimMenu, createAsset, createDate, createDecimal, createObservable, inequalityConstructors, inequalityTags, MenuEntry, observationConstructors, observationTags, updateNode } from "./util";
 import useStyles from "./styles";
-import { InstrumentKey } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Types";
+import { InstrumentKey } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Common";
 
 export type ClaimsTreeBuilderProps = {
   node? : ClaimTreeNode
@@ -177,8 +177,8 @@ export const ClaimsTreeBuilder : React.FC<ClaimsTreeBuilderProps> = ({ node, set
       <g>
         <rect x={-textWidth / 2} y="-19" fill={fill} stroke={stroke} width={textWidth} height="30" rx="5" onClick={onClick} />
         <text x="0" y="2" fill={textColor} textAnchor="middle" strokeWidth="0" onClick={onClick}>{text}</text>
-        {show === d.id && d.type === "Observable" && assets.map((asset, i) => renderMenuEntry(d, () => createObservable(asset.id.label), asset.id.label, i))}
-        {show === d.id && d.type === "Asset" && assets.map((asset, i) => renderMenuEntry(d, () => createAsset(asset), asset.id.label, i))}
+        {show === d.id && d.type === "Observable" && assets.map((asset, i) => renderMenuEntry(d, () => createObservable(asset.id.unpack), asset.id.unpack, i))}
+        {show === d.id && d.type === "Asset" && assets.map((asset, i) => renderMenuEntry(d, () => createAsset(asset), asset.id.unpack, i))}
         {show === d.id && d.type === "Decimal" && renderDecimalInput(d, createDecimal)}
         {show === d.id && d.type === "Date" && renderDateInput(d, createDate)}
       </g>

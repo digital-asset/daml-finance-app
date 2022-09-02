@@ -15,7 +15,7 @@ import IconButton from "@mui/material/IconButton";
 import KeyboardArrowRight from "@mui/icons-material/KeyboardArrowRight";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { version } from "../../util";
+import { createKey, version } from "../../util";
 import { useParties } from "../../context/PartiesContext";
 import { useInstruments } from "../../context/InstrumentsContext";
 
@@ -48,8 +48,8 @@ export const Instruments : React.FC = () => {
                     <TableRow key={i} className={classes.tableRow}>
                       <TableCell key={0} className={classes.tableCell}>{getName(c.payload.issuer)}</TableCell>
                       <TableCell key={1} className={classes.tableCell}>{getName(c.payload.depository)}</TableCell>
-                      <TableCell key={2} className={classes.tableCell}>{c.payload.id.label}</TableCell>
-                      <TableCell key={3} className={classes.tableCell}>{version(c.payload.id)}</TableCell>
+                      <TableCell key={2} className={classes.tableCell}>{c.payload.id.unpack}</TableCell>
+                      <TableCell key={3} className={classes.tableCell}>{version(createKey(c))}</TableCell>
                       <TableCell key={4} className={classes.tableCell}>
                         <IconButton color="primary" size="small" component="span" onClick={() => navigate(c.contractId)}>
                           <KeyboardArrowRight fontSize="small"/>

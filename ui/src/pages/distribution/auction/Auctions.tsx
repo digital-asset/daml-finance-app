@@ -46,8 +46,8 @@ export const Auctions : React.FC = () => {
                     <TableRow key={i} className={classes.tableRow}>
                       <TableCell key={0} className={classes.tableCell}>{getName(c.payload.provider)}</TableCell>
                       <TableCell key={1} className={classes.tableCell}>{getName(c.payload.customer)}</TableCell>
-                      <TableCell key={2} className={classes.tableCell}>{fmt(c.payload.quantity.amount)} {c.payload.quantity.unit.id.label}</TableCell>
-                      <TableCell key={3} className={classes.tableCell}>{fmt(c.payload.floor, 4)} {c.payload.currency.id.label}</TableCell>
+                      <TableCell key={2} className={classes.tableCell}>{fmt(c.payload.quantity.amount)} {c.payload.quantity.unit.id.unpack}</TableCell>
+                      <TableCell key={3} className={classes.tableCell}>{fmt(c.payload.floor, 4)} {c.payload.currency.id.unpack}</TableCell>
                       <TableCell key={4} className={classes.tableCell}>{getAuctionStatus(c.payload.status)}</TableCell>
                       <TableCell key={5} className={classes.tableCell}>
                         <IconButton color="primary" size="small" component="span" onClick={() => navigate((party === c.payload.provider || party === c.payload.customer ? "/distribution/auctions/" : "/distribution/auction/") + c.contractId)}>                          <KeyboardArrowRight fontSize="small"/>

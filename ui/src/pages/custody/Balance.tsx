@@ -5,7 +5,7 @@ import React from "react";
 import { Table, TableBody, TableCell, TableRow, TableHead, Grid, Paper, Typography } from "@mui/material";
 import { useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
-import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fungible";
+import { Fungible } from "@daml.js/daml-finance-holding/lib/Daml/Finance/Holding/Fungible";
 import { fmt } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
 
@@ -33,7 +33,7 @@ export const Balance : React.FC = () => {
   const entries : BalanceEntry[] = [];
   for (let i = 0; i < assets.length; i++) {
     const a = assets[i];
-    const entry = entries.find(e => e.instrument === a.payload.instrument.id.label && e.version === a.payload.instrument.id.version);
+    const entry = entries.find(e => e.instrument === a.payload.instrument.id.unpack && e.version === a.payload.instrument.version);
     const qty = parseFloat(a.payload.amount);
     if (!!entry) {
       entry.assets += qty;
@@ -42,8 +42,8 @@ export const Balance : React.FC = () => {
       entries.push({
         // providers: values(a.payload.custodian),
         // owners: values(a.payload.owner),
-        instrument: a.payload.instrument.id.label,
-        version: a.payload.instrument.id.version,
+        instrument: a.payload.instrument.id.unpack,
+        version: a.payload.instrument.version,
         assets: qty,
         liabilities: 0,
         net: qty
@@ -52,7 +52,7 @@ export const Balance : React.FC = () => {
   }
   for (let i = 0; i < liabilities.length; i++) {
     const a = liabilities[i];
-    const entry = entries.find(e => e.instrument === a.payload.instrument.id.label && e.version === a.payload.instrument.id.version);
+    const entry = entries.find(e => e.instrument === a.payload.instrument.id.unpack && e.version === a.payload.instrument.version);
     const qty = parseFloat(a.payload.amount);
     if (!!entry) {
       entry.liabilities += qty;
@@ -61,8 +61,8 @@ export const Balance : React.FC = () => {
       entries.push({
         // providers: values(a.payload.custodian),
         // owners: values(a.payload.owner),
-        instrument: a.payload.instrument.id.label,
-        version: a.payload.instrument.id.version,
+        instrument: a.payload.instrument.id.unpack,
+        version: a.payload.instrument.version,
         assets: 0,
         liabilities: qty,
         net: -qty

@@ -10,10 +10,10 @@ import { useParams } from "react-router-dom";
 import useStyles from "../../styles";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Service";
 import { Spinner } from "../../../components/Spinner/Spinner";
-import { BatchFactory } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Batch";
+import { Factory } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Factory";
 import { Offering as OfferingContract, Subscription } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Model";
-import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fungible";
-import { Reference as AccountReference } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Account";
+import { Fungible } from "@daml.js/daml-finance-holding/lib/Daml/Finance/Holding/Fungible";
+import { Reference as AccountReference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
 import { fmt, getHolding } from "../../../util";
 import { Message } from "../../../components/Message/Message";
 import { useParties } from "../../../context/PartiesContext";
@@ -33,7 +33,7 @@ export const Offering : React.FC = () => {
   const { contracts: services, loading: l1 } = useStreamQueries(Service);
   const { contracts: offerings, loading: l2 } = useStreamQueries(OfferingContract);
   const { contracts: allSubscriptions, loading: l3 } = useStreamQueries(Subscription);
-  const { contracts: instructables, loading: l4 } = useStreamQueries(BatchFactory);
+  const { contracts: factories, loading: l4 } = useStreamQueries(Factory);
   const { contracts: holdings, loading: l5 } = useStreamQueries(Fungible);
   const { contracts: accounts, loading: l6 } = useStreamQueries(AccountReference);
 
@@ -52,7 +52,7 @@ export const Offering : React.FC = () => {
 
   const closeSubscription = async () => {
     const subscriptionCids = subscriptions.map(c => c.contractId);
-    const arg = { instructableCid: instructables[0].contractId, offeringCid: offering.contractId, subscriptionCids };
+    const arg = { settlementFactoryCid: factories[0].contractId, offeringCid: offering.contractId, subscriptionCids };
     const [result, ] = await ledger.exercise(Service.ProcessOffering, service.contractId, arg);
     navigate("/distribution/subscriptions/" + result)
   };
@@ -122,11 +122,11 @@ export const Offering : React.FC = () => {
                       </TableRow>
                       <TableRow key={3} className={classes.tableRow}>
                         <TableCell key={0} className={classes.tableCell}><b>Asset</b></TableCell>
-                        <TableCell key={1} className={classes.tableCell}>{fmt(offering.payload.asset.amount)} {offering.payload.asset.unit.id.label}</TableCell>
+                        <TableCell key={1} className={classes.tableCell}>{fmt(offering.payload.asset.amount)} {offering.payload.asset.unit.id.unpack}</TableCell>
                       </TableRow>
                       <TableRow key={4} className={classes.tableRow}>
                         <TableCell key={0} className={classes.tableCell}><b>Price</b></TableCell>
-                        <TableCell key={1} className={classes.tableCell}>{fmt(offering.payload.price.amount, 4)} {offering.payload.price.unit.id.label}</TableCell>
+                        <TableCell key={1} className={classes.tableCell}>{fmt(offering.payload.price.amount, 4)} {offering.payload.price.unit.id.unpack}</TableCell>
                       </TableRow>
                       {isProvider && <>
                       <TableRow key={5} className={classes.tableRow}>
@@ -149,7 +149,7 @@ export const Offering : React.FC = () => {
                   {!isProvider &&
                   <Paper className={classnames(classes.fullWidth, classes.paper)}>
                     <Typography variant="h5" className={classes.heading}>Subscribe</Typography>
-                    <TextField required autoFocus fullWidth type="number" label={"Quantity (" + offering.payload.asset.unit.id.label + ")"} onChange={e => setQuantity(parseFloat(e.target.value))} />
+                    <TextField required autoFocus fullWidth type="number" label={"Quantity (" + offering.payload.asset.unit.id.unpack + ")"} onChange={e => setQuantity(parseFloat(e.target.value))} />
                     <Button color="primary" className={classnames(classes.fullWidth, classes.buttonMargin)} variant="contained" disabled={!quantity} onClick={() => subscribe()}>Subscribe</Button>
                   </Paper>}
                 </Grid>

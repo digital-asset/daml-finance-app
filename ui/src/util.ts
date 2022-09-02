@@ -2,11 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Set } from "@daml.js/97b883cd8a2b7f49f90d5d39c981cf6e110cf1f1c64427a28a6d58ec88c43657/lib/DA/Set/Types"
-import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fungible";
-import { Instrument as Base } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Instrument";
-import { Instrument as Derivative } from "@daml.js/daml-finance-derivative/lib/Daml/Finance/Derivative/Instrument";
-import { InstrumentKey } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Types";
-import { Id } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Types";
+import { Fungible } from "@daml.js/daml-finance-holding/lib/Daml/Finance/Holding/Fungible";
+import { InstrumentKey } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Common";
 import Ledger, { CreateEvent } from "@daml/ledger";
 import { ContractId, emptyMap } from "@daml/types";
 
@@ -48,7 +45,7 @@ export const singleton = <T>(value: T) : Set<T> => {
 export const parseDate = (d : Date | null) => (!!d && d.toString() !== "Invalid Date" && new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10)) || "";
 
 export const keyEquals = (k1 : InstrumentKey, k2 : InstrumentKey) : boolean => {
-  return k1.depository === k2.depository && k1.issuer === k2.issuer && k1.id.label === k2.id.label && k1.id.version === k2.id.version;
+  return k1.depository === k2.depository && k1.issuer === k2.issuer && k1.id.unpack === k2.id.unpack && k1.version === k2.version;
 };
 
 export const fmt = (x : number | string, decimals?: number) => {
@@ -59,20 +56,16 @@ export const dedup = (array : string[]) : string[] => {
   return array.filter((v, i, a) => a.indexOf(v) === i);
 };
 
-export const createKeyDerivative = (c : CreateEvent<Derivative>) : InstrumentKey => {
-  return { depository: c.payload.depository, issuer: c.payload.issuer, id: c.payload.id };
+export const createKey = (c : CreateEvent<any>) : InstrumentKey => {
+  return { depository: c.payload.depository, issuer: c.payload.issuer, id: c.payload.id, version: c.payload.version };
 };
 
-export const createKeyBase = (c : CreateEvent<Base>) : InstrumentKey => {
-  return { depository: c.payload.depository, issuer: c.payload.issuer, id: c.payload.id };
+export const version = (k : InstrumentKey) : string => {
+  return k.version.substring(0, 8) + "..";
 };
 
-export const version = (id : Id) : string => {
-  return id.version.substring(0, 8) + "..";
-};
-
-export const id = (id : Id) : string => {
-  return id.label + " (" + version(id) + ")";
+export const id = (k : InstrumentKey) : string => {
+  return k.id.unpack + " (" + version(k) + ")";
 };
 
 export function getTemplateId(t : string) {
@@ -83,7 +76,7 @@ export function getTemplateId(t : string) {
 export const getHolding = async (ledger : Ledger, holdings : CreateEvent<Fungible>[], amount : number, instrument: InstrumentKey) : Promise<ContractId<Fungible>> => {
   const filtered = holdings.filter(c => keyEquals(c.payload.instrument, instrument) && !c.payload.lock);
   const sum = filtered.reduce((a, b) => a + parseFloat(b.payload.amount), 0);
-  if (filtered.length === 0 || sum < amount) throw new Error("Insufficient holdings (" + sum.toFixed(4) + ") found for: " + amount.toFixed(4) + " " + id(instrument.id));
+  if (filtered.length === 0 || sum < amount) throw new Error("Insufficient holdings (" + sum.toFixed(4) + ") found for: " + amount.toFixed(4) + " " + instrument.id.unpack);
   if (filtered.length === 1 && sum === amount) return filtered[0].contractId;
   if (filtered.length === 1 && sum > amount) {
     const [ { splitCids, }, ] = await ledger.exercise(Fungible.Split, filtered[0].contractId, { amounts: [ amount.toString() ] });

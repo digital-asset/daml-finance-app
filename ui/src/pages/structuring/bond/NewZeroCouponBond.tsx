@@ -4,16 +4,15 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Typography, Grid, Paper, Select, MenuItem, TextField, Button, MenuProps, FormControl, InputLabel, TextFieldProps } from "@mui/material";
-import { v4 as uuidv4 } from "uuid";
 import classnames from "classnames";
 import { useLedger, useStreamQueries } from "@daml/react";
 import useStyles from "../../styles";
-import { createKeyBase, parseDate, singleton } from "../../../util";
+import { createKey, parseDate, singleton } from "../../../util";
 import { RequestAndCreateZeroCouponBond, Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service";
 import { DatePicker } from "@mui/lab";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { Message } from "../../../components/Message/Message";
-import { Instrument } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Instrument";
+import { Instrument } from "@daml.js/daml-finance-instrument-base/lib/Daml/Finance/Instrument/Base/Instrument";
 import { emptyMap } from "@daml/types";
 import { useParties } from "../../../context/PartiesContext";
 
@@ -21,12 +20,12 @@ export const NewZeroCouponBond : React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
 
-  const [ label, setLabel ] = useState("");
+  const [ id, setId ] = useState("");
   const [ issueDate, setIssueDate ] = useState<Date | null>(null);
   const [ maturityDate, setMaturityDate ] = useState<Date | null>(null);
   const [ currency, setCurrency ] = useState("");
 
-  const canRequest = !!label && !!issueDate && !!maturityDate && !!currency;
+  const canRequest = !!id && !!issueDate && !!maturityDate && !!currency;
 
   const ledger = useLedger();
   const { getParty } = useParties();
@@ -38,13 +37,13 @@ export const NewZeroCouponBond : React.FC = () => {
   if (services.length === 0) return <Message text="No structuring service found" />
 
   const createFixedRateBond = async () => {
-    const ccy = instruments.find(c => c.payload.id.label === currency);
+    const ccy = instruments.find(c => c.payload.id.unpack === currency);
     if (!ccy) throw new Error("Couldn't find currency " + currency);
     const arg : RequestAndCreateZeroCouponBond = {
-      id: { label, version: uuidv4() },
+      id,
       issueDate: parseDate(issueDate),
       maturityDate: parseDate(maturityDate),
-      cashInstrumentCid: createKeyBase(ccy),
+      currency: createKey(ccy),
       observers: emptyMap<string, any>().set("Public", singleton(singleton(getParty("Public")))),
       lastEventTimestamp: new Date().toISOString()
     }
@@ -65,11 +64,11 @@ export const NewZeroCouponBond : React.FC = () => {
               <Grid item xs={12}>
                 <Paper className={classnames(classes.fullWidth, classes.paper)}>
                   <Typography variant="h5" className={classes.heading}>Parameters</Typography>
-                  <TextField className={classes.inputField} fullWidth label="Id" type="text" value={label} onChange={e => setLabel(e.target.value as string)} />
+                  <TextField className={classes.inputField} fullWidth label="Id" type="text" value={id} onChange={e => setId(e.target.value as string)} />
                   <FormControl className={classes.inputField} fullWidth>
                     <InputLabel className={classes.selectLabel}>Currency</InputLabel>
                     <Select value={currency} onChange={e => setCurrency(e.target.value as string)} MenuProps={menuProps}>
-                      {instruments.map((c, i) => (<MenuItem key={i} value={c.payload.id.label}>{c.payload.id.label}</MenuItem>))}
+                      {instruments.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
                     </Select>
                   </FormControl>
                   <DatePicker className={classes.inputField} inputFormat="yyyy-MM-dd" label="Issue Date" value={issueDate} onChange={setIssueDate} renderInput={(props : TextFieldProps) => <TextField {...props} fullWidth />} />

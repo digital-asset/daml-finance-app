@@ -33,9 +33,9 @@ export const getBidStatus = (bidStatus : BidStatus) : string => {
 export const getBidAllocation = (bid : Bid) : string => {
   switch (bid.status.tag) {
     case 'PartialAllocation' :
-      return bid.status.value.amount + " " + bid.details.quantity.unit.id.label + " @ " + bid.status.value.price + " " + bid.details.price.unit.id.label
+      return bid.status.value.amount + " " + bid.details.quantity.unit.id.unpack + " @ " + bid.status.value.price + " " + bid.details.price.unit.id.unpack
     case 'FullAllocation' :
-      return bid.details.quantity.amount + " " + bid.details.quantity.unit.id.label + " @ " + bid.status.value.price + " " + bid.details.price.unit.id.label
+      return bid.details.quantity.amount + " " + bid.details.quantity.unit.id.unpack + " @ " + bid.status.value.price + " " + bid.details.price.unit.id.unpack
     default:
       return ""
   }

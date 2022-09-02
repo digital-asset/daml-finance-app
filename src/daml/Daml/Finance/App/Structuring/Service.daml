@@ -46,7 +46,7 @@ template Service
         firstCouponDate : Date
         maturityDate : Date
         holidayCalendarIds : [Text]
-        calendarDataAgency : Party
+        calendarDataProvider : Party
         dayCountConvention : DayCountConventionEnum
         businessDayConvention : BusinessDayConventionEnum
         couponPeriod : PeriodEnum
@@ -67,7 +67,7 @@ template Service
         firstCouponDate : Date
         maturityDate : Date
         holidayCalendarIds : [Text]
-        calendarDataAgency : Party
+        calendarDataProvider : Party
         dayCountConvention : DayCountConventionEnum
         businessDayConvention : BusinessDayConventionEnum
         couponPeriod : PeriodEnum
@@ -89,7 +89,7 @@ template Service
         firstCouponDate : Date
         maturityDate : Date
         holidayCalendarIds : [Text]
-        calendarDataAgency : Party
+        calendarDataProvider : Party
         dayCountConvention : DayCountConventionEnum
         businessDayConvention : BusinessDayConventionEnum
         couponPeriod : PeriodEnum
@@ -120,7 +120,7 @@ template Service
       do
         CreateFixedRateBondRequest{..} <- fetchAndArchive createFixedRateBondRequestCid
         let periodicSchedule = createCouponPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
-        create FixedRateBond.Instrument with depository = provider; issuer = customer; id = Id id; version = "0"; calendarDataProvider = provider; description = id; ..
+        create FixedRateBond.Instrument with depository = provider; issuer = customer; id = Id id; version = "0"; calendarDataProvider; description = id; ..
 
     nonconsuming choice CreateFloatingRateBond : ContractId FloatingRateBond.Instrument
       with
@@ -129,7 +129,7 @@ template Service
       do
         CreateFloatingRateBondRequest{..} <- fetchAndArchive createFloatingRateBondRequestCid
         let periodicSchedule = createCouponPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
-        create FloatingRateBond.Instrument with depository = provider; issuer = customer; id = Id id; version = "0"; calendarDataProvider = provider; description = id; ..
+        create FloatingRateBond.Instrument with depository = provider; issuer = customer; id = Id id; version = "0"; calendarDataProvider; description = id; ..
 
     nonconsuming choice CreateInflationLinkedBond : ContractId InflationLinkedBond.Instrument
       with
@@ -138,7 +138,7 @@ template Service
       do
         CreateInflationLinkedBondRequest{..} <- fetchAndArchive createInflationLinkedBondRequestCid
         let periodicSchedule = createCouponPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
-        create InflationLinkedBond.Instrument with depository = provider; issuer = customer; id = Id id; version = "0"; calendarDataProvider = provider; description = id; ..
+        create InflationLinkedBond.Instrument with depository = provider; issuer = customer; id = Id id; version = "0"; calendarDataProvider; description = id; ..
 
     nonconsuming choice CreateZeroCouponBond : ContractId ZeroCouponBond.Instrument
       with

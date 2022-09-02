@@ -90,8 +90,8 @@ list operator provider customer id tradedInstrument quotedInstrument observers =
   createListingRequestCid <- submit customer do exerciseByKeyCmd @Listing.Service (operator, provider, customer) Listing.RequestCreateListing with id; tradedInstrument; quotedInstrument; observers
   submit provider do exerciseByKeyCmd @Listing.Service (operator, provider, customer) Listing.CreateListing with createListingRequestCid
 
-createOrder : Party -> Party -> Party -> Text -> Trading.Side -> Instrument.Q -> Instrument.Q -> Parties -> Script (Optional (ContractId Trading.Order, Trading.Order))
-createOrder operator provider customer id side quantity price observers = do
+createOrder : Party -> Party -> Party -> Party -> Text -> Trading.Side -> Instrument.Q -> Instrument.Q -> Parties -> Script (Optional (ContractId Trading.Order, Trading.Order))
+createOrder operator provider customer public id side quantity price observers = do
   listingId <- (.id) . snd . head <$> queryFilter @Listing.T observers (\l -> l.tradedInstrument == quantity.unit && l.quotedInstrument == price.unit)
   let
     depository = if side == Trading.Buy then quantity.unit.depository else price.unit.depository
@@ -100,13 +100,13 @@ createOrder operator provider customer id side quantity price observers = do
   holdingCid <- coerceContractId <$> getHolding customer requiredQuantity
   orderCids <- map fst <$> queryFilter @Trading.Order observers (\o -> o.listingId == listingId)
   createOrderRequestCid <- submit customer do exerciseByKeyCmd @Trading.Service (operator, provider, customer) Trading.RequestCreateOrder with id; listingId; quantity; price; side; collateralCid = holdingCid; account; orderCids; observers
-  submit provider do exerciseByKeyCmd @Trading.Service (operator, provider, customer) Trading.CreateOrder with createOrderRequestCid
+  submitMulti [provider] [public] do exerciseByKeyCmd @Trading.Service (operator, provider, customer) Trading.CreateOrder with createOrderRequestCid
 
-createBidOrder : Party -> Party -> Party -> Text -> Instrument.Q -> Instrument.Q -> Parties -> Script (Optional (ContractId Trading.Order, Trading.Order))
-createBidOrder operator provider customer id = createOrder operator provider customer id Trading.Buy
+createBidOrder : Party -> Party -> Party -> Party -> Text -> Instrument.Q -> Instrument.Q -> Parties -> Script (Optional (ContractId Trading.Order, Trading.Order))
+createBidOrder operator provider customer public id = createOrder operator provider customer public id Trading.Buy
 
-createAskOrder : Party -> Party -> Party -> Text -> Instrument.Q -> Instrument.Q -> Parties -> Script (Optional (ContractId Trading.Order, Trading.Order))
-createAskOrder operator provider customer id = createOrder operator provider customer id Trading.Sell
+createAskOrder : Party -> Party -> Party -> Party -> Text -> Instrument.Q -> Instrument.Q -> Parties -> Script (Optional (ContractId Trading.Order, Trading.Order))
+createAskOrder operator provider customer public id = createOrder operator provider customer public id Trading.Sell
 
 createAuction : Party -> Party -> Party -> Party -> Text -> Instrument.Q -> Instrument.K -> Decimal -> ContractId Fungible.I -> Account.K -> Script (ContractId Auction.T)
 createAuction operator provider customer public id quantity currency floor collateralCid receivableAccount = do

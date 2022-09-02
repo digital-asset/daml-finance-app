@@ -13,9 +13,9 @@ import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/
 import { Service as AutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Auto/Service";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
-import { Instrument as Derivative } from "@daml.js/daml-finance-derivative/lib/Daml/Finance/Derivative/Instrument";
-import { Instrument } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Instrument";
-import { createKeyBase, createKeyDerivative, createSet } from "../../util";
+import { Instrument as Derivative } from "@daml.js/daml-finance-instrument-generic/lib/Daml/Finance/Instrument/Generic/Instrument";
+import { Instrument } from "@daml.js/daml-finance-instrument-base/lib/Daml/Finance/Instrument/Base/Instrument";
+import { createKey, createSet } from "../../util";
 import { useParties } from "../../context/PartiesContext";
 
 export const New : React.FC = () => {
@@ -39,8 +39,8 @@ export const New : React.FC = () => {
 
   const myServices = services.filter(s => s.payload.customer === party);
   const myAutoServices = autoServices.filter(s => s.payload.customer === party);
-  const tradedInstrument = derivatives.find(c => c.payload.id.label === tradedInstrumentLabel);
-  const quotedInstrument = instruments.find(c => c.payload.id.label === quotedInstrumentLabel);
+  const tradedInstrument = derivatives.find(c => c.payload.id.unpack === tradedInstrumentLabel);
+  const quotedInstrument = instruments.find(c => c.payload.id.unpack === quotedInstrumentLabel);
 
   const canRequest = !!tradedInstrumentLabel && !!tradedInstrument && !!quotedInstrumentLabel && !!quotedInstrument && !!id;
 
@@ -55,8 +55,8 @@ export const New : React.FC = () => {
     if (!tradedInstrument || !quotedInstrument) return;
     const arg = {
       id,
-      tradedInstrument: createKeyDerivative(tradedInstrument),
-      quotedInstrument: createKeyBase(quotedInstrument),
+      tradedInstrument: createKey(tradedInstrument),
+      quotedInstrument: createKey(quotedInstrument),
       observers : createSet([ getParty("Public") ])
     };
     if (myAutoServices.length > 0) {
@@ -85,7 +85,7 @@ export const New : React.FC = () => {
                     <Box className={classes.fullWidth}>
                       <InputLabel className={classes.selectLabel}>Traded Asset</InputLabel>
                       <Select variant="standard" className={classes.width90} value={tradedInstrumentLabel} onChange={e => setTradedAssetLabel(e.target.value as string)} MenuProps={menuProps}>
-                        {derivatives.filter(c => c.payload.id.label !== quotedInstrumentLabel).map((c, i) => (<MenuItem key={i} value={c.payload.id.label}>{c.payload.id.label}</MenuItem>))}
+                        {derivatives.filter(c => c.payload.id.unpack !== quotedInstrumentLabel).map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
                       </Select>
                       <IconButton className={classes.marginLeft10} color="primary" size="small" component="span" onClick={() => setShowTradedAsset(!showTradedInstrument)}>
                         <Visibility fontSize="small"/>
@@ -96,7 +96,7 @@ export const New : React.FC = () => {
                     <Box className={classes.fullWidth}>
                       <InputLabel className={classes.selectLabel}>Quoted Asset</InputLabel>
                       <Select variant="standard" fullWidth value={quotedInstrumentLabel} onChange={e => setQuotedAssetLabel(e.target.value as string)} MenuProps={menuProps}>
-                        {instruments.filter(c => c.payload.id.label !== tradedInstrumentLabel).map((c, i) => (<MenuItem key={i} value={c.payload.id.label}>{c.payload.id.label}</MenuItem>))}
+                        {instruments.filter(c => c.payload.id.unpack !== tradedInstrumentLabel).map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
                       </Select>
                     </Box>
                   </FormControl>
