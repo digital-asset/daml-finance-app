@@ -1,22 +1,19 @@
 // Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import classnames from "classnames";
-import { useLedger, useParty, useStreamQueries } from "@daml/react";
-import { Typography, Grid, Paper, Select, MenuItem, TextField, Button, MenuProps, FormControl, InputLabel, IconButton, Box } from "@mui/material";
-import useStyles from "../styles";
-import { claimToNode } from "../../components/Claims/util";
-import { Visibility } from "@mui/icons-material";
-import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Service";
 import { Service as AutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Auto/Service";
+import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Service";
+import { useLedger, useParty } from "@daml/react";
+import { Box, Button, FormControl, Grid, InputLabel, MenuItem, MenuProps, Paper, Select, TextField, Typography } from "@mui/material";
+import classnames from "classnames";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
-import { Instrument as Derivative } from "@daml.js/daml-finance-instrument-generic/lib/Daml/Finance/Instrument/Generic/Instrument";
-import { Instrument } from "@daml.js/daml-finance-instrument-base/lib/Daml/Finance/Instrument/Base/Instrument";
-import { createKey, createSet } from "../../util";
+import { useInstruments } from "../../context/InstrumentsContext";
 import { useParties } from "../../context/PartiesContext";
+import { useServices } from "../../context/ServicesContext";
+import { createKey, createSet } from "../../util";
+import useStyles from "../styles";
 
 export const New : React.FC = () => {
   const classes = useStyles();
@@ -26,30 +23,21 @@ export const New : React.FC = () => {
   const [ quotedInstrumentLabel, setQuotedAssetLabel ] = useState("");
   const [ id, setId ] = useState("");
 
-  const [ showTradedInstrument, setShowTradedAsset ] = useState(false);
-  const [ node, setNode ] = useState<ClaimTreeNode | undefined>();
-
   const { getParty } = useParties();
   const ledger = useLedger();
   const party = useParty();
-  const { contracts: services, loading: l1 } = useStreamQueries(Service);
-  const { contracts: autoServices, loading: l2 } = useStreamQueries(AutoService);
-  const { contracts: instruments, loading: l3 } = useStreamQueries(Instrument);
-  const { contracts: derivatives, loading: l4 } = useStreamQueries(Derivative);
+  const inst = useInstruments();
+  const svc = useServices();
 
-  const myServices = services.filter(s => s.payload.customer === party);
-  const myAutoServices = autoServices.filter(s => s.payload.customer === party);
-  const tradedInstrument = derivatives.find(c => c.payload.id.unpack === tradedInstrumentLabel);
-  const quotedInstrument = instruments.find(c => c.payload.id.unpack === quotedInstrumentLabel);
-
+  const myListingServices = svc.listing.filter(s => s.payload.customer === party);
+  const myAutoListingServices = svc.listingAuto.filter(s => s.payload.customer === party);
+  const tradableInstruments = Array.prototype.concat.apply([], [inst.generics, inst.fixedRateBonds, inst.floatingRateBonds, inst.inflationLinkedBonds, inst.zeroCouponBonds]);
+  const tradedInstrument = tradableInstruments.find(c => c.payload.id.unpack === tradedInstrumentLabel);
+  const quotedInstrument = inst.tokens.find(c => c.payload.id.unpack === quotedInstrumentLabel);
   const canRequest = !!tradedInstrumentLabel && !!tradedInstrument && !!quotedInstrumentLabel && !!quotedInstrument && !!id;
 
-  useEffect(() => {
-    if (!!tradedInstrument) setNode(claimToNode(tradedInstrument.payload.claims));
-  }, [tradedInstrument]);
-
-  if (l1 || l2 || l3 || l4) return (<Spinner />);
-  if (myServices.length === 0) return (<div style={{display: 'flex', justifyContent: 'center', marginTop: 350 }}><h1>No listing service found for customer: {party}</h1></div>);
+  if (inst.loading || svc.loading) return (<Spinner />);
+  if (myListingServices.length === 0) return (<div style={{display: 'flex', justifyContent: 'center', marginTop: 350 }}><h1>No listing service found for customer: {party}</h1></div>);
 
   const requestListing = async () => {
     if (!tradedInstrument || !quotedInstrument) return;
@@ -59,11 +47,11 @@ export const New : React.FC = () => {
       quotedInstrument: createKey(quotedInstrument),
       observers : createSet([ getParty("Public") ])
     };
-    if (myAutoServices.length > 0) {
-      await ledger.exercise(AutoService.RequestAndCreateListing, myAutoServices[0].contractId, arg);
+    if (myAutoListingServices.length > 0) {
+      await ledger.exercise(AutoService.RequestAndCreateListing, myAutoListingServices[0].contractId, arg);
       navigate("/listing/listings");
     } else {
-      await ledger.exercise(Service.RequestCreateListing, myServices[0].contractId, arg);
+      await ledger.exercise(Service.RequestCreateListing, myListingServices[0].contractId, arg);
       navigate("/listing/requests");
     }
   }
@@ -85,18 +73,15 @@ export const New : React.FC = () => {
                     <Box className={classes.fullWidth}>
                       <InputLabel className={classes.selectLabel}>Traded Asset</InputLabel>
                       <Select variant="standard" className={classes.width90} value={tradedInstrumentLabel} onChange={e => setTradedAssetLabel(e.target.value as string)} MenuProps={menuProps}>
-                        {derivatives.filter(c => c.payload.id.unpack !== quotedInstrumentLabel).map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
+                        {tradableInstruments.filter(c => c.id.label !== quotedInstrumentLabel).map((c, i) => (<MenuItem key={i} value={c.id.label}>{c.id.label}</MenuItem>))}
                       </Select>
-                      <IconButton className={classes.marginLeft10} color="primary" size="small" component="span" onClick={() => setShowTradedAsset(!showTradedInstrument)}>
-                        <Visibility fontSize="small"/>
-                      </IconButton>
                     </Box>
                   </FormControl>
                   <FormControl className={classes.inputField} fullWidth>
                     <Box className={classes.fullWidth}>
                       <InputLabel className={classes.selectLabel}>Quoted Asset</InputLabel>
                       <Select variant="standard" fullWidth value={quotedInstrumentLabel} onChange={e => setQuotedAssetLabel(e.target.value as string)} MenuProps={menuProps}>
-                        {instruments.filter(c => c.payload.id.unpack !== tradedInstrumentLabel).map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
+                        {inst.tokens.filter(c => c.payload.id.unpack !== tradedInstrumentLabel).map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
                       </Select>
                     </Box>
                   </FormControl>
@@ -104,17 +89,6 @@ export const New : React.FC = () => {
                   <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={requestListing}>Request Listing</Button>
                 </Paper>
               </Grid>
-            </Grid>
-          </Grid>
-          <Grid item xs={8}>
-            <Grid container direction="column" spacing={2}>
-              {showTradedInstrument && (
-                <Grid item xs={12}>
-                  <Paper className={classnames(classes.fullWidth, classes.paper)}>
-                    <Typography variant="h5" className={classes.heading}>Traded Asset</Typography>
-                    <ClaimsTreeBuilder node={node} setNode={setNode} assets={[]}/>
-                  </Paper>
-                </Grid>)}
             </Grid>
           </Grid>
         </Grid>
