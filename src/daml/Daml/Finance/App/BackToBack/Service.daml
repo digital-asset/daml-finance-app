@@ -88,7 +88,8 @@ template Service
         paymentCid <- exercise paymentCid Instruction.Allocate with transferableCid = coerceContractId issuerSizedDeliverableCid
         paymentCid <- exercise paymentCid Instruction.Approve with receiverAccount = b2b.b2bReceivableAccount
         deliveredCids <- exercise batchCid Batch.Settle
-        mapA (\cid -> coerceContractId <$> exercise (coerceContractId cid : ContractId Lockable.I) Lockable.Release with context = offering.offeringId) deliveredCids
+        -- mapA (\cid -> coerceContractId <$> exercise (coerceContractId cid : ContractId Lockable.I) Lockable.Release with context = offering.offeringId) deliveredCids
+        pure deliveredCids
 
     choice Terminate : ()
       with

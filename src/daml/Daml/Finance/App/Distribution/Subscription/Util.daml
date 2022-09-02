@@ -48,7 +48,7 @@ settleSubscription settlementFactoryCid offering (remainingQuantity, issuerHoldi
     paymentCid <- exercise subscriptionCid AllocateInstruction with instructionCid = paymentCid; transferableCid = toInterfaceContractId paymentHoldingCid
     exercise paymentCid Approve with receiverAccount = offering.issuerAccount
     transferredCids <- exercise batchCid Settle
-    forA_ transferredCids $ \cid -> exercise subscriptionCid UnlockHolding with lockableCid = toInterfaceContractId cid
+    -- forA_ transferredCids $ \cid -> exercise subscriptionCid UnlockHolding with lockableCid = toInterfaceContractId cid
 
     -- Process remainders
     let

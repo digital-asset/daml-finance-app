@@ -100,11 +100,11 @@ template Service
                 FillResult{orderOpt; batchCid; instructionCid} <- exercise myCid Fill with settlementFactoryCid; other
                 exercise otherCid ApproveInstruction with instructionCid
                 [transferableCid] <- exercise batchCid Batch.Settle
-                exercise (coerceContractId transferableCid : ContractId Lockable.I) Lockable.Release with context = my.id
+                -- exercise (coerceContractId transferableCid : ContractId Lockable.I) Lockable.Release with context = my.id
                 FillResult{orderOpt = otherOpt; batchCid; instructionCid} <- exercise otherCid Fill with settlementFactoryCid; other = my
                 exercise instructionCid Instruction.Approve with receiverAccount = my.account
                 [transferableCid] <- exercise batchCid Batch.Settle
-                exercise (coerceContractId transferableCid : ContractId Lockable.I) Lockable.Release with context = other.id
+                -- exercise (coerceContractId transferableCid : ContractId Lockable.I) Lockable.Release with context = other.id
                 when (isNone orderOpt) do
                   Account.exerciseInterfaceByKey @Disclosure.I my.account provider Disclosure.RemoveObservers with observersToRemove = (my.id, singleton provider)
                   Account.exerciseInterfaceByKey @Disclosure.I (getAccount myCollateral) provider Disclosure.RemoveObservers with observersToRemove = (my.id, singleton provider)
