@@ -8,12 +8,12 @@ import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Typography, Grid, Paper, Select, MenuItem, TextField, Button, MenuProps, FormControl, InputLabel, IconButton, Box } from "@mui/material";
 import useStyles from "../../styles";
 import { and, claimToNode } from "../../../components/Claims/util";
-import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fungible";
+import { Fungible } from "@daml.js/daml-finance-holding/lib/Daml/Finance/Holding/Fungible";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../../components/Claims/ClaimsTreeBuilder";
-import { Reference } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Account";
-import { createKeyBase, createKeyDerivative, createSet, getHolding } from "../../../util";
+import { Reference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
+import { createKey, createSet, getHolding } from "../../../util";
 import { useParties } from "../../../context/PartiesContext";
 import { useInstruments } from "../../../context/InstrumentsContext";
 import { CreateEvent } from "@daml/ledger";
@@ -47,11 +47,11 @@ export const New : React.FC = () => {
   const instruments : CreateEvent<any>[] = Array.prototype.concat.apply([], [inst.generics, inst.fixedRateBonds, inst.floatingRateBonds, inst.inflationLinkedBonds, inst.zeroCouponBonds]);
   const myServices = svc.auction.filter(s => s.payload.customer === party);
   const myAutoServices = svc.auctionAuto.filter(s => s.payload.customer === party);
-  const instrument = instruments.find(c => c.payload.id.label === instrumentLabel);
-  const currency = inst.tokens.find(c => c.payload.id.label === currencyLabel);
+  const instrument = instruments.find(c => c.payload.id.unpack === instrumentLabel);
+  const currency = inst.tokens.find(c => c.payload.id.unpack === currencyLabel);
   const myHoldings = holdings.filter(c => c.payload.account.owner === party);
-  const myHoldingLabels = myHoldings.map(c => c.payload.instrument.id.label).filter((v, i, a) => a.indexOf(v) === i);
-  const tokenLabels = inst.tokens.map(c => c.payload.id.label);
+  const myHoldingLabels = myHoldings.map(c => c.payload.instrument.id.unpack).filter((v, i, a) => a.indexOf(v) === i);
+  const tokenLabels = inst.tokens.map(c => c.payload.id.unpack);
   const canRequest = !!instrumentLabel && !!instrument && !!currencyLabel && !!currency && !!id && !!amount && !!floor;
 
   useEffect(() => {
@@ -70,8 +70,8 @@ export const New : React.FC = () => {
 
   const requestCreateAuction = async () => {
     if (!instrument || !currency) return;
-    const instrumentKey = createKeyDerivative(instrument);
-    const currencyKey = createKeyBase(currency);
+    const instrumentKey = createKey(instrument);
+    const currencyKey = createKey(currency);
     const collateralCid = await getHolding(ledger, myHoldings, parseFloat(amount), instrumentKey);
     const receivableAccount = accounts.find(c => c.payload.accountView.custodian === currency.payload.depository && c.payload.accountView.owner === party)?.key;
     if (!receivableAccount) return;

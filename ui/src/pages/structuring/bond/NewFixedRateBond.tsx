@@ -4,28 +4,26 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Typography, Grid, Paper, Select, MenuItem, TextField, Button, MenuProps, FormControl, InputLabel, ToggleButtonGroup, ToggleButton, TextFieldProps } from "@mui/material";
-import { v4 as uuidv4 } from "uuid";
 import classnames from "classnames";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../../styles";
-import { createKeyBase, parseDate, singleton } from "../../../util";
+import { createKey, parseDate, singleton } from "../../../util";
 import { RequestAndCreateFixedRateBond, Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service";
 import { DatePicker } from "@mui/lab";
-// import { ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { Message } from "../../../components/Message/Message";
-import { Instrument } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Instrument";
-import { PeriodEnum } from "@daml.js/daml-finance-common/lib/Daml/Finance/Common/Date/RollConvention";
+import { Instrument } from "@daml.js/daml-finance-instrument-base/lib/Daml/Finance/Instrument/Base/Instrument";
+import { PeriodEnum } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Date/RollConvention";
 import { emptyMap } from "@daml/types";
-import { DayCountConventionEnum } from "@daml.js/daml-finance-common/lib/Daml/Finance/Common/Date/DayCount";
-import { BusinessDayConventionEnum } from "@daml.js/daml-finance-common/lib/Daml/Finance/Common/Date/Calendar";
+import { DayCountConventionEnum } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Date/DayCount";
+import { BusinessDayConventionEnum } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Date/Calendar";
 import { useParties } from "../../../context/PartiesContext";
 
 export const NewFixedRateBond : React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
 
-  const [ label, setLabel ] = useState("");
+  const [ id, setId ] = useState("");
   const [ couponRate, setCouponRate ] = useState("");
   const [ issueDate, setIssueDate ] = useState<Date | null>(null);
   const [ firstCouponDate, setFirstCouponDate ] = useState<Date | null>(null);
@@ -36,7 +34,7 @@ export const NewFixedRateBond : React.FC = () => {
   const [ couponFrequency, setCouponFrequency ] = useState("Annual");
   const [ currency, setCurrency ] = useState("");
 
-  const canRequest = !!label && !!couponRate && !!issueDate && !!firstCouponDate && !!maturityDate && !!dayCountConvention && businessDayConvention && !!couponFrequency && !!currency;
+  const canRequest = !!id && !!couponRate && !!issueDate && !!firstCouponDate && !!maturityDate && !!dayCountConvention && businessDayConvention && !!couponFrequency && !!currency;
 
   const ledger = useLedger();
   const party = useParty();
@@ -49,23 +47,23 @@ export const NewFixedRateBond : React.FC = () => {
   if (services.length === 0) return <Message text="No structuring service found" />
 
   const createFixedRateBond = async () => {
-    const ccy = instruments.find(c => c.payload.id.label === currency);
+    const ccy = instruments.find(c => c.payload.id.unpack === currency);
     if (!ccy) throw new Error("Couldn't find currency " + currency);
     const couponPeriod = couponFrequency === "Annual" ? PeriodEnum.Y : PeriodEnum.M;
     const couponPeriodMultiplier = couponFrequency === "Annual" ? "1" : (couponFrequency === "Semi-annual" ? "6" : "3");
     const arg : RequestAndCreateFixedRateBond = {
-      id: { label, version: uuidv4() },
+      id: id,
       couponRate,
       issueDate: parseDate(issueDate),
       firstCouponDate: parseDate(firstCouponDate),
       maturityDate: parseDate(maturityDate),
       holidayCalendarIds: holidayCalendar === "" ? [] : [holidayCalendar],
-      calendarDataAgency: party,
+      calendarDataProvider: party,
       dayCountConvention: dayCountConvention as DayCountConventionEnum,
       businessDayConvention: businessDayConvention as BusinessDayConventionEnum,
       couponPeriod,
       couponPeriodMultiplier,
-      cashInstrumentCid: createKeyBase(ccy),
+      currency: createKey(ccy),
       observers: emptyMap<string, any>().set("Public", singleton(singleton(getParty("Public")))),
       lastEventTimestamp: new Date().toISOString()
     }
@@ -86,12 +84,12 @@ export const NewFixedRateBond : React.FC = () => {
               <Grid item xs={12}>
                 <Paper className={classnames(classes.fullWidth, classes.paper)}>
                   <Typography variant="h5" className={classes.heading}>Parameters</Typography>
-                  <TextField className={classes.inputField} fullWidth label="Id" type="text" value={label} onChange={e => setLabel(e.target.value as string)} />
+                  <TextField className={classes.inputField} fullWidth label="Id" type="text" value={id} onChange={e => setId(e.target.value as string)} />
                   <TextField className={classes.inputField} fullWidth label="Coupon (per annum)" type="number" value={couponRate} onChange={e => setCouponRate(e.target.value as string)} />
                   <FormControl className={classes.inputField} fullWidth>
                     <InputLabel className={classes.selectLabel}>Currency</InputLabel>
                     <Select value={currency} onChange={e => setCurrency(e.target.value as string)} MenuProps={menuProps}>
-                      {instruments.map((c, i) => (<MenuItem key={i} value={c.payload.id.label}>{c.payload.id.label}</MenuItem>))}
+                      {instruments.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
                     </Select>
                   </FormControl>
                   <DatePicker className={classes.inputField} inputFormat="yyyy-MM-dd" label="Issue Date" value={issueDate} onChange={setIssueDate} renderInput={(props : TextFieldProps) => <TextField {...props} fullWidth />} />

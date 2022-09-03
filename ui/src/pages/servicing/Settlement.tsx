@@ -49,8 +49,8 @@ export const Settlement : React.FC = () => {
                       <TableCell key={1} className={classes.tableCell}>{getName(c.payload.step.sender)}</TableCell>
                       <TableCell key={2} className={classes.tableCell}>{getName(c.payload.step.receiver)}</TableCell>
                       <TableCell key={3} className={classes.tableCell} align="right">{fmt(c.payload.step.quantity.amount)}</TableCell>
-                      <TableCell key={4} className={classes.tableCell}>{c.payload.step.quantity.unit.id.label}</TableCell>
-                      <TableCell key={5} className={classes.tableCell}>{version(c.payload.step.quantity.unit.id)}</TableCell>
+                      <TableCell key={4} className={classes.tableCell}>{c.payload.step.quantity.unit.id.unpack}</TableCell>
+                      <TableCell key={5} className={classes.tableCell}>{version(c.payload.step.quantity.unit)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

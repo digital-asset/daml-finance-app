@@ -3,10 +3,10 @@
 
 module Daml.Finance.App.Issuance.Service where
 
-import Daml.Finance.Interface.Asset.Account qualified as Account (Credit(..), Debit(..), K, R)
-import Daml.Finance.Interface.Asset.Holding (Holding)
-import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Asset.Util (getAccount, getAmount)
+import Daml.Finance.Interface.Holding.Account qualified as Account (Credit(..), Debit(..), K, R)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
+import Daml.Finance.Interface.Holding.Util (getAccount, getAmount)
 import Daml.Finance.App.Issuance.Model (CreateIssuanceRequest(..), ReduceIssuanceRequest(..), Issuance(..))
 import Daml.Finance.App.Util (fetchAndArchive)
 
@@ -33,12 +33,12 @@ template Service
     nonconsuming choice RequestReduceIssuance : ContractId ReduceIssuanceRequest
       with
         id : Text
-        holdingCid : ContractId Holding
+        holdingCid : ContractId Holding.I
       controller customer
       do
         create ReduceIssuanceRequest with ..
 
-    nonconsuming choice CreateIssuance : (ContractId Issuance, ContractId Holding)
+    nonconsuming choice CreateIssuance : (ContractId Issuance, ContractId Holding.I)
       with
         createIssuanceRequestCid : ContractId CreateIssuanceRequest
       controller provider

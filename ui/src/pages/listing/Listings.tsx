@@ -60,8 +60,8 @@ export const Listings : React.FC = () => {
                       <TableCell key={0} className={classes.tableCell}>{getName(c.payload.provider)}</TableCell>
                       <TableCell key={1} className={classes.tableCell}>{getName(c.payload.customer)}</TableCell>
                       <TableCell key={2} className={classes.tableCell}>{c.payload.id}</TableCell>
-                      <TableCell key={4} className={classes.tableCell}>{c.payload.tradedInstrument.id.label}</TableCell>
-                      <TableCell key={6} className={classes.tableCell}>{c.payload.quotedInstrument.id.label}</TableCell>
+                      <TableCell key={4} className={classes.tableCell}>{c.payload.tradedInstrument.id.unpack}</TableCell>
+                      <TableCell key={6} className={classes.tableCell}>{c.payload.quotedInstrument.id.unpack}</TableCell>
                       <TableCell key={8} className={classes.tableCell}>
                         {party === c.payload.customer && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => requestDeleteDelisting(c)}>Delist</Button>}
                       </TableCell>

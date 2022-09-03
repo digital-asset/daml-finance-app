@@ -3,8 +3,8 @@
 
 module Daml.Finance.App.Listing.Model where
 
-import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (K)
-import Daml.Finance.Interface.Common.Types (Parties)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K)
+import Daml.Finance.Interface.Types.Common (Parties)
 
 type T = Listing
 

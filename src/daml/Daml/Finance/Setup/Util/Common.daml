@@ -5,10 +5,10 @@ module Daml.Finance.Setup.Util.Common where
 
 import DA.List (head)
 import DA.Optional (fromOptional)
-import Daml.Finance.Asset.Fungible qualified as Fungible (T)
-import Daml.Finance.Interface.Asset.Fungible qualified as Fungible (Split(..), SplitResult(..))
-import Daml.Finance.Interface.Asset.Holding qualified as Holding (I)
-import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (Q)
+import Daml.Finance.Holding.Fungible qualified as Fungible (T)
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (Split(..), SplitResult(..))
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 import Daml.Script
 
 data PartyInfo = PartyInfo

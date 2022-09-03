@@ -5,19 +5,20 @@ module Daml.Finance.Setup.Scenario.NaturalGas where
 
 import DA.Date (addDays, toDateUTC)
 import DA.Map (fromList)
-import DA.Set (singleton)
+import DA.Set (empty, singleton)
 import DA.Time (time)
-import Daml.Finance.Asset.Fungible qualified as Fungible (Factory(..))
-import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (qty)
-import Daml.Finance.Lifecycle.SettlementRule (Rule(..))
+import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
+import Daml.Finance.Interface.Types.Common (Id(..))
+import Daml.Finance.Lifecycle.Rule.Claim qualified as Claim (Rule(..))
 import Daml.Finance.RefData.Observation (Observation(..))
 import Daml.Finance.RefData.Time.DateClock (DateClock(..), DateClockUpdateEvent(..), Unit(..))
-import Daml.Finance.Settlement.Batch (BatchFactory(..))
+import Daml.Finance.Settlement.Factory (Factory(..))
 import Daml.Finance.Setup.Payoff (ngCapped, ngConditionalLocation, ngLocationPricingOption, ngMultiLocation)
 import Daml.Finance.Setup.Util.Common (PartyInfo, allocateParties)
 import Daml.Finance.Setup.Util.Role (createCustodianRole, createOperatorRole)
 import Daml.Finance.Setup.Util.Service (createCustodyService, createIssuanceService, createLifecycleService)
-import Daml.Finance.Setup.Util.Workflow (createAccount, createFactory, deposit, originate, originateDerivative)
+import Daml.Finance.Setup.Util.Workflow (createAccount, createFactory, deposit, originate, originateGeneric)
 import Daml.Script (Script, createCmd, submitMulti)
 
 run : Script [PartyInfo]
@@ -39,7 +40,7 @@ run  = do
   createLifecycleService operator seller seller
 
   -- Settlement factory
-  instructableCid <- toInterfaceContractId <$> submit seller do createCmd BatchFactory with requestors = singleton seller
+  settlementFactoryCid <- toInterfaceContractId <$> submit seller do createCmd Factory with provider = seller; observers = empty
 
   t <- getTime
   let
@@ -52,9 +53,9 @@ run  = do
     pub = [("Public", singleton $ singleton public)]
 
   -- Create clock and events
-  let clock = DateClock with u = Unit t1, id = "Clock", provider = seller, observers = singleton public
+  let clock = DateClock with u = Unit t1, id = Id "Clock", provider = seller, observers = fromList pub
   submitMulti [seller] [] do createCmd clock
-  submitMulti [seller] [] do createCmd DateClockUpdateEvent with clock; id = "Update to " <> show t1
+  submitMulti [seller] [] do createCmd DateClockUpdateEvent with clock; id = Id $ "Update to " <> show t1
 
   -- Create accounts
   accountFactoryCid <- toInterfaceContractId <$> createFactory operator pub
@@ -83,16 +84,13 @@ run  = do
       , Instrument.qty 4_000.0 z4GEN
       , Instrument.qty 4_000.0 z4300L ]
 
-  ng1 <- originateDerivative seller seller pub todayTime ng1Name $ ngMultiLocation         t1 t3 deliveries 5.25 usd
-  ng2 <- originateDerivative seller seller pub todayTime ng2Name $ ngLocationPricingOption t1 t3  5_000.0 z4200L gdTgp219 z4GEN gdTgp300 usd
-  ng3 <- originateDerivative seller seller pub todayTime ng3Name $ ngCapped                t1 t3 10_000.0 z4200L gdTgp219 5.75 usd
-  ng4 <- originateDerivative seller seller pub todayTime ng4Name $ ngConditionalLocation   t1 t3 10_000.0 z4200L gdTgp219 5.50 z4GEN gdTgp300 usd
+  ng1 <- originateGeneric seller seller pub todayTime ng1Name $ ngMultiLocation         t1 t3 deliveries 5.25 usd
+  ng2 <- originateGeneric seller seller pub todayTime ng2Name $ ngLocationPricingOption t1 t3  5_000.0 z4200L gdTgp219 z4GEN gdTgp300 usd
+  ng3 <- originateGeneric seller seller pub todayTime ng3Name $ ngCapped                t1 t3 10_000.0 z4200L gdTgp219 5.75 usd
+  ng4 <- originateGeneric seller seller pub todayTime ng4Name $ ngConditionalLocation   t1 t3 10_000.0 z4200L gdTgp219 5.50 z4GEN gdTgp300 usd
 
   -- Lifecycle settlement rules
-  submitMulti [seller, buyer] [] do createCmd Rule with custodian = seller; owner = buyer; claimers = singleton seller; settler = seller; instrumentLabel = ng1Name; instructableCid
-  submitMulti [seller, buyer] [] do createCmd Rule with custodian = seller; owner = buyer; claimers = singleton seller; settler = seller; instrumentLabel = ng2Name; instructableCid
-  submitMulti [seller, buyer] [] do createCmd Rule with custodian = seller; owner = buyer; claimers = singleton seller; settler = seller; instrumentLabel = ng3Name; instructableCid
-  submitMulti [seller, buyer] [] do createCmd Rule with custodian = seller; owner = buyer; claimers = singleton seller; settler = seller; instrumentLabel = ng4Name; instructableCid
+  submitMulti [seller, buyer] [] do createCmd Claim.Rule with custodian = seller; owner = buyer; claimers = singleton seller; settler = seller; factoryCid =settlementFactoryCid
 
   -- Positions
   buyerCashCid <- deposit operator cashProvider buyer public (Instrument.qty 1_000_000.0 usd) buyerCashAccount

@@ -9,13 +9,13 @@ import DA.Set (fromList, singleton)
 import Daml.Finance.App.BackToBack.Service qualified as BackToBack
 import Daml.Finance.App.Distribution.Subscription.Model (BackToBack, Offering(..), Status(..), Subscription)
 import Daml.Finance.App.Distribution.Subscription.Util (settleSubscription)
-import Daml.Finance.Interface.Common.Disclosure qualified as Disclosure (AddObservers(..), I)
-import Daml.Finance.Interface.Asset.Account qualified as Account (K, R)
-import Daml.Finance.Interface.Asset.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Asset.Lockable qualified as Lockable (Acquire(..), I, LockType(..), Release(..))
-import Daml.Finance.Interface.Asset.Util (getAccount)
-import Daml.Finance.Interface.Settlement.Instructable qualified as Instructable (I)
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
+import Daml.Finance.Interface.Holding.Account qualified as Account (K, R)
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
+import Daml.Finance.Interface.Holding.Lockable qualified as Lockable (Acquire(..), I, LockType(..), Release(..))
+import Daml.Finance.Interface.Holding.Util (getAccount)
+import Daml.Finance.Interface.Settlement.Factory qualified as Factory (I)
 
 template Service
   with
@@ -69,7 +69,7 @@ template Service
 
     nonconsuming choice ProcessOffering : ContractId Offering
       with
-        instructableCid : ContractId Instructable.I
+        settlementFactoryCid : ContractId Factory.I
         offeringCid : ContractId Offering
         subscriptionCids : [ContractId Subscription]
       controller provider
@@ -77,13 +77,13 @@ template Service
         -- Settle subscriptions
         offering <- fetch offeringCid
         subscriptions <- zip subscriptionCids <$> forA subscriptionCids fetch
-        (remainingIssuerQuantity, remainingIssuerHoldingCidOpt) <- foldlA (settleSubscription instructableCid offering) (offering.asset.amount, Some offering.issuerHoldingCid) subscriptions
+        (remainingIssuerQuantity, remainingIssuerHoldingCidOpt) <- foldlA (settleSubscription settlementFactoryCid offering) (offering.asset.amount, Some offering.issuerHoldingCid) subscriptions
 
         -- Settle back-to-back trade
         whenSome offering.backToBack \b2b -> do
           let
             totalQuantity = sum $ map ((.quantity) . snd) subscriptions
-          exerciseByKey @BackToBack.Service (operator, b2b.party, customer) BackToBack.SettleOffering with instructableCid; offeringCid; totalQuantity
+          exerciseByKey @BackToBack.Service (operator, b2b.party, customer) BackToBack.SettleOffering with settlementFactoryCid; offeringCid; totalQuantity
           pure ()
 
         -- Archive offer and subscriptions

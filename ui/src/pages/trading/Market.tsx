@@ -17,8 +17,8 @@ import { ContractId } from "@daml/types";
 import { createSet, fmt } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { Percentage } from "../../components/Slider/Percentage";
-import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fungible";
-import { Reference } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Account";
+import { Fungible } from "@daml.js/daml-finance-holding/lib/Daml/Finance/Holding/Fungible";
+import { Reference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
 import { useParties } from "../../context/PartiesContext";
 
 export const Market : React.FC = () => {
@@ -88,11 +88,11 @@ export const Market : React.FC = () => {
   const asks = limits.filter(c => c.payload.side === Side.Sell).sort((a, b) => parseFloat(b.payload.price.amount) - parseFloat(a.payload.price.amount));
 
   const available = holdings.filter(c => !c.payload.lock);
-  const tradedHoldings = available.filter(c => c.payload.instrument.id.label === listing.payload.tradedInstrument.id.label); // TODO: Doesn't support instrument versions
-  const quotedHoldings = available.filter(c => c.payload.instrument.id.label === listing.payload.quotedInstrument.id.label); // TODO: Doesn't support instrument versions
+  const tradedHoldings = available.filter(c => c.payload.instrument.id.unpack === listing.payload.tradedInstrument.id.unpack); // TODO: Doesn't support instrument versions
+  const quotedHoldings = available.filter(c => c.payload.instrument.id.unpack === listing.payload.quotedInstrument.id.unpack); // TODO: Doesn't support instrument versions
   const tradedHoldingsTotal = tradedHoldings.reduce((acc, c) => acc + parseFloat(c.payload.amount), 0);
   const quotedHoldingsTotal = quotedHoldings.reduce((acc, c) => acc + parseFloat(c.payload.amount), 0);
-  const availableQuantity = isBuy ? fmt(quotedHoldingsTotal) + " " + listing.payload.quotedInstrument.id.label : fmt(tradedHoldingsTotal) + " " + listing.payload.tradedInstrument.id.label;
+  const availableQuantity = isBuy ? fmt(quotedHoldingsTotal) + " " + listing.payload.quotedInstrument.id.unpack : fmt(tradedHoldingsTotal) + " " + listing.payload.tradedInstrument.id.unpack;
 
   const getAsset = async (holdings : CreateEvent<Fungible>[], amount : number) : Promise<ContractId<Fungible> | null> => {
     const holding = holdings.find(c => parseFloat(c.payload.amount) >= amount);
@@ -162,7 +162,7 @@ export const Market : React.FC = () => {
                         <TableCell key={1} className={classes.tableCell}></TableCell>
                         <TableCell key={2} className={classes.tableCell}><b>Price</b></TableCell>
                         <TableCell key={3} className={classes.tableCell}><b>Sell Quantity</b></TableCell>
-                        <TableCell key={4} className={classes.tableCell}><b>Sell Volume ({listing.payload.quotedInstrument.id.label})</b></TableCell>
+                        <TableCell key={4} className={classes.tableCell}><b>Sell Volume ({listing.payload.quotedInstrument.id.unpack})</b></TableCell>
                       </TableRow>
                       {asks.map((c, i) => (
                         <TableRow key={i+2} className={classes.tableRow}>
@@ -183,7 +183,7 @@ export const Market : React.FC = () => {
                         </TableRow>
                       ))}
                       <TableRow key={1} className={classes.tableRow}>
-                        <TableCell key={0} className={classes.tableCell}><b>Buy Volume ({listing.payload.quotedInstrument.id.label})</b></TableCell>
+                        <TableCell key={0} className={classes.tableCell}><b>Buy Volume ({listing.payload.quotedInstrument.id.unpack})</b></TableCell>
                         <TableCell key={1} className={classes.tableCell}><b>Buy Quantity</b></TableCell>
                         <TableCell key={2} className={classes.tableCell}><b>Price</b></TableCell>
                         <TableCell key={3} className={classes.tableCell}></TableCell>
@@ -211,7 +211,7 @@ export const Market : React.FC = () => {
                 <TextField className={classes.inputField} fullWidth label="Quantity" type="number" value={amount} onChange={e => handleQuantityChange(parseFloat(e.target.value))}/>
                 <Percentage step={5} valueLabelFormat={v => v + "%"} value={percentage} valueLabelDisplay="auto" onChange={(_, v) => handlePercentageChange(v as number)} />
                 <TextField className={classes.inputField} fullWidth label="Total" type="number" value={total} onChange={e => handleTotalChange(parseFloat(e.target.value))}/>
-                <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!price || !amount} onClick={requestCreateOrder}>{isBuy ? "Buy" : "Sell"} {listing.payload.tradedInstrument.id.label}</Button>
+                <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!price || !amount} onClick={requestCreateOrder}>{isBuy ? "Buy" : "Sell"} {listing.payload.tradedInstrument.id.unpack}</Button>
               </Grid>
             </Grid>
           </Grid>

@@ -8,12 +8,12 @@ import { Typography, Grid, Table, TableBody, TableCell, TableRow, Paper, Button,
 import { useParams } from "react-router-dom";
 import useStyles from "../styles";
 import { fmt, id } from "../../util";
-import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fungible";
+import { Fungible } from "@daml.js/daml-finance-holding/lib/Daml/Finance/Holding/Fungible";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { keyEquals, version } from "../../util";
 import { Effect as EffectContract } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/Effect";
 import { Batch } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Batch";
-import { Rule } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/SettlementRule";
+import { Rule } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/Rule/Claim";
 import { CreateEvent } from "@daml/ledger";
 import { useParties } from "../../context/PartiesContext";
 
@@ -40,14 +40,14 @@ export const Effect : React.FC = () => {
 
   const claimEffect = async () => {
     const claimHolding = async (holding : CreateEvent<Fungible>) => {
-      const rule = rules.find(c => c.payload.custodian === holding.payload.account.custodian && c.payload.owner === holding.payload.account.owner && c.payload.instrumentLabel === effect.payload.targetInstrument.id.label);
-      if (!rule) throw new Error("Couldn't find lifecycle settlement rule for instrument " + effect.payload.targetInstrument.id.label);
+      const rule = rules.find(c => c.payload.custodian === holding.payload.account.custodian && c.payload.owner === holding.payload.account.owner);
+      if (!rule) throw new Error("Couldn't find lifecycle settlement rule for instrument " + effect.payload.targetInstrument.id.unpack);
       const arg = {
         claimer: party,
         holdingCids: [holding.contractId],
         effectCid: effect.contractId
       }
-      await ledger.exercise(Rule.Claim, rule.contractId, arg);
+      await ledger.exercise(Rule.ClaimEffect, rule.contractId, arg);
     };
     Promise.all(filteredHoldings.map(c => claimHolding(c)));
   };
@@ -55,7 +55,7 @@ export const Effect : React.FC = () => {
   return (
     <Grid container direction="column" spacing={2}>
       <Grid item xs={12}>
-        <Typography variant="h3" className={classes.heading}>{id(effect.payload.targetInstrument.id)}</Typography>
+        <Typography variant="h3" className={classes.heading}>{id(effect.payload.targetInstrument)}</Typography>
       </Grid>
       <Grid item xs={12}>
         <Grid container spacing={4}>
@@ -73,7 +73,7 @@ export const Effect : React.FC = () => {
                   </TableRow>
                   <TableRow key={2} className={classes.tableRow}>
                     <TableCell key={0} className={classes.tableCellSmall}><b>Target</b></TableCell>
-                    <TableCell key={1} className={classes.tableCellSmall}>{id(effect.payload.targetInstrument.id)}</TableCell>
+                    <TableCell key={1} className={classes.tableCellSmall}>{id(effect.payload.targetInstrument)}</TableCell>
                   </TableRow>
                   <TableRow key={3} className={classes.tableRow}>
                     <TableCell key={0} className={classes.tableCellSmall}><b>Settlement Date</b></TableCell>
@@ -105,8 +105,8 @@ export const Effect : React.FC = () => {
                       <TableCell key={1} className={classes.tableCellSmall}>{"=>"}</TableCell>
                       <TableCell key={2} className={classes.tableCellSmall}>Issuer</TableCell>
                       <TableCell key={3} className={classes.tableCellSmall}>{(Math.abs(parseFloat(c.amount))).toFixed(5)}</TableCell>
-                      <TableCell key={4} className={classes.tableCellSmall}>{c.unit.id.label}</TableCell>
-                      <TableCell key={5} className={classes.tableCellSmall}>{version(c.unit.id)}</TableCell>
+                      <TableCell key={4} className={classes.tableCellSmall}>{c.unit.id.unpack}</TableCell>
+                      <TableCell key={5} className={classes.tableCellSmall}>{version(c.unit)}</TableCell>
                     </TableRow>
                   ))}
                   {effect.payload.produced.map((c, i) => (
@@ -115,8 +115,8 @@ export const Effect : React.FC = () => {
                       <TableCell key={1} className={classes.tableCellSmall}>{"=>"}</TableCell>
                       <TableCell key={2} className={classes.tableCellSmall}>Holder</TableCell>
                       <TableCell key={3} className={classes.tableCellSmall}>{(Math.abs(parseFloat(c.amount))).toFixed(5)}</TableCell>
-                      <TableCell key={4} className={classes.tableCellSmall}>{c.unit.id.label}</TableCell>
-                      <TableCell key={5} className={classes.tableCellSmall}>{version(c.unit.id)}</TableCell>
+                      <TableCell key={4} className={classes.tableCellSmall}>{c.unit.id.unpack}</TableCell>
+                      <TableCell key={5} className={classes.tableCellSmall}>{version(c.unit)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -143,8 +143,8 @@ export const Effect : React.FC = () => {
                       <TableCell key={0} className={classes.tableCell}>{getName(c.payload.account.custodian)}</TableCell>
                       <TableCell key={1} className={classes.tableCell}>{getName(c.payload.account.owner)}</TableCell>
                       <TableCell key={2} className={classes.tableCell}>{c.payload.account.id}</TableCell>
-                      <TableCell key={4} className={classes.tableCell}>{c.payload.instrument.id.label}</TableCell>
-                      <TableCell key={5} className={classes.tableCell}>{version(c.payload.instrument.id)}</TableCell>
+                      <TableCell key={4} className={classes.tableCell}>{c.payload.instrument.id.unpack}</TableCell>
+                      <TableCell key={5} className={classes.tableCell}>{version(c.payload.instrument)}</TableCell>
                       <TableCell key={6} className={classes.tableCell} align="right">{fmt(c.payload.amount)}</TableCell>
                     </TableRow>
                   ))}
@@ -173,8 +173,8 @@ export const Effect : React.FC = () => {
                       <TableCell key={1} className={classes.tableCell}>{getName(c._1.sender)}</TableCell>
                       <TableCell key={2} className={classes.tableCell}>{getName(c._1.receiver)}</TableCell>
                       <TableCell key={3} className={classes.tableCell} align="right">{fmt(c._1.quantity.amount)}</TableCell>
-                      <TableCell key={4} className={classes.tableCell}>{c._1.quantity.unit.id.label}</TableCell>
-                      <TableCell key={5} className={classes.tableCell}>{version(c._1.quantity.unit.id)}</TableCell>
+                      <TableCell key={4} className={classes.tableCell}>{c._1.quantity.unit.id.unpack}</TableCell>
+                      <TableCell key={5} className={classes.tableCell}>{version(c._1.quantity.unit)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

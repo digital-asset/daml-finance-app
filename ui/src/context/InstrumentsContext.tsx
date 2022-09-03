@@ -4,12 +4,12 @@
 import React from "react";
 import { CreateEvent } from "@daml/ledger";
 import { useStreamQueries } from "@daml/react";
-import { Instrument as Token } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Instrument";
-import { Instrument as Generic } from "@daml.js/daml-finance-derivative/lib/Daml/Finance/Derivative/Instrument";
-import { FixedRateBond } from "@daml.js/daml-finance-bond/lib/Daml/Finance/Bond/FixedRate";
-import { FloatingRateBond } from "@daml.js/daml-finance-bond/lib/Daml/Finance/Bond/FloatingRate";
-import { InflationLinkedBond } from "@daml.js/daml-finance-bond/lib/Daml/Finance/Bond/InflationLinked";
-import { ZeroCouponBond } from "@daml.js/daml-finance-bond/lib/Daml/Finance/Bond/ZeroCoupon";
+import { Instrument as Token } from "@daml.js/daml-finance-instrument-base/lib/Daml/Finance/Instrument/Base/Instrument";
+import { Instrument as Generic } from "@daml.js/daml-finance-instrument-generic/lib/Daml/Finance/Instrument/Generic/Instrument";
+import { Instrument as FixedRateBond } from "@daml.js/daml-finance-instrument-bond/lib/Daml/Finance/Instrument/Bond/FixedRate";
+import { Instrument as FloatingRateBond } from "@daml.js/daml-finance-instrument-bond/lib/Daml/Finance/Instrument/Bond/FloatingRate";
+import { Instrument as InflationLinkedBond } from "@daml.js/daml-finance-instrument-bond/lib/Daml/Finance/Instrument/Bond/InflationLinked";
+import { Instrument as ZeroCouponBond } from "@daml.js/daml-finance-instrument-bond/lib/Daml/Finance/Instrument/Bond/ZeroCoupon";
 
 export type InstrumentsState = {
   loading : boolean

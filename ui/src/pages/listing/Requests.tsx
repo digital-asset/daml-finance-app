@@ -71,8 +71,8 @@ export const Requests : React.FC = () => {
                       <TableCell key={1} className={classes.tableCell}>{getName(c.payload.customer)}</TableCell>
                       <TableCell key={2} className={classes.tableCell}>{party === c.payload.provider ? "Provider" : "Client"}</TableCell>
                       <TableCell key={3} className={classes.tableCell}>{c.payload.id}</TableCell>
-                      <TableCell key={4} className={classes.tableCell}>{c.payload.tradedInstrument.id.label}</TableCell>
-                      <TableCell key={5} className={classes.tableCell}>{c.payload.quotedInstrument.id.label}</TableCell>
+                      <TableCell key={4} className={classes.tableCell}>{c.payload.tradedInstrument.id.unpack}</TableCell>
+                      <TableCell key={5} className={classes.tableCell}>{c.payload.quotedInstrument.id.unpack}</TableCell>
                       <TableCell key={6} className={classes.tableCell}>
                         {party === c.payload.provider && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => createListing(c)}>List</Button>}
                         {/* {party === c.payload.client && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => cancelRequest(c)}>Cancel</Button>} */}
@@ -111,8 +111,8 @@ export const Requests : React.FC = () => {
                       <TableCell key={1} className={classes.tableCell}>{getName(c.request.payload.customer)}</TableCell>
                       <TableCell key={2} className={classes.tableCell}>{party === c.request.payload.provider ? "Provider" : "Client"}</TableCell>
                       <TableCell key={3} className={classes.tableCell}>{c.listing?.id}</TableCell>
-                      <TableCell key={4} className={classes.tableCell}>{c.listing?.tradedInstrument.id.label}</TableCell>
-                      <TableCell key={5} className={classes.tableCell}>{c.listing?.quotedInstrument.id.label}</TableCell>
+                      <TableCell key={4} className={classes.tableCell}>{c.listing?.tradedInstrument.id.unpack}</TableCell>
+                      <TableCell key={5} className={classes.tableCell}>{c.listing?.quotedInstrument.id.unpack}</TableCell>
                       <TableCell key={6} className={classes.tableCell}>
                         {party === c.request.payload.provider && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => deleteListing(c.request)}>Delist</Button>}
                         {/* {party === c.payload.client && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => cancelRequest(c)}>Cancel</Button>} */}

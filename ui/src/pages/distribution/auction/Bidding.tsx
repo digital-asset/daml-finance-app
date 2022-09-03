@@ -9,7 +9,7 @@ import { Bid } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Grid, Paper, Typography, Table, TableRow, TableCell, TableBody, TextField, Button } from "@mui/material";
 import { useParams } from "react-router-dom";
-import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fungible";
+import { Fungible } from "@daml.js/daml-finance-holding/lib/Daml/Finance/Holding/Fungible";
 import { Service as Structuring } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Service";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Bidding/Service";
 import { Service as AutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Bidding/Auto/Service";
@@ -17,8 +17,8 @@ import { and, claimToNode } from "../../../components/Claims/util";
 import { getBidAllocation, getBidStatus } from "../Utils";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../../components/Claims/ClaimsTreeBuilder";
-import { createKeyBase, fmt, getHolding } from "../../../util";
-import { Reference } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Account";
+import { createKey, fmt, getHolding } from "../../../util";
+import { Reference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
 import { Message } from "../../../components/Message/Message";
 import { useParties } from "../../../context/PartiesContext";
 import { useInstruments } from "../../../context/InstrumentsContext";
@@ -43,7 +43,7 @@ export const Bidding : React.FC = () => {
 
   const { contractId } = useParams<any>();
   const auction = auctions.find(b => b.contractId === contractId);
-  const instrument = inst.all.find(c => c.payload.id.label === auction?.payload.quantity.unit.id.label);
+  const instrument = inst.all.find(c => c.payload.id.unpack === auction?.payload.quantity.unit.id.unpack);
 
   useEffect(() => {
     const setClaims = async () => {
@@ -61,7 +61,7 @@ export const Bidding : React.FC = () => {
   const myServices = svc.bidding.filter(c => c.payload.customer === party);
   const myAutoServices = svc.biddingAuto.filter(c => c.payload.customer === party);
   const myHoldings = holdings.filter(c => c.payload.account.owner === party);
-  const baseKeys = inst.tokens.map(createKeyBase);
+  const baseKeys = inst.tokens.map(createKey);
 
   if (myServices.length === 0) return <Message text="No bidding service found" />
   if (!auction) return <Message text="Auction not found" />
@@ -117,7 +117,7 @@ export const Bidding : React.FC = () => {
                       </TableRow>
                       <TableRow key={3} className={classes.tableRow}>
                         <TableCell key={0} className={classnames(classes.tableCell, classes.width50)}><b>Instrument</b></TableCell>
-                        <TableCell key={1} className={classnames(classes.tableCell, classes.width50)}>{auction.payload.quantity.unit.id.label}</TableCell>
+                        <TableCell key={1} className={classnames(classes.tableCell, classes.width50)}>{auction.payload.quantity.unit.id.unpack}</TableCell>
                       </TableRow>
                       <TableRow key={4} className={classes.tableRow}>
                         <TableCell key={0} className={classnames(classes.tableCell, classes.width50)}><b>Amount</b></TableCell>
@@ -125,7 +125,7 @@ export const Bidding : React.FC = () => {
                       </TableRow>
                       <TableRow key={5} className={classes.tableRow}>
                         <TableCell key={0} className={classnames(classes.tableCell, classes.width50)}><b>Currency</b></TableCell>
-                        <TableCell key={1} className={classnames(classes.tableCell, classes.width50)}>{auction.payload.currency.id.label}</TableCell>
+                        <TableCell key={1} className={classnames(classes.tableCell, classes.width50)}>{auction.payload.currency.id.unpack}</TableCell>
                       </TableRow>
                     </TableBody>
                   </Table>
@@ -143,7 +143,7 @@ export const Bidding : React.FC = () => {
                         </TableRow>
                         <TableRow key={1} className={classes.tableRow}>
                           <TableCell key={0} className={classnames(classes.tableCell, classes.width50)}><b>Price</b></TableCell>
-                          <TableCell key={1} className={classnames(classes.tableCell, classes.width50)}>{fmt(bid.payload.details.price.amount, 4)} {auction.payload.currency.id.label}</TableCell>
+                          <TableCell key={1} className={classnames(classes.tableCell, classes.width50)}>{fmt(bid.payload.details.price.amount, 4)} {auction.payload.currency.id.unpack}</TableCell>
                         </TableRow>
                         <TableRow key={1} className={classes.tableRow}>
                           <TableCell key={0} className={classnames(classes.tableCell, classes.width50)}><b>Status</b></TableCell>
@@ -164,10 +164,10 @@ export const Bidding : React.FC = () => {
                     <Table size="small">
                       <TableBody>
                         <TableRow key={0} className={classes.tableRow}>
-                          <TextField required autoFocus fullWidth type="number" label={"Quantity (" + auction.payload.quantity.unit.id.label + ")"} onChange={e => setAmount(parseFloat(e.target.value))} />
+                          <TextField required autoFocus fullWidth type="number" label={"Quantity (" + auction.payload.quantity.unit.id.unpack + ")"} onChange={e => setAmount(parseFloat(e.target.value))} />
                         </TableRow>
                         <TableRow key={1} className={classes.tableRow}>
-                          <TextField required fullWidth className={classes.inputField} type="number" label={"Price (" + auction.payload.currency.id.label + ")"} onChange={e => setPrice(parseFloat(e.target.value))} />
+                          <TextField required fullWidth className={classes.inputField} type="number" label={"Price (" + auction.payload.currency.id.unpack + ")"} onChange={e => setPrice(parseFloat(e.target.value))} />
                         </TableRow>
                         <TableRow key={2} className={classes.tableRow}>
                           <Button color="primary" className={classnames(classes.fullWidth, classes.buttonMargin)} variant="contained" disabled={price === 0 || amount === 0} onClick={() => requestCreateBid()}>Bid</Button>

@@ -7,18 +7,19 @@ import DA.List (head)
 import DA.Set (fromList, singleton)
 import Daml.Finance.App.Distribution.Subscription.Model (BackToBack, Offering(..))
 import Daml.Finance.App.Issuance.Model (Issuance(..))
-import Daml.Finance.Interface.Asset.Account qualified as Account (Credit(..), K, R)
-import Daml.Finance.Interface.Asset.Fungible qualified as Fungible (Split(..))
-import Daml.Finance.Interface.Asset.Holding qualified as Holding (I)
-import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Asset.Lockable qualified as Lockable (Acquire(..), I, LockType(..), Release(..))
-import Daml.Finance.Interface.Asset.Transferable qualified as Transferable (I)
-import Daml.Finance.Interface.Asset.Util (getAmount)
-import Daml.Finance.Interface.Common.Disclosure qualified as Disclosure (AddObservers(..), I)
-import Daml.Finance.Interface.Settlement.Instructable qualified as Instructable (I, Instruct(..))
+import Daml.Finance.Interface.Holding.Account qualified as Account (Credit(..), K, R)
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (Split(..))
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Holding.Lockable qualified as Lockable (Acquire(..), I, LockType(..))
+import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
+import Daml.Finance.Interface.Holding.Util (getAmount)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
+import Daml.Finance.Interface.Settlement.Factory qualified as Factory (I, Instruct(..))
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..))
-import Daml.Finance.Interface.Settlement.Settleable qualified as Settleable (Settle(..))
+import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
 import Daml.Finance.Interface.Settlement.Types (Step(..))
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
+import Daml.Finance.Interface.Types.Common (Id(..))
 
 template Service
   with
@@ -59,7 +60,7 @@ template Service
 
     nonconsuming choice SettleOffering : [ContractId Transferable.I]
       with
-        instructableCid : ContractId Instructable.I
+        settlementFactoryCid : ContractId Factory.I
         offeringCid : ContractId Offering
         totalQuantity : Decimal
       controller customer
@@ -70,7 +71,7 @@ template Service
           totalNotional = totalQuantity * offering.price.amount
           delivery = Step with sender = b2b.party; receiver = offering.issuer; quantity = (offering.asset with amount = totalQuantity)
           payment = Step with sender = offering.issuer; receiver = b2b.party; quantity = (offering.price with amount = totalNotional)
-        (batchCid, [deliveryCid, paymentCid]) <- exercise instructableCid Instructable.Instruct with settler = offering.issuer; id = offering.offeringId; steps = [ delivery, payment ]
+        (batchCid, [deliveryCid, paymentCid]) <- exercise settlementFactoryCid Factory.Instruct with instructors = singleton customer; settler = offering.issuer; id = Id offering.offeringId; steps = [ delivery, payment ]; description = "Settlement for offering " <> offering.offeringId
 
         b2bDeliverable <- fetch b2b.b2bDeliverableCid
         b2bSizedDeliverableCid <-
@@ -86,8 +87,9 @@ template Service
         deliveryCid <- exercise deliveryCid Instruction.Approve with receiverAccount = b2b.issuerReceivableAccount
         paymentCid <- exercise paymentCid Instruction.Allocate with transferableCid = coerceContractId issuerSizedDeliverableCid
         paymentCid <- exercise paymentCid Instruction.Approve with receiverAccount = b2b.b2bReceivableAccount
-        deliveredCids <- exercise batchCid Settleable.Settle
-        mapA (\cid -> coerceContractId <$> exercise (coerceContractId cid : ContractId Lockable.I) Lockable.Release with context = offering.offeringId) deliveredCids
+        deliveredCids <- exercise batchCid Batch.Settle
+        -- mapA (\cid -> coerceContractId <$> exercise (coerceContractId cid : ContractId Lockable.I) Lockable.Release with context = offering.offeringId) deliveredCids
+        pure deliveredCids
 
     choice Terminate : ()
       with

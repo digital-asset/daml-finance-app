@@ -3,10 +3,10 @@
 
 module Daml.Finance.App.Custody.Service where
 
-import Daml.Finance.Interface.Asset.Account qualified as Account (Credit(..), Debit(..), K, R)
-import Daml.Finance.Interface.Asset.Holding qualified as Holding (I)
-import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (K, Q)
-import Daml.Finance.Interface.Asset.Util (getAccount)
+import Daml.Finance.Interface.Holding.Account qualified as Account (Credit(..), Debit(..), K, R)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Holding.Util (getAccount)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K, Q)
 import Daml.Finance.App.Custody.Model qualified as Custody
 import Daml.Finance.App.Util (fetchAndArchive)
 import Prelude hiding (lookup)

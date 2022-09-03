@@ -9,12 +9,12 @@ import ContingentClaims.Math.Stochastic (Expr)
 import ContingentClaims.Observation (Observation(..))
 import ContingentClaims.Util (expiry, fixings, payoffs)
 import DA.Set (singleton)
-import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (K)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K)
 import Daml.Finance.Interface.Lifecycle.Effect (Effect)
 import Daml.Finance.Interface.Lifecycle.Clock qualified as Clock (I)
 import Daml.Finance.Interface.Lifecycle.Event qualified as Event (I)
-import Daml.Finance.Interface.Lifecycle.Observable qualified as Interface (Observable, Observe(..), view)
-import Daml.Finance.Interface.Lifecycle.Lifecyclable qualified as Interface (Lifecyclable, Lifecycle(..))
+import Daml.Finance.Interface.Lifecycle.Observable qualified as Interface (Observable, Observe(..))
+import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Interface (Lifecycle, Evolve(..))
 import Daml.Finance.App.Lifecycle.Pricing qualified as Pricing
 
 template Service
@@ -38,21 +38,21 @@ template Service
         observables <- zip observableCids <$> mapA fetch observableCids
         let
           spot id t = do
-            let Some (obsCid, obs) = find (\(_, o) -> (Interface.view o).obsKey == id) observables
+            let Some (obsCid, obs) = find (\(_, o) -> (view o).obsKey == id) observables
             exercise obsCid Interface.Observe with actors = singleton customer; t
         Lifecycle.Result{remaining, pending} <- Lifecycle.lifecycle spot claims today today
         pure (remaining, pending)
 
-    nonconsuming choice Lifecycle : (ContractId Interface.Lifecyclable, [ContractId Effect])
+    nonconsuming choice Lifecycle : (ContractId Interface.Lifecycle, [ContractId Effect])
       with
         ruleName : Text
         eventCid : ContractId Event.I
         clockCid : ContractId Clock.I
         observableCids : [ContractId Interface.Observable]
-        lifecyclableCid : ContractId Interface.Lifecyclable
+        lifecyclableCid : ContractId Interface.Lifecycle
       controller customer
       do
-        exercise lifecyclableCid Interface.Lifecycle with ruleName; settler = provider; eventCid; clockCid; observableCids
+        exercise lifecyclableCid Interface.Evolve with ruleName; settler = provider; eventCid; clockCid; observableCids
 
     nonconsuming choice Expiry : Optional Time
       with

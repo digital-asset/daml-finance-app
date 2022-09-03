@@ -5,7 +5,7 @@ import React from "react";
 import { Table, TableBody, TableCell, TableRow, TableHead, Grid, Paper, Typography } from "@mui/material";
 import { useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
-import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fungible";
+import { Fungible } from "@daml.js/daml-finance-holding/lib/Daml/Finance/Holding/Fungible";
 import { fmt } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
@@ -37,7 +37,7 @@ export const Holdings : React.FC<HoldingsProps> = ({ showAssets }) => {
   const entries : PositionEntry[] = [];
   for (let i = 0; i < filtered.length; i++) {
     const a = filtered[i];
-    const entry = entries.find(e => e.custodian === a.payload.account.custodian && e.owner === a.payload.account.owner && e.instrument === a.payload.instrument.id.label && e.version === a.payload.instrument.id.version);
+    const entry = entries.find(e => e.custodian === a.payload.account.custodian && e.owner === a.payload.account.owner && e.instrument === a.payload.instrument.id.unpack && e.version === a.payload.instrument.version);
     const qty = parseFloat(a.payload.amount);
     const isLocked = !!a.payload.lock;
     if (!!entry) {
@@ -48,8 +48,8 @@ export const Holdings : React.FC<HoldingsProps> = ({ showAssets }) => {
       entries.push({
         custodian: a.payload.account.custodian,
         owner: a.payload.account.owner,
-        instrument: a.payload.instrument.id.label,
-        version: a.payload.instrument.id.version,
+        instrument: a.payload.instrument.id.unpack,
+        version: a.payload.instrument.version,
         position: qty,
         locked: isLocked ? qty : 0,
         available: isLocked ? 0 : qty

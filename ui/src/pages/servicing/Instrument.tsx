@@ -7,17 +7,17 @@ import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Typography, Grid, Table, TableBody, TableCell, TableRow, Paper, Button, TableHead } from "@mui/material";
 import { useParams } from "react-router-dom";
 import useStyles from "../styles";
-import { Instrument as Derivative } from "@daml.js/daml-finance-derivative/lib/Daml/Finance/Derivative/Instrument";
+import { Instrument as Derivative } from "@daml.js/daml-finance-instrument-generic/lib/Daml/Finance/Instrument/Generic/Instrument";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Service";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
 import { C, claimToNode } from "../../components/Claims/util";
-import { id, version } from "../../util";
+import { createKey, id, version } from "../../util";
 import { Effect } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/Effect";
 import { DateClock, DateClockUpdateEvent } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefData/Time/DateClock";
 import { Pending } from "@daml.js/contingent-claims/lib/ContingentClaims/Lifecycle";
 import { Time } from "@daml/types";
-import { InstrumentKey } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Types";
+import { InstrumentKey } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Common";
 import { Observation } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefData/Observation";
 import { useParties } from "../../context/PartiesContext";
 
@@ -55,7 +55,7 @@ export const Instrument : React.FC = () => {
   if (l1 || l2 || l3 || l4 || l5 || l6) return (<Spinner />);
   if (!instrument) return (<div style={{display: 'flex', justifyContent: 'center', marginTop: 350 }}><h1>Instrument [{cid}] not found</h1></div>);
 
-  const effect = effects.find(c => c.payload.id.includes(instrument.payload.id.label));
+  const effect = effects.find(c => c.payload.targetInstrument.id.unpack === instrument.payload.id.unpack && c.payload.targetInstrument.version === instrument.payload.version);
 
   const previewLifecycle = async () => {
     const todayDate = new Date(clocks[0].payload.u.unpack);
@@ -82,7 +82,7 @@ export const Instrument : React.FC = () => {
   return (
     <Grid container direction="column" spacing={0}>
       <Grid item xs={12}>
-        <Typography variant="h3" className={classes.heading}>{id(instrument.payload.id)}</Typography>
+        <Typography variant="h3" className={classes.heading}>{id(createKey(instrument))}</Typography>
       </Grid>
       <Grid item xs={12}>
         <Grid container direction="row" spacing={4}>
@@ -102,11 +102,11 @@ export const Instrument : React.FC = () => {
                       </TableRow>
                       <TableRow key={2} className={classes.tableRow}>
                         <TableCell key={0} className={classes.tableCellSmall}><b>Instrument</b></TableCell>
-                        <TableCell key={1} className={classes.tableCellSmall}>{instrument.payload.id.label}</TableCell>
+                        <TableCell key={1} className={classes.tableCellSmall}>{instrument.payload.id.unpack}</TableCell>
                       </TableRow>
                       <TableRow key={3} className={classes.tableRow}>
                         <TableCell key={0} className={classes.tableCellSmall}><b>Version</b></TableCell>
-                        <TableCell key={1} className={classes.tableCellSmall}>{version(instrument.payload.id)}</TableCell>
+                        <TableCell key={1} className={classes.tableCellSmall}>{version(createKey(instrument))}</TableCell>
                       </TableRow>
                     </TableBody>
                   </Table>
@@ -135,7 +135,7 @@ export const Instrument : React.FC = () => {
                           <TableCell key={1} className={classes.tableCell}>{parseFloat(c.amount) < 0 ? "Counterparty" : getName(instrument.payload.issuer)}</TableCell>
                           <TableCell key={2} className={classes.tableCell}>{parseFloat(c.amount) < 0 ? getName(instrument.payload.issuer) : "Counterparty"}</TableCell>
                           <TableCell key={3} className={classes.tableCell}>{(Math.abs(parseFloat(c.amount))).toFixed(5)}</TableCell>
-                          <TableCell key={4} className={classes.tableCell}>{c.asset.id.label}</TableCell>
+                          <TableCell key={4} className={classes.tableCell}>{c.asset.id.unpack}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -162,8 +162,8 @@ export const Instrument : React.FC = () => {
                           <TableCell key={1} className={classes.tableCellSmall}>{"=>"}</TableCell>
                           <TableCell key={2} className={classes.tableCellSmall}>{getName(effect.payload.provider)}</TableCell>
                           <TableCell key={3} className={classes.tableCellSmall}>{(Math.abs(parseFloat(c.amount))).toFixed(5)}</TableCell>
-                          <TableCell key={4} className={classes.tableCellSmall}>{c.unit.id.label}</TableCell>
-                          <TableCell key={5} className={classes.tableCellSmall}>{version(c.unit.id)}</TableCell>
+                          <TableCell key={4} className={classes.tableCellSmall}>{c.unit.id.unpack}</TableCell>
+                          <TableCell key={5} className={classes.tableCellSmall}>{version(c.unit)}</TableCell>
                         </TableRow>
                       ))}
                       {effect.payload.produced.map((c, i) => (
@@ -172,8 +172,8 @@ export const Instrument : React.FC = () => {
                           <TableCell key={1} className={classes.tableCellSmall}>{"=>"}</TableCell>
                           <TableCell key={2} className={classes.tableCellSmall}>Counterparty</TableCell>
                           <TableCell key={3} className={classes.tableCellSmall}>{(Math.abs(parseFloat(c.amount))).toFixed(5)}</TableCell>
-                          <TableCell key={4} className={classes.tableCellSmall}>{c.unit.id.label}</TableCell>
-                          <TableCell key={5} className={classes.tableCellSmall}>{version(c.unit.id)}</TableCell>
+                          <TableCell key={4} className={classes.tableCellSmall}>{c.unit.id.unpack}</TableCell>
+                          <TableCell key={5} className={classes.tableCellSmall}>{version(c.unit)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

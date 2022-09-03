@@ -3,12 +3,12 @@
 
 module Daml.Finance.App.Trading.Auto.Service where
 
-import Daml.Finance.Interface.Asset.Account qualified as Account (K)
-import Daml.Finance.Interface.Asset.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Asset.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Common.Types (Parties)
 import Daml.Finance.App.Trading.Model (Order, Side)
 import Daml.Finance.App.Trading.Service qualified as S (CancelOrder(..), CreateOrder(..), RequestCancelOrder(..), RequestCreateOrder(..), Service)
+import Daml.Finance.Interface.Holding.Account qualified as Account (K)
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
+import Daml.Finance.Interface.Types.Common (Parties)
 
 template Service
   with

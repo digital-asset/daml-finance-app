@@ -46,7 +46,7 @@ export const Auctions: React.FC = () => {
                     <TableCell key={0} className={classes.tableCell}>{c.payload.id}</TableCell>
                     <TableCell key={1} className={classes.tableCell}>{getName(c.payload.provider)}</TableCell>
                     <TableCell key={2} className={classes.tableCell}>{getName(c.payload.customer)}</TableCell>
-                    <TableCell key={3} className={classes.tableCell}>{c.payload.quantity.unit.id.label}</TableCell>
+                    <TableCell key={3} className={classes.tableCell}>{c.payload.quantity.unit.id.unpack}</TableCell>
                     <TableCell key={4} className={classes.tableCell}>{fmt(c.payload.quantity.amount)}</TableCell>
                     <TableCell key={5} className={classes.tableCell}>
                       <IconButton color="primary" size="small" component="span" onClick={() => navigate("/distribution/auction/" + c.contractId)}>
@@ -80,8 +80,8 @@ export const Auctions: React.FC = () => {
                     <TableCell key={0} className={classes.tableCell}>{c.payload.auctionId}</TableCell>
                     <TableCell key={1} className={classes.tableCell}>{getName(c.payload.provider)}</TableCell>
                     <TableCell key={2} className={classes.tableCell}>{getName(c.payload.customer)}</TableCell>
-                    <TableCell key={3} className={classes.tableCell}>{fmt(c.payload.details.quantity.amount)} {c.payload.details.quantity.unit.id.label}</TableCell>
-                    <TableCell key={4} className={classes.tableCell}>{fmt(c.payload.details.price.amount, 4)} {c.payload.details.price.unit.id.label}</TableCell>
+                    <TableCell key={3} className={classes.tableCell}>{fmt(c.payload.details.quantity.amount)} {c.payload.details.quantity.unit.id.unpack}</TableCell>
+                    <TableCell key={4} className={classes.tableCell}>{fmt(c.payload.details.price.amount, 4)} {c.payload.details.price.unit.id.unpack}</TableCell>
                     <TableCell key={5} className={classes.tableCell}>{getBidStatus(c.payload.status)}</TableCell>
                     <TableCell key={6} className={classes.tableCell}>{getBidAllocation(c.payload)}</TableCell>
                   </TableRow>

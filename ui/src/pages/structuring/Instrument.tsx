@@ -10,7 +10,7 @@ import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
 import { and, claimToNode } from "../../components/Claims/util";
-import { id } from "../../util";
+import { createKey, id } from "../../util";
 import { useInstruments } from "../../context/InstrumentsContext";
 import { useServices } from "../../context/ServicesContext";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Service";
@@ -30,7 +30,7 @@ export const Instrument : React.FC = () => {
     const setClaims = async () => {
       if (!!instrument && svc.structuring.length > 0) {
         const [res, ] = await ledger.exercise(Service.GetClaims, svc.structuring[0].contractId, { instrumentCid: instrument.contractId })
-        const claims = and(res.map(r => r.claim));
+        const claims = res.length > 1 ? and(res.map(r => r.claim)) : res[0].claim;
         setNode(claimToNode(claims));
       }
     }
@@ -42,7 +42,7 @@ export const Instrument : React.FC = () => {
   return (
     <Grid container direction="column" spacing={2}>
       <Grid item xs={12}>
-        <Typography variant="h4" className={classes.heading}>{id(instrument.payload.id)}</Typography>
+        <Typography variant="h4" className={classes.heading}>{id(createKey(instrument))}</Typography>
       </Grid>
       <Grid item xs={12}>
         <Grid container spacing={4}>

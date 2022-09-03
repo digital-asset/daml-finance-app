@@ -6,7 +6,7 @@ import { FormControl, Button, Grid, Paper, Typography, InputLabel, Select, MenuI
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { Instrument as Derivative } from "@daml.js/daml-finance-derivative/lib/Daml/Finance/Derivative/Instrument";
+import { Instrument as Derivative } from "@daml.js/daml-finance-instrument-generic/lib/Daml/Finance/Instrument/Generic/Instrument";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Service";
 import classnames from "classnames";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
@@ -50,7 +50,7 @@ export const Scenario : React.FC = () => {
   const { contracts: derivatives, loading: l1 } = useStreamQueries(Derivative);
   const { contracts: services, loading: l2 } = useStreamQueries(Service);
 
-  const asset = derivatives.find(c => c.payload.id.label === assetLabel);
+  const asset = derivatives.find(c => c.payload.id.unpack === assetLabel);
 
   useEffect(() => {
     if (!!asset) setNode(claimToNode(asset.payload.claims));
@@ -63,7 +63,7 @@ export const Scenario : React.FC = () => {
         const [und, ] = await ledger.exercise(Service.Underlying, services[0].contractId, { claims: asset.payload.claims });
         const [pay, ] = await ledger.exercise(Service.Payoffs, services[0].contractId, { claims: asset.payload.claims });
         const [fix, ] = await ledger.exercise(Service.Fixings, services[0].contractId, { claims: asset.payload.claims });
-        const undLabels = und.map(c => c.id.label);
+        const undLabels = und.map(c => c.id.unpack);
         const obsLabels = pay.flatMap(p => findObservables(p._1));
         setExpiry(exp || "");
         setUnderlyings(dedup(undLabels));
@@ -112,7 +112,7 @@ export const Scenario : React.FC = () => {
       const observable = await ledger.create(Observation, { provider: party, obsKey: observables[0], observations: prices, observers: emptyMap<any, any>() })
       const [ { _2: result }, ] = await ledger.exercise(Service.PreviewLifecycle, services[0].contractId, { today: expiry, observableCids: [observable.contractId], claims: asset.payload.claims });
       await ledger.archive(Observation, observable.contractId);
-      res.push({ fixing, payouts: result.map(r => ({ amount: parseFloat(r.amount), asset: r.asset.id.label })) });
+      res.push({ fixing, payouts: result.map(r => ({ amount: parseFloat(r.amount), asset: r.asset.id.unpack })) });
     }
     setSimulating(false);
     setResults(res);
@@ -131,7 +131,7 @@ export const Scenario : React.FC = () => {
             <FormControl className={classes.inputField} fullWidth>
               <InputLabel className={classes.selectLabel}>Asset</InputLabel>
               <Select variant="standard" className={classes.width90} value={assetLabel} onChange={e => setAssetLabel(e.target.value as string)} MenuProps={menuProps}>
-                {derivatives.map((c, i) => (<MenuItem key={i} value={c.payload.id.label}>{c.payload.id.label}</MenuItem>))}
+                {derivatives.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
               </Select>
             </FormControl>
           </Grid>

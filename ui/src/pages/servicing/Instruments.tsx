@@ -16,13 +16,12 @@ import KeyboardArrowRight from "@mui/icons-material/KeyboardArrowRight";
 import { useLedger, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { version } from "../../util";
 import { Button } from "@mui/material";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Service";
 import { DateClock, DateClockUpdateEvent } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefData/Time/DateClock";
 import { Observation } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefData/Observation";
 import { Effect } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/Effect";
-import { Instrument } from "@daml.js/daml-finance-derivative/lib/Daml/Finance/Derivative/Instrument";
+import { Instrument } from "@daml.js/daml-finance-instrument-generic/lib/Daml/Finance/Instrument/Generic/Instrument";
 import { useParties } from "../../context/PartiesContext";
 
 export const Instruments : React.FC = () => {
@@ -82,8 +81,8 @@ export const Instruments : React.FC = () => {
                     <TableRow key={i} className={classes.tableRow}>
                       <TableCell key={0} className={classes.tableCell}>{getName(c.payload.issuer)}</TableCell>
                       <TableCell key={1} className={classes.tableCell}>{getName(c.payload.depository)}</TableCell>
-                      <TableCell key={2} className={classes.tableCell}>{c.payload.id.label}</TableCell>
-                      <TableCell key={3} className={classes.tableCell}>{version(c.payload.id)}</TableCell>
+                      <TableCell key={2} className={classes.tableCell}>{c.payload.id.unpack}</TableCell>
+                      <TableCell key={3} className={classes.tableCell}>{c.payload.version}</TableCell>
                       <TableCell key={4} className={classes.tableCell}>
                         <IconButton color="primary" size="small" component="span" onClick={() => navigate(c.contractId)}>
                           <KeyboardArrowRight fontSize="small"/>

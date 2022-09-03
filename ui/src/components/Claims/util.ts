@@ -6,7 +6,7 @@ import { Claim, Inequality } from "@daml.js/contingent-claims/lib/ContingentClai
 import { Observation } from "@daml.js/contingent-claims/lib/ContingentClaims/Observation";
 import { Decimal, Time } from "@daml/types";
 import { ClaimTreeNode } from "./ClaimsTreeBuilder";
-import { InstrumentKey } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Types";
+import { InstrumentKey } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Common";
 
 export type MenuEntry = {
   id : string
@@ -269,14 +269,14 @@ export const createValue      = (type : string)         : ClaimTreeNode => ({ id
 export const createObservable = (value : string)        : ClaimTreeNode => ({ id: uuidv4(), tag: "Observable", type: "Value", children: [], value, text: value });
 export const createDecimal    = (value : string)        : ClaimTreeNode => ({ id: uuidv4(), tag: "Decimal",    type: "Value", children: [], value, text: value });
 export const createDate       = (value : string)        : ClaimTreeNode => ({ id: uuidv4(), tag: "Date",       type: "Value", children: [], value, text: value.substring(0, 10) });
-export const createAsset      = (value : InstrumentKey) : ClaimTreeNode => ({ id: uuidv4(), tag: "Asset",      type: "Value", children: [], value, text: value.id.label });
+export const createAsset      = (value : InstrumentKey) : ClaimTreeNode => ({ id: uuidv4(), tag: "Asset",      type: "Value", children: [], value, text: value.id.unpack });
 
 export const mapToText = (c : C) : Claim<Time, Decimal, string, string> => {
   switch (c.tag) {
     case "Zero":
       return c;
     case "One":
-      return { ...c, value: c.value.id.label };
+      return { ...c, value: c.value.id.unpack };
     case "Give":
       return { ...c, value: mapToText(c.value) };
     case "And":

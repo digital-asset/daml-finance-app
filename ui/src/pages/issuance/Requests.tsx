@@ -11,7 +11,7 @@ import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
 import { CreateIssuanceRequest, ReduceIssuanceRequest } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Model";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Service";
-import { Account } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Account";
+import { Account } from "@daml.js/daml-finance-holding/lib/Daml/Finance/Holding/Account";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
 
@@ -70,7 +70,7 @@ export const Requests : React.FC = () => {
                       <TableCell key={0} className={classes.tableCell}>{getName(c.payload.provider)}</TableCell>
                       <TableCell key={1} className={classes.tableCell}>{getName(c.payload.customer)}</TableCell>
                       <TableCell key={2} className={classes.tableCell}>{c.payload.id}</TableCell>
-                      <TableCell key={4} className={classes.tableCell}>{c.payload.quantity.unit.id.label}</TableCell>
+                      <TableCell key={4} className={classes.tableCell}>{c.payload.quantity.unit.id.unpack}</TableCell>
                       <TableCell key={5} className={classes.tableCell}>{c.payload.quantity.amount}</TableCell>
                       <TableCell key={6} className={classes.tableCell}>
                         {party === c.payload.provider && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => createIssuance(c)}>Issue</Button>}

@@ -43,7 +43,7 @@ export const Issuances : React.FC = () => {
                     <TableRow key={i} className={classes.tableRow}>
                       <TableCell key={1} className={classes.tableCell}>{getName(c.payload.customer)}</TableCell>
                       <TableCell key={2} className={classes.tableCell}>{c.payload.id}</TableCell>
-                      <TableCell key={4} className={classes.tableCell}>{c.payload.quantity.unit.id.label}</TableCell>
+                      <TableCell key={4} className={classes.tableCell}>{c.payload.quantity.unit.id.unpack}</TableCell>
                       <TableCell key={5} className={classes.tableCell}>{c.payload.quantity.amount}</TableCell>
                       <TableCell key={6} className={classes.tableCell}>
                         {/* {party === c.payload.client && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => requestDelisting(c)}>Delist</Button>} */}

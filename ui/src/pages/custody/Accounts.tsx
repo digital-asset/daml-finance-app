@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableRow, TableHead, Grid, Paper, Typograp
 import { useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { Account } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Account";
+import { Account } from "@daml.js/daml-finance-holding/lib/Daml/Finance/Holding/Account";
 import { useParties } from "../../context/PartiesContext";
 
 export const Accounts : React.FC = () => {

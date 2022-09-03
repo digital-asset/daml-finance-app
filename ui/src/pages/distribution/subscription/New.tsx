@@ -9,16 +9,16 @@ import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Typography, Grid, Paper, Select, MenuItem, TextField, Button, MenuProps, FormControl, InputLabel, IconButton, Box } from "@mui/material";
 import useStyles from "../../styles";
 import { claimToNode } from "../../../components/Claims/util";
-import { Fungible } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Fungible";
+import { Fungible } from "@daml.js/daml-finance-holding/lib/Daml/Finance/Holding/Fungible";
 import { CreateOffering, Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Service";
 import { Service as B2BService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/BackToBack/Service";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
-import { Instrument as Derivative } from "@daml.js/daml-finance-derivative/lib/Daml/Finance/Derivative/Instrument";
-import { Instrument } from "@daml.js/daml-finance-asset/lib/Daml/Finance/Asset/Instrument";
+import { Instrument as Derivative } from "@daml.js/daml-finance-instrument-generic/lib/Daml/Finance/Instrument/Generic/Instrument";
+import { Instrument } from "@daml.js/daml-finance-instrument-base/lib/Daml/Finance/Instrument/Base/Instrument";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../../components/Claims/ClaimsTreeBuilder";
-import { Reference as AccountReference } from "@daml.js/daml-finance-interface-asset/lib/Daml/Finance/Interface/Asset/Account";
-import { createKeyBase, createKeyDerivative, getHolding } from "../../../util";
+import { Reference as AccountReference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
+import { createKey, getHolding } from "../../../util";
 import { BackToBack } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Model";
 
 export const New : React.FC = () => {
@@ -47,11 +47,11 @@ export const New : React.FC = () => {
   const myB2BServices = b2bServices.filter(s => s.payload.customer === party);
   const hasB2B = b2bServices.length > 0;
 
-  const soldInst = derivatives.find(c => c.payload.id.label === offeredInstLabel);
-  const priceInst = instruments.find(c => c.payload.id.label === priceInstLabel);
+  const soldInst = derivatives.find(c => c.payload.id.unpack === offeredInstLabel);
+  const priceInst = instruments.find(c => c.payload.id.unpack === priceInstLabel);
   const myHoldings = holdings.filter(c => c.payload.account.owner === party);
-  const myHoldingLabels = myHoldings.map(c => c.payload.instrument.id.label).filter((v, i, a) => a.indexOf(v) === i);
-  const baseKeys = instruments.map(c => ({ depository: c.payload.depository, issuer: c.payload.issuer, id: c.payload.id}));
+  const myHoldingLabels = myHoldings.map(c => c.payload.instrument.id.unpack).filter((v, i, a) => a.indexOf(v) === i);
+  const baseKeys = instruments.map(createKey);
   const canRequest = !!offeredInstLabel && !!soldInst && !!priceInstLabel && !!priceInst && !!amount && !!price;
 
   useEffect(() => {
@@ -63,11 +63,11 @@ export const New : React.FC = () => {
 
   const createOffering = async () => {
     const holding = myHoldings
-      .filter(c => c.payload.instrument.id.label === offeredInstLabel)
+      .filter(c => c.payload.instrument.id.unpack === offeredInstLabel)
       .find(c => parseFloat(c.payload.amount) >= parseFloat(amount));
     if (!soldInst || !priceInst || !holding) return;
     const customerAccount = accounts.find(c => c.payload.accountView.custodian === priceInst.payload.depository && c.payload.accountView.owner === party)?.key;
-    const holdingCid = await getHolding(ledger, myHoldings, parseFloat(amount), createKeyDerivative(soldInst));
+    const holdingCid = await getHolding(ledger, myHoldings, parseFloat(amount), createKey(soldInst));
     if (!customerAccount) return;
     if (hasB2B) {
       const notional = parseFloat(amount) * parseFloat(price);
@@ -76,8 +76,8 @@ export const New : React.FC = () => {
       const b2bHoldings = holdings.filter(c => c.payload.account.owner === b2b);
       const issuerReceivableAccount = accounts.find(c => c.payload.accountView.custodian === b2b && c.payload.accountView.owner === party)?.key;
       if (!b2bReceivableAccount || !issuerReceivableAccount) return;
-      const b2bDeliverableCid = await getHolding(ledger, b2bHoldings, parseFloat(amount), createKeyDerivative(soldInst));
-      const issuerDeliverableCid = await getHolding(ledger, myHoldings, notional, createKeyBase(priceInst));
+      const b2bDeliverableCid = await getHolding(ledger, b2bHoldings, parseFloat(amount), createKey(soldInst));
+      const issuerDeliverableCid = await getHolding(ledger, myHoldings, notional, createKey(priceInst));
       const offeringId = uuidv4();
       const backToBack : BackToBack = {
         party: b2b,
@@ -89,8 +89,8 @@ export const New : React.FC = () => {
       };
       const arg : CreateOffering = {
         offeringId,
-        asset: { amount: amount, unit: { depository: soldInst.payload.depository, issuer: soldInst.payload.issuer, id: soldInst.payload.id} },
-        price: { amount: price, unit: { depository: priceInst.payload.depository, issuer: priceInst.payload.issuer, id: priceInst.payload.id} },
+        asset: { amount: amount, unit: createKey(soldInst) },
+        price: { amount: price, unit: createKey(priceInst) },
         customerHoldingCid: holdingCid,
         customerAccount,
         backToBack
@@ -99,8 +99,8 @@ export const New : React.FC = () => {
     } else {
       const arg : CreateOffering = {
         offeringId: uuidv4(),
-        asset: { amount: amount, unit: { depository: soldInst.payload.depository, issuer: soldInst.payload.issuer, id: soldInst.payload.id} },
-        price: { amount: price, unit: { depository: priceInst.payload.depository, issuer: priceInst.payload.issuer, id: priceInst.payload.id} },
+        asset: { amount: amount, unit: createKey(soldInst) },
+        price: { amount: price, unit: createKey(priceInst) },
         customerHoldingCid: holdingCid,
         customerAccount,
         backToBack: null
@@ -140,7 +140,7 @@ export const New : React.FC = () => {
                     <Box>
                       <InputLabel className={classes.selectLabel}>Currency</InputLabel>
                       <Select fullWidth value={priceInstLabel} onChange={e => setPriceInstLabel(e.target.value as string)} MenuProps={menuProps}>
-                        {baseKeys.filter(k => k.id.label !== offeredInstLabel).map((k, i) => (<MenuItem key={i} value={k.id.label}>{k.id.label}</MenuItem>))}
+                        {baseKeys.filter(k => k.id.unpack !== offeredInstLabel).map((k, i) => (<MenuItem key={i} value={k.id.unpack}>{k.id.unpack}</MenuItem>))}
                       </Select>
                     </Box>
                   </FormControl>

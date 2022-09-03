@@ -3,6 +3,7 @@
 
 import { Service as AutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Auto/Service";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Service";
+import { CreateEvent } from "@daml/ledger";
 import { useLedger, useParty } from "@daml/react";
 import { Box, Button, FormControl, Grid, InputLabel, MenuItem, MenuProps, Paper, Select, TextField, Typography } from "@mui/material";
 import classnames from "classnames";
@@ -12,7 +13,7 @@ import { Spinner } from "../../components/Spinner/Spinner";
 import { useInstruments } from "../../context/InstrumentsContext";
 import { useParties } from "../../context/PartiesContext";
 import { useServices } from "../../context/ServicesContext";
-import { createInstrumentKey, createSet } from "../../util";
+import { createKey, createSet } from "../../util";
 import useStyles from "../styles";
 
 export const New : React.FC = () => {
@@ -27,29 +28,13 @@ export const New : React.FC = () => {
   const ledger = useLedger();
   const party = useParty();
   const inst = useInstruments();
-
   const svc = useServices();
+
   const myListingServices = svc.listing.filter(s => s.payload.customer === party);
   const myAutoListingServices = svc.listingAuto.filter(s => s.payload.customer === party);
-
-  const tradableInstruments =
-    inst.generics.map(createInstrumentKey)
-      .concat(
-        inst.fixedRateBonds.map(createInstrumentKey)
-      )
-      .concat(
-        inst.floatingRateBonds.map(createInstrumentKey)
-      )
-      .concat(
-        inst.inflationLinkedBonds.map(createInstrumentKey)
-      )
-      .concat(
-        inst.zeroCouponBonds.map(createInstrumentKey)
-      )
-
-  const tradedInstrument = tradableInstruments.find(k => k.id.label === tradedInstrumentLabel);
-  const quotedInstrument = inst.tokens.find(c => c.payload.id.label === quotedInstrumentLabel);
-
+  const tradableInstruments : CreateEvent<any>[] = Array.prototype.concat.apply([], [inst.generics, inst.fixedRateBonds, inst.floatingRateBonds, inst.inflationLinkedBonds, inst.zeroCouponBonds]);
+  const tradedInstrument = tradableInstruments.find(c => c.payload.id.unpack === tradedInstrumentLabel);
+  const quotedInstrument = inst.tokens.find(c => c.payload.id.unpack === quotedInstrumentLabel);
   const canRequest = !!tradedInstrumentLabel && !!tradedInstrument && !!quotedInstrumentLabel && !!quotedInstrument && !!id;
 
   if (inst.loading || svc.loading) return (<Spinner />);
@@ -59,8 +44,8 @@ export const New : React.FC = () => {
     if (!tradedInstrument || !quotedInstrument) return;
     const arg = {
       id,
-      tradedInstrument: tradedInstrument,
-      quotedInstrument: createInstrumentKey(quotedInstrument),
+      tradedInstrument: createKey(tradedInstrument),
+      quotedInstrument: createKey(quotedInstrument),
       observers : createSet([ getParty("Public") ])
     };
     if (myAutoListingServices.length > 0) {
@@ -89,7 +74,7 @@ export const New : React.FC = () => {
                     <Box className={classes.fullWidth}>
                       <InputLabel className={classes.selectLabel}>Traded Asset</InputLabel>
                       <Select variant="standard" className={classes.width90} value={tradedInstrumentLabel} onChange={e => setTradedAssetLabel(e.target.value as string)} MenuProps={menuProps}>
-                        {tradableInstruments.filter(c => c.id.label !== quotedInstrumentLabel).map((c, i) => (<MenuItem key={i} value={c.id.label}>{c.id.label}</MenuItem>))}
+                        {tradableInstruments.filter(c => c.payload.id.unpack !== quotedInstrumentLabel).map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
                       </Select>
                     </Box>
                   </FormControl>
@@ -97,7 +82,7 @@ export const New : React.FC = () => {
                     <Box className={classes.fullWidth}>
                       <InputLabel className={classes.selectLabel}>Quoted Asset</InputLabel>
                       <Select variant="standard" fullWidth value={quotedInstrumentLabel} onChange={e => setQuotedAssetLabel(e.target.value as string)} MenuProps={menuProps}>
-                        {inst.tokens.filter(c => c.payload.id.label !== tradedInstrumentLabel).map((c, i) => (<MenuItem key={i} value={c.payload.id.label}>{c.payload.id.label}</MenuItem>))}
+                        {inst.tokens.filter(c => c.payload.id.unpack !== tradedInstrumentLabel).map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
                       </Select>
                     </Box>
                   </FormControl>

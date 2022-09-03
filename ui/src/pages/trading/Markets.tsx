@@ -44,8 +44,8 @@ export const Markets : React.FC = () => {
                       <TableCell key={0} className={classes.tableCell}>{getName(c.payload.provider)}</TableCell>
                       <TableCell key={1} className={classes.tableCell}>{getName(c.payload.customer)}</TableCell>
                       <TableCell key={2} className={classes.tableCell}>{c.payload.id}</TableCell>
-                      <TableCell key={3} className={classes.tableCell}>{c.payload.tradedInstrument.id.label}</TableCell>
-                      <TableCell key={4} className={classes.tableCell}>{c.payload.quotedInstrument.id.label}</TableCell>
+                      <TableCell key={3} className={classes.tableCell}>{c.payload.tradedInstrument.id.unpack}</TableCell>
+                      <TableCell key={4} className={classes.tableCell}>{c.payload.quotedInstrument.id.unpack}</TableCell>
                       <TableCell key={5} className={classes.tableCell}>
                         <IconButton color="primary" size="small" component="span" onClick={() => navigate("/trading/markets/" + c.contractId)}>
                           <KeyboardArrowRight fontSize="small"/>
