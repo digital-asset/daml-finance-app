@@ -17,6 +17,7 @@ import { Reference as AccountReference } from "@daml.js/daml-finance-interface-h
 import { fmt, getHolding } from "../../../util";
 import { Message } from "../../../components/Message/Message";
 import { useParties } from "../../../context/PartiesContext";
+import { useServices } from "../../../context/ServicesContext";
 
 export const Offering : React.FC = () => {
   const classes = useStyles();
@@ -29,21 +30,21 @@ export const Offering : React.FC = () => {
   const { getName } = useParties();
   const party = useParty();
   const ledger = useLedger();
+  const svc = useServices();
 
-  const { contracts: services, loading: l1 } = useStreamQueries(Service);
-  const { contracts: offerings, loading: l2 } = useStreamQueries(OfferingContract);
-  const { contracts: allSubscriptions, loading: l3 } = useStreamQueries(Subscription);
-  const { contracts: factories, loading: l4 } = useStreamQueries(Factory);
-  const { contracts: holdings, loading: l5 } = useStreamQueries(Fungible);
-  const { contracts: accounts, loading: l6 } = useStreamQueries(AccountReference);
+  const { contracts: offerings, loading: l1 } = useStreamQueries(OfferingContract);
+  const { contracts: allSubscriptions, loading: l2 } = useStreamQueries(Subscription);
+  const { contracts: factories, loading: l3 } = useStreamQueries(Factory);
+  const { contracts: holdings, loading: l4 } = useStreamQueries(Fungible);
+  const { contracts: accounts, loading: l5 } = useStreamQueries(AccountReference);
 
   const offering = offerings.find(c => c.contractId === cid);
 
-  if (l1 || l2 || l3 || l4 || l5 || l6) return (<Spinner />);
+  if (l1 || l2 || l3 || l4 || l5 || svc.loading) return (<Spinner />);
   if (!contractId) return <Message text="No contract id provided" />
   if (!offering) return <Message text="Subscription not found" />
 
-  const providerServices = services.filter(s => s.payload.provider === party);
+  const providerServices = svc.subscription.filter(s => s.payload.provider === party);
   const isProvider = providerServices.length > 0;
   const service = providerServices[0];
   const myHoldings = holdings.filter(c => c.payload.account.owner === party);

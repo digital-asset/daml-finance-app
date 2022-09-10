@@ -283,7 +283,7 @@ buyWriteNote issueDate endDate maturityDate und ccy couponRatePerAnnum denominat
     firstRegularPeriodStartDate = Some $ date iy im (monthDayCount iy im)
     lastRegularPeriodEndDate = Some $ date py pm pd
     refAssetRatio = 1.0
-    dayAdjustment = FOLLOWING
+    dayAdjustment = Following
 
     calendar = HolidayCalendarData with
         id = "dummy"
@@ -309,7 +309,7 @@ buyWriteNote issueDate endDate maturityDate und ccy couponRatePerAnnum denominat
 
     -- Coupon payments (accrual is happening on adjusted dates, should confirm if this is correct)
     paymentDates = map (\period -> period.adjustedEndDate) rolledSchedule
-    dcfs = map (\period -> calcDcf Basis_30360 period.adjustedStartDate period.adjustedEndDate) rolledSchedule
+    dcfs = map (\period -> calcDcf Basis30360 period.adjustedStartDate period.adjustedEndDate) rolledSchedule
 
     mapper paymentDate dcf =
       when (at $ t paymentDate) $

@@ -21,23 +21,24 @@ import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycl
 import { DateClock, DateClockUpdateEvent } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefData/Time/DateClock";
 import { Observation } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefData/Observation";
 import { Effect } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/Effect";
-import { Instrument } from "@daml.js/daml-finance-instrument-generic/lib/Daml/Finance/Instrument/Generic/Instrument";
 import { useParties } from "../../context/PartiesContext";
+import { useServices } from "../../context/ServicesContext";
+import { useInstruments } from "../../context/InstrumentsContext";
 
 export const Instruments : React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
-
   const { getName } = useParties();
   const ledger = useLedger();
-  const { contracts: instruments, loading: l1 } = useStreamQueries(Instrument);
-  const { contracts: services, loading: l2 } = useStreamQueries(Service);
-  const { contracts: observations, loading: l3 } = useStreamQueries(Observation);
-  const { contracts: effects, loading: l4 } = useStreamQueries(Effect);
-  const { contracts: events, loading: l5 } = useStreamQueries(DateClockUpdateEvent);
-  const { contracts: clocks, loading: l6 } = useStreamQueries(DateClock);
+  const svc = useServices();
+  const inst = useInstruments();
 
-  if (l1 || l2 || l3 || l4 || l5 || l6) return (<Spinner />);
+  const { contracts: observations, loading: l1 } = useStreamQueries(Observation);
+  const { contracts: effects, loading: l2 } = useStreamQueries(Effect);
+  const { contracts: events, loading: l3 } = useStreamQueries(DateClockUpdateEvent);
+  const { contracts: clocks, loading: l4 } = useStreamQueries(DateClock);
+
+  if (l1 || l2 || l3 || l4 || svc.loading || inst.loading) return (<Spinner />);
 
   const lifecycleAll = async () => {
     const lifecycle = async (lifecyclableCid : any) => {
@@ -49,9 +50,9 @@ export const Instruments : React.FC = () => {
         observableCids,
         lifecyclableCid
       }
-      await ledger.exercise(Service.Lifecycle, services[0].contractId, arg);
+      await ledger.exercise(Service.Lifecycle, svc.lifecycle[0].contractId, arg);
     }
-    await Promise.all(instruments.map(i => lifecycle(i.contractId)));
+    await Promise.all(inst.generics.map(i => lifecycle(i.contractId)));
     navigate("/servicing/effects");
   };
 
@@ -77,7 +78,7 @@ export const Instruments : React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {instruments.map((c, i) => (
+                  {inst.generics.map((c, i) => (
                     <TableRow key={i} className={classes.tableRow}>
                       <TableCell key={0} className={classes.tableCell}>{getName(c.payload.issuer)}</TableCell>
                       <TableCell key={1} className={classes.tableCell}>{getName(c.payload.depository)}</TableCell>

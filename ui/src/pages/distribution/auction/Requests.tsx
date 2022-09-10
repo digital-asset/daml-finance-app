@@ -12,6 +12,7 @@ import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribu
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { fmt } from "../../../util";
 import { useParties } from "../../../context/PartiesContext";
+import { useServices } from "../../../context/ServicesContext";
 
 export const Requests : React.FC = () => {
   const classes = useStyles();
@@ -19,12 +20,12 @@ export const Requests : React.FC = () => {
   const { getName } = useParties();
   const party = useParty();
   const ledger = useLedger();
+  const svc = useServices();
 
   const { contracts: requests, loading: l1 } = useStreamQueries(CreateAuctionRequest);
-  const { contracts: services, loading: l2 } = useStreamQueries(Service);
-  if (l1 || l2) return (<Spinner />);
+  if (l1 || svc.loading) return (<Spinner />);
 
-  const providerServices = services.filter(s => s.payload.provider === party);
+  const providerServices = svc.auction.filter(s => s.payload.provider === party);
 
   const createAuction = async (c : CreateEvent<CreateAuctionRequest>) => {
     const service = providerServices.find(s => s.payload.customer === c.payload.customer);

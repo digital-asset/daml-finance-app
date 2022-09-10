@@ -20,6 +20,8 @@ import { Percentage } from "../../components/Slider/Percentage";
 import { Fungible } from "@daml.js/daml-finance-holding/lib/Daml/Finance/Holding/Fungible";
 import { Reference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
 import { useParties } from "../../context/PartiesContext";
+import { useServices } from "../../context/ServicesContext";
+import { Message } from "../../components/Message/Message";
 
 export const Market : React.FC = () => {
   const classes = useStyles();
@@ -62,26 +64,25 @@ export const Market : React.FC = () => {
   const { getParty } = useParties();
   const party = useParty();
   const ledger = useLedger();
+  const svc = useServices();
 
-  const { contracts: services, loading: l1 } = useStreamQueries(Service);
-  const { contracts: autoServices, loading: l2 } = useStreamQueries(AutoService);
-  const { contracts: listings, loading: l3 } = useStreamQueries(ListingContract);
-  const { contracts: holdings, loading: l4 } = useStreamQueries(Fungible);
-  const { contracts: accounts, loading: l5 } = useStreamQueries(Reference);
-  const { contracts: orders, loading: l6 } = useStreamQueries(Order);
+  const { contracts: listings, loading: l1 } = useStreamQueries(ListingContract);
+  const { contracts: holdings, loading: l2 } = useStreamQueries(Fungible);
+  const { contracts: accounts, loading: l3 } = useStreamQueries(Reference);
+  const { contracts: orders, loading: l4 } = useStreamQueries(Order);
   const { contractId } = useParams<any>();
 
-  if (l1 || l2 || l3 || l4 || l5 || l6) return (<Spinner />);
+  if (l1 || l2 || l3 || l4 || svc.loading) return (<Spinner />);
 
-  if (!contractId) return (<div style={{display: 'flex', justifyContent: 'center', marginTop: 350 }}><h1>No contract id provided</h1></div>);
+  if (!contractId) return <Message text="No contract id provided" />;
   const cid = contractId.replace("_", "#");
 
-  const myServices = services.filter(s => s.payload.customer === party);
-  const myAutoServices = autoServices.filter(s => s.payload.customer === party);
+  const myServices = svc.trading.filter(s => s.payload.customer === party);
+  const myAutoServices = svc.tradingAuto.filter(s => s.payload.customer === party);
   const listing = listings.find(c => c.contractId === cid);
 
-  if (myServices.length === 0) return (<div style={{display: 'flex', justifyContent: 'center', marginTop: 350 }}><h1>No trading service found</h1></div>);
-  if (!listing) return (<div style={{display: 'flex', justifyContent: 'center', marginTop: 350 }}><h1>Listing not found</h1></div>);
+  if (myServices.length === 0) return <Message text="No trading service found" />;
+  if (!listing) return <Message text="Listing not found" />;
 
   const limits = orders.filter(c => c.payload.listingId === listing.payload.id && parseFloat(c.payload.quantity.amount) !== 0);
   const bids = limits.filter(c => c.payload.side === Side.Buy).sort((a, b) => parseFloat(b.payload.price.amount) - parseFloat(a.payload.price.amount));
@@ -106,9 +107,10 @@ export const Market : React.FC = () => {
 
   const requestCreateOrder = async () => {
     const collateralCid = isBuy ? await getAsset(quotedHoldings, price * amount) : await getAsset(tradedHoldings, amount);
-    const account = accounts.find(c => c.payload.accountView.custodian === listing.payload.tradedInstrument.depository);
+    const account = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === (isBuy ? listing.payload.tradedInstrument : listing.payload.quotedInstrument).depository);
     const orderCids = isBuy ? asks.map(c => c.contractId) : bids.map(c => c.contractId);
     if (!collateralCid || !account) return;
+    console.log(account);
     const arg = {
       id: uuidv4(),
       listingId: listing.payload.id,

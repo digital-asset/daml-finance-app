@@ -11,6 +11,7 @@ import { Service as AutoService } from "@daml.js/daml-finance-app/lib/Daml/Finan
 import { Listing } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Model";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
+import { useServices } from "../../context/ServicesContext";
 
 export const Listings : React.FC = () => {
   const classes = useStyles();
@@ -18,14 +19,13 @@ export const Listings : React.FC = () => {
   const party = useParty();
   const ledger = useLedger();
   const { getName } = useParties();
+  const svc = useServices();
 
-  const { contracts: services, loading: l1 } = useStreamQueries(Service);
-  const { contracts: autoServices, loading: l2 } = useStreamQueries(AutoService);
-  const { contracts: listings, loading: l3 } = useStreamQueries(Listing);
-  if (l1 || l2 || l3) return (<Spinner />);
+  const { contracts: listings, loading: l1 } = useStreamQueries(Listing);
+  if (l1 || svc.loading) return (<Spinner />);
 
-  const myServices = services.filter(s => s.payload.customer === party);
-  const myAutoServices = autoServices.filter(s => s.payload.customer === party);
+  const myServices = svc.listing.filter(s => s.payload.customer === party);
+  const myAutoServices = svc.listingAuto.filter(s => s.payload.customer === party);
 
   const requestDeleteDelisting = async (c : CreateEvent<Listing>) => {
     if (myServices.length === 0) return; // TODO: Display error

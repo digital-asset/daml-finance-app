@@ -21,6 +21,7 @@ import { useServices } from "../../../context/ServicesContext";
 import { Service as Structuring } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Service";
 import { Service as Auction } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Service";
 import { Service as AuctionAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Auto/Service";
+import { Message } from "../../../components/Message/Message";
 
 export const New : React.FC = () => {
   const classes = useStyles();
@@ -65,8 +66,8 @@ export const New : React.FC = () => {
     setClaims();
   }, [instrument, ledger, svc]);
 
-  if (inst.loading || l1 || l2) return (<Spinner />);
-  if (myServices.length === 0) return (<div style={{display: 'flex', justifyContent: 'center', marginTop: 350 }}><h1>No auction service found for customer: {party}</h1></div>);
+  if (svc.loading || inst.loading || l1 || l2) return (<Spinner />);
+  if (myServices.length === 0) return <Message text={"No auction service found for customer: " + party} />;
 
   const requestCreateAuction = async () => {
     if (!instrument || !currency) return;

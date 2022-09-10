@@ -160,8 +160,12 @@ run  = do
       pure ()
     doTrade = do
       list operator exchange issuer "SWAP/USD" swp usd $ singleton public
-      createAskOrder operator exchange issuer public "1" (Instrument.qty 5_000_000.0 swp) (Instrument.qty 1.0 usd) $ singleton public
-      createBidOrder operator exchange alice  public "2" (Instrument.qty 500_000.0 swp)   (Instrument.qty 1.0 usd) $ singleton public
+      createAskOrder operator exchange issuer public "1" (Instrument.qty 250_000.0 swp) (Instrument.qty 0.80 usd) $ singleton public
+      createAskOrder operator exchange issuer public "2" (Instrument.qty 250_000.0 swp) (Instrument.qty 0.90 usd) $ singleton public
+      createBidOrder operator exchange alice  public "3" (Instrument.qty 500_000.0 swp) (Instrument.qty 0.90 usd) $ singleton public
+      -- createAskOrder operator exchange issuer public "1" (Instrument.qty 250_000.0 swp) (Instrument.qty 0.80 usd) $ singleton public
+      -- createAskOrder operator exchange issuer public "2" (Instrument.qty 250_000.0 swp) (Instrument.qty 0.90 usd) $ singleton public
+      -- createBidOrder operator exchange alice  public "3" (Instrument.qty 500_000.0 swp) (Instrument.qty 0.90 usd) $ singleton public
 
   -- doAuction
   -- doTrade

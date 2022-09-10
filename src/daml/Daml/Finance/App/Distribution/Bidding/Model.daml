@@ -8,6 +8,7 @@ import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..), I)
+import Daml.Finance.Interface.Settlement.Types qualified as T (Allocation(Pledge), Approval(TakeDelivery))
 
 data Details = Details with
     quantity : Instrument.Q
@@ -84,7 +85,7 @@ template Bid
         account : Account.K
       controller provider
       do
-        exercise instructionCid Instruction.Approve with receiverAccount = account
+        exercise instructionCid Instruction.Approve with approval = T.TakeDelivery account
 
     nonconsuming choice AllocateInstruction : ContractId Instruction.I
       with
@@ -92,4 +93,4 @@ template Bid
         transferableCid : ContractId Transferable.I
       controller provider
       do
-        exercise instructionCid Instruction.Allocate with transferableCid
+        exercise instructionCid Instruction.Allocate with allocation = T.Pledge transferableCid

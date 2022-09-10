@@ -13,7 +13,7 @@ import Daml.Finance.Interface.Holding.Util (getAmount, getInstrument)
 import Daml.Finance.Interface.Settlement.Factory (Factory, Instruct(..))
 import Daml.Finance.Interface.Settlement.Instruction (Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Batch (Batch)
-import Daml.Finance.Interface.Settlement.Types (Step(..))
+import Daml.Finance.Interface.Settlement.Types (Allocation(Pledge), Approval(TakeDelivery), Step(..))
 import Daml.Finance.Interface.Types.Common (Id(..))
 
 -- | Takes a list and splits it based off a predicate.
@@ -76,9 +76,9 @@ generateSettlementInstruction settlementFactoryCid settler issuerAccount (Some i
     id = bid.auctionId <> "-" <> partyToText buyer
 
   (batchCid, [deliveryCid, paymentCid]) <- exercise settlementFactoryCid Instruct with instructors = singleton settler; settler; id = Id id ; steps = [delivery, payment]; description = "Settlement of auction " <> id
-  deliveryCid <- exercise deliveryCid Allocate with transferableCid = toInterfaceContractId allocatedDepositCid
+  deliveryCid <- exercise deliveryCid Allocate with allocation = Pledge $ toInterfaceContractId allocatedDepositCid
   exercise bidCid Bidding.ApproveInstruction with instructionCid = deliveryCid; account = bid.receivableAccount
   paymentCid <- exercise bidCid Bidding.AllocateInstruction with instructionCid = paymentCid; transferableCid = toInterfaceContractId bidDepositCid
-  exercise paymentCid Approve with receiverAccount = issuerAccount
+  exercise paymentCid Approve with approval = TakeDelivery issuerAccount
 
   pure (splitResult.rest, batchCid :: batchCids)
