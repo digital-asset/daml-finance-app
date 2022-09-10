@@ -12,7 +12,6 @@ import { RequestAndCreateZeroCouponBond, Service } from "@daml.js/daml-finance-a
 import { DatePicker } from "@mui/lab";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { Message } from "../../../components/Message/Message";
-import { Instrument } from "@daml.js/daml-finance-instrument-base/lib/Daml/Finance/Instrument/Base/Instrument";
 import { emptyMap } from "@daml/types";
 import { useParties } from "../../../context/PartiesContext";
 import { useInstruments } from "../../../context/InstrumentsContext";
