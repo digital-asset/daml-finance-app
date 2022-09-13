@@ -5,19 +5,20 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Typography, Grid, Paper, Select, MenuItem, TextField, Button, MenuProps, FormControl, InputLabel, ToggleButtonGroup, ToggleButton, TextFieldProps } from "@mui/material";
 import classnames from "classnames";
-import { useLedger, useParty, useStreamQueries } from "@daml/react";
+import { useLedger, useParty } from "@daml/react";
 import useStyles from "../../styles";
 import { createKey, parseDate, singleton } from "../../../util";
 import { RequestAndCreateFixedRateBond, Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service";
 import { DatePicker } from "@mui/lab";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { Message } from "../../../components/Message/Message";
-import { Instrument } from "@daml.js/daml-finance-instrument-base/lib/Daml/Finance/Instrument/Base/Instrument";
 import { PeriodEnum } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Date/RollConvention";
 import { emptyMap } from "@daml/types";
 import { DayCountConventionEnum } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Date/DayCount";
 import { BusinessDayConventionEnum } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Date/Calendar";
 import { useParties } from "../../../context/PartiesContext";
+import { useInstruments } from "../../../context/InstrumentsContext";
+import { useServices } from "../../../context/ServicesContext";
 
 export const NewFixedRateBond : React.FC = () => {
   const classes = useStyles();
@@ -39,15 +40,14 @@ export const NewFixedRateBond : React.FC = () => {
   const ledger = useLedger();
   const party = useParty();
   const { getParty } = useParties();
+  const svc = useServices();
+  const inst = useInstruments();
 
-  const { contracts: services, loading: l1 } = useStreamQueries(Service);
-  const { contracts: instruments, loading: l2 } = useStreamQueries(Instrument);
-
-  if (l1 || l2) return <Spinner />;
-  if (services.length === 0) return <Message text="No structuring service found" />
+  if (svc.loading || inst.loading) return <Spinner />;
+  if (svc.structuringAuto.length === 0) return <Message text="No structuring service found" />
 
   const createFixedRateBond = async () => {
-    const ccy = instruments.find(c => c.payload.id.unpack === currency);
+    const ccy = inst.tokens.find(c => c.payload.id.unpack === currency);
     if (!ccy) throw new Error("Couldn't find currency " + currency);
     const couponPeriod = couponFrequency === "Annual" ? PeriodEnum.Y : PeriodEnum.M;
     const couponPeriodMultiplier = couponFrequency === "Annual" ? "1" : (couponFrequency === "Semi-annual" ? "6" : "3");
@@ -67,7 +67,7 @@ export const NewFixedRateBond : React.FC = () => {
       observers: emptyMap<string, any>().set("Public", singleton(singleton(getParty("Public")))),
       lastEventTimestamp: new Date().toISOString()
     }
-    await ledger.exercise(Service.RequestAndCreateFixedRateBond, services[0].contractId, arg);
+    await ledger.exercise(Service.RequestAndCreateFixedRateBond, svc.structuringAuto[0].contractId, arg);
     navigate("/structuring/instruments");
   };
 
@@ -89,7 +89,7 @@ export const NewFixedRateBond : React.FC = () => {
                   <FormControl className={classes.inputField} fullWidth>
                     <InputLabel className={classes.selectLabel}>Currency</InputLabel>
                     <Select value={currency} onChange={e => setCurrency(e.target.value as string)} MenuProps={menuProps}>
-                      {instruments.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
+                      {inst.tokens.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
                     </Select>
                   </FormControl>
                   <DatePicker className={classes.inputField} inputFormat="yyyy-MM-dd" label="Issue Date" value={issueDate} onChange={setIssueDate} renderInput={(props : TextFieldProps) => <TextField {...props} fullWidth />} />
@@ -104,21 +104,21 @@ export const NewFixedRateBond : React.FC = () => {
                     <InputLabel className={classes.selectLabel}>Day Count Convention</InputLabel>
                     <Select value={dayCountConvention} onChange={e => setDayCountConvention(e.target.value as string)} MenuProps={menuProps}>
                       <MenuItem key={0} value={"Act360"}>{"Act/360"}</MenuItem>
-                      <MenuItem key={1} value={"Act365_Fixed"}>{"Act/365 (Fixed)"}</MenuItem>
-                      <MenuItem key={2} value={"Basis_30360"}>{"Basis 30/360"}</MenuItem>
-                      <MenuItem key={3} value={"Basis_30360_ICMA"}>{"Basis 30/360 (ICMA)"}</MenuItem>
-                      <MenuItem key={4} value={"Basis_30E360"}>{"Basis 30E/360"}</MenuItem>
-                      <MenuItem key={5} value={"Basis_30E3360"}>{"Basis 30E3/360"}</MenuItem>
+                      <MenuItem key={1} value={"Act365Fixed"}>{"Act/365 (Fixed)"}</MenuItem>
+                      <MenuItem key={2} value={"Basis30360"}>{"Basis 30/360"}</MenuItem>
+                      <MenuItem key={3} value={"Basis30360ICMA"}>{"Basis 30/360 (ICMA)"}</MenuItem>
+                      <MenuItem key={4} value={"Basis30E360"}>{"Basis 30E/360"}</MenuItem>
+                      <MenuItem key={5} value={"Basis30E3360"}>{"Basis 30E3/360"}</MenuItem>
                     </Select>
                   </FormControl>
                   <FormControl className={classes.inputField} fullWidth>
                     <InputLabel className={classes.selectLabel}>Business Day Adjustment</InputLabel>
                     <Select value={businessDayConvention} onChange={e => setBusinessDayConvention(e.target.value as string)} MenuProps={menuProps}>
-                      <MenuItem key={0} value={"FOLLOWING"}>{"Following"}</MenuItem>
-                      <MenuItem key={1} value={"MODFOLLOWING"}>{"Modified Following"}</MenuItem>
-                      <MenuItem key={2} value={"PRECEDING"}>{"Preceding"}</MenuItem>
-                      <MenuItem key={3} value={"MODPRECEDING"}>{"Modified Preceding"}</MenuItem>
-                      <MenuItem key={4} value={"NONE"}>{"None"}</MenuItem>
+                      <MenuItem key={0} value={"Following"}>{"Following"}</MenuItem>
+                      <MenuItem key={1} value={"ModifiedFollowing"}>{"Modified Following"}</MenuItem>
+                      <MenuItem key={2} value={"Preceding"}>{"Preceding"}</MenuItem>
+                      <MenuItem key={3} value={"ModifiedPreceding"}>{"Modified Preceding"}</MenuItem>
+                      <MenuItem key={4} value={"NoAdjustment"}>{"None"}</MenuItem>
                     </Select>
                   </FormControl>
                   <FormControl className={classes.inputField} fullWidth>

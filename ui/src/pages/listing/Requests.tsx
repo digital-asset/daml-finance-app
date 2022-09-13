@@ -13,22 +13,22 @@ import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/
 import { CreateListingRequest, DeleteListingRequest, Listing } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Model";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
+import { useServices } from "../../context/ServicesContext";
 
 export const Requests : React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
-
   const party = useParty();
   const ledger = useLedger();
   const { getName } = useParties();
+  const svc = useServices();
 
-  const { contracts: listingServices, loading: l1 } = useStreamQueries(Service);
-  const { contracts: createRequests, loading: l2 } = useStreamQueries(CreateListingRequest);
-  const { contracts: disableRequests, loading: l3 } = useStreamQueries(DeleteListingRequest);
-  const { contracts: listings, loading: l4 } = useStreamQueries(Listing);
-  if (l1 || l2 || l3 || l4) return (<Spinner />);
+  const { contracts: createRequests, loading: l1 } = useStreamQueries(CreateListingRequest);
+  const { contracts: disableRequests, loading: l2 } = useStreamQueries(DeleteListingRequest);
+  const { contracts: listings, loading: l3 } = useStreamQueries(Listing);
+  if (l1 || l2 || l3 || svc.loading) return (<Spinner />);
 
-  const providerServices = listingServices.filter(s => s.payload.provider === party);
+  const providerServices = svc.listing.filter(s => s.payload.provider === party);
   const deleteEntries = disableRequests.map(dr => ({ request: dr, listing: listings.find(l => l.contractId === dr.payload.listingCid)?.payload }));
   const createListing = async (c : CreateEvent<CreateListingRequest>) => {
     const service = providerServices.find(s => s.payload.customer === c.payload.customer);

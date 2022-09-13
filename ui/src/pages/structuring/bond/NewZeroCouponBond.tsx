@@ -5,16 +5,17 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Typography, Grid, Paper, Select, MenuItem, TextField, Button, MenuProps, FormControl, InputLabel, TextFieldProps } from "@mui/material";
 import classnames from "classnames";
-import { useLedger, useStreamQueries } from "@daml/react";
+import { useLedger } from "@daml/react";
 import useStyles from "../../styles";
 import { createKey, parseDate, singleton } from "../../../util";
 import { RequestAndCreateZeroCouponBond, Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service";
 import { DatePicker } from "@mui/lab";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { Message } from "../../../components/Message/Message";
-import { Instrument } from "@daml.js/daml-finance-instrument-base/lib/Daml/Finance/Instrument/Base/Instrument";
 import { emptyMap } from "@daml/types";
 import { useParties } from "../../../context/PartiesContext";
+import { useInstruments } from "../../../context/InstrumentsContext";
+import { useServices } from "../../../context/ServicesContext";
 
 export const NewZeroCouponBond : React.FC = () => {
   const classes = useStyles();
@@ -29,15 +30,14 @@ export const NewZeroCouponBond : React.FC = () => {
 
   const ledger = useLedger();
   const { getParty } = useParties();
+  const svc = useServices();
+  const inst = useInstruments();
 
-  const { contracts: services, loading: l1 } = useStreamQueries(Service);
-  const { contracts: instruments, loading: l2 } = useStreamQueries(Instrument);
-
-  if (l1 || l2) return <Spinner />;
-  if (services.length === 0) return <Message text="No structuring service found" />
+  if (svc.loading || inst.loading) return <Spinner />;
+  if (svc.structuringAuto.length === 0) return <Message text="No structuring service found" />
 
   const createFixedRateBond = async () => {
-    const ccy = instruments.find(c => c.payload.id.unpack === currency);
+    const ccy = inst.tokens.find(c => c.payload.id.unpack === currency);
     if (!ccy) throw new Error("Couldn't find currency " + currency);
     const arg : RequestAndCreateZeroCouponBond = {
       id,
@@ -47,7 +47,7 @@ export const NewZeroCouponBond : React.FC = () => {
       observers: emptyMap<string, any>().set("Public", singleton(singleton(getParty("Public")))),
       lastEventTimestamp: new Date().toISOString()
     }
-    await ledger.exercise(Service.RequestAndCreateZeroCouponBond, services[0].contractId, arg);
+    await ledger.exercise(Service.RequestAndCreateZeroCouponBond, svc.structuringAuto[0].contractId, arg);
     navigate("/structuring/instruments");
   };
 
@@ -68,7 +68,7 @@ export const NewZeroCouponBond : React.FC = () => {
                   <FormControl className={classes.inputField} fullWidth>
                     <InputLabel className={classes.selectLabel}>Currency</InputLabel>
                     <Select value={currency} onChange={e => setCurrency(e.target.value as string)} MenuProps={menuProps}>
-                      {instruments.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
+                      {inst.tokens.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
                     </Select>
                   </FormControl>
                   <DatePicker className={classes.inputField} inputFormat="yyyy-MM-dd" label="Issue Date" value={issueDate} onChange={setIssueDate} renderInput={(props : TextFieldProps) => <TextField {...props} fullWidth />} />

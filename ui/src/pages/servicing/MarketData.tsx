@@ -11,7 +11,7 @@ import { Observation } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefD
 export const MarketData : React.FC = () => {
   const classes = useStyles();
 
-  const { contracts: fixings, loading: l1 } = useStreamQueries(Observation);
+  const { contracts: observations, loading: l1 } = useStreamQueries(Observation);
   if (l1) return (<Spinner />);
 
   return (
@@ -27,17 +27,15 @@ export const MarketData : React.FC = () => {
                     <TableCell key={0} className={classes.tableCell}><b>Observable</b></TableCell>
                     <TableCell key={2} className={classes.tableCell}><b>Date</b></TableCell>
                     <TableCell key={1} className={classes.tableCell}><b>Value</b></TableCell>
-                    {/* <TableCell key={3} className={classes.tableCell}><b>Currency</b></TableCell> */}
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {fixings.map((c, i) =>
+                  {observations.map((c, i) =>
                     c.payload.observations.entriesArray().map(([date, value], j) => (
                       <TableRow key={i * 10 + j} className={classes.tableRow}>
                         <TableCell key={0} className={classes.tableCell}>{c.payload.obsKey}</TableCell>
                         <TableCell key={1} className={classes.tableCell}>{date}</TableCell>
                         <TableCell key={2} className={classes.tableCell}>{value}</TableCell>
-                        {/* <TableCell key={3} className={classes.tableCell}>{c.payload.currency.label}</TableCell> */}
                       </TableRow>))
                   )}
                 </TableBody>

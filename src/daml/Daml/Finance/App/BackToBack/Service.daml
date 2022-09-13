@@ -17,7 +17,7 @@ import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument
 import Daml.Finance.Interface.Settlement.Factory qualified as Factory (I, Instruct(..))
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
-import Daml.Finance.Interface.Settlement.Types (Step(..))
+import Daml.Finance.Interface.Settlement.Types (Allocation(Pledge), Approval(TakeDelivery), Step(..))
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
 import Daml.Finance.Interface.Types.Common (Id(..))
 
@@ -83,10 +83,10 @@ template Service
           if getAmount issuerDeliverable > totalNotional
           then head . (.splitCids) <$> exercise b2b.issuerDeliverableCid Fungible.Split with amounts = [ totalNotional ]
           else pure b2b.issuerDeliverableCid
-        deliveryCid <- exercise deliveryCid Instruction.Allocate with transferableCid = coerceContractId b2bSizedDeliverableCid
-        deliveryCid <- exercise deliveryCid Instruction.Approve with receiverAccount = b2b.issuerReceivableAccount
-        paymentCid <- exercise paymentCid Instruction.Allocate with transferableCid = coerceContractId issuerSizedDeliverableCid
-        paymentCid <- exercise paymentCid Instruction.Approve with receiverAccount = b2b.b2bReceivableAccount
+        deliveryCid <- exercise deliveryCid Instruction.Allocate with allocation = Pledge $ coerceContractId b2bSizedDeliverableCid
+        deliveryCid <- exercise deliveryCid Instruction.Approve with approval = TakeDelivery b2b.issuerReceivableAccount
+        paymentCid <- exercise paymentCid Instruction.Allocate with allocation = Pledge $ coerceContractId issuerSizedDeliverableCid
+        paymentCid <- exercise paymentCid Instruction.Approve with approval = TakeDelivery b2b.b2bReceivableAccount
         deliveredCids <- exercise batchCid Batch.Settle
         -- mapA (\cid -> coerceContractId <$> exercise (coerceContractId cid : ContractId Lockable.I) Lockable.Release with context = offering.offeringId) deliveredCids
         pure deliveredCids

@@ -5,18 +5,17 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import classnames from "classnames";
-import { useLedger, useParty, useStreamQueries } from "@daml/react";
+import { useLedger, useParty } from "@daml/react";
 import { Typography, Grid, Paper, Button, TextField } from "@mui/material";
 import useStyles from "../../styles";
-import { Instrument } from "@daml.js/daml-finance-instrument-base/lib/Daml/Finance/Instrument/Base/Instrument";
-import { Instrument as Generic } from "@daml.js/daml-finance-instrument-generic/lib/Daml/Finance/Instrument/Generic/Instrument";
-import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Service";
+import { Instrument } from "@daml.js/daml-finance-instrument-generic/lib/Daml/Finance/Instrument/Generic/Instrument";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../../components/Claims/ClaimsTreeBuilder";
 import { nodeToClaim } from "../../../components/Claims/util";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { createKey, singleton } from "../../../util";
 import { emptyMap } from "@daml/types";
 import { useParties } from "../../../context/PartiesContext";
+import { useInstruments } from "../../../context/InstrumentsContext";
 
 export const NewCustom : React.FC = () => {
   const classes = useStyles();
@@ -28,17 +27,15 @@ export const NewCustom : React.FC = () => {
   const { getParty } = useParties();
   const ledger = useLedger();
   const party = useParty();
-  const { contracts: services, loading: l1 } = useStreamQueries(Service);
-  const { contracts: instruments, loading: l2 } = useStreamQueries(Instrument);
-  if (l1 || l2) return (<Spinner />);
+  const inst = useInstruments();
 
-  const keys = instruments.map(createKey);
-  const customerServices = services.filter(s => s.payload.customer === party);
+  if (inst.loading) return (<Spinner />);
+
+  const keys = inst.tokens.map(createKey);
 
   const requestOrigination = async () => {
     if (!node || node.tag === "Claim") return;
     const claims = nodeToClaim(node);
-    if (customerServices.length === 0) return;
     const arg = {
       depository: party,
       issuer: party,
@@ -50,7 +47,7 @@ export const NewCustom : React.FC = () => {
       acquisitionTime: new Date(1970, 1, 1).toISOString(),
       lastEventTimestamp: new Date(1970, 1, 1).toISOString()
     }
-    await ledger.create(Generic, arg);
+    await ledger.create(Instrument, arg);
     navigate("/structuring/instruments");
   };
 

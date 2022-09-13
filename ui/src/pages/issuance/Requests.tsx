@@ -14,6 +14,7 @@ import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance
 import { Account } from "@daml.js/daml-finance-holding/lib/Daml/Finance/Holding/Account";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
+import { useServices } from "../../context/ServicesContext";
 
 export const Requests : React.FC = () => {
   const classes = useStyles();
@@ -21,14 +22,14 @@ export const Requests : React.FC = () => {
   const party = useParty();
   const ledger = useLedger();
   const { getName } = useParties();
+  const svc = useServices();
 
-  const { contracts: services, loading: l1 } = useStreamQueries(Service);
-  const { contracts: createRequests, loading: l2 } = useStreamQueries(CreateIssuanceRequest);
-  const { contracts: reduceRequests, loading: l3 } = useStreamQueries(ReduceIssuanceRequest);
-  const { contracts: accounts, loading: l4 } = useStreamQueries(Account);
-  const providerServices = services.filter(s => s.payload.provider === party);
+  const { contracts: createRequests, loading: l1 } = useStreamQueries(CreateIssuanceRequest);
+  const { contracts: reduceRequests, loading: l2 } = useStreamQueries(ReduceIssuanceRequest);
+  const { contracts: accounts, loading: l3 } = useStreamQueries(Account);
+  const providerServices = svc.issuance.filter(s => s.payload.provider === party);
 
-  if (l1 || l2 || l3 || l4 || providerServices.length === 0) return (<Spinner />);
+  if (l1 || l2 || l3 || svc.loading || providerServices.length === 0) return (<Spinner />);
 
   const createIssuance = async (c : CreateEvent<CreateIssuanceRequest>) => {
     const service = providerServices.find(s => s.payload.customer === c.payload.customer);

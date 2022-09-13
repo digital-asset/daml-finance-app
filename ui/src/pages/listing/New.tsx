@@ -9,6 +9,7 @@ import { Box, Button, FormControl, Grid, InputLabel, MenuItem, MenuProps, Paper,
 import classnames from "classnames";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Message } from "../../components/Message/Message";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useInstruments } from "../../context/InstrumentsContext";
 import { useParties } from "../../context/PartiesContext";
@@ -38,7 +39,7 @@ export const New : React.FC = () => {
   const canRequest = !!tradedInstrumentLabel && !!tradedInstrument && !!quotedInstrumentLabel && !!quotedInstrument && !!id;
 
   if (inst.loading || svc.loading) return (<Spinner />);
-  if (myListingServices.length === 0) return (<div style={{display: 'flex', justifyContent: 'center', marginTop: 350 }}><h1>No listing service found for customer: {party}</h1></div>);
+  if (myListingServices.length === 0) return <Message text={"No listing service found for customer: " + party} />;
 
   const requestListing = async () => {
     if (!tradedInstrument || !quotedInstrument) return;

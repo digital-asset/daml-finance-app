@@ -11,15 +11,15 @@ import useStyles from "../../styles";
 import { claimToNode } from "../../../components/Claims/util";
 import { Fungible } from "@daml.js/daml-finance-holding/lib/Daml/Finance/Holding/Fungible";
 import { CreateOffering, Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Service";
-import { Service as B2BService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/BackToBack/Service";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
-import { Instrument as Derivative } from "@daml.js/daml-finance-instrument-generic/lib/Daml/Finance/Instrument/Generic/Instrument";
-import { Instrument } from "@daml.js/daml-finance-instrument-base/lib/Daml/Finance/Instrument/Base/Instrument";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../../components/Claims/ClaimsTreeBuilder";
 import { Reference as AccountReference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
 import { createKey, getHolding } from "../../../util";
 import { BackToBack } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Model";
+import { useServices } from "../../../context/ServicesContext";
+import { useInstruments } from "../../../context/InstrumentsContext";
+import { Message } from "../../../components/Message/Message";
 
 export const New : React.FC = () => {
   const classes = useStyles();
@@ -35,31 +35,29 @@ export const New : React.FC = () => {
 
   const ledger = useLedger();
   const party = useParty();
+  const svc = useServices();
+  const inst = useInstruments();
 
-  const { contracts: services, loading: l1 } = useStreamQueries(Service);
-  const { contracts: b2bServices, loading: l2 } = useStreamQueries(B2BService);
-  const { contracts: derivatives, loading: l3 } = useStreamQueries(Derivative);
-  const { contracts: instruments, loading: l4 } = useStreamQueries(Instrument);
-  const { contracts: holdings, loading: l5 } = useStreamQueries(Fungible);
-  const { contracts: accounts, loading: l6 } = useStreamQueries(AccountReference);
+  const { contracts: holdings, loading: l1 } = useStreamQueries(Fungible);
+  const { contracts: accounts, loading: l2 } = useStreamQueries(AccountReference);
 
-  const myServices = services.filter(s => s.payload.customer === party);
-  const myB2BServices = b2bServices.filter(s => s.payload.customer === party);
-  const hasB2B = b2bServices.length > 0;
+  const myServices = svc.subscription.filter(s => s.payload.customer === party);
+  const myB2BServices = svc.backToBack.filter(s => s.payload.customer === party);
+  const hasB2B = svc.backToBack.length > 0;
 
-  const soldInst = derivatives.find(c => c.payload.id.unpack === offeredInstLabel);
-  const priceInst = instruments.find(c => c.payload.id.unpack === priceInstLabel);
+  const soldInst = inst.generics.find(c => c.payload.id.unpack === offeredInstLabel);
+  const priceInst = inst.tokens.find(c => c.payload.id.unpack === priceInstLabel);
   const myHoldings = holdings.filter(c => c.payload.account.owner === party);
   const myHoldingLabels = myHoldings.map(c => c.payload.instrument.id.unpack).filter((v, i, a) => a.indexOf(v) === i);
-  const baseKeys = instruments.map(createKey);
+  const baseKeys = inst.tokens.map(createKey);
   const canRequest = !!offeredInstLabel && !!soldInst && !!priceInstLabel && !!priceInst && !!amount && !!price;
 
   useEffect(() => {
     if (!!soldInst) setNode(claimToNode(soldInst.payload.claims));
   }, [soldInst]);
 
-  if (l1 || l2 || l3 || l4 || l5 || l6) return (<Spinner />);
-  if (myServices.length === 0) return (<div style={{display: 'flex', justifyContent: 'center', marginTop: 350 }}><h1>No subscription service found for customer: {party}</h1></div>);
+  if (l1 || l2 || svc.loading || inst.loading) return (<Spinner />);
+  if (myServices.length === 0) return <Message text={"No subscription service found for customer: " + party} />;
 
   const createOffering = async () => {
     const holding = myHoldings

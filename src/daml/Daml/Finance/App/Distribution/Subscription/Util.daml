@@ -13,7 +13,7 @@ import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, Remove
 import Daml.Finance.Interface.Settlement.Factory (Factory, Instruct(..))
 import Daml.Finance.Interface.Settlement.Instruction (Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Batch (Settle(..))
-import Daml.Finance.Interface.Settlement.Types (Step(..))
+import Daml.Finance.Interface.Settlement.Types (Allocation(Pledge), Approval(TakeDelivery), Step(..))
 import Daml.Finance.App.Distribution.Subscription.Model (AllocateInstruction(..), ApproveInstruction(..), Offering, Subscription)
 import Daml.Finance.Interface.Types.Common (Id(..))
 
@@ -42,10 +42,10 @@ settleSubscription settlementFactoryCid offering (remainingQuantity, issuerHoldi
       else do (\r -> r.splitCids <> optionalToList r.rest) <$> exercise subscription.holdingCid Fungible.Split with amounts = [payedQuantity.amount]
     -- paymentHolding <- fetch paymentHoldingCid
     -- paymentAccountCid <- getAccountCid paymentHolding
-    deliveryCid <- exercise deliveryCid Allocate with transferableCid = toInterfaceContractId allocatedHoldingCid
+    deliveryCid <- exercise deliveryCid Allocate with allocation = Pledge $ toInterfaceContractId allocatedHoldingCid
     exercise subscriptionCid ApproveInstruction with instructionCid = deliveryCid; receiverAccount = subscription.accountKey
     paymentCid <- exercise subscriptionCid AllocateInstruction with instructionCid = paymentCid; transferableCid = toInterfaceContractId paymentHoldingCid
-    exercise paymentCid Approve with receiverAccount = offering.issuerAccount
+    exercise paymentCid Approve with approval = TakeDelivery offering.issuerAccount
     transferredCids <- exercise batchCid Settle
     -- forA_ transferredCids $ \cid -> exercise subscriptionCid UnlockHolding with lockableCid = toInterfaceContractId cid
 

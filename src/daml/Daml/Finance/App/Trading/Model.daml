@@ -3,14 +3,16 @@
 
 module Daml.Finance.App.Trading.Model where
 
+import DA.Optional (whenSome)
 import DA.Set (singleton)
 import Daml.Finance.Interface.Holding.Account qualified as Account (K)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..), SplitResult(..))
+import Daml.Finance.Interface.Holding.Lockable qualified as Lockable (I, Release(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q, qty)
 import Daml.Finance.Interface.Settlement.Factory qualified as Factory (I, Instruct(..))
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (I, Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (I)
-import Daml.Finance.Interface.Settlement.Types (Step(..))
+import Daml.Finance.Interface.Settlement.Types (Allocation(Pledge), Approval(TakeDelivery), Step(..))
 import Daml.Finance.Interface.Types.Common (Id(..), Parties)
 
 data Side
@@ -50,31 +52,42 @@ template Order
       with
         settlementFactoryCid : ContractId Factory.I
         other : Order
+        isResting : Bool
       controller provider
       do
         let
-          amount = min quantity.amount other.quantity.amount
-          remaining = quantity.amount - amount
+          paid = if isResting then price.amount else other.price.amount
+          delivered = min quantity.amount other.quantity.amount
+          amount = if side == Buy then paid * delivered else delivered
+          remaining = quantity.amount - min quantity.amount other.quantity.amount
           deliverable = if side == Buy then price.unit else quantity.unit
           step = Step with sender = customer; receiver = other.customer; quantity = Instrument.qty amount deliverable
         (batchCid, [instructionCid]) <- exercise settlementFactoryCid Factory.Instruct with instructors = singleton provider; id = Id id; settler = provider; steps = [step]; description = id
+        Fungible.SplitResult [splitCid] restCidOpt <- exercise collateralCid Fungible.Split with amounts = [ amount ]
         if remaining == 0.0
         then do
-          instructionCid <- exercise instructionCid Instruction.Allocate with transferableCid = toInterfaceContractId collateralCid
+          instructionCid <- exercise instructionCid Instruction.Allocate with allocation = Pledge $ toInterfaceContractId splitCid
+          whenSome restCidOpt (\restCid -> do
+            unlockedCid <- exercise (coerceContractId restCid : ContractId Lockable.I) Lockable.Release with context = id
+            -- TODO: We can't undisclose here since the choice is controlled by the observers, which includes the public party
+            --exercise (toInterfaceContractId unlockedCid : ContractId Disclosure.I) Disclosure.RemoveObservers with observersToRemove = (id, provider `insert` observers)
+            pure ())
           pure FillResult with orderOpt = None; batchCid; instructionCid
         else do
-          Fungible.SplitResult [splitCid] (Some restCid) <- exercise collateralCid Fungible.Split with amounts = [ amount ]
-          instructionCid <- exercise instructionCid Instruction.Allocate with transferableCid = toInterfaceContractId splitCid
-          let new = this with quantity.amount = remaining; collateralCid = restCid
-          newCid <- create new
-          pure FillResult with orderOpt = Some (newCid, new); batchCid; instructionCid
+          instructionCid <- exercise instructionCid Instruction.Allocate with allocation = Pledge $ toInterfaceContractId splitCid
+          case restCidOpt of
+            Some restCid -> do
+              let new = this with quantity.amount = remaining; collateralCid = restCid
+              newCid <- create new
+              pure FillResult with orderOpt = Some (newCid, new); batchCid; instructionCid
+            None -> fail "Insufficient collateral - this should never happen"
 
     nonconsuming choice ApproveInstruction : ContractId Instruction.I
       with
         instructionCid : ContractId Instruction.I
       controller provider
       do
-        exercise instructionCid Instruction.Approve with receiverAccount = account
+        exercise instructionCid Instruction.Approve with approval = TakeDelivery account
 
 template CreateOrderRequest
   with

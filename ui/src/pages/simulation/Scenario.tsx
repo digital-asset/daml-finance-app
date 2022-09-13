@@ -3,10 +3,9 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { FormControl, Button, Grid, Paper, Typography, InputLabel, Select, MenuItem, MenuProps, Table, TableBody, TableRow, TableCell, TextField, Accordion, AccordionSummary, AccordionDetails, CircularProgress } from "@mui/material";
-import { useLedger, useParty, useStreamQueries } from "@daml/react";
+import { useLedger, useParty } from "@daml/react";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { Instrument as Derivative } from "@daml.js/daml-finance-instrument-generic/lib/Daml/Finance/Instrument/Generic/Instrument";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Service";
 import classnames from "classnames";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
@@ -16,6 +15,9 @@ import { ExpandMore } from "@mui/icons-material";
 import { dedup } from "../../util";
 import { emptyMap } from "@daml/types";
 import { Observation } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefData/Observation";
+import { useServices } from "../../context/ServicesContext";
+import { useInstruments } from "../../context/InstrumentsContext";
+import { Message } from "../../components/Message/Message";
 
 type Payout = {
   asset : string
@@ -46,11 +48,10 @@ export const Scenario : React.FC = () => {
 
   const party = useParty();
   const ledger = useLedger();
+  const svc = useServices();
+  const inst = useInstruments();
 
-  const { contracts: derivatives, loading: l1 } = useStreamQueries(Derivative);
-  const { contracts: services, loading: l2 } = useStreamQueries(Service);
-
-  const asset = derivatives.find(c => c.payload.id.unpack === assetLabel);
+  const asset = inst.generics.find(c => c.payload.id.unpack === assetLabel);
 
   useEffect(() => {
     if (!!asset) setNode(claimToNode(asset.payload.claims));
@@ -59,10 +60,10 @@ export const Scenario : React.FC = () => {
   useEffect(() => {
     const getStaticData = async () => {
       if (!!asset) {
-        const [exp, ] = await ledger.exercise(Service.Expiry, services[0].contractId, { claims: asset.payload.claims });
-        const [und, ] = await ledger.exercise(Service.Underlying, services[0].contractId, { claims: asset.payload.claims });
-        const [pay, ] = await ledger.exercise(Service.Payoffs, services[0].contractId, { claims: asset.payload.claims });
-        const [fix, ] = await ledger.exercise(Service.Fixings, services[0].contractId, { claims: asset.payload.claims });
+        const [exp, ] = await ledger.exercise(Service.Expiry, svc.lifecycle[0].contractId, { claims: asset.payload.claims });
+        const [und, ] = await ledger.exercise(Service.Underlying, svc.lifecycle[0].contractId, { claims: asset.payload.claims });
+        const [pay, ] = await ledger.exercise(Service.Payoffs, svc.lifecycle[0].contractId, { claims: asset.payload.claims });
+        const [fix, ] = await ledger.exercise(Service.Fixings, svc.lifecycle[0].contractId, { claims: asset.payload.claims });
         const undLabels = und.map(c => c.id.unpack);
         const obsLabels = pay.flatMap(p => findObservables(p._1));
         setExpiry(exp || "");
@@ -72,7 +73,7 @@ export const Scenario : React.FC = () => {
       }
     };
     getStaticData();
-  }, [services, asset, ledger, party]);
+  }, [svc, asset, ledger, party]);
 
   useEffect(() => {
     if (!el.current) return;
@@ -100,8 +101,8 @@ export const Scenario : React.FC = () => {
   //   getFormula();
   // }, [ledger, services, underlyings, asset]);
 
-  if (l1 || l2) return (<Spinner />);
-  if (services.length === 0) return (<div style={{display: 'flex', justifyContent: 'center', marginTop: 350 }}><h1>No lifecycle service found</h1></div>);
+  if (svc.loading || inst.loading) return <Spinner />;
+  if (svc.lifecycle.length === 0) return <Message text="No lifecycle service found" />;
 
   const simulate = async () => {
     if (!asset) return;
@@ -110,7 +111,7 @@ export const Scenario : React.FC = () => {
     for (let fixing = min; fixing <= max; fixing += step) {
       const prices = emptyMap<string, string>().set(expiry, fixing.toString());
       const observable = await ledger.create(Observation, { provider: party, obsKey: observables[0], observations: prices, observers: emptyMap<any, any>() })
-      const [ { _2: result }, ] = await ledger.exercise(Service.PreviewLifecycle, services[0].contractId, { today: expiry, observableCids: [observable.contractId], claims: asset.payload.claims });
+      const [ { _2: result }, ] = await ledger.exercise(Service.PreviewLifecycle, svc.lifecycle[0].contractId, { today: expiry, observableCids: [observable.contractId], claims: asset.payload.claims });
       await ledger.archive(Observation, observable.contractId);
       res.push({ fixing, payouts: result.map(r => ({ amount: parseFloat(r.amount), asset: r.asset.id.unpack })) });
     }
@@ -131,7 +132,7 @@ export const Scenario : React.FC = () => {
             <FormControl className={classes.inputField} fullWidth>
               <InputLabel className={classes.selectLabel}>Asset</InputLabel>
               <Select variant="standard" className={classes.width90} value={assetLabel} onChange={e => setAssetLabel(e.target.value as string)} MenuProps={menuProps}>
-                {derivatives.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
+                {inst.generics.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
               </Select>
             </FormControl>
           </Grid>

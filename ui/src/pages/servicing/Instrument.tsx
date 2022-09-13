@@ -7,7 +7,6 @@ import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Typography, Grid, Table, TableBody, TableCell, TableRow, Paper, Button, TableHead } from "@mui/material";
 import { useParams } from "react-router-dom";
 import useStyles from "../styles";
-import { Instrument as Derivative } from "@daml.js/daml-finance-instrument-generic/lib/Daml/Finance/Instrument/Generic/Instrument";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Service";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
@@ -20,6 +19,9 @@ import { Time } from "@daml/types";
 import { InstrumentKey } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Common";
 import { Observation } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefData/Observation";
 import { useParties } from "../../context/PartiesContext";
+import { useInstruments } from "../../context/InstrumentsContext";
+import { useServices } from "../../context/ServicesContext";
+import { Message } from "../../components/Message/Message";
 
 export const Instrument : React.FC = () => {
   const classes = useStyles();
@@ -32,17 +34,16 @@ export const Instrument : React.FC = () => {
   const { getName } = useParties();
   const party = useParty();
   const ledger = useLedger();
-
-  const { contracts: derivatives, loading: l1 } = useStreamQueries(Derivative);
-  const { contracts: services, loading: l2 } = useStreamQueries(Service);
-  const { contracts: observations, loading: l3 } = useStreamQueries(Observation);
-  const { contracts: effects, loading: l4 } = useStreamQueries(Effect);
-  const { contracts: events, loading: l5 } = useStreamQueries(DateClockUpdateEvent);
-  const { contracts: clocks, loading: l6 } = useStreamQueries(DateClock);
+  const svc = useServices();
+  const inst = useInstruments();
+  const { contracts: observations, loading: l1 } = useStreamQueries(Observation);
+  const { contracts: effects, loading: l2 } = useStreamQueries(Effect);
+  const { contracts: events, loading: l3 } = useStreamQueries(DateClockUpdateEvent);
+  const { contracts: clocks, loading: l4 } = useStreamQueries(DateClock);
   const { contractId } = useParams<any>();
 
   const cid = contractId?.replace("_", "#");
-  const instrument = derivatives.find(c => c.contractId === cid && c.payload.issuer === party);
+  const instrument = inst.generics.find(c => c.contractId === cid && c.payload.issuer === party);
 
   useEffect(() => {
     if (!!instrument) setNode1(claimToNode(instrument.payload.claims));
@@ -52,8 +53,9 @@ export const Instrument : React.FC = () => {
     if (!!remaining) setNode2(claimToNode(remaining));
   }, [remaining]);
 
-  if (l1 || l2 || l3 || l4 || l5 || l6) return (<Spinner />);
-  if (!instrument) return (<div style={{display: 'flex', justifyContent: 'center', marginTop: 350 }}><h1>Instrument [{cid}] not found</h1></div>);
+  if (l1 || l2 || l3 || l4 || svc.loading || inst.loading) return (<Spinner />);
+  if (!instrument) return <Message text={"Instrument [" + cid + "] not found"} />;
+  if (svc.lifecycle.length === 0) return <Message text={"No lifecycle service found"} />;
 
   const effect = effects.find(c => c.payload.targetInstrument.id.unpack === instrument.payload.id.unpack && c.payload.targetInstrument.version === instrument.payload.version);
 
@@ -62,7 +64,7 @@ export const Instrument : React.FC = () => {
     todayDate.setHours(14);
     const today = todayDate.toISOString(); // TODO: Add date control
     const observableCids = observations.map(c => c.contractId);
-    const [ res, ] = await ledger.exercise(Service.PreviewLifecycle, services[0].contractId, { today, observableCids, claims: instrument.payload.claims });
+    const [ res, ] = await ledger.exercise(Service.PreviewLifecycle, svc.lifecycle[0].contractId, { today, observableCids, claims: instrument.payload.claims });
     setRemaining(res._1);
     setPending(res._2);
   };
@@ -76,7 +78,7 @@ export const Instrument : React.FC = () => {
       observableCids,
       lifecyclableCid: instrument.contractId
     }
-    await ledger.exercise(Service.Lifecycle, services[0].contractId, arg);
+    await ledger.exercise(Service.Lifecycle, svc.lifecycle[0].contractId, arg);
   };
 
   return (

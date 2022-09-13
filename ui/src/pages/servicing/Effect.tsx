@@ -16,6 +16,7 @@ import { Batch } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlem
 import { Rule } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/Rule/Claim";
 import { CreateEvent } from "@daml/ledger";
 import { useParties } from "../../context/PartiesContext";
+import { Message } from "../../components/Message/Message";
 
 export const Effect : React.FC = () => {
   const classes = useStyles();
@@ -33,7 +34,7 @@ export const Effect : React.FC = () => {
   const effect = effects.find(c => c.contractId === cid);
 
   if (l1 || l2 || l3 || l4) return (<Spinner />);
-  if (!effect) return (<div style={{display: 'flex', justifyContent: 'center', marginTop: 350 }}><h1>Effect [{contractId}] not found</h1></div>);
+  if (!effect) return <Message text={"Effect [" + contractId + "] not found"} />;
 
   const filteredHoldings = holdings.filter(c => keyEquals(c.payload.instrument, effect.payload.targetInstrument) && c.payload.account.custodian !== c.payload.account.owner);
   const filteredBatches = batches.filter(c => c.payload.id === effect.payload.id);
