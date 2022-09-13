@@ -14,7 +14,7 @@ import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Trading/
 import { Service as AutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Trading/Auto/Service";
 import { CreateEvent } from "@daml/ledger";
 import { ContractId } from "@daml/types";
-import { createSet, fmt } from "../../util";
+import { createSet, fmt, getHolding } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { Percentage } from "../../components/Slider/Percentage";
 import { Fungible } from "@daml.js/daml-finance-holding/lib/Daml/Finance/Holding/Fungible";
@@ -95,18 +95,8 @@ export const Market : React.FC = () => {
   const quotedHoldingsTotal = quotedHoldings.reduce((acc, c) => acc + parseFloat(c.payload.amount), 0);
   const availableQuantity = isBuy ? fmt(quotedHoldingsTotal) + " " + listing.payload.quotedInstrument.id.unpack : fmt(tradedHoldingsTotal) + " " + listing.payload.tradedInstrument.id.unpack;
 
-  const getAsset = async (holdings : CreateEvent<Fungible>[], amount : number) : Promise<ContractId<Fungible> | null> => {
-    const holding = holdings.find(c => parseFloat(c.payload.amount) >= amount);
-    if (!holding) return null;
-    if (parseFloat(holding.payload.amount) > amount) {
-      const [splitResult, ] = await ledger.exercise(Fungible.Split, holding.contractId, { amounts: [amount.toString()] });
-      return splitResult.splitCids[0];
-    }
-    return holding.contractId;
-  }
-
   const requestCreateOrder = async () => {
-    const collateralCid = isBuy ? await getAsset(quotedHoldings, price * amount) : await getAsset(tradedHoldings, amount);
+    const collateralCid = isBuy ? await getHolding(ledger, quotedHoldings, price * amount, listing.payload.quotedInstrument) : await getHolding(ledger, tradedHoldings, amount, listing.payload.tradedInstrument);
     const account = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === (isBuy ? listing.payload.tradedInstrument : listing.payload.quotedInstrument).depository);
     const orderCids = isBuy ? asks.map(c => c.contractId) : bids.map(c => c.contractId);
     if (!collateralCid || !account) return;

@@ -3,6 +3,7 @@
 
 import { Set } from "@daml.js/97b883cd8a2b7f49f90d5d39c981cf6e110cf1f1c64427a28a6d58ec88c43657/lib/DA/Set/Types"
 import { Fungible } from "@daml.js/daml-finance-holding/lib/Daml/Finance/Holding/Fungible";
+import { Fungible as FungibleI } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Fungible";
 import { InstrumentKey } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Common";
 import Ledger, { CreateEvent } from "@daml/ledger";
 import { ContractId, emptyMap } from "@daml/types";
@@ -73,20 +74,19 @@ export function getTemplateId(t : string) {
   return parts[0] + "." + parts[1];
 }
 
-export const getHolding = async (ledger : Ledger, holdings : CreateEvent<Fungible>[], amount : number, instrument: InstrumentKey) : Promise<ContractId<Fungible>> => {
+export const getHolding = async (ledger : Ledger, holdings : CreateEvent<Fungible>[], amount : number, instrument: InstrumentKey) : Promise<ContractId<FungibleI>> => {
   const filtered = holdings.filter(c => keyEquals(c.payload.instrument, instrument) && !c.payload.lock);
   const sum = filtered.reduce((a, b) => a + parseFloat(b.payload.amount), 0);
   if (filtered.length === 0 || sum < amount) throw new Error("Insufficient holdings (" + sum.toFixed(4) + ") found for: " + amount.toFixed(4) + " " + instrument.id.unpack);
-  if (filtered.length === 1 && sum === amount) return filtered[0].contractId;
+  if (filtered.length === 1 && sum === amount) return Fungible.toInterface(FungibleI, filtered[0].contractId);
   if (filtered.length === 1 && sum > amount) {
-    const [ { splitCids, }, ] = await ledger.exercise(Fungible.Split, filtered[0].contractId, { amounts: [ amount.toString() ] });
+    const [ { splitCids, }, ] = await ledger.exercise(FungibleI.Split, Fungible.toInterface(FungibleI, filtered[0].contractId), { amounts: [ amount.toString() ] });
     return splitCids[0];
   }
   const [h, ...t] = filtered;
-  const [fungibleCid, ] = await ledger.exercise(Fungible.Merge, h.contractId, { fungibleCids: t.map(c => c.contractId) });
-  const mergedCid = fungibleCid as unknown as ContractId<Fungible>;
-  if (sum === amount) return mergedCid;
+  const [fungibleCid, ] = await ledger.exercise(FungibleI.Merge, Fungible.toInterface(FungibleI, h.contractId), { fungibleCids: t.map(c => Fungible.toInterface(FungibleI, c.contractId)) });
+  if (sum === amount) return fungibleCid;
 
-  const [ { splitCids, }, ] = await ledger.exercise(Fungible.Split, mergedCid, { amounts: [ amount.toString() ] });
+  const [ { splitCids, }, ] = await ledger.exercise(FungibleI.Split, fungibleCid, { amounts: [ amount.toString() ] });
   return splitCids[0];
 }
