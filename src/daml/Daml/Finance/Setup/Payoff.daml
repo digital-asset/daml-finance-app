@@ -4,6 +4,7 @@
 module Daml.Finance.Setup.Payoff where
 
 import ContingentClaims.Claim (Claim, and, anytime, at, cond, give, one, or, scale, until, when, zero, (<=))
+import ContingentClaims.Internal.Claim (Claim(And))
 import ContingentClaims.Observation (Observation(Const), observe)
 import ContingentClaims.Financial (forward, fixed, floating, swap, european, bermudan)
 import DA.Date (DayOfWeek(..), Month(..), addDays, date, monthDayCount, toGregorian)
@@ -133,8 +134,8 @@ rc : Text -> Instrument.K -> Decimal -> Decimal -> [Date] -> C
 rc asset ccy coupon strike dates =
   let
     bondLeg = bond ccy strike coupon dates
-    put = putOptionCashAuto asset ccy strike (last dates)
-  in bondLeg `and` give put
+    put = putOptionCash asset ccy strike (last dates)
+  in And (give put) bondLeg []
 
 brc : Text -> Instrument.K -> Decimal -> Decimal -> Decimal -> Date -> [Date] -> C
 brc asset ccy coupon strike barrier barrierStartDate dates =
