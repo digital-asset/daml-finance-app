@@ -1,0 +1,114 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Lending.Service where
+
+import DA.Set (singleton)
+import Daml.Finance.App.Lending.Model (BorrowAgreement(..), BorrowOffer(..), BorrowOfferRequest(..))
+import Daml.Finance.App.Util (fetchAndArchive)
+import Daml.Finance.Interface.Holding.Account qualified as Account (K, exerciseInterfaceByKey)
+import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I, Transfer(..))
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
+import Daml.Finance.Interface.Holding.Lockable qualified as Lockable (Acquire(..), I, LockType(..), Release(..))
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, AddObservers(..))
+
+template Service
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, customer) : (Party, Party, Party)
+    maintainer key._1
+
+    nonconsuming choice RequestBorrowOffer : ContractId BorrowOfferRequest
+      with
+        id : Text
+        instrument : Instrument.Q
+        maturity : Date
+      controller customer
+      do
+        create BorrowOfferRequest with operator; provider; customer; id; instrument; maturity
+
+    nonconsuming choice AcceptBorrowOffer : (ContractId Transferable.I, ContractId BorrowAgreement)
+      with
+        borrowOfferCid : ContractId BorrowOffer
+        collateralCid : ContractId Transferable.I
+        account : Account.K
+      controller customer
+      do
+        BorrowOffer{operator; provider; customer; id; instrument; maturity; interest; borrowedCid; lenderAccount} <- fetchAndArchive borrowOfferCid
+        unlockedBorrowedCid <- exercise (coerceContractId borrowedCid : ContractId Lockable.I) Lockable.Release with context = id
+        transferredCid <- exercise (coerceContractId unlockedBorrowedCid : ContractId Transferable.I) Transferable.Transfer with newOwnerAccount = account
+        lockedCollateralCid : ContractId Transferable.I <- coerceContractId <$> exercise (coerceContractId collateralCid : ContractId Lockable.I) Lockable.Acquire with newLocker = (singleton provider); context = id; lockType = Lockable.Semaphore
+        borrowAgreementCid <- create BorrowAgreement with operator; provider; customer; id; instrument; maturity; interest; collateralCid = lockedCollateralCid; lenderAccount
+        pure (transferredCid, borrowAgreementCid)
+
+    nonconsuming choice CreateBorrowOffer : ContractId BorrowOffer
+      with
+        borrowOfferRequestCid : ContractId BorrowOfferRequest
+        interest : Instrument.Q
+        collateral : Instrument.Q
+        borrowedCid : ContractId Transferable.I
+        lenderAccount : Account.K
+      controller provider
+      do
+        BorrowOfferRequest{operator; provider; customer; id; instrument; maturity} <- fetchAndArchive borrowOfferRequestCid
+        Account.exerciseInterfaceByKey @Disclosure.I lenderAccount customer Disclosure.AddObservers with disclosers = singleton provider; observersToAdd = (id, singleton customer)
+        lockedBorrowedCid : ContractId Transferable.I <- coerceContractId <$> exercise (coerceContractId borrowedCid : ContractId Lockable.I) Lockable.Acquire with newLocker = (singleton customer); context = id; lockType = Lockable.Semaphore
+        create BorrowOffer with operator; provider; customer; id; instrument; maturity; interest; collateral; borrowedCid = lockedBorrowedCid; lenderAccount
+
+    choice Terminate : ()
+      with
+        actor : Party
+      controller actor
+      do
+        assert $ actor == operator || actor == provider || actor == customer
+        pure ()
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider
+    observer customer
+
+    choice Accept : ContractId Service
+      controller customer
+      do
+        create Service with operator; provider; customer
+
+    choice Decline : ()
+      controller customer
+      do
+        return ()
+
+    choice Withdraw : ()
+      controller provider
+      do pure ()
+
+template Request
+  with
+    customer : Party
+    provider : Party
+  where
+    signatory customer
+
+    choice Cancel : ()
+      controller customer
+      do pure ()
+
+    choice Reject : ()
+      controller provider
+      do pure ()
+
+    choice Approve : ContractId Service
+      with
+        operator : Party
+      controller operator, provider
+      do
+        create Service with operator; provider; customer

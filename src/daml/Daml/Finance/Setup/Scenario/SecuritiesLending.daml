@@ -1,0 +1,76 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.Setup.Scenario.SecuritiesLending where
+
+import DA.Date (Month(..), date, toDateUTC, toGregorian)
+import DA.Map (fromList)
+import DA.Set (singleton)
+import DA.Time (time)
+import Daml.Finance.App.Lending.Model qualified as Lending (Repay(..))
+import Daml.Finance.App.Lending.Service qualified as Lending (AcceptBorrowOffer(..), CreateBorrowOffer(..), RequestBorrowOffer(..), Service)
+import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
+import Daml.Finance.Setup.Util.Common
+import Daml.Finance.Setup.Util.Role
+import Daml.Finance.Setup.Util.Service
+import Daml.Finance.Setup.Util.Workflow
+import Daml.Script (Script, createCmd, exerciseByKeyCmd, exerciseCmd)
+
+run : Script [PartyInfo]
+run  = do
+  let scenario = "Securities Lending"
+  parties <- allocateParties scenario ["Operator", "Public", "CentralBank", "Registry", "Borrower", "Lender"]
+  let [operator, public, centralBank, registry, borrower, lender] = map (.id) parties
+
+  -- Create roles
+  createOperatorRole operator
+  createCustodianRole operator centralBank
+  createCustodianRole operator registry
+  createCustodianRole operator lender
+
+  -- Create custody services
+  createCustodyService operator centralBank borrower
+  createCustodyService operator centralBank lender
+  createCustodyService operator registry borrower
+  createCustodyService operator registry lender
+
+  createLendingService operator lender borrower
+  -- createIssuanceService operator clearer lender
+  -- createIssuanceAutoService operator clearer lender
+  -- createStructuringService operator clearer lender
+  -- createStructuringAutoService operator clearer lender
+  -- createLifecycleService operator clearer lender
+
+  t <- getTime
+  let
+    today = toDateUTC t
+    todayTime = time today 12 0 0
+    (todayYear, todayMonth, todayDay) = toGregorian today
+    pub = [("Public", singleton $ singleton public)]
+
+  -- Create accounts
+  accountFactoryCid <- toInterfaceContractId <$> createFactory operator pub
+  holdingFactoryCid <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory with provider = operator; observers = fromList pub
+  let createAcc = createAccount [public] accountFactoryCid holdingFactoryCid
+  borrowerCashAccount    <- createAcc [] centralBank borrower  "Borrower@CentralBank"
+  lenderSecAccount       <- createAcc [] registry    lender    "Lender@Registry"
+  borrowerSecAccount     <- createAcc [] registry    borrower  "Borrower@Registry"
+
+  -- Instruments
+  usd  <- originate         centralBank centralBank pub todayTime "USD"
+  tsla   <- originate         registry registry pub todayTime "TSLA"
+
+  borrowedCid <- coerceContractId <$> deposit operator registry    lender   public (Instrument.qty     1_000.0 tsla) lenderSecAccount
+  collateralCid <- coerceContractId <$> deposit operator centralBank borrower public (Instrument.qty 1_000_000.0 usd) borrowerCashAccount
+
+  let
+    instrument = Instrument.qty 1_000.0 tsla
+    interest = Instrument.qty 100.0 usd
+    collateral = Instrument.qty 1_000_000.0 usd
+
+  borrowOfferRequestCid <- submit borrower do exerciseByKeyCmd @Lending.Service (operator, lender, borrower) Lending.RequestBorrowOffer with id = "BRW"; instrument; maturity = date 2022 Sep 14
+  borrowOfferCid <- submit lender do exerciseByKeyCmd @Lending.Service (operator, lender, borrower) Lending.CreateBorrowOffer with borrowOfferRequestCid; interest; collateral; borrowedCid; lenderAccount = lenderSecAccount
+  (borrowedCid, borrowAgreementCid) <- submit borrower do exerciseByKeyCmd @Lending.Service (operator, lender, borrower) Lending.AcceptBorrowOffer with borrowOfferCid; collateralCid; account = borrowerSecAccount
+  submit borrower do exerciseCmd borrowAgreementCid Lending.Repay with borrowedCid
+  pure parties
