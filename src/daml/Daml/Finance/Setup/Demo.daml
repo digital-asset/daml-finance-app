@@ -6,6 +6,7 @@ module Daml.Finance.Setup.Demo where
 import Daml.Finance.Setup.Scenario.BondIssuance qualified as BondIssuance
 import Daml.Finance.Setup.Scenario.Default qualified as Default
 import Daml.Finance.Setup.Scenario.NaturalGas qualified as NaturalGas
+import Daml.Finance.Setup.Scenario.SecuritiesLending qualified as SecuritiesLending
 import Daml.Finance.Setup.Scenario.StructuredNotes qualified as StructuredNotes
 import Daml.Finance.Setup.Util.Common (PartyInfo)
 import Daml.Script
@@ -15,5 +16,6 @@ demo = do
   p1 <- BondIssuance.run
   p2 <- Default.run
   p3 <- NaturalGas.run
-  p4 <- StructuredNotes.run
-  pure $ p1 <> p2 <> p3 <> p4
+  p4 <- SecuritiesLending.run
+  p5 <- StructuredNotes.run
+  pure $ p1 <> p2 <> p3 <> p4 <> p5

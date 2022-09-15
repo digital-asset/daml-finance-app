@@ -45,7 +45,7 @@ export const Settlement : React.FC = () => {
                 <TableBody>
                   {filtered.map((c, i) => (
                     <TableRow key={i} className={classes.tableRow}>
-                      <TableCell key={0} className={classes.tableCell}>{c.payload.id}</TableCell>
+                      <TableCell key={0} className={classes.tableCell}>{c.payload.id.unpack}</TableCell>
                       <TableCell key={1} className={classes.tableCell}>{getName(c.payload.step.sender)}</TableCell>
                       <TableCell key={2} className={classes.tableCell}>{getName(c.payload.step.receiver)}</TableCell>
                       <TableCell key={3} className={classes.tableCell} align="right">{fmt(c.payload.step.quantity.amount)}</TableCell>

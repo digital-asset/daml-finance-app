@@ -23,6 +23,7 @@ import { useBranding } from "./context/BrandingContext";
 import { Network } from "./apps/Network";
 import { Root } from "./pages/login/Root";
 import { Portal } from "./pages/login/Portal";
+import { Lending } from "./apps/Lending";
 
 export const Main : React.FC = () => {
   const user = useUserState();
@@ -74,6 +75,7 @@ export const Main : React.FC = () => {
               <Route path="/apps" element={<Private><Apps /></Private>} />
               <Route path="/structuring/*" element={<Structuring />} />
               <Route path="/issuance/*" element={<Issuance />} />
+              <Route path="/lending/*" element={<Lending />} />
               <Route path="/custody/*" element={<Custody />} />
               <Route path="/distribution/*" element={<Distribution />} />
               <Route path="/servicing/*" element={<Servicing />} />

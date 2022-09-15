@@ -25,7 +25,7 @@ import Daml.Script (Script, createCmd, submitMulti)
 run : Script [PartyInfo]
 run  = do
   let scenario = "Bond Issuance"
-  parties <- allocateParties scenario ["Operator", "Public", "CentralBank", "Registry", "Issuer", "BNY", "Alice", "Bob", "Charlie"]
+  parties <- allocateParties scenario ["Operator", "Public", "CentralBank", "Registry", "Issuer", "Custodian", "Alice", "Bob", "Charlie"]
   let [operator, public, centralBank, registry, issuer, custodian, alice, bob, charlie] = map (.id) parties
 
   -- Create roles
@@ -66,15 +66,15 @@ run  = do
   holdingFactoryCid <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory with provider = operator; observers = fromList pub
   let createAcc = createAccount [public] accountFactoryCid holdingFactoryCid
   issuerCashAccount      <- createAcc [] centralBank issuer    "Issuer@CentralBank"
-  custodianCashAccount   <- createAcc [] centralBank custodian "BNY@CentralBank"
-  aliceCashAccount       <- createAcc [] custodian   alice     "Alice@BNY/Cash"
-  bobCashAccount         <- createAcc [] custodian   bob       "Bob@BNY/Cash"
-  charlieCashAccount     <- createAcc [] custodian   charlie   "Charlie@BNY/Cash"
+  custodianCashAccount   <- createAcc [] centralBank custodian "Custodian@CentralBank"
+  aliceCashAccount       <- createAcc [] custodian   alice     "Alice@Custodian/Cash"
+  bobCashAccount         <- createAcc [] custodian   bob       "Bob@Custodian/Cash"
+  charlieCashAccount     <- createAcc [] custodian   charlie   "Charlie@Custodian/Cash"
   issuerSecAccount       <- createAcc [] registry    issuer    "Issuer@Registry"
-  custodianSecAccount    <- createAcc [] registry    custodian "BNY@Registry"
-  aliceSecAccount        <- createAcc [] custodian   alice     "Alice@BNY/Securities"
-  bobSecAccount          <- createAcc [] custodian   bob       "Bob@BNY/Securities"
-  charlieSecAccount      <- createAcc [] custodian   charlie   "Charlie@BNY/Securities"
+  custodianSecAccount    <- createAcc [] registry    custodian "Custodian@Registry"
+  aliceSecAccount        <- createAcc [] custodian   alice     "Alice@Custodian/Securities"
+  bobSecAccount          <- createAcc [] custodian   bob       "Bob@Custodian/Securities"
+  charlieSecAccount      <- createAcc [] custodian   charlie   "Charlie@Custodian/Securities"
 
   -- Instruments
   usd   <- originate         centralBank centralBank pub todayTime "USD"

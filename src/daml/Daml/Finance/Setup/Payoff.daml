@@ -376,5 +376,14 @@ ngConditionalLocation startDate endDate quantity location1 price1 price1Cap loca
     claim = mconcat $ map (\date -> when (at $ t date) $ cond (observe price1 <= Const price1Cap) c1 c2) dates
   in claim
 
+loan : Date -> Date -> Instrument.K -> Decimal -> Instrument.K -> [Date] -> C
+loan startDate endDate underlying interestAmount interestCurrency interestDates =
+  let
+    initial = when (at $ t startDate) $ one underlying
+    interest d = when (at $ t d) $ give $ scale (Const interestAmount) (one interestCurrency)
+    interestStream = mconcat $ map interest interestDates
+    final = when (at $ t endDate) $ give $ one underlying
+  in initial `and` interestStream `and` final
+
 rollDaily : Date -> Date -> [Date]
 rollDaily d end = if d > end then [] else d :: rollDaily (addDays d 1) end

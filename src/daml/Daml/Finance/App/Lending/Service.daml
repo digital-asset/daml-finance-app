@@ -26,11 +26,11 @@ template Service
     nonconsuming choice RequestBorrowOffer : ContractId BorrowOfferRequest
       with
         id : Text
-        instrument : Instrument.Q
+        borrowed : Instrument.Q
         maturity : Date
       controller customer
       do
-        create BorrowOfferRequest with operator; provider; customer; id; instrument; maturity
+        create BorrowOfferRequest with operator; provider; customer; id; borrowed; maturity
 
     nonconsuming choice AcceptBorrowOffer : (ContractId Transferable.I, ContractId BorrowAgreement)
       with
@@ -39,11 +39,11 @@ template Service
         account : Account.K
       controller customer
       do
-        BorrowOffer{operator; provider; customer; id; instrument; maturity; interest; borrowedCid; lenderAccount} <- fetchAndArchive borrowOfferCid
+        BorrowOffer{operator; provider; customer; id; borrowed; maturity; interest; collateral; borrowedCid; lenderBorrowedAccount; lenderInterestAccount} <- fetchAndArchive borrowOfferCid
         unlockedBorrowedCid <- exercise (coerceContractId borrowedCid : ContractId Lockable.I) Lockable.Release with context = id
         transferredCid <- exercise (coerceContractId unlockedBorrowedCid : ContractId Transferable.I) Transferable.Transfer with newOwnerAccount = account
         lockedCollateralCid : ContractId Transferable.I <- coerceContractId <$> exercise (coerceContractId collateralCid : ContractId Lockable.I) Lockable.Acquire with newLocker = (singleton provider); context = id; lockType = Lockable.Semaphore
-        borrowAgreementCid <- create BorrowAgreement with operator; provider; customer; id; instrument; maturity; interest; collateralCid = lockedCollateralCid; lenderAccount
+        borrowAgreementCid <- create BorrowAgreement with operator; provider; customer; id; borrowed; maturity; interest; collateral; collateralCid = lockedCollateralCid; lenderBorrowedAccount; lenderInterestAccount
         pure (transferredCid, borrowAgreementCid)
 
     nonconsuming choice CreateBorrowOffer : ContractId BorrowOffer
@@ -52,13 +52,15 @@ template Service
         interest : Instrument.Q
         collateral : Instrument.Q
         borrowedCid : ContractId Transferable.I
-        lenderAccount : Account.K
+        lenderBorrowedAccount : Account.K
+        lenderInterestAccount : Account.K
       controller provider
       do
-        BorrowOfferRequest{operator; provider; customer; id; instrument; maturity} <- fetchAndArchive borrowOfferRequestCid
-        Account.exerciseInterfaceByKey @Disclosure.I lenderAccount customer Disclosure.AddObservers with disclosers = singleton provider; observersToAdd = (id, singleton customer)
+        BorrowOfferRequest{operator; provider; customer; id; borrowed; maturity} <- fetchAndArchive borrowOfferRequestCid
+        Account.exerciseInterfaceByKey @Disclosure.I lenderBorrowedAccount customer Disclosure.AddObservers with disclosers = singleton provider; observersToAdd = (id, singleton customer)
+        Account.exerciseInterfaceByKey @Disclosure.I lenderInterestAccount customer Disclosure.AddObservers with disclosers = singleton provider; observersToAdd = (id, singleton customer)
         lockedBorrowedCid : ContractId Transferable.I <- coerceContractId <$> exercise (coerceContractId borrowedCid : ContractId Lockable.I) Lockable.Acquire with newLocker = (singleton customer); context = id; lockType = Lockable.Semaphore
-        create BorrowOffer with operator; provider; customer; id; instrument; maturity; interest; collateral; borrowedCid = lockedBorrowedCid; lenderAccount
+        create BorrowOffer with operator; provider; customer; id; borrowed; maturity; interest; collateral; borrowedCid = lockedBorrowedCid; lenderBorrowedAccount; lenderInterestAccount
 
     choice Terminate : ()
       with
