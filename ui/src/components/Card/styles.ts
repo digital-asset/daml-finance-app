@@ -16,6 +16,10 @@ export default makeStyles((theme : Theme) => createStyles({
     height: 140,
     backgroundColor: "white",
   },
+  cardMediaLarge: {
+    height: 200,
+    backgroundColor: "white",
+  },
   cardContent: {
     backgroundColor: theme.palette.primary.main,
   },

@@ -143,7 +143,7 @@ export const Effect : React.FC = () => {
                     <TableRow key={i} className={classes.tableRow}>
                       <TableCell key={0} className={classes.tableCell}>{getName(c.payload.account.custodian)}</TableCell>
                       <TableCell key={1} className={classes.tableCell}>{getName(c.payload.account.owner)}</TableCell>
-                      <TableCell key={2} className={classes.tableCell}>{c.payload.account.id}</TableCell>
+                      <TableCell key={2} className={classes.tableCell}>{c.payload.account.id.unpack}</TableCell>
                       <TableCell key={4} className={classes.tableCell}>{c.payload.instrument.id.unpack}</TableCell>
                       <TableCell key={5} className={classes.tableCell}>{version(c.payload.instrument)}</TableCell>
                       <TableCell key={6} className={classes.tableCell} align="right">{fmt(c.payload.amount)}</TableCell>

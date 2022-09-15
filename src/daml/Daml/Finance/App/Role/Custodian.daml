@@ -7,6 +7,7 @@ import Daml.Finance.App.BackToBack.Service qualified as BackToBack (Approve(..),
 import Daml.Finance.App.Custody.Service qualified as Custody (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Issuance.Auto.Service qualified as IssuanceAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Issuance.Service qualified as Issuance (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Lending.Service qualified as Lending (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Structuring.Auto.Service qualified as StructuringAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Structuring.Service qualified as Structuring (Approve(..), Offer(..), Request, Service, Terminate(..))
@@ -168,6 +169,27 @@ template Role
       controller provider
       do
         exerciseByKey @Lifecycle.Service (operator, provider, customer) Lifecycle.Terminate with actor = provider
+
+    nonconsuming choice OfferLendingService : ContractId Lending.Offer
+      with
+        customer : Party
+      controller provider
+      do
+        create Lending.Offer with ..
+
+    nonconsuming choice ApproveLendingRequest : ContractId Lending.Service
+      with
+        lendingServiceRequestCid : ContractId Lending.Request
+      controller provider
+      do
+        exercise lendingServiceRequestCid Lending.Approve with ..
+
+    nonconsuming choice TerminateLendingService : ()
+      with
+        customer : Party
+      controller provider
+      do
+        exerciseByKey @Lending.Service (operator, provider, customer) Lending.Terminate with actor = provider
 
     choice TerminateRole: ()
       controller operator

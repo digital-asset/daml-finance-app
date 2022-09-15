@@ -39,7 +39,7 @@ export const Accounts : React.FC = () => {
                   {ownerAccounts.map((c, i) => (
                     <TableRow key={i} className={classes.tableRow}>
                       <TableCell key={0} className={classes.tableCell}>{getName(c.payload.custodian)}</TableCell>
-                      <TableCell key={1} className={classes.tableCell}>{c.payload.id}</TableCell>
+                      <TableCell key={1} className={classes.tableCell}>{c.payload.id.unpack}</TableCell>
                       <TableCell key={2} className={classes.tableCell}>{c.signatories.map(getName).join(", ")}</TableCell>
                     </TableRow>
                   ))}
@@ -62,7 +62,7 @@ export const Accounts : React.FC = () => {
                   {custodianAccounts.map((c, i) => (
                     <TableRow key={i} className={classes.tableRow}>
                       <TableCell key={0} className={classes.tableCell}>{getName(c.payload.owner)}</TableCell>
-                      <TableCell key={1} className={classes.tableCell}>{c.payload.id}</TableCell>
+                      <TableCell key={1} className={classes.tableCell}>{c.payload.id.unpack}</TableCell>
                       <TableCell key={2} className={classes.tableCell}>{c.signatories.map(getName).join(", ")}</TableCell>
                     </TableRow>
                   ))}

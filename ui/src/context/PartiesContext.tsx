@@ -35,7 +35,7 @@ export const PartiesProvider : React.FC = ({ children }) => {
   const [partyTokens, setPartyTokens] = useState<any>({});
 
   useMemo(() => {
-    const filtered = parties.filter(p => p.scenario === scenario.selected.name);
+    const filtered = parties.filter(p => p.scenario === scenario.selected.label);
     const pIds : any = {};
     const pNames : any = {};
     const pTokens : any = {};

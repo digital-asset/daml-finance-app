@@ -31,7 +31,7 @@ export const Scenario : React.FC<ScenarioProps> = ({ label, description, image, 
       <Card className={classes.card}>
         <Box border={1} borderColor="primary.main" style={{ height: "100%"}}>
           <CardActionArea onClick={selectScenario}>
-            <CardMedia className={classes.cardMedia} image={image} title={label} />
+            <CardMedia className={classes.cardMediaLarge} image={image} title={label} />
             <CardContent>
               <Typography gutterBottom variant="h5" component="h2" className={classes.cardText}>{label}</Typography>
               <Typography variant="body2" color="textPrimary" component="p" className={classes.cardText}>{description}</Typography>
