@@ -49,7 +49,7 @@ export const Header : React.FC<HeaderProps> = ({ app } : HeaderProps) => {
         <Box alignContent="center">
           <Grid container direction="column" alignItems="center">
             <Grid item xs={12}>
-            <Typography variant="h5" className={classes.logotype}>Digital Market Infrastructure</Typography>
+            <Typography variant="h5" className={classes.logotype}>Daml Finance Reference Application</Typography>
             </Grid>
             <Grid item xs={12}>
               <Typography variant="body1" style={{ color: "#666" }}>{app}</Typography>

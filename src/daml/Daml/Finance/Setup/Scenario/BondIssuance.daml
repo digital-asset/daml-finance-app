@@ -1,0 +1,119 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.Setup.Scenario.BondIssuance where
+
+import DA.Date (DayOfWeek(Saturday, Sunday), Month(..), date, toDateUTC, toGregorian)
+import DA.Map (fromList)
+import DA.Set (singleton)
+import DA.Time (time)
+import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
+import Daml.Finance.Interface.Types.Common (Id(..))
+import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum(..), HolidayCalendarData(..))
+import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum(..))
+import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum(..))
+import Daml.Finance.RefData.HolidayCalendar (HolidayCalendar(..))
+import Daml.Finance.RefData.Observation (Observation(..))
+import Daml.Finance.RefData.Time.DateClock (DateClock(..), DateClockUpdateEvent(..), Unit(..))
+import Daml.Finance.Setup.Util.Common
+import Daml.Finance.Setup.Util.Role
+import Daml.Finance.Setup.Util.Service
+import Daml.Finance.Setup.Util.Workflow
+import Daml.Script (Script, createCmd, submitMulti)
+
+run : Script [PartyInfo]
+run  = do
+  let scenario = "Bond Issuance"
+  parties <- allocateParties scenario ["Operator", "Public", "CentralBank", "Registry", "Issuer", "Custodian", "Alice", "Bob", "Charlie"]
+  let [operator, public, centralBank, registry, issuer, custodian, alice, bob, charlie] = map (.id) parties
+
+  -- Create roles
+  createOperatorRole operator
+  createCustodianRole operator centralBank
+  createCustodianRole operator registry
+  createCustodianRole operator custodian
+
+  -- Create custody services
+  createCustodyService operator centralBank issuer
+  createCustodyService operator centralBank custodian
+  createCustodyService operator registry issuer
+  createCustodyService operator registry custodian
+  createCustodyService operator custodian alice
+  createCustodyService operator custodian bob
+  createCustodyService operator custodian charlie
+
+  createIssuanceService operator registry issuer
+  createIssuanceAutoService operator registry issuer
+  createStructuringService operator registry issuer
+  createStructuringAutoService operator registry issuer
+  createLifecycleService operator registry issuer
+
+  t <- getTime
+  let
+    today = toDateUTC t
+    todayTime = time today 12 0 0
+    (todayYear, todayMonth, todayDay) = toGregorian today
+    pub = [("Public", singleton $ singleton public)]
+
+  -- Create clock and events
+  let clock = DateClock with u = Unit today, id = Id "Clock", provider = issuer, observers = fromList pub
+  submitMulti [issuer] [] do createCmd clock
+  submitMulti [issuer] [] do createCmd DateClockUpdateEvent with clock; id = Id $ "Update to " <> show today
+
+  -- Create accounts
+  accountFactoryCid <- toInterfaceContractId <$> createFactory operator pub
+  holdingFactoryCid <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory with provider = operator; observers = fromList pub
+  let createAcc = createAccount [public] accountFactoryCid holdingFactoryCid
+  issuerCashAccount      <- createAcc [] centralBank issuer    "Issuer@CentralBank"
+  custodianCashAccount   <- createAcc [] centralBank custodian "Custodian@CentralBank"
+  aliceCashAccount       <- createAcc [] custodian   alice     "Alice@Custodian/Cash"
+  bobCashAccount         <- createAcc [] custodian   bob       "Bob@Custodian/Cash"
+  charlieCashAccount     <- createAcc [] custodian   charlie   "Charlie@Custodian/Cash"
+  issuerSecAccount       <- createAcc [] registry    issuer    "Issuer@Registry"
+  custodianSecAccount    <- createAcc [] registry    custodian "Custodian@Registry"
+  aliceSecAccount        <- createAcc [] custodian   alice     "Alice@Custodian/Securities"
+  bobSecAccount          <- createAcc [] custodian   bob       "Bob@Custodian/Securities"
+  charlieSecAccount      <- createAcc [] custodian   charlie   "Charlie@Custodian/Securities"
+
+  -- Instruments
+  usd   <- originate         centralBank centralBank pub todayTime "USD"
+  bond1 <- originateZeroCouponBond      registry issuer "BOND1" "ZERO-3Y"       pub todayTime (date 2022 Sep todayDay) (date 2025 Sep todayDay) usd
+  bond2 <- originateFixedRateBond       registry issuer "BOND2" "FIXED-3Y-1.1%" pub todayTime (date 2021 Sep todayDay) ["FED"] registry (date 2022 Sep todayDay) (date 2025 Sep todayDay) Act365Fixed Following 0.011 M 12 usd
+  bond3 <- originateFloatingRateBond    registry issuer "BOND3" "FIXED-3Y-0.8%" pub todayTime (date 2021 Sep todayDay) ["FED"] registry (date 2022 Sep todayDay) (date 2025 Sep todayDay) Act365Fixed Following 0.005 M 12 usd "USD-LIBOR-12M"
+  bond4 <- originateInflationLinkedBond registry issuer "BOND4" "INFL-3Y-0.75%" pub todayTime (date 2021 Sep todayDay) ["FED"] registry (date 2022 Sep todayDay) (date 2025 Sep todayDay) Act365Fixed Following 0.005 M 12 usd "CPI" 100.0
+
+  -- issue operator registry issuer public "ISSUE1" (Instrument.qty 100_000_000.0 bnd1) issuerSecAccount
+  -- issue operator registry issuer public "ISSUE2" (Instrument.qty 100_000_000.0 bond2) issuerSecAccount
+  -- issue operator registry issuer public "ISSUE3" (Instrument.qty 100_000_000.0 bond3) issuerSecAccount
+  -- issue operator registry issuer public "ISSUE4" (Instrument.qty 100_000_000.0 bond4) issuerSecAccount
+
+  -- deposit operator registry custodian public (Instrument.qty 100_000_000.0 bond1) custodianSecAccount
+  deposit operator registry custodian public (Instrument.qty 100_000_000.0 bond2) custodianSecAccount
+  deposit operator registry custodian public (Instrument.qty 100_000_000.0 bond3) custodianSecAccount
+  deposit operator registry custodian public (Instrument.qty 100_000_000.0 bond4) custodianSecAccount
+
+  deposit operator custodian alice   public (Instrument.qty 50_000_000.0 bond2) aliceSecAccount
+  deposit operator custodian bob     public (Instrument.qty 30_000_000.0 bond2) bobSecAccount
+  deposit operator custodian charlie public (Instrument.qty 20_000_000.0 bond2) charlieSecAccount
+  deposit operator custodian alice   public (Instrument.qty 60_000_000.0 bond3) aliceSecAccount
+  deposit operator custodian bob     public (Instrument.qty 30_000_000.0 bond3) bobSecAccount
+  deposit operator custodian charlie public (Instrument.qty 10_000_000.0 bond3) charlieSecAccount
+  deposit operator custodian alice   public (Instrument.qty 70_000_000.0 bond4) aliceSecAccount
+  deposit operator custodian bob     public (Instrument.qty 20_000_000.0 bond4) bobSecAccount
+  deposit operator custodian charlie public (Instrument.qty 10_000_000.0 bond4) charlieSecAccount
+
+  deposit operator centralBank custodian public (Instrument.qty 120_000_000.0 usd) custodianCashAccount
+  deposit operator custodian alice       public (Instrument.qty  50_000_000.0 usd) aliceCashAccount
+  deposit operator custodian bob         public (Instrument.qty  40_000_000.0 usd) bobCashAccount
+  deposit operator custodian charlie     public (Instrument.qty  30_000_000.0 usd) charlieCashAccount
+
+  let
+    obs =
+      [ Observation with provider = issuer; obsKey = "USD-LIBOR-12M"; observations = fromList [(todayTime,   0.0018825)]; observers = fromList pub
+      , Observation with provider = issuer; obsKey = "CPI";           observations = fromList [(todayTime, 108.2500000)]; observers = fromList pub ]
+    calendar = HolidayCalendarData with id = "FED"; weekend = [Saturday, Sunday]; holidays = []
+  obsCids <- mapA (\f -> submitMulti [registry, issuer] [] do createCmd f) obs
+  calendarCid <- submitMulti [registry] [] do createCmd HolidayCalendar with agency = registry; entity = calendar.id; calendar; observers = fromList pub
+
+  pure parties

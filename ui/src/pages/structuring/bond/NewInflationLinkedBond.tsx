@@ -119,10 +119,15 @@ export const NewInflationLinkedBond : React.FC = () => {
                     <Select value={dayCountConvention} onChange={e => setDayCountConvention(e.target.value as string)} MenuProps={menuProps}>
                       <MenuItem key={0} value={"Act360"}>{"Act/360"}</MenuItem>
                       <MenuItem key={1} value={"Act365Fixed"}>{"Act/365 (Fixed)"}</MenuItem>
-                      <MenuItem key={2} value={"Basis30360"}>{"Basis 30/360"}</MenuItem>
-                      <MenuItem key={3} value={"Basis30360ICMA"}>{"Basis 30/360 (ICMA)"}</MenuItem>
-                      <MenuItem key={4} value={"Basis30E360"}>{"Basis 30E/360"}</MenuItem>
-                      <MenuItem key={5} value={"Basis30E3360"}>{"Basis 30E3/360"}</MenuItem>
+                      <MenuItem key={2} value={"Act365L"}>{"Act/365 (L)"}</MenuItem>
+                      <MenuItem key={3} value={"ActActAFB"}>{"Act/Act (AFB)"}</MenuItem>
+                      <MenuItem key={4} value={"ActActISDA"}>{"Act/Act (ISDA)"}</MenuItem>
+                      <MenuItem key={5} value={"ActActICMA"}>{"Act/Act (ICMA)"}</MenuItem>
+                      <MenuItem key={6} value={"Basis1"}>{"Basis 1/1"}</MenuItem>
+                      <MenuItem key={7} value={"Basis30360"}>{"Basis 30/360"}</MenuItem>
+                      <MenuItem key={8} value={"Basis30360ICMA"}>{"Basis 30/360 (ICMA)"}</MenuItem>
+                      <MenuItem key={9} value={"Basis30E360"}>{"Basis 30E/360"}</MenuItem>
+                      <MenuItem key={10} value={"Basis30E3360"}>{"Basis 30E3/360"}</MenuItem>
                     </Select>
                   </FormControl>
                   <FormControl className={classes.inputField} fullWidth>

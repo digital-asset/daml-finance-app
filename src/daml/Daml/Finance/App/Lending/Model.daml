@@ -1,0 +1,76 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Lending.Model where
+
+import DA.Set (singleton)
+import Daml.Finance.Interface.Holding.Account qualified as Account (K, exerciseInterfaceByKey)
+import Daml.Finance.Interface.Holding.Lockable qualified as Lockable (I, Release(..))
+import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I, Transfer(..))
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, RemoveObservers(..))
+
+template BorrowOfferRequest
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Text
+    borrowed : Instrument.Q
+    maturity : Date
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, id) : (Party, Party, Text)
+    maintainer key._1
+
+template BorrowOffer
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Text
+    borrowed : Instrument.Q
+    maturity : Date
+    interest : Instrument.Q
+    collateral : Instrument.Q
+    borrowedCid : ContractId Transferable.I
+    lenderBorrowedAccount : Account.K
+    lenderInterestAccount : Account.K
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, id) : (Party, Party, Text)
+    maintainer key._1
+
+template BorrowAgreement
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Text
+    borrowed : Instrument.Q
+    maturity : Date
+    interest : Instrument.Q
+    collateral : Instrument.Q
+    collateralCid : ContractId Transferable.I
+    lenderBorrowedAccount : Account.K
+    lenderInterestAccount : Account.K
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, id) : (Party, Party, Text)
+    maintainer key._1
+
+    choice Repay : (ContractId Transferable.I, ContractId Transferable.I, ContractId Transferable.I)
+      with
+        borrowedCid : ContractId Transferable.I
+        interestCid : ContractId Transferable.I
+      controller customer
+      do
+        borrowedCid <- exercise borrowedCid Transferable.Transfer with newOwnerAccount = lenderBorrowedAccount
+        interestCid <- exercise interestCid Transferable.Transfer with newOwnerAccount = lenderInterestAccount
+        unlockedCid <- coerceContractId <$> exercise (coerceContractId collateralCid : ContractId Lockable.I) Lockable.Release with context = id
+        Account.exerciseInterfaceByKey @Disclosure.I lenderBorrowedAccount provider Disclosure.RemoveObservers with observersToRemove = (id, singleton customer)
+        Account.exerciseInterfaceByKey @Disclosure.I lenderInterestAccount provider Disclosure.RemoveObservers with observersToRemove = (id, singleton customer)
+        pure (unlockedCid, borrowedCid, interestCid)

@@ -21,7 +21,7 @@ import Daml.Finance.Settlement.Factory (Factory(..))
 import Daml.Finance.Setup.Payoff (bond, brc, buyWriteNote, futureDvp, putOptionCash, rc)
 import Daml.Finance.Setup.Util.Common (PartyInfo, allocateParties)
 import Daml.Finance.Setup.Util.Role (createCustodianRole, createDistributorRole, createOperatorRole)
-import Daml.Finance.Setup.Util.Service (createBackToBackIssuanceService, createCustodyService, createIssuanceService, createLifecycleService, createSubscriptionService)
+import Daml.Finance.Setup.Util.Service (createBackToBackIssuanceService, createCustodyService, createIssuanceService, createLifecycleService, createStructuringService, createSubscriptionService)
 import Daml.Finance.Setup.Util.Workflow (createAccount, createFactory, deposit, originate, originateGeneric)
 import Daml.Script (Script, createCmd, exerciseByKeyCmd, exerciseCmd, submitMulti)
 
@@ -48,6 +48,7 @@ run  = do
   createCustodyService operator issuer bob
   createCustodyService operator issuer charlie
 
+  createStructuringService operator issuer issuer
   createIssuanceService operator issuer issuer
   createIssuanceService operator riskTaker riskTaker
   createBackToBackIssuanceService operator riskTaker issuer public

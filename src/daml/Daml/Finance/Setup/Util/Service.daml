@@ -12,6 +12,7 @@ import Daml.Finance.App.BackToBack.Service qualified as BackToBack (Accept(..), 
 import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Accept(..), Service)
 import Daml.Finance.App.Trading.Auto.Service qualified as TradingAuto (Accept(..), Service)
 import Daml.Finance.App.Trading.Service qualified as Trading (Accept(..), Service)
+import Daml.Finance.App.Lending.Service qualified as Lending (Accept(..), Service)
 import Daml.Finance.App.Listing.Auto.Service qualified as ListingAuto (Accept(..), Service)
 import Daml.Finance.App.Listing.Service qualified as Listing (Accept(..), Service)
 import Daml.Finance.App.Distribution.Auction.Auto.Service qualified as AuctionAuto (Accept(..), Service)
@@ -19,7 +20,7 @@ import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (Accep
 import Daml.Finance.App.Distribution.Bidding.Auto.Service qualified as BiddingAuto (Accept(..), Service)
 import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Accept(..), Service)
 import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Accept(..), Service)
-import Daml.Finance.App.Role.Custodian qualified as Custodian (OfferBackToBackService(..), OfferCustodyService(..), OfferIssuanceAutoService(..), OfferIssuanceService(..), OfferLifecycleService(..), OfferStructuringService(..), OfferStructuringAutoService(..), Role)
+import Daml.Finance.App.Role.Custodian qualified as Custodian (OfferBackToBackService(..), OfferCustodyService(..), OfferIssuanceAutoService(..), OfferIssuanceService(..), OfferLendingService(..), OfferLifecycleService(..), OfferStructuringService(..), OfferStructuringAutoService(..), Role)
 import Daml.Finance.App.Role.Distributor qualified as Distributor (OfferAuctionAutoService(..), OfferAuctionService(..), OfferBiddingAutoService(..), OfferBiddingService(..), OfferSubscriptionService(..), Role)
 import Daml.Finance.App.Role.Exchange qualified as Exchange (OfferListingAutoService(..), OfferListingService(..), OfferTradingAutoService(..), OfferTradingService(..), Role)
 import Daml.Finance.App.Structuring.Auto.Service qualified as StructuringAuto (Accept(..), Service)
@@ -120,3 +121,8 @@ createSubscriptionService : Party -> Party -> Party -> Party -> Script (Contract
 createSubscriptionService operator distributor customer public = do
   offerCid <- submit distributor do exerciseByKeyCmd @Distributor.Role (operator, distributor) Distributor.OfferSubscriptionService with customer; public
   submit customer do exerciseCmd offerCid Subscription.Accept
+
+createLendingService : Party -> Party -> Party -> Script (ContractId Lending.Service)
+createLendingService operator lender borrower = do
+  offerCid <- submit lender do exerciseByKeyCmd @Custodian.Role (operator, lender) Custodian.OfferLendingService with customer = borrower
+  submit borrower do exerciseCmd offerCid Lending.Accept
