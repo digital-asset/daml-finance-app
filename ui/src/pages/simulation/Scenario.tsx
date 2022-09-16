@@ -9,15 +9,14 @@ import { Spinner } from "../../components/Spinner/Spinner";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Service";
 import classnames from "classnames";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
-import { claimToNode, findObservables } from "../../components/Claims/util";
+import { and, claimToNode, findObservables } from "../../components/Claims/util";
 import { render } from "../../components/Claims/renderScenario";
 import { ExpandMore } from "@mui/icons-material";
 import { dedup } from "../../util";
-import { emptyMap } from "@daml/types";
-import { Observation } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefData/Observation";
 import { useServices } from "../../context/ServicesContext";
 import { useInstruments } from "../../context/InstrumentsContext";
 import { Message } from "../../components/Message/Message";
+import { Claims } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Util";
 
 type Payout = {
   asset : string
@@ -33,7 +32,7 @@ export const Scenario : React.FC = () => {
   const classes = useStyles();
   const el = useRef<HTMLDivElement>(null);
 
-  const [ assetLabel, setAssetLabel ] = useState("");
+  const [ instrumentId, setInstrumentId ] = useState("");
   const [ expiry, setExpiry ] = useState<string>("");
   const [ fixings, setFixings ] = useState<string[]>([]);
   const [ underlyings, setUnderlyings ] = useState<string[]>([]);
@@ -51,29 +50,29 @@ export const Scenario : React.FC = () => {
   const svc = useServices();
   const inst = useInstruments();
 
-  const asset = inst.generics.find(c => c.payload.id.unpack === assetLabel);
+  const hasClaims = inst.latests.filter(a => !!a.claims);
+  const aggregate = hasClaims.find(a => a.instrument.payload.id.unpack === instrumentId);
 
   useEffect(() => {
-    if (!!asset) setNode(claimToNode(asset.payload.claims));
-  }, [asset]);
-
-  useEffect(() => {
-    const getStaticData = async () => {
-      if (!!asset) {
-        const [exp, ] = await ledger.exercise(Service.Expiry, svc.lifecycle[0].contractId, { claims: asset.payload.claims });
-        const [und, ] = await ledger.exercise(Service.Underlying, svc.lifecycle[0].contractId, { claims: asset.payload.claims });
-        const [pay, ] = await ledger.exercise(Service.Payoffs, svc.lifecycle[0].contractId, { claims: asset.payload.claims });
-        const [fix, ] = await ledger.exercise(Service.Fixings, svc.lifecycle[0].contractId, { claims: asset.payload.claims });
+    const setClaims = async () => {
+      if (!!aggregate && !!aggregate.claims && svc.lifecycle.length > 0) {
+        const [res, ] = await ledger.createAndExercise(Claims.Get, { party }, { instrumentCid: aggregate.claims.contractId })
+        const claims = res.length > 1 ? and(res.map(r => r.claim)) : res[0].claim;
+        const [exp, ] = await ledger.exercise(Service.Expiry, svc.lifecycle[0].contractId, { claims });
+        const [und, ] = await ledger.exercise(Service.Underlying, svc.lifecycle[0].contractId, { claims });
+        const [pay, ] = await ledger.exercise(Service.Payoffs, svc.lifecycle[0].contractId, { claims });
+        const [fix, ] = await ledger.exercise(Service.Fixings, svc.lifecycle[0].contractId, { claims });
         const undLabels = und.map(c => c.id.unpack);
         const obsLabels = pay.flatMap(p => findObservables(p._1));
+        setNode(claimToNode(claims));
         setExpiry(exp || "");
         setUnderlyings(dedup(undLabels));
         setObservables(dedup(obsLabels));
         setFixings(dedup(fix));
       }
-    };
-    getStaticData();
-  }, [svc, asset, ledger, party]);
+    }
+    setClaims();
+  }, [svc, aggregate, ledger, party]);
 
   useEffect(() => {
     if (!el.current) return;
@@ -105,16 +104,12 @@ export const Scenario : React.FC = () => {
   if (svc.lifecycle.length === 0) return <Message text="No lifecycle service found" />;
 
   const simulate = async () => {
-    if (!asset) return;
+    if (!aggregate || !aggregate.claims) return;
     setSimulating(true);
-    const res : Result[] = [];
-    for (let fixing = min; fixing <= max; fixing += step) {
-      const prices = emptyMap<string, string>().set(expiry, fixing.toString());
-      const observable = await ledger.create(Observation, { provider: party, obsKey: observables[0], observations: prices, observers: emptyMap<any, any>() })
-      const [ { _2: result }, ] = await ledger.exercise(Service.PreviewLifecycle, svc.lifecycle[0].contractId, { today: expiry, observableCids: [observable.contractId], claims: asset.payload.claims });
-      await ledger.archive(Observation, observable.contractId);
-      res.push({ fixing, payouts: result.map(r => ({ amount: parseFloat(r.amount), asset: r.asset.id.unpack })) });
-    }
+    const prices = [];
+    for (let fixing = min; fixing <= max; fixing += step) prices.push(fixing.toString());
+    const [ results, ] = await ledger.exercise(Service.SimulateLifecycle, svc.lifecycle[0].contractId, { today: expiry, prices, instrumentCid: aggregate.claims.contractId });
+    const res = prices.map((p, i) => ({ fixing: parseFloat(p), payouts: results[i].map(r => ({ amount: parseFloat(r.amount), asset: r.asset.id.unpack }))}));
     setSimulating(false);
     setResults(res);
   }
@@ -131,8 +126,8 @@ export const Scenario : React.FC = () => {
           <Grid item xs={4}>
             <FormControl className={classes.inputField} fullWidth>
               <InputLabel className={classes.selectLabel}>Asset</InputLabel>
-              <Select variant="standard" className={classes.width90} value={assetLabel} onChange={e => setAssetLabel(e.target.value as string)} MenuProps={menuProps}>
-                {inst.generics.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
+              <Select variant="standard" fullWidth value={instrumentId} onChange={e => setInstrumentId(e.target.value as string)} MenuProps={menuProps}>
+                {hasClaims.map((c, i) => (<MenuItem key={i} value={c.instrument.payload.id.unpack}>{c.instrument.payload.id.unpack}</MenuItem>))}
               </Select>
             </FormControl>
           </Grid>

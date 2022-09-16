@@ -16,9 +16,9 @@ import useStyles from "./styles";
 import { useUserDispatch, signOut } from "../../context/UserContext";
 import { useBranding } from "../../context/BrandingContext";
 import { Spinner } from "../Spinner/Spinner";
-import { DateClock } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefData/Time/DateClock";
 import { useParties } from "../../context/PartiesContext";
 import { useScenario } from "../../context/ScenarioContext";
+import { Clock } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Clock";
 
 interface HeaderProps {
   app : string
@@ -33,14 +33,14 @@ export const Header : React.FC<HeaderProps> = ({ app } : HeaderProps) => {
   const party = useParty();
   const scenario = useScenario();
 
-  const { contracts: clocks, loading: l1 } = useStreamQueries(DateClock);
+  const { contracts: clocks, loading: l1 } = useStreamQueries(Clock);
 
   const exit = () => {
     signOut(userDispatch);
     if (scenario.selected.useNetworkLogin) navigate("/login/network");
     else navigate("/login/form");
   };
-  
+
   return (
     <AppBar position="fixed" className={classes.appBar} elevation={1}>
       <Toolbar className={classes.toolbar}>
@@ -63,7 +63,7 @@ export const Header : React.FC<HeaderProps> = ({ app } : HeaderProps) => {
           <Box style={{ width: "250px" }}>
             <Grid container direction="column" alignItems="center">
               <Grid item xs={12}><Typography variant="body2" style={{ color: "#666" }}>Today date: {new Date().toISOString().substring(0, 10)}</Typography></Grid>
-              <Grid item xs={12}><Typography variant="body2" style={{ color: "#666" }}>Lifecycle date: {clocks[0].payload.u.unpack}</Typography></Grid>
+              <Grid item xs={12}><Typography variant="body2" style={{ color: "#666" }}>Lifecycle date: {new Date(clocks[0].payload.clockTime).toISOString().substring(0, 10)}</Typography></Grid>
             </Grid>
           </Box>
           <Box className={classes.userBox} style={{ width: "120px" }}>

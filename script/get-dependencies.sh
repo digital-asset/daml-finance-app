@@ -4,41 +4,29 @@
 
 set -eu
 
-daml_yaml_file=$1
-root_dir="$(dirname "${daml_yaml_file}")"
+# Target Daml Finance version
+version="0.1.3"
+cc_version="3.0.0.20220721.1"
 
-dependencies=($(yq e '.data-dependencies[]' ${daml_yaml_file}))
-for dependency_path in "${dependencies[@]}"; do
+# Create .lib directory if it doesn't exist
+if [[ ! -d .lib ]]; then
+  mkdir .lib
+fi
 
-  echo "Processing dependency ${dependency_path}"
-
-  if [[ -a ${root_dir}/${dependency_path} ]]; then
-    echo "Dependency ${dependency_path} already exists. Skipping..."
-  else
-    # Take the full path, split on the unix file separator and take the last element in array
-    file_name=`awk '{ n=split($0,array,"/"); print array[n] }' <<< ${dependency_path}`
-
-    # From the end of the file name, remove the file extension and the version to get the repo name
-    package_name=`awk '{ sub(/\-[0-9]*\..*$/, "") ; print }' <<< ${file_name}`
-
-    # Match from the major version until the end of the file name; keep what was matched from the input string; remove the file extension
-    version=`awk '{ match($0, /[0-9a-zA-Z]+\..*/) ; $0=substr($0, RSTART, RLENGTH); sub(/.[a-z]+$/, ""); print }' <<< ${file_name}`
-#sed -e "s/\b\(.\)/\u\1/g"`
-    if [[ ${package_name} == daml* ]];
-    then
-      repo_name="daml-finance"
-      package_name=`echo ${package_name//-/.} | awk 'BEGIN{FS=OFS="."} {for (i=1;i<=NF;i++) {$i=toupper(substr($i,1,1)) substr($i,2)}}1'`
-      package_name=`echo ${package_name/Refdata/RefData}`
-      download_path="https://github.com/digital-asset/${repo_name}/releases/download/${package_name}/${version}/${file_name}"
-    else
-      repo_name=${package_name}
-      download_path="https://github.com/digital-asset/${repo_name}/releases/download/v${version}/${file_name}"
-    fi
-
-    echo "Downloading ${file_name} from Github repository at ${download_path}."
-    curl -Lf# $download_path -o ${root_dir}/${dependency_path}
-
-    echo -e "\nDependency ${file_name} downloaded successfully and saved to ${root_dir}/${dependency_path}.\n"
-  fi
-
-done
+if [[ ! -a ".lib/contingent-claims-${cc_version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/contingent-claims/releases/download/v${cc_version}/contingent-claims-${cc_version}.dar" -o .lib/contingent-claims-${cc_version}.dar; fi
+if [[ ! -a ".lib/daml-finance-holding-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Holding/${version}/daml-finance-holding-${version}.dar" -o .lib/daml-finance-holding-${version}.dar; fi
+if [[ ! -a ".lib/daml-finance-instrument-base-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Instrument.Base/${version}/daml-finance-instrument-base-${version}.dar" -o .lib/daml-finance-instrument-base-${version}.dar; fi
+if [[ ! -a ".lib/daml-finance-instrument-bond-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Instrument.Bond/${version}/daml-finance-instrument-bond-${version}.dar" -o .lib/daml-finance-instrument-bond-${version}.dar; fi
+if [[ ! -a ".lib/daml-finance-instrument-generic-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Instrument.Generic/${version}/daml-finance-instrument-generic-${version}.dar" -o .lib/daml-finance-instrument-generic-${version}.dar; fi
+if [[ ! -a ".lib/daml-finance-interface-holding-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Interface.Holding/${version}/daml-finance-interface-holding-${version}.dar" -o .lib/daml-finance-interface-holding-${version}.dar; fi
+if [[ ! -a ".lib/daml-finance-interface-instrument-base-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Interface.Instrument.Base/${version}/daml-finance-interface-instrument-base-${version}.dar" -o .lib/daml-finance-interface-instrument-base-${version}.dar; fi
+if [[ ! -a ".lib/daml-finance-interface-instrument-bond-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Interface.Instrument.Bond/${version}/daml-finance-interface-instrument-bond-${version}.dar" -o .lib/daml-finance-interface-instrument-bond-${version}.dar; fi
+if [[ ! -a ".lib/daml-finance-interface-instrument-generic-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Interface.Instrument.Generic/${version}/daml-finance-interface-instrument-generic-${version}.dar" -o .lib/daml-finance-interface-instrument-generic-${version}.dar; fi
+if [[ ! -a ".lib/daml-finance-interface-lifecycle-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Interface.Lifecycle/${version}/daml-finance-interface-lifecycle-${version}.dar" -o .lib/daml-finance-interface-lifecycle-${version}.dar; fi
+if [[ ! -a ".lib/daml-finance-interface-settlement-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Interface.Settlement/${version}/daml-finance-interface-settlement-${version}.dar" -o .lib/daml-finance-interface-settlement-${version}.dar; fi
+if [[ ! -a ".lib/daml-finance-interface-types-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Interface.Types/${version}/daml-finance-interface-types-${version}.dar" -o .lib/daml-finance-interface-types-${version}.dar; fi
+if [[ ! -a ".lib/daml-finance-interface-util-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Interface.Util/${version}/daml-finance-interface-util-${version}.dar" -o .lib/daml-finance-interface-util-${version}.dar; fi
+if [[ ! -a ".lib/daml-finance-lifecycle-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Lifecycle/${version}/daml-finance-lifecycle-${version}.dar" -o .lib/daml-finance-lifecycle-${version}.dar; fi
+if [[ ! -a ".lib/daml-finance-refdata-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.RefData/${version}/daml-finance-refdata-${version}.dar" -o .lib/daml-finance-refdata-${version}.dar; fi
+if [[ ! -a ".lib/daml-finance-settlement-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Settlement/${version}/daml-finance-settlement-${version}.dar" -o .lib/daml-finance-settlement-${version}.dar; fi
+if [[ ! -a ".lib/daml-finance-util-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Util/${version}/daml-finance-util-${version}.dar" -o .lib/daml-finance-util-${version}.dar; fi

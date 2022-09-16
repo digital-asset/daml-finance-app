@@ -10,14 +10,14 @@ import { useParams } from "react-router-dom";
 import useStyles from "../../styles";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Service";
 import { Spinner } from "../../../components/Spinner/Spinner";
-import { Factory } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Factory";
 import { Offering as OfferingContract, Subscription } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Model";
-import { Fungible } from "@daml.js/daml-finance-holding/lib/Daml/Finance/Holding/Fungible";
 import { Reference as AccountReference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
-import { fmt, getHolding } from "../../../util";
+import { fmt } from "../../../util";
 import { Message } from "../../../components/Message/Message";
 import { useParties } from "../../../context/PartiesContext";
 import { useServices } from "../../../context/ServicesContext";
+import { Factory } from "@daml.js/daml-finance-interface-settlement/lib/Daml/Finance/Interface/Settlement/Factory";
+import { useHoldings } from "../../../context/HoldingsContext";
 
 export const Offering : React.FC = () => {
   const classes = useStyles();
@@ -30,24 +30,23 @@ export const Offering : React.FC = () => {
   const { getName } = useParties();
   const party = useParty();
   const ledger = useLedger();
-  const svc = useServices();
+  const { loading: l1, subscription } = useServices();
+  const { loading: l2, getFungible } = useHoldings();
 
-  const { contracts: offerings, loading: l1 } = useStreamQueries(OfferingContract);
-  const { contracts: allSubscriptions, loading: l2 } = useStreamQueries(Subscription);
-  const { contracts: factories, loading: l3 } = useStreamQueries(Factory);
-  const { contracts: holdings, loading: l4 } = useStreamQueries(Fungible);
-  const { contracts: accounts, loading: l5 } = useStreamQueries(AccountReference);
+  const { contracts: offerings, loading: l3 } = useStreamQueries(OfferingContract);
+  const { contracts: allSubscriptions, loading: l4 } = useStreamQueries(Subscription);
+  const { contracts: factories, loading: l5 } = useStreamQueries(Factory);
+  const { contracts: accounts, loading: l6 } = useStreamQueries(AccountReference);
 
   const offering = offerings.find(c => c.contractId === cid);
 
-  if (l1 || l2 || l3 || l4 || l5 || svc.loading) return (<Spinner />);
+  if (l1 || l2 || l3 || l4 || l5 || l6) return (<Spinner />);
   if (!contractId) return <Message text="No contract id provided" />
   if (!offering) return <Message text="Subscription not found" />
 
-  const providerServices = svc.subscription.filter(s => s.payload.provider === party);
+  const providerServices = subscription.filter(s => s.payload.provider === party);
   const isProvider = providerServices.length > 0;
   const service = providerServices[0];
-  const myHoldings = holdings.filter(c => c.payload.account.owner === party);
   const subscriptions = allSubscriptions.filter(c => c.payload.offeringId === offering.payload.offeringId);
   const filledPerc = 100.0 * subscriptions.reduce((a, b) => a + parseFloat(b.payload.quantity), 0) / parseFloat(offering.payload.asset.amount);
 
@@ -60,11 +59,14 @@ export const Offering : React.FC = () => {
 
   const subscribe = async () => {
     const notional = quantity * parseFloat(offering.payload.price.amount);
-    const holding = holdings.find(c => c.payload.account.owner === party && parseFloat(c.payload.amount) >= notional && !c.payload.lock);
     const investorAccount = accounts.find(c => c.payload.accountView.custodian === offering.payload.issuer && c.payload.accountView.owner === party)?.key;
-    if (!holding || !investorAccount) return;
-    const investorHoldingCid = await getHolding(ledger, myHoldings, notional, offering.payload.price.unit);
-    const arg = { investor: party, quantity: quantity.toString(), investorHoldingCid, investorAccount };
+    if (!investorAccount) return;
+    const investorHoldingCid = await getFungible(party, notional, offering.payload.price.unit);
+    const arg = {
+      investor: party,
+      quantity: quantity.toString(),
+      investorHoldingCid, investorAccount
+    };
     await ledger.exercise(OfferingContract.Subscribe, offering.contractId, arg);
   };
 

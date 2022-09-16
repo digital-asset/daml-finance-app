@@ -10,12 +10,15 @@ import ContingentClaims.Observation (Observation(..))
 import ContingentClaims.Util (expiry, fixings, payoffs)
 import DA.Set (singleton)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K)
+import Daml.Finance.Interface.Instrument.Generic.HasClaims qualified as Generic (HasClaims, getClaims)
 import Daml.Finance.Interface.Lifecycle.Effect (Effect)
 import Daml.Finance.Interface.Lifecycle.Clock qualified as Clock (I)
 import Daml.Finance.Interface.Lifecycle.Event qualified as Event (I)
 import Daml.Finance.Interface.Lifecycle.Observable qualified as Interface (Observable, Observe(..))
 import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Interface (Lifecycle, Evolve(..))
 import Daml.Finance.App.Lifecycle.Pricing qualified as Pricing
+
+type C = Claim Time Decimal Instrument.K Text
 
 template Service
   with
@@ -28,13 +31,15 @@ template Service
     key (operator, provider, customer) : (Party, Party, Party)
     maintainer key._1
 
-    nonconsuming choice PreviewLifecycle : (Claim Time Decimal Instrument.K Text, [Lifecycle.Pending Time Instrument.K])
+    nonconsuming choice PreviewLifecycle : (C, [Lifecycle.Pending Time Instrument.K])
       with
         today : Time
         observableCids : [ContractId Interface.Observable]
-        claims : Claim Time Decimal Instrument.K Text
+        instrumentCid : ContractId Generic.HasClaims
       controller customer
       do
+        instrument <- fetch instrumentCid
+        claims <- mconcat . map (.claim) <$> Generic.getClaims instrument
         observables <- zip observableCids <$> mapA fetch observableCids
         let
           spot id t = do
@@ -42,6 +47,21 @@ template Service
             exercise obsCid Interface.Observe with actors = singleton customer; t
         Lifecycle.Result{remaining, pending} <- Lifecycle.lifecycle spot claims today today
         pure (remaining, pending)
+
+    nonconsuming choice SimulateLifecycle : [[Lifecycle.Pending Time Instrument.K]]
+      with
+        today : Time
+        prices : [Decimal]
+        instrumentCid : ContractId Generic.HasClaims
+      controller customer
+      do
+        instrument <- fetch instrumentCid
+        claims <- mconcat . map (.claim) <$> Generic.getClaims instrument
+        let
+          simulate price = do
+            result <- Lifecycle.lifecycle (\_ t -> pure price) claims today today
+            pure result.pending
+        mapA simulate prices
 
     nonconsuming choice Lifecycle : (ContractId Interface.Lifecycle, [ContractId Effect])
       with
@@ -56,35 +76,35 @@ template Service
 
     nonconsuming choice Expiry : Optional Time
       with
-        claims : Claim Time Decimal Instrument.K Text
+        claims : C
       controller customer
       do
         pure $ expiry claims
 
     nonconsuming choice Underlying : [Instrument.K]
       with
-        claims : Claim Time Decimal Instrument.K Text
+        claims : C
       controller customer
         do
           pure $ snd <$> payoffs claims
 
     nonconsuming choice Payoffs : [(Observation Time Decimal Text, Instrument.K)]
       with
-        claims : Claim Time Decimal Instrument.K Text
+        claims : C
       controller customer
         do
           pure $ payoffs claims
 
     nonconsuming choice Fixings : [Time]
       with
-        claims : Claim Time Decimal Instrument.K Text
+        claims : C
       controller customer
         do
           pure $ fixings claims
 
     nonconsuming choice Multipliers : [Decimal]
       with
-        claims : Claim Time Decimal Instrument.K Text
+        claims : C
       controller customer
         do
           let getConst : (Observation Time Decimal a, b) -> [Decimal]

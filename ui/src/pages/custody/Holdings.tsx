@@ -3,12 +3,12 @@
 
 import React from "react";
 import { Table, TableBody, TableCell, TableRow, TableHead, Grid, Paper, Typography } from "@mui/material";
-import { useParty, useStreamQueries } from "@daml/react";
+import { useParty } from "@daml/react";
 import useStyles from "../styles";
-import { Fungible } from "@daml.js/daml-finance-holding/lib/Daml/Finance/Holding/Fungible";
 import { fmt } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
+import { useHoldings } from "../../context/HoldingsContext";
 
 export type HoldingsProps = {
   showAssets : boolean
@@ -29,7 +29,7 @@ export const Holdings : React.FC<HoldingsProps> = ({ showAssets }) => {
   const party = useParty();
   const { getName } = useParties();
 
-  const { contracts: holdings, loading: l1 } = useStreamQueries(Fungible);
+  const { loading: l1, holdings } = useHoldings();
   if (l1) return (<Spinner />);
 
   const filtered = holdings.filter(c => showAssets ? c.payload.account.owner === party : c.payload.account.custodian === party);
@@ -39,7 +39,7 @@ export const Holdings : React.FC<HoldingsProps> = ({ showAssets }) => {
     const a = filtered[i];
     const entry = entries.find(e => e.custodian === a.payload.account.custodian && e.owner === a.payload.account.owner && e.instrument === a.payload.instrument.id.unpack && e.version === a.payload.instrument.version);
     const qty = parseFloat(a.payload.amount);
-    const isLocked = !!a.payload.lock;
+    const isLocked = !!a.lockable && !!a.lockable.payload.lock;
     if (!!entry) {
       entry.position += qty;
       entry.locked += isLocked ? qty : 0;

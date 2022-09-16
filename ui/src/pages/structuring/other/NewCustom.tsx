@@ -5,17 +5,20 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import classnames from "classnames";
-import { useLedger, useParty } from "@daml/react";
+import { useLedger } from "@daml/react";
 import { Typography, Grid, Paper, Button, TextField } from "@mui/material";
 import useStyles from "../../styles";
-import { Instrument } from "@daml.js/daml-finance-instrument-generic/lib/Daml/Finance/Instrument/Generic/Instrument";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../../components/Claims/ClaimsTreeBuilder";
 import { nodeToClaim } from "../../../components/Claims/util";
 import { Spinner } from "../../../components/Spinner/Spinner";
-import { createKey, singleton } from "../../../util";
+import { singleton } from "../../../util";
 import { emptyMap } from "@daml/types";
 import { useParties } from "../../../context/PartiesContext";
 import { useInstruments } from "../../../context/InstrumentsContext";
+import { Message } from "../../../components/Message/Message";
+import { useServices } from "../../../context/ServicesContext";
+import { Service as Structuring } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Service";
+import { Service as StructuringAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service";
 
 export const NewCustom : React.FC = () => {
   const classes = useStyles();
@@ -26,28 +29,30 @@ export const NewCustom : React.FC = () => {
 
   const { getParty } = useParties();
   const ledger = useLedger();
-  const party = useParty();
-  const inst = useInstruments();
+  const { loading: l1, structuring, structuringAuto } = useServices();
+  const { loading: l2, tokens } = useInstruments();
+  if (l1 || l2) return (<Spinner />);
+  if (structuring.length === 0) return <Message text={"No structuring service found"} />;
 
-  if (inst.loading) return (<Spinner />);
-
-  const keys = inst.tokens.map(createKey);
+  // TODO: What we actually want here is a list of underlyings, which in theory could be anything.
+  // But for demo simplicity purposes we keep it to base instruments for now.
+  const keys = tokens.map(a => a.key);
 
   const requestOrigination = async () => {
     if (!node || node.tag === "Claim") return;
     const claims = nodeToClaim(node);
+    const epoch = new Date(1970, 1, 1).toISOString();
+    const observers = emptyMap<string, any>().set("Public", singleton(singleton(getParty("Public"))));
     const arg = {
-      depository: party,
-      issuer: party,
-      id: { unpack: id },
-      description: "",
-      version: uuidv4(),
+      id,
+      description: id,
       claims,
-      observers: emptyMap<string, any>().set("Public", singleton(singleton(getParty("Public")))),
-      acquisitionTime: new Date(1970, 1, 1).toISOString(),
-      lastEventTimestamp: new Date(1970, 1, 1).toISOString()
-    }
-    await ledger.create(Instrument, arg);
+      acquisitionTime: epoch,
+      lastEventTimestamp: epoch,
+      observers
+    };
+    if (structuringAuto.length > 0) await ledger.exercise(StructuringAuto.RequestAndCreateGeneric, structuringAuto[0].contractId, arg);
+    else await ledger.exercise(Structuring.RequestCreateGeneric, structuring[0].contractId, arg);
     navigate("/structuring/instruments");
   };
 

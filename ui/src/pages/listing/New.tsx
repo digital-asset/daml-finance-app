@@ -3,7 +3,6 @@
 
 import { Service as AutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Auto/Service";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Service";
-import { CreateEvent } from "@daml/ledger";
 import { useLedger, useParty } from "@daml/react";
 import { Box, Button, FormControl, Grid, InputLabel, MenuItem, MenuProps, Paper, Select, TextField, Typography } from "@mui/material";
 import classnames from "classnames";
@@ -14,7 +13,7 @@ import { Spinner } from "../../components/Spinner/Spinner";
 import { useInstruments } from "../../context/InstrumentsContext";
 import { useParties } from "../../context/PartiesContext";
 import { useServices } from "../../context/ServicesContext";
-import { createKey, createSet } from "../../util";
+import { createSet } from "../../util";
 import useStyles from "../styles";
 
 export const New : React.FC = () => {
@@ -33,9 +32,9 @@ export const New : React.FC = () => {
 
   const myListingServices = svc.listing.filter(s => s.payload.customer === party);
   const myAutoListingServices = svc.listingAuto.filter(s => s.payload.customer === party);
-  const tradableInstruments : CreateEvent<any>[] = Array.prototype.concat.apply([], [inst.generics, inst.fixedRateBonds, inst.floatingRateBonds, inst.inflationLinkedBonds, inst.zeroCouponBonds]);
-  const tradedInstrument = tradableInstruments.find(c => c.payload.id.unpack === tradedInstrumentLabel);
-  const quotedInstrument = inst.tokens.find(c => c.payload.id.unpack === quotedInstrumentLabel);
+  const tradableInstruments = inst.latests;
+  const tradedInstrument = tradableInstruments.find(c => c.instrument.payload.id.unpack === tradedInstrumentLabel);
+  const quotedInstrument = inst.tokens.find(c => c.instrument.payload.id.unpack === quotedInstrumentLabel);
   const canRequest = !!tradedInstrumentLabel && !!tradedInstrument && !!quotedInstrumentLabel && !!quotedInstrument && !!id;
 
   if (inst.loading || svc.loading) return (<Spinner />);
@@ -45,8 +44,8 @@ export const New : React.FC = () => {
     if (!tradedInstrument || !quotedInstrument) return;
     const arg = {
       id,
-      tradedInstrument: createKey(tradedInstrument),
-      quotedInstrument: createKey(quotedInstrument),
+      tradedInstrument: tradedInstrument.key,
+      quotedInstrument: quotedInstrument.key,
       observers : createSet([ getParty("Public") ])
     };
     if (myAutoListingServices.length > 0) {
@@ -74,8 +73,8 @@ export const New : React.FC = () => {
                   <FormControl className={classes.inputField} fullWidth>
                     <Box className={classes.fullWidth}>
                       <InputLabel className={classes.selectLabel}>Traded Asset</InputLabel>
-                      <Select variant="standard" className={classes.width90} value={tradedInstrumentLabel} onChange={e => setTradedAssetLabel(e.target.value as string)} MenuProps={menuProps}>
-                        {tradableInstruments.filter(c => c.payload.id.unpack !== quotedInstrumentLabel).map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
+                      <Select variant="standard" fullWidth value={tradedInstrumentLabel} onChange={e => setTradedAssetLabel(e.target.value as string)} MenuProps={menuProps}>
+                        {tradableInstruments.filter(c => c.instrument.payload.id.unpack !== quotedInstrumentLabel).map((c, i) => (<MenuItem key={i} value={c.instrument.payload.id.unpack}>{c.instrument.payload.id.unpack}</MenuItem>))}
                       </Select>
                     </Box>
                   </FormControl>
@@ -83,7 +82,7 @@ export const New : React.FC = () => {
                     <Box className={classes.fullWidth}>
                       <InputLabel className={classes.selectLabel}>Quoted Asset</InputLabel>
                       <Select variant="standard" fullWidth value={quotedInstrumentLabel} onChange={e => setQuotedAssetLabel(e.target.value as string)} MenuProps={menuProps}>
-                        {inst.tokens.filter(c => c.payload.id.unpack !== tradedInstrumentLabel).map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
+                        {inst.tokens.filter(c => c.instrument.payload.id.unpack !== tradedInstrumentLabel).map((c, i) => (<MenuItem key={i} value={c.instrument.payload.id.unpack}>{c.instrument.payload.id.unpack}</MenuItem>))}
                       </Select>
                     </Box>
                   </FormControl>

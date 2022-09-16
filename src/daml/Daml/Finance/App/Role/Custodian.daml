@@ -9,7 +9,7 @@ import Daml.Finance.App.Issuance.Auto.Service qualified as IssuanceAuto (Approve
 import Daml.Finance.App.Issuance.Service qualified as Issuance (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Structuring.Auto.Service qualified as StructuringAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
-import Daml.Finance.App.Structuring.Service qualified as Structuring (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Structuring.Service qualified as Structuring (Approve(..), Factories, Offer(..), Request, Service, Terminate(..))
 
 template Role
   with
@@ -109,6 +109,7 @@ template Role
     nonconsuming choice OfferStructuringService : ContractId Structuring.Offer
       with
         customer : Party
+        factories : Structuring.Factories
       controller provider
       do
         create Structuring.Offer with ..
@@ -116,6 +117,7 @@ template Role
     nonconsuming choice ApproveStructuringRequest : ContractId Structuring.Service
       with
         structuringServiceRequestCid : ContractId Structuring.Request
+        factories : Structuring.Factories
       controller provider
       do
         exercise structuringServiceRequestCid Structuring.Approve with ..

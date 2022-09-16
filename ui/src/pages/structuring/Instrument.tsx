@@ -1,63 +1,41 @@
 // Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import React, { useEffect, useState } from "react";
-import classnames from "classnames";
-import { useLedger } from "@daml/react";
-import { Typography, Grid, Paper } from "@mui/material";
+import React from "react";
+import { Typography, Grid, Stepper, Step, StepButton } from "@mui/material";
 import { useParams } from "react-router-dom";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
-import { and, claimToNode } from "../../components/Claims/util";
-import { createKey, id } from "../../util";
 import { useInstruments } from "../../context/InstrumentsContext";
-import { useServices } from "../../context/ServicesContext";
-import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Service";
+import { Message } from "../../components/Message/Message";
+import { Aggregate } from "../../components/Instrument/Aggregate";
 
 export const Instrument : React.FC = () => {
   const classes = useStyles();
 
-  const ledger = useLedger();
-  const [ node, setNode ] = useState<ClaimTreeNode | undefined>();
-  const { contractId } = useParams<any>();
-  const cid = contractId?.replace("_", "#");
-  const inst = useInstruments();
-  const svc = useServices();
-  const instrument = inst.all.find(c => c.contractId === cid);
+  const [ activeStep, setActiveStep ] = React.useState(0);
+  const { key } = useParams<any>();
+  const { groups, loading } = useInstruments();
+  const group = groups.find(c => c.key === key);
 
-  useEffect(() => {
-    const setClaims = async () => {
-      if (!!instrument && svc.structuring.length > 0) {
-        const [res, ] = await ledger.exercise(Service.GetClaims, svc.structuring[0].contractId, { instrumentCid: instrument.contractId })
-        const claims = res.length > 1 ? and(res.map(r => r.claim)) : res[0].claim;
-        setNode(claimToNode(claims));
-      }
-    }
-    setClaims();
-  }, [instrument, ledger, svc]);
-
-  if (inst.loading || !instrument) return (<Spinner />);
+  if (loading) return <Spinner />;
+  if (!group) return <Message text={"Group [" + key + "] not found"} />;
 
   return (
     <Grid container direction="column" spacing={2}>
       <Grid item xs={12}>
-        <Typography variant="h4" className={classes.heading}>{id(createKey(instrument))}</Typography>
+        <Typography variant="h4" className={classes.heading}>{group.description}</Typography>
+        <Stepper nonLinear alternativeLabel activeStep={activeStep}>
+          {group.versions.map((agg, i) => (
+            <Step key={agg.instrument.contractId} completed={false}>
+              <StepButton color="inherit" onClick={() => setActiveStep(i)}>
+                {agg.instrument.payload.validAsOf}
+              </StepButton>
+            </Step>
+          ))}
+        </Stepper>
       </Grid>
-      <Grid item xs={12}>
-        <Grid container spacing={4}>
-          <Grid item xs={12}>
-            <Grid container direction="column" spacing={2}>
-              <Grid item xs={12}>
-                <Paper className={classnames(classes.fullWidth, classes.paper)}>
-                  <Typography variant="h5" className={classes.heading}>Claims</Typography>
-                  <ClaimsTreeBuilder node={node} setNode={setNode} assets={[]} height="80vh" />
-                </Paper>
-              </Grid>
-            </Grid>
-          </Grid>
-        </Grid>
-      </Grid>
+      <Aggregate aggregate={group.versions[activeStep]} />
     </Grid>
   );
 };
