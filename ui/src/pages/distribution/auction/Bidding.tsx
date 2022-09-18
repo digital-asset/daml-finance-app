@@ -40,7 +40,7 @@ export const Bidding : React.FC = () => {
 
   const { contractId } = useParams<any>();
   const auction = auctions.find(b => b.contractId === contractId);
-  const instrument = latests.find(c => c.instrument.payload.id.unpack === auction?.payload.quantity.unit.id.unpack);
+  const instrument = latests.find(c => c.payload.id.unpack === auction?.payload.quantity.unit.id.unpack);
 
   if (l1 || l2 || l3 || l4 || l5 || l6) return (<Spinner />);
 
@@ -56,7 +56,7 @@ export const Bidding : React.FC = () => {
   const requestCreateBid = async () => {
     const volume = price * amount;
     // TODO: Implicit assumption that account is held with depository
-    const receivableAccount = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === instrument.instrument.payload.depository)?.key;
+    const receivableAccount = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === instrument.payload.depository)?.key;
     const collateralCid = await getFungible(party, volume, auction.payload.currency);
     if (!receivableAccount) return;
     const arg = {
@@ -164,7 +164,7 @@ export const Bidding : React.FC = () => {
             </Grid>
           </Grid>
           <Grid item xs={8}>
-            {!!instrument && <Aggregate aggregate={instrument} />}
+            {!!instrument && <Aggregate instrument={instrument} />}
           </Grid>
         </Grid>
       </Grid>

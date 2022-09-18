@@ -24,7 +24,7 @@ template Service
     key (operator, provider, customer) : (Party, Party, Party)
     maintainer key._1
 
-    nonconsuming choice RequestAndCreateBase : (ContractId Instrument.I)
+    nonconsuming choice RequestAndCreateBase : ContractId Instrument.I
       with
         id : Text
         description : Text
@@ -35,7 +35,7 @@ template Service
         createBaseRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreateBase with ..
         exerciseByKey @S.Service (operator, provider, customer) S.CreateBase with createBaseRequestCid
 
-    nonconsuming choice RequestAndCreateGeneric : (ContractId Instrument.I)
+    nonconsuming choice RequestAndCreateGeneric : ContractId Instrument.I
       with
         id : Text
         description : Text
@@ -48,7 +48,7 @@ template Service
         createGenericRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreateGeneric with ..
         exerciseByKey @S.Service (operator, provider, customer) S.CreateGeneric with createGenericRequestCid
 
-    nonconsuming choice RequestAndCreateFixedRateBond : (ContractId Instrument.I)
+    nonconsuming choice RequestAndCreateFixedRateBond : ContractId Instrument.I
       with
         id : Text
         description : Text
@@ -70,7 +70,7 @@ template Service
         createFixedRateBondRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreateFixedRateBond with ..
         exerciseByKey @S.Service (operator, provider, customer) S.CreateFixedRateBond with createFixedRateBondRequestCid
 
-    nonconsuming choice RequestAndCreateFloatingRateBond : (ContractId Instrument.I)
+    nonconsuming choice RequestAndCreateFloatingRateBond : ContractId Instrument.I
       with
         id : Text
         description : Text
@@ -93,7 +93,7 @@ template Service
         createFloatingRateBondRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreateFloatingRateBond with ..
         exerciseByKey @S.Service (operator, provider, customer) S.CreateFloatingRateBond with createFloatingRateBondRequestCid
 
-    nonconsuming choice RequestAndCreateInflationLinkedBond : (ContractId Instrument.I)
+    nonconsuming choice RequestAndCreateInflationLinkedBond : ContractId Instrument.I
       with
         id : Text
         description : Text
@@ -117,7 +117,7 @@ template Service
         createInflationLinkedBondRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreateInflationLinkedBond with ..
         exerciseByKey @S.Service (operator, provider, customer) S.CreateInflationLinkedBond with createInflationLinkedBondRequestCid
 
-    nonconsuming choice RequestAndCreateZeroCouponBond : (ContractId Instrument.I)
+    nonconsuming choice RequestAndCreateZeroCouponBond : ContractId Instrument.I
       with
         id : Text
         description : Text

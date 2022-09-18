@@ -48,6 +48,10 @@ export const keyEquals = (k1 : InstrumentKey, k2 : InstrumentKey) : boolean => {
   return k1.depository === k2.depository && k1.issuer === k2.issuer && k1.id.unpack === k2.id.unpack && k1.version === k2.version;
 };
 
+export const keyString = (k : InstrumentKey) : string => {
+  return k.depository + "-" + k.issuer + "-" + k.id.unpack + "@" + k.version;
+};
+
 export const fmt = (x : number | string, decimals?: number) => {
   return (typeof x === "string" ? parseFloat(x) : x).toFixed(decimals || 0).replace(/\B(?<!\.\d*)(?=(\d{3})+(?!\d))/g, "'");
 }

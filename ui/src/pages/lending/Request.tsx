@@ -40,9 +40,9 @@ export const Request : React.FC = () => {
 
   const { contractId } = useParams<any>();
   const request = requests.find(b => b.contractId === contractId);
-  const borrowedInstrument = tokens.find(c => c.instrument.payload.id.unpack === request?.payload.borrowed.unit.id.unpack);
-  const interestInstrument = tokens.find(c => c.instrument.payload.id.unpack === interestInstrumentLabel);
-  const collateralInstrument = tokens.find(c => c.instrument.payload.id.unpack === collateralInstrumentLabel);
+  const borrowedInstrument = tokens.find(c => c.payload.id.unpack === request?.payload.borrowed.unit.id.unpack);
+  const interestInstrument = tokens.find(c => c.payload.id.unpack === interestInstrumentLabel);
+  const collateralInstrument = tokens.find(c => c.payload.id.unpack === collateralInstrumentLabel);
 
   if (l1 || l2 || l3 || l4 || l5) return (<Spinner />);
 
@@ -59,8 +59,8 @@ export const Request : React.FC = () => {
 
   const createBorrowOffer = async () => {
     if (!interestInstrument || !collateralInstrument) throw new Error("Interest or collateral instrument not found");
-    const lenderBorrowedAccount = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === borrowedInstrument.instrument.payload.depository)?.key;
-    const lenderInterestAccount = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === interestInstrument.instrument.payload.depository)?.key;
+    const lenderBorrowedAccount = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === borrowedInstrument.payload.depository)?.key;
+    const lenderInterestAccount = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === interestInstrument.payload.depository)?.key;
     if (!lenderBorrowedAccount || !lenderInterestAccount) throw new Error("Borrowed or interest account not found");
     const borrowedCid = await getFungible(party, request.payload.borrowed.amount, request.payload.borrowed.unit);
     const arg = {
@@ -119,14 +119,14 @@ export const Request : React.FC = () => {
                     <FormControl className={classes.inputField} fullWidth>
                       <InputLabel className={classes.selectLabel}>Interest Instrument</InputLabel>
                       <Select fullWidth value={interestInstrumentLabel} onChange={e => setInterestInstrumentLabel(e.target.value as string)} MenuProps={menuProps}>
-                        {tokens.map((c, i) => (<MenuItem key={i} value={c.instrument.payload.id.unpack}>{c.instrument.payload.id.unpack}</MenuItem>))}
+                        {tokens.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
                       </Select>
                     </FormControl>
                     <TextField className={classes.inputField} fullWidth label="Interest Amount" type="number" value={interestAmount} onChange={e => setInterestAmount(e.target.value as string)} />
                     <FormControl className={classes.inputField} fullWidth>
                       <InputLabel className={classes.selectLabel}>Collateral Instrument</InputLabel>
                       <Select fullWidth value={collateralInstrumentLabel} onChange={e => setCollateralInstrumentLabel(e.target.value as string)} MenuProps={menuProps}>
-                        {tokens.map((c, i) => (<MenuItem key={i} value={c.instrument.payload.id.unpack}>{c.instrument.payload.id.unpack}</MenuItem>))}
+                        {tokens.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
                       </Select>
                     </FormControl>
                     <TextField className={classes.inputField} fullWidth label="Collateral Amount" type="number" value={collateralAmount} onChange={e => setCollateralAmount(e.target.value as string)} />

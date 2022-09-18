@@ -7,12 +7,14 @@ import { RouteEntry } from "../components/Sidebar/RouteEntry";
 import { New } from "../pages/issuance/New";
 import { Requests } from "../pages/issuance/Requests";
 import { Issuances } from "../pages/issuance/Issuances";
+import { Issuance as IssuanceDetail } from "../pages/issuance/Issuance";
 import { App } from "./App";
 
 export const Issuance : React.FC = () => {
-  const entries : RouteEntry[] =
-    [ { label: "Issuances", path: "issuances", element: <Issuances />, icon: <PlayArrow/>, children: [] }
-    , { label: "Requests", path: "requests", element: <Requests />, icon: <PlayArrow/>, children: [] }
-    , { label: "New", path: "new", element: <New />, icon: <PlayArrow/>, children: [] } ];
+  const entries : RouteEntry[] = [
+    { path: "issuances", element: <Issuances />, label: "Issuances", icon: <PlayArrow/>, children: [] },
+    { path: "requests", element: <Requests />, label: "Requests", icon: <PlayArrow/>, children: [] },
+    { path: "new", element: <New />, label: "New", icon: <PlayArrow/>, children: [] },
+    { path: "issuances/:contractId", element: <IssuanceDetail /> } ];
   return <App title="Issuance Portal" entries={entries} />;
 }

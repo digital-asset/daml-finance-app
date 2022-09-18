@@ -18,9 +18,8 @@ type InstrumentsState = {
   getByCid : (cid : string) => InstrumentAggregate
 };
 
-export type InstrumentAggregate = {
+export type InstrumentAggregate = CreateEvent<Instrument> & {
   key : InstrumentKey
-  instrument : CreateEvent<Instrument>
   lifecycle : CreateEvent<Lifecycle> | undefined
   claims : CreateEvent<HasClaims> | undefined
 }
@@ -65,11 +64,11 @@ export const InstrumentsProvider : React.FC = ({ children }) => {
     const hasClaimsByCid : Map<string, CreateEvent<HasClaims>> = new Map(hasClaims.map(c => [c.contractId, c]));
     const groupMap : Map<string, InstrumentGroup> = new Map();
     instruments.forEach(c => {
-      const aggregate = { key: key(c), instrument: c, lifecycle: lifecycleByCid.get(c.contractId), claims: hasClaimsByCid.get(c.contractId) };
-      const groupKey = c.payload.depository + "-" + c.payload.issuer + "-" + c.payload.id.unpack;
+      const aggregate = { ...c, key: key(c), lifecycle: lifecycleByCid.get(c.contractId), claims: hasClaimsByCid.get(c.contractId) };
+      const groupKey = c.payload.id.unpack;
       const group = groupMap.get(groupKey) || { key: groupKey, depository: c.payload.depository, issuer: c.payload.issuer, id: c.payload.id, description: c.payload.description, versions: [], latest: aggregate };
       group.versions.push(aggregate);
-      if (aggregate.instrument.payload.validAsOf >= group.latest.instrument.payload.validAsOf) group.latest = aggregate;
+      if (aggregate.payload.validAsOf >= group.latest.payload.validAsOf) group.latest = aggregate;
       groupMap.set(groupKey, group);
       aggregatesByCid.set(c.contractId, aggregate);
     });

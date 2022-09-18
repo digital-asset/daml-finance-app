@@ -126,7 +126,8 @@ run  = do
       submitMulti [issuer] [public] do
         exerciseByKeyCmd @BackToBack.Service (operator, riskTaker, issuer) BackToBack.CreateIssuance
           with
-            id = "ISSUANCE-" <> show quantity.unit.id
+            id = Id $ "ISSUANCE-" <> show quantity.unit.id
+            description = "Issuance of " <> show quantity.amount <> " " <> show quantity.unit.id
             quantity
             customerAccount = issuerOwnAccount
             providerAccount = riskTakerOwnAccount

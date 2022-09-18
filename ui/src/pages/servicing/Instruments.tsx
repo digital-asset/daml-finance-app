@@ -85,14 +85,14 @@ export const Instruments : React.FC = () => {
                 <TableBody>
                   {hasLifecycle.map((c, i) => (
                     <TableRow key={i} className={classes.tableRow}>
-                      <TableCell key={0} className={classes.tableCell}>{getName(c.instrument.payload.depository)}</TableCell>
-                      <TableCell key={1} className={classes.tableCell}>{getName(c.instrument.payload.issuer)}</TableCell>
-                      <TableCell key={2} className={classes.tableCell}>{c.instrument.payload.id.unpack}</TableCell>
-                      <TableCell key={3} className={classes.tableCell}>{c.instrument.payload.description}</TableCell>
-                      <TableCell key={4} className={classes.tableCell}>{c.instrument.payload.version}</TableCell>
+                      <TableCell key={0} className={classes.tableCell}>{getName(c.payload.depository)}</TableCell>
+                      <TableCell key={1} className={classes.tableCell}>{getName(c.payload.issuer)}</TableCell>
+                      <TableCell key={2} className={classes.tableCell}>{c.payload.id.unpack}</TableCell>
+                      <TableCell key={3} className={classes.tableCell}>{c.payload.description}</TableCell>
+                      <TableCell key={4} className={classes.tableCell}>{c.payload.version}</TableCell>
                       <TableCell key={5} className={classes.tableCell}>{c.lifecycle!.payload.lifecycler}</TableCell>
                       <TableCell key={6} className={classes.tableCell}>
-                        <IconButton color="primary" size="small" component="span" onClick={() => navigate(c.instrument.contractId)}>
+                        <IconButton color="primary" size="small" component="span" onClick={() => navigate(c.contractId)}>
                           <KeyboardArrowRight fontSize="small"/>
                         </IconButton>
                       </TableCell>

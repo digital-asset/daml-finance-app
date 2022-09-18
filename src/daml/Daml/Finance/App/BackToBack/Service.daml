@@ -35,7 +35,8 @@ template Service
 
     nonconsuming choice CreateIssuance : (ContractId Issuance, ContractId Holding.I, ContractId Holding.I)
       with
-        id : Text
+        id : Id
+        description : Text
         quantity : Instrument.Q
         customerAccount : Account.K
         providerAccount : Account.K
@@ -45,8 +46,8 @@ template Service
         customerHoldingCid <- exercise customerRef.cid Account.Credit with quantity
         (_, providerRef) <- fetchByKey @Account.R providerAccount
         providerHoldingCid <- exercise providerRef.cid Account.Credit with quantity
-        providerHoldingCid <- coerceContractId <$> exercise (coerceContractId providerHoldingCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton provider; observersToAdd = (id, singleton customer)
-        issuanceCid <- create Issuance with operator; provider; customer; id; quantity
+        providerHoldingCid <- coerceContractId <$> exercise (coerceContractId providerHoldingCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton provider; observersToAdd = (show id, singleton customer)
+        issuanceCid <- create Issuance with operator; provider; customer; id; description; quantity
         pure (issuanceCid, customerHoldingCid, providerHoldingCid)
 
     nonconsuming choice LockOffering : BackToBack

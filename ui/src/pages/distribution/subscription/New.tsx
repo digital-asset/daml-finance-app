@@ -40,8 +40,8 @@ export const New : React.FC = () => {
   const myB2BServices = backToBack.filter(s => s.payload.customer === party);
   const hasB2B = backToBack.length > 0;
 
-  const offeredInst = latests.find(c => c.instrument.payload.id.unpack === offeredInstLabel);
-  const priceInst = tokens.find(c => c.instrument.payload.id.unpack === priceInstLabel);
+  const offeredInst = latests.find(c => c.payload.id.unpack === offeredInstLabel);
+  const priceInst = tokens.find(c => c.payload.id.unpack === priceInstLabel);
   const myHoldings = holdings.filter(c => c.payload.account.owner === party);
   const myHoldingLabels = dedup(myHoldings.map(c => c.payload.instrument.id.unpack));
   const canRequest = !!offeredInstLabel && !!offeredInst && !!priceInstLabel && !!priceInst && !!amount && !!price;
@@ -52,13 +52,13 @@ export const New : React.FC = () => {
   const createOffering = async () => {
     if (!offeredInst || !priceInst) return;
     // TODO: Implicit assumption that accounts are held at the depository below
-    const customerAccount = accounts.find(c => c.payload.accountView.custodian === priceInst.instrument.payload.depository && c.payload.accountView.owner === party)?.key;
+    const customerAccount = accounts.find(c => c.payload.accountView.custodian === priceInst.payload.depository && c.payload.accountView.owner === party)?.key;
     const holdingCid = await getFungible(party, amount, offeredInst.key);
     if (!customerAccount) return;
     if (hasB2B) {
       const notional = parseFloat(amount) * parseFloat(price);
       const b2b = myB2BServices[0].payload.provider;
-      const b2bReceivableAccount = accounts.find(c => c.payload.accountView.custodian === priceInst.instrument.payload.depository && c.payload.accountView.owner === b2b)?.key;
+      const b2bReceivableAccount = accounts.find(c => c.payload.accountView.custodian === priceInst.payload.depository && c.payload.accountView.owner === b2b)?.key;
       const issuerReceivableAccount = accounts.find(c => c.payload.accountView.custodian === b2b && c.payload.accountView.owner === party)?.key;
       if (!b2bReceivableAccount || !issuerReceivableAccount) return;
       const b2bDeliverableCid = await getFungible(b2b, amount, offeredInst.key);
@@ -130,7 +130,7 @@ export const New : React.FC = () => {
             </Grid>
           </Grid>
           <Grid item xs={8}>
-            {!!offeredInst && <Aggregate aggregate={offeredInst} />}
+            {!!offeredInst && <Aggregate instrument={offeredInst} />}
           </Grid>
         </Grid>
       </Grid>

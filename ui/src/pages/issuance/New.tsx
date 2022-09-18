@@ -3,7 +3,6 @@
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { v4 as uuidv4 } from "uuid";
 import classnames from "classnames";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Typography, Grid, Paper, Select, MenuItem, TextField, Button, MenuProps, FormControl, InputLabel, Checkbox, FormGroup, FormControlLabel } from "@mui/material";
@@ -22,23 +21,25 @@ export const New : React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
 
+  const [ id, setId ] = useState("");
+  const [ description, setDescription ] = useState("");
   const [ instrumentLabel, setInstrumentLabel ] = useState("");
   const [ isB2B, setIsB2B ] = useState(false);
   const [ quantity, setQuantity ] = useState("");
 
   const ledger = useLedger();
   const party = useParty();
-  const svc = useServices();
-  const inst = useInstruments();
-  const { contracts: accounts, loading: l1 } = useStreamQueries(AccountReference);
+  const { loading: l1, backToBack, issuance, issuanceAuto } = useServices();
+  const { loading: l2, latests } = useInstruments();
+  const { contracts: accounts, loading: l3 } = useStreamQueries(AccountReference);
 
-  const aggregates = inst.latests.filter(c => c.instrument.payload.issuer === party);
-  const aggregate = aggregates.find(c => c.instrument.payload.id.unpack === instrumentLabel);
+  const aggregates = latests.filter(c => c.payload.issuer === party);
+  const aggregate = aggregates.find(c => c.payload.id.unpack === instrumentLabel);
 
-  if (svc.loading || inst.loading || l1) return (<Spinner />);
-  if (!svc.issuance) return (<Message text="No issuance service found" />);
+  if (l1 || l2 || l3) return (<Spinner />);
+  if (!issuance) return (<Message text="No issuance service found" />);
 
-  const myB2BServices = svc.backToBack.filter(s => s.payload.customer === party);
+  const myB2BServices = backToBack.filter(s => s.payload.customer === party);
   const hasB2B = myB2BServices.length > 0;
   const canRequest = !!instrumentLabel && !!aggregate && !!quantity;
 
@@ -49,7 +50,8 @@ export const New : React.FC = () => {
       const providerAccount = accounts.find(c => c.payload.accountView.custodian === myB2BServices[0].payload.provider && c.payload.accountView.owner === myB2BServices[0].payload.provider);
       if (!aggregate || !customerAccount || !providerAccount) return;
       const arg = {
-        id: uuidv4(),
+        id: { unpack : id },
+        description,
         quantity: { amount: quantity, unit: aggregate.key },
         customerAccount: customerAccount.key,
         providerAccount: providerAccount.key
@@ -57,14 +59,15 @@ export const New : React.FC = () => {
       await ledger.exercise(BackToBack.CreateIssuance, myB2BServices[0].contractId, arg);
       navigate("/issuance/issuances");
     } else {
-      const hasAuto = svc.issuanceAuto.length > 0;
-      const myAutoSvc = svc.issuanceAuto.filter(s => s.payload.customer === party)[0];
-      const mySvc = svc.issuance.filter(s => s.payload.customer === party)[0];
+      const hasAuto = issuanceAuto.length > 0;
+      const myAutoSvc = issuanceAuto.filter(s => s.payload.customer === party)[0];
+      const mySvc = issuance.filter(s => s.payload.customer === party)[0];
       const custodian = hasAuto ? myAutoSvc.payload.provider : mySvc.payload.provider;
       const account = accounts.find(c => c.payload.accountView.custodian === custodian && c.payload.accountView.owner === party);
       if (!aggregate || !account) return;
       const arg = {
-        id: uuidv4(),
+        id: { unpack : id },
+        description,
         quantity: { amount: quantity, unit: aggregate.key },
         account: account.key,
       };
@@ -87,10 +90,12 @@ export const New : React.FC = () => {
               <Grid item xs={12}>
                 <Paper className={classnames(classes.fullWidth, classes.paper)}>
                   <Typography variant="h5" className={classes.heading}>Details</Typography>
+                  <TextField variant="standard" className={classes.inputField} fullWidth label="Id" type="text" value={id} onChange={e => setId(e.target.value as string)} />
+                  <TextField variant="standard" className={classes.inputField} fullWidth label="Description" type="text" value={description} onChange={e => setDescription(e.target.value as string)} />
                   <FormControl className={classes.inputField} fullWidth>
                     <InputLabel className={classes.selectLabel}>Asset</InputLabel>
                     <Select fullWidth value={instrumentLabel} onChange={e => setInstrumentLabel(e.target.value as string)} MenuProps={menuProps}>
-                      {aggregates.map((c, i) => (<MenuItem key={i} value={c.instrument.payload.id.unpack}>{c.instrument.payload.id.unpack}</MenuItem>))}
+                      {aggregates.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
                     </Select>
                   </FormControl>
                   <TextField className={classes.inputField} fullWidth label="Quantity" type="number" value={quantity} onChange={e => setQuantity(e.target.value as string)} />
@@ -104,7 +109,7 @@ export const New : React.FC = () => {
             </Grid>
           </Grid>
           <Grid item xs={8}>
-            {!!aggregate && <Aggregate aggregate={aggregate} />}
+            {!!aggregate && <Aggregate instrument={aggregate} />}
           </Grid>
         </Grid>
       </Grid>

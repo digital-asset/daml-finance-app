@@ -20,7 +20,7 @@ import { useServices } from "../../../context/ServicesContext";
 import { Service as Structuring } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Service";
 import { Service as StructuringAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service";
 
-export const NewCustom : React.FC = () => {
+export const NewGeneric : React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
 
@@ -59,7 +59,7 @@ export const NewCustom : React.FC = () => {
   return (
     <Grid container direction="column" spacing={2}>
       <Grid item xs={12}>
-        <Typography variant="h4" className={classes.heading}>New Custom Instrument</Typography>
+        <Typography variant="h4" className={classes.heading}>New Generic Instrument</Typography>
       </Grid>
       <Grid container direction="row" spacing={2}>
         <Grid item xs={4} />

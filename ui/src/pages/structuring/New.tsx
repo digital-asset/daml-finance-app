@@ -20,8 +20,8 @@ export const New : React.FC = () => {
           <InstrumentCard label="Zero Coupon Bond" path="bond/zerocoupon" />
         </InstrumentPanel>
         <InstrumentPanel label="Other" expanded={expanded} setExpanded={setExpanded}>
-          {/* <InstrumentCard label="Base Instrument" path="base" /> */}
-          <InstrumentCard label="Custom Instrument" path="other/custom" />
+          <InstrumentCard label="Base Instrument" path="other/base" />
+          <InstrumentCard label="Generic Instrument" path="other/generic" />
         </InstrumentPanel>
       </Grid>
     </Grid>

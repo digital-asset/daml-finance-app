@@ -144,9 +144,12 @@ deposit operator provider customer public quantity account = do
   depositRequestCid <- submit customer do exerciseByKeyCmd @Custody.Service (operator, provider, customer) Custody.RequestDeposit with quantity; account
   submitMulti [provider] [public] do exerciseByKeyCmd @Custody.Service (operator, provider, customer) Custody.Deposit with depositRequestCid
 
-issue : Party -> Party -> Party -> Party -> Text -> Instrument.Q -> Account.K -> Script (ContractId Issuance.T, ContractId Holding.I)
-issue operator provider customer public id quantity account = do
-  createIssuanceRequestCid <- submit customer do exerciseByKeyCmd @Issuance.Service (operator, provider, customer) Issuance.RequestCreateIssuance with id; quantity; account
+issue : Party -> Party -> Party -> Party -> Instrument.Q -> Account.K -> Script (ContractId Issuance.T, ContractId Holding.I)
+issue operator provider customer public quantity account = do
+  let
+    id = Id $ "ISSUANCE-" <> show quantity.unit.id
+    description = "Issuance of " <> show quantity.amount <> " " <> show quantity.unit.id
+  createIssuanceRequestCid <- submit customer do exerciseByKeyCmd @Issuance.Service (operator, provider, customer) Issuance.RequestCreateIssuance with id; description; quantity; account
   submitMulti [provider] [public] do exerciseByKeyCmd @Issuance.Service (operator, provider, customer) Issuance.CreateIssuance with ..
 
 list : Party -> Party -> Party -> Text -> Instrument.K -> Instrument.K -> Parties -> Script (ContractId Listing.T)

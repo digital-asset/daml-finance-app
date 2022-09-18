@@ -28,7 +28,7 @@ export const New : React.FC = () => {
   const { loading: l1, lending } = useServices();
   const { loading: l2, tokens } = useInstruments();
 
-  const borrowed = tokens.find(c => c.instrument.payload.id.unpack === borrowedLabel);
+  const borrowed = tokens.find(c => c.payload.id.unpack === borrowedLabel);
   const canRequest = !!borrowedLabel && !!amount && !!maturity && !!borrowed;
 
   if (l1 || l2) return (<Spinner />);
@@ -60,7 +60,7 @@ export const New : React.FC = () => {
                   <FormControl className={classes.inputField} fullWidth>
                     <InputLabel className={classes.selectLabel}>Borrowed Instrument</InputLabel>
                     <Select fullWidth value={borrowedLabel} onChange={e => setBorrowedLabel(e.target.value as string)} MenuProps={menuProps}>
-                      {tokens.map((c, i) => (<MenuItem key={i} value={c.instrument.payload.id.unpack}>{c.instrument.payload.id.unpack}</MenuItem>))}
+                      {tokens.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
                     </Select>
                   </FormControl>
                   <TextField className={classes.inputField} fullWidth label="Quantity" type="number" value={amount} onChange={e => setAmount(e.target.value as string)} />

@@ -13,10 +13,10 @@ import { Claims } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Util";
 import { useParties } from "../../context/PartiesContext";
 
 type AggregateProps = {
-  aggregate : InstrumentAggregate
+  instrument : InstrumentAggregate
 };
 
-export const Aggregate : React.FC<AggregateProps> = ({ aggregate }) => {
+export const Aggregate : React.FC<AggregateProps> = ({ instrument }) => {
   const classes = useStyles();
   const party = useParty();
   const ledger = useLedger();
@@ -25,21 +25,18 @@ export const Aggregate : React.FC<AggregateProps> = ({ aggregate }) => {
 
   useEffect(() => {
     const setClaims = async () => {
-      if (!!aggregate.claims) {
-        const [res, ] = await ledger.createAndExercise(Claims.Get, { party }, { instrumentCid: aggregate.claims.contractId })
+      if (!!instrument.claims) {
+        const [res, ] = await ledger.createAndExercise(Claims.Get, { party }, { instrumentCid: instrument.claims.contractId })
         const claims = res.length > 1 ? and(res.map(r => r.claim)) : res[0].claim;
         setNode(claimToNode(claims));
       }
     }
     setClaims();
-  }, [aggregate, party, ledger]);
+  }, [instrument, party, ledger]);
 
-  const detailWidth = !!aggregate.claims ? 3 : 12;
+  const detailWidth = !!instrument.claims ? 3 : 12;
   return (
     <Grid container direction="column" spacing={2}>
-      <Grid item xs={12}>
-        <Typography variant="h4" className={classes.heading}>{aggregate.instrument.payload.description}</Typography>
-      </Grid>
       <Grid item xs={12}>
         <Grid container spacing={4}>
           <Grid item xs={detailWidth}>
@@ -49,49 +46,49 @@ export const Aggregate : React.FC<AggregateProps> = ({ aggregate }) => {
                 <TableBody>
                   <TableRow key={0} className={classes.tableRow}>
                     <TableCell key={0} className={classes.tableCell}><b>Depository</b></TableCell>
-                    <TableCell key={1} className={classes.tableCell}>{getName(aggregate.instrument.payload.depository)}</TableCell>
+                    <TableCell key={1} className={classes.tableCell}>{getName(instrument.payload.depository)}</TableCell>
                   </TableRow>
                   <TableRow key={1} className={classes.tableRow}>
                     <TableCell key={0} className={classes.tableCell}><b>Issuer</b></TableCell>
-                    <TableCell key={1} className={classes.tableCell}>{getName(aggregate.instrument.payload.issuer)}</TableCell>
+                    <TableCell key={1} className={classes.tableCell}>{getName(instrument.payload.issuer)}</TableCell>
                   </TableRow>
                   <TableRow key={2} className={classes.tableRow}>
                     <TableCell key={0} className={classes.tableCell}><b>Id</b></TableCell>
-                    <TableCell key={1} className={classes.tableCell}>{aggregate.instrument.payload.id.unpack}</TableCell>
+                    <TableCell key={1} className={classes.tableCell}>{instrument.payload.id.unpack}</TableCell>
                   </TableRow>
                   <TableRow key={3} className={classes.tableRow}>
                     <TableCell key={0} className={classes.tableCell}><b>Description</b></TableCell>
-                    <TableCell key={1} className={classes.tableCell}>{aggregate.instrument.payload.description}</TableCell>
+                    <TableCell key={1} className={classes.tableCell}>{instrument.payload.description}</TableCell>
                   </TableRow>
                   <TableRow key={4} className={classes.tableRow}>
                     <TableCell key={0} className={classes.tableCell}><b>Version</b></TableCell>
-                    <TableCell key={1} className={classes.tableCell}>{aggregate.instrument.payload.version}</TableCell>
+                    <TableCell key={1} className={classes.tableCell}>{instrument.payload.version}</TableCell>
                   </TableRow>
                   <TableRow key={5} className={classes.tableRow}>
                     <TableCell key={0} className={classes.tableCell}><b>ValidAsOf</b></TableCell>
-                    <TableCell key={1} className={classes.tableCell}>{aggregate.instrument.payload.validAsOf}</TableCell>
+                    <TableCell key={1} className={classes.tableCell}>{instrument.payload.validAsOf}</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
             </Paper>
-            {!!aggregate.lifecycle &&
+            {!!instrument.lifecycle &&
             <Paper className={classnames(classes.fullWidth, classes.paper)}>
               <Typography variant="h5" className={classes.heading}>Lifecycle</Typography>
               <Table size="small">
                 <TableBody>
                   <TableRow key={0} className={classes.tableRow}>
                     <TableCell key={0} className={classes.tableCell}><b>Lifecycler</b></TableCell>
-                    <TableCell key={1} className={classes.tableCell}>{getName(aggregate.lifecycle.payload.lifecycler)}</TableCell>
+                    <TableCell key={1} className={classes.tableCell}>{getName(instrument.lifecycle.payload.lifecycler)}</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
             </Paper>}
           </Grid>
-          {!!aggregate.claims &&
+          {!!instrument.claims &&
           <Grid item xs={9}>
             <Paper className={classnames(classes.fullWidth, classes.paper)}>
               <Typography variant="h5" className={classes.heading}>Claims</Typography>
-              <ClaimsTreeBuilder node={node} setNode={setNode} assets={[]} height="80vh" />
+              <ClaimsTreeBuilder node={node} setNode={setNode} assets={[]} height="70vh" />
             </Paper>
           </Grid>}
         </Grid>

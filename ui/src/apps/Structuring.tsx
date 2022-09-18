@@ -8,7 +8,8 @@ import { Instruments } from "../pages/structuring/Instruments";
 import { New } from "../pages/structuring/New";
 import { App } from "./App";
 import { Instrument } from "../pages/structuring/Instrument";
-import { NewCustom } from "../pages/structuring/other/NewCustom";
+import { NewBase } from "../pages/structuring/other/NewBase";
+import { NewGeneric } from "../pages/structuring/other/NewGeneric";
 import { NewFixedRateBond } from "../pages/structuring/bond/NewFixedRateBond";
 import { NewFloatingRateBond } from "../pages/structuring/bond/NewFloatingRateBond";
 import { NewInflationLinkedBond } from "../pages/structuring/bond/NewInflationLinkedBond";
@@ -22,7 +23,8 @@ export const Structuring : React.FC = () => {
     , { path: "new/bond/floatingrate", element: <NewFloatingRateBond /> }
     , { path: "new/bond/inflationlinked", element: <NewInflationLinkedBond /> }
     , { path: "new/bond/zerocoupon", element: <NewZeroCouponBond /> }
-    , { path: "new/other/custom", element: <NewCustom /> }
-    , { path: "instruments/:contractId", element: <Instrument /> } ];
+    , { path: "new/other/base", element: <NewBase /> }
+    , { path: "new/other/generic", element: <NewGeneric /> }
+    , { path: "instruments/:key", element: <Instrument /> } ];
   return <App title="Structuring" entries={entries} />;
 }

@@ -49,7 +49,7 @@ export const NewFloatingRateBond : React.FC = () => {
   if (structuring.length === 0) return <Message text="No structuring service found" />
 
   const createFixedRateBond = async () => {
-    const ccy = tokens.find(c => c.instrument.payload.id.unpack === currency);
+    const ccy = tokens.find(c => c.payload.id.unpack === currency);
     if (!ccy) throw new Error("Couldn't find currency " + currency);
     const couponPeriod = couponFrequency === "Annual" ? PeriodEnum.Y : PeriodEnum.M;
     const couponPeriodMultiplier = couponFrequency === "Annual" ? "1" : (couponFrequency === "Semi-annual" ? "6" : "3");
@@ -105,7 +105,7 @@ export const NewFloatingRateBond : React.FC = () => {
                   <FormControl className={classes.inputField} fullWidth>
                     <InputLabel className={classes.selectLabel}>Currency</InputLabel>
                     <Select value={currency} onChange={e => setCurrency(e.target.value as string)} MenuProps={menuProps}>
-                      {tokens.map((c, i) => (<MenuItem key={i} value={c.instrument.payload.id.unpack}>{c.instrument.payload.id.unpack}</MenuItem>))}
+                      {tokens.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
                     </Select>
                   </FormControl>
                   <DatePicker className={classes.inputField} inputFormat="yyyy-MM-dd" label="Issue Date" value={issueDate} onChange={setIssueDate} renderInput={(props : TextFieldProps) => <TextField {...props} fullWidth />} />

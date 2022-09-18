@@ -41,11 +41,11 @@ export const New : React.FC = () => {
 
   const myServices = auction.filter(s => s.payload.customer === party);
   const myAutoServices = auctionAuto.filter(s => s.payload.customer === party);
-  const instrument = latests.find(c => c.instrument.payload.id.unpack === instrumentLabel);
-  const currency = tokens.find(c => c.instrument.payload.id.unpack === currencyLabel);
+  const instrument = latests.find(c => c.payload.id.unpack === instrumentLabel);
+  const currency = tokens.find(c => c.payload.id.unpack === currencyLabel);
   const myHoldings = holdings.filter(c => c.payload.account.owner === party);
   const myHoldingLabels = myHoldings.map(c => c.payload.instrument.id.unpack).filter((v, i, a) => a.indexOf(v) === i);
-  const tokenLabels = tokens.map(c => c.instrument.payload.id.unpack);
+  const tokenLabels = tokens.map(c => c.payload.id.unpack);
   const canRequest = !!instrumentLabel && !!instrument && !!currencyLabel && !!currency && !!id && !!amount && !!floor;
 
   if (myServices.length === 0) return <Message text={"No auction service found for customer: " + party} />;
@@ -53,7 +53,7 @@ export const New : React.FC = () => {
   const requestCreateAuction = async () => {
     if (!instrument || !currency) return;
     const collateralCid = await getFungible(party, amount, instrument.key);
-    const receivableAccount = accounts.find(c => c.payload.accountView.custodian === currency.instrument.payload.depository && c.payload.accountView.owner === party)?.key;
+    const receivableAccount = accounts.find(c => c.payload.accountView.custodian === currency.payload.depository && c.payload.accountView.owner === party)?.key;
     if (!receivableAccount) return;
     const arg = {
       id,
@@ -107,7 +107,7 @@ export const New : React.FC = () => {
             </Grid>
           </Grid>
           <Grid item xs={8}>
-            {!!instrument && <Aggregate aggregate={instrument} />}
+            {!!instrument && <Aggregate instrument={instrument} />}
           </Grid>
         </Grid>
       </Grid>

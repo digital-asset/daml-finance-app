@@ -132,10 +132,10 @@ run  = do
   bobCashCid      <- coerceContractId <$> deposit operator centralBank bob     public (Instrument.qty 1_000_000.0 usd) bobCashAccount
   charlieCashCid  <- coerceContractId <$> deposit operator centralBank charlie public (Instrument.qty 1_000_000.0 usd) charlieCashAccount
 
-  (_, ad1) <- issue operator registry issuer public "ISSUE1" (Instrument.qty 1.0 fwd)           issuerSecAccount
-  (_, ad2) <- issue operator registry issuer public "ISSUE2" (Instrument.qty 1_000_000.0 bnd)   issuerSecAccount
-  (_, ad3) <- issue operator registry issuer public "ISSUE3" (Instrument.qty 10_000_000.0 swp)  issuerSecAccount
-  (_, ad4) <- issue operator registry issuer public "ISSUE4" (Instrument.qty 10_000_000.0 bswp) issuerSecAccount
+  (_, ad1) <- issue operator registry issuer public (Instrument.qty 1.0 fwd)           issuerSecAccount
+  (_, ad2) <- issue operator registry issuer public (Instrument.qty 1_000_000.0 bnd)   issuerSecAccount
+  (_, ad3) <- issue operator registry issuer public (Instrument.qty 10_000_000.0 swp)  issuerSecAccount
+  (_, ad4) <- issue operator registry issuer public (Instrument.qty 10_000_000.0 bswp) issuerSecAccount
 
   let
     observers = fromList [("Public", singleton $ singleton public)]

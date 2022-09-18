@@ -22,8 +22,8 @@ export const Instruments : React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
   const { getName } = useParties();
-  const { groups, loading } = useInstruments();
-  if (loading) return (<Spinner />);
+  const { loading: l1, groups } = useInstruments();
+  if (l1) return (<Spinner />);
 
   return (
     <>
@@ -52,7 +52,7 @@ export const Instruments : React.FC = () => {
                       <TableCell key={2} className={classes.tableCell}>{c.id.unpack}</TableCell>
                       <TableCell key={3} className={classes.tableCell}>{c.description}</TableCell>
                       <TableCell key={4} className={classes.tableCell}>{c.versions.length}</TableCell>
-                      <TableCell key={5} className={classes.tableCell}>{c.latest.instrument.payload.validAsOf}</TableCell>
+                      <TableCell key={5} className={classes.tableCell}>{c.latest.payload.validAsOf}</TableCell>
                       <TableCell key={6} className={classes.tableCell}>
                         <IconButton color="primary" size="small" component="span" onClick={() => navigate(c.key)}>
                           <KeyboardArrowRight fontSize="small"/>

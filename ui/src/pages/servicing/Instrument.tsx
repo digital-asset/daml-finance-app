@@ -37,37 +37,37 @@ export const Instrument : React.FC = () => {
   const { getName } = useParties();
   const party = useParty();
   const ledger = useLedger();
-  const svc = useServices();
-  const inst = useInstruments();
-  const { contracts: observables, loading: l1 } = useStreamQueries(Observable);
-  const { contracts: effects, loading: l2 } = useStreamQueries(Effect);
-  const { contracts: events, loading: l3 } = useStreamQueries(Event);
-  const { contracts: clocks, loading: l4 } = useStreamQueries(Clock);
+  const { loading: l1, lifecycle } = useServices();
+  const { loading: l2, getByCid } = useInstruments();
+  const { loading: l3, contracts: observables } = useStreamQueries(Observable);
+  const { loading: l4, contracts: effects } = useStreamQueries(Effect);
+  const { loading: l5, contracts: events } = useStreamQueries(Event);
+  const { loading: l6, contracts: clocks } = useStreamQueries(Clock);
   const { contractId } = useParams<any>();
 
-  const aggregate = inst.getByCid(contractId || "");
+  const instrument = getByCid(contractId || "");
 
   useEffect(() => {
     const setClaims = async () => {
-      const [res, ] = await ledger.createAndExercise(Claims.Get, { party }, { instrumentCid: aggregate.claims!.contractId })
+      const [res, ] = await ledger.createAndExercise(Claims.Get, { party }, { instrumentCid: instrument.claims!.contractId })
       const claims = res.length > 1 ? and(res.map(r => r.claim)) : res[0].claim;
       setNode1(claimToNode(claims));
     };
     setClaims();
-  }, [ledger, party, aggregate]);
+  }, [ledger, party, instrument]);
 
   useEffect(() => {
     if (!!remaining) setNode2(claimToNode(remaining));
   }, [remaining]);
 
-  if (l1 || l2 || l3 || l4 || svc.loading || inst.loading) return (<Spinner />);
-  if (svc.lifecycle.length === 0) return <Message text={"No lifecycle service found"} />;
+  if (l1 || l2 || l3 || l4 || l5 || l6) return (<Spinner />);
+  if (lifecycle.length === 0) return <Message text={"No lifecycle service found"} />;
 
-  const effect = effects.find(c => c.payload.targetInstrument.id.unpack === aggregate.instrument.payload.id.unpack && c.payload.targetInstrument.version === aggregate.instrument.payload.version);
+  const effect = effects.find(c => c.payload.targetInstrument.id.unpack === instrument.payload.id.unpack && c.payload.targetInstrument.version === instrument.payload.version);
 
   const previewLifecycle = async () => {
     const observableCids = observables.map(c => c.contractId);
-    const [ res, ] = await ledger.exercise(Service.PreviewLifecycle, svc.lifecycle[0].contractId, { today: clocks[0].payload.clockTime, observableCids, instrumentCid: aggregate.claims!.contractId });
+    const [ res, ] = await ledger.exercise(Service.PreviewLifecycle, lifecycle[0].contractId, { today: clocks[0].payload.clockTime, observableCids, instrumentCid: instrument.claims!.contractId });
     setRemaining(res._1);
     setPending(res._2);
   };
@@ -79,16 +79,16 @@ export const Instrument : React.FC = () => {
       eventCid: events[0].contractId,
       clockCid: clocks[0].contractId,
       observableCids,
-      lifecyclableCid: aggregate.lifecycle!.contractId
+      lifecyclableCid: instrument.lifecycle!.contractId
     }
-    await ledger.exercise(Service.Lifecycle, svc.lifecycle[0].contractId, arg);
+    await ledger.exercise(Service.Lifecycle, lifecycle[0].contractId, arg);
     navigate("/servicing/settlement");
   };
 
   return (
     <Grid container direction="column" spacing={0}>
       <Grid item xs={12}>
-        <Typography variant="h3" className={classes.heading}>{aggregate.instrument.payload.description}</Typography>
+        <Typography variant="h3" className={classes.heading}>{instrument.payload.description}</Typography>
       </Grid>
       <Grid item xs={12}>
         <Grid container direction="row" spacing={4}>
@@ -100,27 +100,27 @@ export const Instrument : React.FC = () => {
                     <TableBody>
                       <TableRow key={0} className={classes.tableRow}>
                         <TableCell key={0} className={classes.tableCellSmall}><b>Depository</b></TableCell>
-                        <TableCell key={1} className={classes.tableCellSmall}>{getName(aggregate.instrument.payload.depository)}</TableCell>
+                        <TableCell key={1} className={classes.tableCellSmall}>{getName(instrument.payload.depository)}</TableCell>
                       </TableRow>
                       <TableRow key={1} className={classes.tableRow}>
                         <TableCell key={0} className={classes.tableCellSmall}><b>Issuer</b></TableCell>
-                        <TableCell key={1} className={classes.tableCellSmall}>{getName(aggregate.instrument.payload.issuer)}</TableCell>
+                        <TableCell key={1} className={classes.tableCellSmall}>{getName(instrument.payload.issuer)}</TableCell>
                       </TableRow>
                       <TableRow key={2} className={classes.tableRow}>
                         <TableCell key={0} className={classes.tableCellSmall}><b>Id</b></TableCell>
-                        <TableCell key={1} className={classes.tableCellSmall}>{aggregate.instrument.payload.id.unpack}</TableCell>
+                        <TableCell key={1} className={classes.tableCellSmall}>{instrument.payload.id.unpack}</TableCell>
                       </TableRow>
                       <TableRow key={3} className={classes.tableRow}>
                         <TableCell key={0} className={classes.tableCellSmall}><b>Description</b></TableCell>
-                        <TableCell key={1} className={classes.tableCellSmall}>{aggregate.instrument.payload.description}</TableCell>
+                        <TableCell key={1} className={classes.tableCellSmall}>{instrument.payload.description}</TableCell>
                       </TableRow>
                       <TableRow key={4} className={classes.tableRow}>
                         <TableCell key={0} className={classes.tableCellSmall}><b>Version</b></TableCell>
-                        <TableCell key={1} className={classes.tableCellSmall}>{shorten(aggregate.instrument.payload.version)}</TableCell>
+                        <TableCell key={1} className={classes.tableCellSmall}>{shorten(instrument.payload.version)}</TableCell>
                       </TableRow>
                       <TableRow key={5} className={classes.tableRow}>
                         <TableCell key={0} className={classes.tableCellSmall}><b>ValidAsOf</b></TableCell>
-                        <TableCell key={1} className={classes.tableCellSmall}>{aggregate.instrument.payload.validAsOf}</TableCell>
+                        <TableCell key={1} className={classes.tableCellSmall}>{instrument.payload.validAsOf}</TableCell>
                       </TableRow>
                     </TableBody>
                   </Table>
