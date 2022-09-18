@@ -4,15 +4,18 @@
 module Daml.Finance.Setup.Scenario.BondIssuance where
 
 import DA.Date (DayOfWeek(Saturday, Sunday), Month(..), date, toDateUTC, toGregorian)
+import DA.Foldable (mapA_)
 import DA.Map (fromList)
 import DA.Set (singleton)
 import DA.Time (time)
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
+import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (Evolve(..), I)
 import Daml.Finance.Interface.Types.Common (Id(..))
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum(..), HolidayCalendarData(..))
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum(..))
+import Daml.Finance.Lifecycle.Effect qualified as Lifecycle (Effect)
 import Daml.Finance.RefData.HolidayCalendar (HolidayCalendar(..))
 import Daml.Finance.RefData.Observation (Observation(..))
 import Daml.Finance.RefData.Time.DateClock (DateClock(..), DateClockUpdateEvent(..), Unit(..))
@@ -20,7 +23,7 @@ import Daml.Finance.Setup.Util.Common
 import Daml.Finance.Setup.Util.Role
 import Daml.Finance.Setup.Util.Service
 import Daml.Finance.Setup.Util.Workflow
-import Daml.Script (Script, createCmd, submitMulti)
+import Daml.Script
 
 run : Script [PartyInfo]
 run  = do
@@ -52,14 +55,10 @@ run  = do
   t <- getTime
   let
     today = toDateUTC t
+    tt d = time d 12 0 0
     todayTime = time today 12 0 0
-    (todayYear, todayMonth, todayDay) = toGregorian today
+    (ty, tm, td) = toGregorian today
     pub = [("Public", singleton $ singleton public)]
-
-  -- Create clock and events
-  let clock = DateClock with u = Unit today, id = Id "Clock", provider = issuer, observers = fromList pub
-  submitMulti [issuer] [] do createCmd clock
-  submitMulti [issuer] [] do createCmd DateClockUpdateEvent with clock; id = Id $ "Update to " <> show today
 
   -- Create accounts
   accountFactoryCid <- toInterfaceContractId <$> createFactory operator pub
@@ -77,21 +76,20 @@ run  = do
   charlieSecAccount      <- createAcc [] custodian   charlie   "Charlie@Custodian/Securities"
 
   -- Instruments
-  usd   <- originate         centralBank centralBank pub todayTime "USD"
-  bond1 <- originateZeroCouponBond      registry issuer "BOND1" "ZERO-3Y"       pub todayTime (date 2022 Sep todayDay) (date 2025 Sep todayDay) usd
-  bond2 <- originateFixedRateBond       registry issuer "BOND2" "FIXED-3Y-1.1%" pub todayTime (date 2021 Sep todayDay) ["FED"] registry (date 2022 Sep todayDay) (date 2025 Sep todayDay) Act365Fixed Following 0.011 M 12 usd
-  bond3 <- originateFloatingRateBond    registry issuer "BOND3" "FIXED-3Y-0.8%" pub todayTime (date 2021 Sep todayDay) ["FED"] registry (date 2022 Sep todayDay) (date 2025 Sep todayDay) Act365Fixed Following 0.005 M 12 usd "USD-LIBOR-12M"
-  bond4 <- originateInflationLinkedBond registry issuer "BOND4" "INFL-3Y-0.75%" pub todayTime (date 2021 Sep todayDay) ["FED"] registry (date 2022 Sep todayDay) (date 2025 Sep todayDay) Act365Fixed Following 0.005 M 12 usd "CPI" 100.0
+  usd   <- originate centralBank centralBank pub todayTime "USD"
+  bond1 <- originateZeroCouponBond      registry issuer "BOND1" "ZERO-5Y"       pub todayTime (date 2022 tm td) (date 2027 Sep td) usd
+  bond2 <- originateFixedRateBond       registry issuer "BOND2" "FIXED-5Y-1.1%" pub todayTime (date 2020 tm td) ["FED"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.011 M 12 usd
+  bond3 <- originateFloatingRateBond    registry issuer "BOND3" "FLOAT-5Y-0.8%" pub todayTime (date 2020 tm td) ["FED"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.005 M 12 usd "USD-LIBOR-12M"
+  bond4 <- originateInflationLinkedBond registry issuer "BOND4" "INFL-5Y-0.75%" pub todayTime (date 2020 tm td) ["FED"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.005 M 12 usd "CPI" 100.0
 
-  -- issue operator registry issuer public "ISSUE1" (Instrument.qty 100_000_000.0 bnd1) issuerSecAccount
-  -- issue operator registry issuer public "ISSUE2" (Instrument.qty 100_000_000.0 bond2) issuerSecAccount
-  -- issue operator registry issuer public "ISSUE3" (Instrument.qty 100_000_000.0 bond3) issuerSecAccount
-  -- issue operator registry issuer public "ISSUE4" (Instrument.qty 100_000_000.0 bond4) issuerSecAccount
+  (_, bond2HoldingCid) <- issue operator registry issuer public (Instrument.qty 100_000_000.0 bond2) issuerSecAccount
+  (_, bond3HoldingCid) <- issue operator registry issuer public (Instrument.qty 100_000_000.0 bond3) issuerSecAccount
+  (_, bond4HoldingCid) <- issue operator registry issuer public (Instrument.qty 100_000_000.0 bond4) issuerSecAccount
 
   -- deposit operator registry custodian public (Instrument.qty 100_000_000.0 bond1) custodianSecAccount
-  deposit operator registry custodian public (Instrument.qty 100_000_000.0 bond2) custodianSecAccount
-  deposit operator registry custodian public (Instrument.qty 100_000_000.0 bond3) custodianSecAccount
-  deposit operator registry custodian public (Instrument.qty 100_000_000.0 bond4) custodianSecAccount
+  transfer issuer custodianSecAccount public $ coerceContractId bond2HoldingCid
+  transfer issuer custodianSecAccount public $ coerceContractId bond3HoldingCid
+  transfer issuer custodianSecAccount public $ coerceContractId bond4HoldingCid
 
   deposit operator custodian alice   public (Instrument.qty 50_000_000.0 bond2) aliceSecAccount
   deposit operator custodian bob     public (Instrument.qty 30_000_000.0 bond2) bobSecAccount
@@ -108,12 +106,28 @@ run  = do
   deposit operator custodian bob         public (Instrument.qty  40_000_000.0 usd) bobCashAccount
   deposit operator custodian charlie     public (Instrument.qty  30_000_000.0 usd) charlieCashAccount
 
+  -- Create observations and holiday calendar
   let
     obs =
-      [ Observation with provider = issuer; obsKey = "USD-LIBOR-12M"; observations = fromList [(todayTime,   0.0018825)]; observers = fromList pub
-      , Observation with provider = issuer; obsKey = "CPI";           observations = fromList [(todayTime, 108.2500000)]; observers = fromList pub ]
+      [ Observation with provider = issuer; obsKey = "USD-LIBOR-12M"; observations = fromList [(tt $ date 2021 tm td,   0.0015)]; observers = fromList pub
+      , Observation with provider = issuer; obsKey = "USD-LIBOR-12M"; observations = fromList [(tt $ date 2022 tm td,   0.0020)]; observers = fromList pub
+      , Observation with provider = issuer; obsKey = "CPI";           observations = fromList [(tt $ date 2021 tm td, 102.2500)]; observers = fromList pub
+      , Observation with provider = issuer; obsKey = "CPI";           observations = fromList [(tt $ date 2022 tm td, 104.5000)]; observers = fromList pub ]
     calendar = HolidayCalendarData with id = "FED"; weekend = [Saturday, Sunday]; holidays = []
-  obsCids <- mapA (\f -> submitMulti [registry, issuer] [] do createCmd f) obs
+  observableCids <- mapA (\f -> toInterfaceContractId <$> submitMulti [registry, issuer] [] do createCmd f) obs
   calendarCid <- submitMulti [registry] [] do createCmd HolidayCalendar with agency = registry; entity = calendar.id; calendar; observers = fromList pub
+
+  -- Create clock and events
+  let clock = DateClock with u = Unit today, id = Id "Clock", provider = issuer, observers = fromList pub
+  clockCid <- toInterfaceContractId <$> submitMulti [issuer] [] do createCmd clock
+  eventCid <- toInterfaceContractId <$> submitMulti [issuer] [] do createCmd DateClockUpdateEvent with clock; id = Id $ "Update to " <> show today
+
+  -- Lifecycle bonds (and archive effects)
+  (_, effectCids1) <- submitExerciseInterfaceByKeyCmd @Lifecycle.I [issuer] [public] bond2 Lifecycle.Evolve with ruleName = "Time"; settler = registry; eventCid; clockCid; observableCids
+  (_, effectCids2) <- submitExerciseInterfaceByKeyCmd @Lifecycle.I [issuer] [public] bond3 Lifecycle.Evolve with ruleName = "Time"; settler = registry; eventCid; clockCid; observableCids
+  (_, effectCids3) <- submitExerciseInterfaceByKeyCmd @Lifecycle.I [issuer] [public] bond4 Lifecycle.Evolve with ruleName = "Time"; settler = registry; eventCid; clockCid; observableCids
+  mapA_ (\eCid -> submit issuer do archiveCmd $ fromInterfaceContractId @Lifecycle.Effect eCid) effectCids1
+  mapA_ (\eCid -> submit issuer do archiveCmd $ fromInterfaceContractId @Lifecycle.Effect eCid) effectCids2
+  mapA_ (\eCid -> submit issuer do archiveCmd $ fromInterfaceContractId @Lifecycle.Effect eCid) effectCids3
 
   pure parties

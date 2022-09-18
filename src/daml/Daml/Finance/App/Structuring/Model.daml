@@ -3,14 +3,12 @@
 
 module Daml.Finance.App.Structuring.Model where
 
-import ContingentClaims.Claim (Claim)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K)
+import Daml.Finance.Interface.Instrument.Generic.Types (C)
 import Daml.Finance.Interface.Types.Common (Observers)
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum)
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum)
-
-type C = Claim Time Decimal Instrument.K Text
 
 template CreateBaseRequest
   with

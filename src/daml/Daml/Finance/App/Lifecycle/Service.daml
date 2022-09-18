@@ -11,14 +11,13 @@ import ContingentClaims.Util (expiry, fixings, payoffs)
 import DA.Set (singleton)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K)
 import Daml.Finance.Interface.Instrument.Generic.HasClaims qualified as Generic (HasClaims, getClaims)
+import Daml.Finance.Interface.Instrument.Generic.Types (C)
 import Daml.Finance.Interface.Lifecycle.Effect (Effect)
 import Daml.Finance.Interface.Lifecycle.Clock qualified as Clock (I)
 import Daml.Finance.Interface.Lifecycle.Event qualified as Event (I)
 import Daml.Finance.Interface.Lifecycle.Observable qualified as Interface (Observable, Observe(..))
 import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Interface (Lifecycle, Evolve(..))
 import Daml.Finance.App.Lifecycle.Pricing qualified as Pricing
-
-type C = Claim Time Decimal Instrument.K Text
 
 template Service
   with

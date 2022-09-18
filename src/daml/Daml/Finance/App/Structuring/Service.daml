@@ -3,7 +3,6 @@
 
 module Daml.Finance.App.Structuring.Service where
 
-import ContingentClaims.Claim (Claim)
 import DA.Date (toGregorian)
 import Daml.Finance.App.Structuring.Model (CreateBaseRequest(..), CreateGenericRequest(..), CreateFixedRateBondRequest(..), CreateFloatingRateBondRequest(..), CreateInflationLinkedBondRequest(..), CreateZeroCouponBondRequest(..))
 import Daml.Finance.App.Util (fetchAndArchive)
@@ -14,13 +13,12 @@ import Daml.Finance.Interface.Instrument.Bond.FloatingRate qualified as Floating
 import Daml.Finance.Interface.Instrument.Bond.InflationLinked qualified as InflationLinkedBond (Factory, Create(..))
 import Daml.Finance.Interface.Instrument.Bond.ZeroCoupon qualified as ZeroCouponBond (Factory, Create(..))
 import Daml.Finance.Interface.Instrument.Generic.Factory qualified as Generic (Factory, Create(..))
+import Daml.Finance.Interface.Instrument.Generic.Types (C)
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayAdjustment(..), BusinessDayConventionEnum)
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum, RollConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.Schedule (Frequency(..), PeriodicSchedule(..))
 import Daml.Finance.Interface.Types.Common (Id(..), InstrumentKey(..), Observers)
-
-type C = Claim Time Decimal Instrument.K Text
 
 data Factories = Factories
   with

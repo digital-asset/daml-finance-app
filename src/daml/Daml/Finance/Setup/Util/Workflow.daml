@@ -135,9 +135,9 @@ originateInflationLinkedBond depository issuer label description observers lastE
     createCmd InflationLinked.Instrument with depository; issuer; id = Id label; version = "0"; description; observers = M.fromList observers; lastEventTimestamp; periodicSchedule; holidayCalendarIds; calendarDataProvider; dayCountConvention; couponRate; inflationIndexId; currency; inflationIndexBaseValue
   createReference cid depository issuer observers
 
-transfer : Party -> Account.K -> ContractId Transferable.I -> Script (ContractId Transferable.I)
-transfer from toAccount depositCid = do
-  submitMulti [from, toAccount.owner] [] do exerciseCmd depositCid Transferable.Transfer with newOwnerAccount = toAccount
+transfer : Party -> Account.K -> Party -> ContractId Transferable.I -> Script (ContractId Transferable.I)
+transfer from toAccount public depositCid = do
+  submitMulti [from, toAccount.owner] [public] do exerciseCmd depositCid Transferable.Transfer with newOwnerAccount = toAccount
 
 deposit : Party -> Party -> Party -> Party -> Instrument.Q -> Account.K -> Script (ContractId Holding.I)
 deposit operator provider customer public quantity account = do
