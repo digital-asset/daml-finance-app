@@ -14,8 +14,8 @@ import { Effect as EffectI } from "@daml.js/daml-finance-interface-lifecycle/lib
 import { useParties } from "../../context/PartiesContext";
 import { Message } from "../../components/Message/Message";
 import { Claim } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Rule/Claim";
-import { Base } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Base";
-import { Batch } from "@daml.js/daml-finance-interface-settlement/lib/Daml/Finance/Interface/Settlement/Batch";
+import { useServices } from "../../context/ServicesContext";
+import { HoldingAggregate, useHoldings } from "../../context/HoldingsContext";
 
 export const Effect : React.FC = () => {
   const classes = useStyles();
@@ -23,28 +23,31 @@ export const Effect : React.FC = () => {
   const { getName } = useParties();
   const ledger = useLedger();
   const party = useParty();
-  const { contracts: effects, loading: l1 } = useStreamQueries(EffectI);
-  const { contracts: holdings, loading: l2 } = useStreamQueries(Base);
-  const { contracts: claimRules, loading: l3 } = useStreamQueries(Claim);
-  const { contracts: batches, loading: l4 } = useStreamQueries(Batch);
+  const { loading: l1, custody } = useServices();
+  const { loading: l2, holdings } = useHoldings();
+  const { loading: l3, contracts: effects } = useStreamQueries(EffectI);
 
   const { contractId } = useParams<any>();
   const effect = effects.find(c => c.contractId === contractId);
 
-  if (l1 || l2 || l3 || l4) return (<Spinner />);
+  if (l1 || l2 || l3) return (<Spinner />);
   if (!effect) return <Message text={"Effect [" + contractId + "] not found"} />;
-  if (claimRules.length === 0) return <Message text={"No claim rule found"} />;
+  if (custody.length === 0) return <Message text={"No custody service found"} />;
 
   const filteredHoldings = holdings.filter(c => keyEquals(c.payload.instrument, effect.payload.targetInstrument));
-  const filteredBatches = batches.filter(c => c.payload.id === effect.payload.id);
 
   const claimEffect = async () => {
-    const arg = {
-      claimer: party,
-      holdingCids: filteredHoldings.map(c => c.contractId),
-      effectCid: effect.contractId
-    }
-    await ledger.exercise(Claim.ClaimEffect, claimRules[0].contractId, arg);
+    const claimHolding = async (holding : HoldingAggregate) => {
+      const service = custody.find(c => c.payload.provider === holding.payload.account.custodian && c.payload.customer === holding.payload.account.owner);
+      if (!service) throw new Error("No custody service found with custodian [" + holding.payload.account.custodian + "] and owner [" + holding.payload.account.owner + "]");
+      const arg = {
+        claimer: party,
+        holdingCids: [holding.contractId],
+        effectCid: effect.contractId
+      }
+      await ledger.exercise(Claim.ClaimEffect, service.payload.claimRuleCid, arg);
+    };
+    await Promise.all(filteredHoldings.map(claimHolding));
   };
 
   return (
@@ -64,7 +67,7 @@ export const Effect : React.FC = () => {
                   </TableRow>
                   <TableRow key={1} className={classes.tableRow}>
                     <TableCell key={0} className={classes.tableCellSmall}><b>Id</b></TableCell>
-                    <TableCell key={1} className={classes.tableCellSmall}>{effect.payload.id}</TableCell>
+                    <TableCell key={1} className={classes.tableCellSmall}>{effect.payload.id.unpack}</TableCell>
                   </TableRow>
                   <TableRow key={2} className={classes.tableRow}>
                     <TableCell key={0} className={classes.tableCellSmall}><b>Description</b></TableCell>
@@ -74,13 +77,13 @@ export const Effect : React.FC = () => {
                     <TableCell key={0} className={classes.tableCellSmall}><b>Target Instrument</b></TableCell>
                     <TableCell key={1} className={classes.tableCellSmall}>{effect.payload.targetInstrument.id.unpack} ({shorten(effect.payload.targetInstrument.version)})</TableCell>
                   </TableRow>
-                  {!!effect.payload.producedInstrument && <TableRow key={3} className={classes.tableRow}>
+                  {!!effect.payload.producedInstrument && <TableRow key={4} className={classes.tableRow}>
                     <TableCell key={0} className={classes.tableCellSmall}><b>Produced Instrument</b></TableCell>
                     <TableCell key={1} className={classes.tableCellSmall}>{effect.payload.producedInstrument.id.unpack} ({shorten(effect.payload.producedInstrument.version)})</TableCell>
                   </TableRow>}
                 </TableBody>
               </Table>
-              <Button color="primary" size="large" className={classes.actionButton} variant="outlined" disabled={filteredBatches.length > 0} onClick={() => claimEffect()}>Claim Effect</Button>
+              <Button color="primary" size="large" className={classes.actionButton} variant="outlined" onClick={() => claimEffect()}>Claim Effect</Button>
             </Paper>
           </Grid>
           {/* TODO: Needs https://github.com/digital-asset/daml-finance/issues/147 */}
@@ -150,7 +153,8 @@ export const Effect : React.FC = () => {
               </Table>
             </Paper>
           </Grid>
-          {filteredBatches.length > 0 && <Grid item xs={12}>
+          {/* TODO: Can't currently link a batch back to its effect. */}
+          {/* {filteredBatches.length > 0 && <Grid item xs={12}>
             <Paper className={classes.paper}>
               <Grid container direction="row" justifyContent="center" className={classes.paperHeading}><Typography variant="h5">Settlement</Typography></Grid>
               <Table size="small">
@@ -176,7 +180,7 @@ export const Effect : React.FC = () => {
                 </TableBody>
               </Table>
             </Paper>
-          </Grid>}
+          </Grid>} */}
         </Grid>
       </Grid>
     </Grid>

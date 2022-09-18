@@ -3,10 +3,14 @@
 
 module Daml.Finance.App.Custody.Service where
 
+import DA.Set (fromList)
 import Daml.Finance.Interface.Holding.Account qualified as Account (Credit(..), Debit(..), K, R)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Holding.Util (getAccount)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K, Q)
+import Daml.Finance.Interface.Settlement.Factory qualified as Settlement (Factory)
+import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Lifecycle (Claim)
+import Daml.Finance.Lifecycle.Rule.Claim qualified as Lifecycle (Rule(..))
 import Daml.Finance.App.Custody.Model qualified as Custody
 import Daml.Finance.App.Util (fetchAndArchive)
 import Prelude hiding (lookup)
@@ -16,6 +20,7 @@ template Service
     operator : Party
     provider : Party
     customer : Party
+    claimRuleCid : ContractId Lifecycle.Claim
   where
     signatory operator, provider, customer
 
@@ -71,6 +76,7 @@ template Offer
     operator : Party
     provider : Party
     customer : Party
+    factoryCid : ContractId Settlement.Factory
   where
     signatory operator, provider
     observer customer
@@ -78,7 +84,8 @@ template Offer
     choice Accept : ContractId Service
       controller customer
       do
-        create Service with ..
+        claimRuleCid <- toInterfaceContractId <$> create Lifecycle.Rule with custodian = provider; owner = customer; claimers = fromList [provider, customer]; settler = provider; factoryCid
+        create Service with operator; provider; customer; claimRuleCid
 
     choice Decline : ()
       controller customer
@@ -107,6 +114,8 @@ template Request
     choice Approve : ContractId Service
       with
         operator : Party
+        factoryCid : ContractId Settlement.Factory
       controller operator, provider
       do
-        create Service with ..
+        claimRuleCid <- toInterfaceContractId <$> create Lifecycle.Rule with custodian = provider; owner = customer; claimers = fromList [provider, customer]; settler = provider; factoryCid
+        create Service with operator; provider; customer; claimRuleCid

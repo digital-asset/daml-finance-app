@@ -31,12 +31,12 @@ import Daml.Finance.Instrument.Bond.FloatingRate qualified as FloatingRateBond (
 import Daml.Finance.Instrument.Bond.InflationLinked qualified as InflationLinkedBond (Factory(..))
 import Daml.Finance.Instrument.Bond.ZeroCoupon qualified as ZeroCouponBond (Factory(..))
 import Daml.Finance.Instrument.Generic.Factory qualified as Generic (Factory(..))
-import Daml.Finance.Settlement.Factory (Factory(..))
+import Daml.Finance.Interface.Settlement.Factory qualified as Settlement (Factory)
 import Daml.Script (Script, createCmd, exerciseByKeyCmd, exerciseCmd)
 
-createCustodyService : Party -> Party -> Party -> Script (ContractId Custody.Service)
-createCustodyService operator custodian customer = do
-  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferCustodyService with customer
+createCustodyService : Party -> Party -> Party -> ContractId Settlement.Factory -> Script (ContractId Custody.Service)
+createCustodyService operator custodian customer factoryCid = do
+  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferCustodyService with customer; factoryCid
   submit customer do exerciseCmd offerCid Custody.Accept
 
 createIssuanceService : Party -> Party -> Party -> Script (ContractId Issuance.Service)
@@ -76,9 +76,8 @@ createLifecycleService operator custodian customer = do
   offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferLifecycleService with ..
   submit customer do exerciseCmd offerCid Lifecycle.Accept
 
-createTradingService : Party -> Party -> Party -> Script (ContractId Trading.Service)
-createTradingService operator exchange customer = do
-  settlementFactoryCid <- toInterfaceContractId <$> submit exchange do createCmd Factory with provider = exchange; observers = singleton customer
+createTradingService : Party -> Party -> Party -> ContractId Settlement.Factory -> Script (ContractId Trading.Service)
+createTradingService operator exchange customer settlementFactoryCid = do
   offerCid <- submit exchange do exerciseByKeyCmd @Exchange.Role (operator, exchange) Exchange.OfferTradingService with customer; settlementFactoryCid
   submit customer do exerciseCmd offerCid Trading.Accept
 

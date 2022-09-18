@@ -19,8 +19,7 @@ export const Auctions : React.FC = () => {
   const navigate = useNavigate();
   const party = useParty();
   const { getName } = useParties();
-
-  const { contracts: auctions, loading: l1 } = useStreamQueries(Auction);
+  const { loading: l1, contracts: auctions } = useStreamQueries(Auction);
   if (l1) return (<Spinner />);
 
   return (

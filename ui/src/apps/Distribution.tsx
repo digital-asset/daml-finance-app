@@ -9,25 +9,26 @@ import { Auctions } from "../pages/distribution/auction/Auctions";
 import { Auction } from "../pages/distribution/auction/Auction";
 import { New as NewAuction} from "../pages/distribution/auction/New";
 import { New as NewSubscription} from "../pages/distribution/subscription/New";
-import { useParty } from "@daml/react";
+import { useParty, useStreamQueries } from "@daml/react";
 import { Requests } from "../pages/distribution/auction/Requests";
 import { Bidding } from "../pages/distribution/auction/Bidding";
 import { App } from "./App";
 import { Spinner } from "../components/Spinner/Spinner";
 import { Offerings } from "../pages/distribution/subscription/Offerings";
 import { Offering } from "../pages/distribution/subscription/Offering";
-import { useServices } from "../context/ServicesContext";
+import { Service as AuctionService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Service"
+import { Service as SubscriptionService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Service"
 
 export const Distribution : React.FC = () => {
   const party = useParty();
-  const svc = useServices();
+  const { loading: l1, contracts: auction } = useStreamQueries(AuctionService);
+  const { loading: l2, contracts: subscription } = useStreamQueries(SubscriptionService);
+  if (l1 || l2) return (<Spinner />);
 
-  if (svc.loading) return (<Spinner />);
-
-  const providerAuctionService = svc.auction.find(c => c.payload.provider === party);
-  const customerAuctionService = svc.auction.find(c => c.payload.customer === party);
-  const providerSubscriptionService = svc.subscription.find(c => c.payload.provider === party);
-  const customerSubscriptionService = svc.subscription.find(c => c.payload.customer === party);
+  const providerAuctionService = auction.find(c => c.payload.provider === party);
+  const customerAuctionService = auction.find(c => c.payload.customer === party);
+  const providerSubscriptionService = subscription.find(c => c.payload.provider === party);
+  const customerSubscriptionService = subscription.find(c => c.payload.customer === party);
   const isAgent = !!providerAuctionService || !!providerSubscriptionService;
   const isIssuer = !!customerAuctionService || !!customerSubscriptionService;
 

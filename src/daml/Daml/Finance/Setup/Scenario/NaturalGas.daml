@@ -4,44 +4,54 @@
 module Daml.Finance.Setup.Scenario.NaturalGas where
 
 import DA.Date (addDays, toDateUTC)
-import DA.Map (fromList)
-import DA.Set (empty, singleton)
+import DA.Map (empty, fromList)
+import DA.Set (singleton)
 import DA.Time (time)
+import Daml.Finance.Holding.Account qualified as Account (Factory(..))
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
 import Daml.Finance.Interface.Types.Common (Id(..))
-import Daml.Finance.Lifecycle.Rule.Claim qualified as Claim (Rule(..))
 import Daml.Finance.RefData.Observation (Observation(..))
 import Daml.Finance.RefData.Time.DateClock (DateClock(..), DateClockUpdateEvent(..), Unit(..))
-import Daml.Finance.Settlement.Factory (Factory(..))
-import Daml.Finance.Setup.Payoff (ngCapped, ngConditionalLocation, ngLocationPricingOption, ngMultiLocation)
-import Daml.Finance.Setup.Util.Common (PartyInfo, allocateParties)
-import Daml.Finance.Setup.Util.Role (createCustodianRole, createOperatorRole)
-import Daml.Finance.Setup.Util.Service (createCustodyService, createIssuanceService, createLifecycleService)
-import Daml.Finance.Setup.Util.Workflow (createAccount, createFactory, deposit, originate, originateGeneric)
-import Daml.Script (Script, createCmd, submitMulti)
+import Daml.Finance.Settlement.Factory qualified as Settlement (Factory(..))
+import Daml.Finance.Setup.Payoff
+import Daml.Finance.Setup.Util.Common
+import Daml.Finance.Setup.Util.Role
+import Daml.Finance.Setup.Util.Service
+import Daml.Finance.Setup.Util.Workflow
+import Daml.Script
 
 run : Script [PartyInfo]
 run  = do
   parties <- allocateParties "Natural Gas" ["Operator", "Public", "CashProvider", "Seller", "Buyer"]
-  let [operator, public, cashProvider, seller, buyer] = map (.id) parties
+  let
+    [operator, public, cashProvider, seller, buyer] = map (.id) parties
+    pub = fromList [("Public", singleton $ singleton public)]
+
+  -- Factories
+  accountFactoryCid    <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
+  holdingFactoryCid    <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
+  settlementFactoryCid <- toInterfaceContractId <$> submit operator do createCmd Settlement.Factory with provider = operator; observers = singleton public
 
   -- Roles
-  createOperatorRole operator
+  createOperatorRole  operator
   createCustodianRole operator cashProvider
   createCustodianRole operator seller
 
   -- Services
-  createCustodyService operator cashProvider seller
-  createCustodyService operator cashProvider buyer
-  createCustodyService operator seller buyer
+  createCustodyService    operator cashProvider seller  settlementFactoryCid
+  createCustodyService    operator cashProvider buyer   settlementFactoryCid
+  createCustodyService    operator seller       buyer   settlementFactoryCid
+  createIssuanceService   operator seller       seller
+  createLifecycleService  operator seller       seller
 
-  createIssuanceService operator seller seller
-  createLifecycleService operator seller seller
+  -- Accounts
+  let createAcc = createAccount [public] accountFactoryCid holdingFactoryCid
+  sellerCashAccount   <- createAcc empty cashProvider seller "Seller@CashProvider"
+  buyerCashAccount    <- createAcc empty cashProvider buyer "Buyer@CashProvider"
+  buyerSecAccount     <- createAcc empty seller buyer "Buyer@Seller"
 
-  -- Settlement factory
-  settlementFactoryCid <- toInterfaceContractId <$> submit seller do createCmd Factory with provider = seller; observers = empty
-
+  -- Time
   t <- getTime
   let
     today = toDateUTC t
@@ -49,21 +59,9 @@ run  = do
     t1 = addDays today 1
     t1t = time t1 12 0 0
     t3 = addDays today 3
-    observers = [public]
-    pub = [("Public", singleton $ singleton public)]
-
-  -- Create clock and events
-  let clock = DateClock with u = Unit t1, id = Id "Clock", provider = seller, observers = fromList pub
+    clock = DateClock with u = Unit t1, id = Id "Clock", provider = seller, observers = pub
   submitMulti [seller] [] do createCmd clock
   submitMulti [seller] [] do createCmd DateClockUpdateEvent with clock; id = Id $ "Update to " <> show t1
-
-  -- Create accounts
-  accountFactoryCid <- toInterfaceContractId <$> createFactory operator pub
-  holdingFactoryCid <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory with provider = operator; observers = fromList pub
-  let createAcc = createAccount [public] accountFactoryCid holdingFactoryCid
-  sellerCashAccount   <- createAcc [] cashProvider seller "Seller@CashProvider"
-  buyerCashAccount    <- createAcc [] cashProvider buyer "Buyer@CashProvider"
-  buyerSecAccount     <- createAcc [] seller buyer "Buyer@Seller"
 
   -- Base Instruments
   usd     <- originate cashProvider cashProvider pub todayTime "USD"
@@ -83,28 +81,22 @@ run  = do
       [ Instrument.qty 2_000.0 z4200L
       , Instrument.qty 4_000.0 z4GEN
       , Instrument.qty 4_000.0 z4300L ]
-
   ng1 <- originateGeneric seller seller pub todayTime ng1Name $ ngMultiLocation         t1 t3 deliveries 5.25 usd
   ng2 <- originateGeneric seller seller pub todayTime ng2Name $ ngLocationPricingOption t1 t3  5_000.0 z4200L gdTgp219 z4GEN gdTgp300 usd
   ng3 <- originateGeneric seller seller pub todayTime ng3Name $ ngCapped                t1 t3 10_000.0 z4200L gdTgp219 5.75 usd
   ng4 <- originateGeneric seller seller pub todayTime ng4Name $ ngConditionalLocation   t1 t3 10_000.0 z4200L gdTgp219 5.50 z4GEN gdTgp300 usd
 
-  -- Lifecycle settlement rules
-  submitMulti [seller, buyer] [] do createCmd Claim.Rule with custodian = seller; owner = buyer; claimers = singleton seller; settler = seller; factoryCid =settlementFactoryCid
-
-  -- Positions
+  -- Distribution
   buyerCashCid <- deposit operator cashProvider buyer public (Instrument.qty 1_000_000.0 usd) buyerCashAccount
   buyerSecCid1 <- deposit operator seller buyer      public (Instrument.qty 1.0 ng1) buyerSecAccount
-  -- buyerSecCid2 <- deposit operator seller buyer      public    (qty 1.0 ng2) buyerSecAccount
   buyerSecCid2 <- deposit operator seller buyer      public (Instrument.qty 1.0 ng3) buyerSecAccount
   buyerSecCid2 <- deposit operator seller buyer      public (Instrument.qty 1.0 ng4) buyerSecAccount
 
+  -- Data
   let
-    observers = fromList [("Public", singleton $ singleton public)]
     obs =
-      [ Observation with provider = seller; obsKey = gdTgp219; observations = fromList [(t1t, 6.00)]; observers
-      , Observation with provider = seller; obsKey = gdTgp300; observations = fromList [(t1t, 5.90)]; observers ]
-
+      [ Observation with provider = seller; obsKey = gdTgp219; observations = fromList [(t1t, 6.00)]; observers = pub
+      , Observation with provider = seller; obsKey = gdTgp300; observations = fromList [(t1t, 5.90)]; observers = pub ]
   obsCids <- mapA (\f -> submitMulti [seller] [] do createCmd f) obs
 
   pure parties

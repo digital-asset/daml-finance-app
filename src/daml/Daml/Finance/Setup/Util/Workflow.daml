@@ -5,8 +5,9 @@ module Daml.Finance.Setup.Util.Workflow where
 
 import DA.Date (toGregorian)
 import DA.List (head)
-import DA.Map qualified as M
+import DA.Map (Map)
 import DA.Set (Set, singleton)
+import DA.Text (sha256)
 import Daml.Finance.App.Custody.Service qualified as Custody (Deposit(..), RequestDeposit(..), Service)
 import Daml.Finance.App.Distribution.Bidding.Model qualified as Bidding (Bid)
 import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (CreateBid(..), RequestCreateBid(..), S)
@@ -18,7 +19,6 @@ import Daml.Finance.App.Listing.Model qualified as Listing (T)
 import Daml.Finance.App.Listing.Service qualified as Listing (CreateListing(..), RequestCreateListing(..), Service)
 import Daml.Finance.App.Trading.Model qualified as Trading (Order, Side(..))
 import Daml.Finance.App.Trading.Service qualified as Trading (CreateOrder(..), RequestCreateOrder(..), Service)
-import Daml.Finance.Holding.Account qualified as Account (Factory(..))
 import Daml.Finance.Instrument.Base.Instrument (Instrument(..))
 import Daml.Finance.Instrument.Bond.FixedRate qualified as FixedRate (Instrument(..))
 import Daml.Finance.Instrument.Bond.FloatingRate qualified as FloatingRate (Instrument(..))
@@ -42,27 +42,22 @@ import Daml.Finance.Settlement.Factory qualified as Settlement (Factory)
 import Daml.Finance.Setup.Util.Common (getHolding)
 import Daml.Script (Script, createCmd, exerciseCmd, exerciseByKeyCmd, query, queryFilter, submitMulti)
 
--- | Create factory for `Account`.
-createFactory : Party -> [(Text, Set Parties)] -> Script (ContractId Account.Factory)
-createFactory provider observers = submitMulti [provider] [] do
-  createCmd Account.Factory with provider; observers = M.fromList observers
-
 -- | Create `Account`.
-createAccount : [Party] -> ContractId Account.F -> ContractId Holding.F -> [(Text, Set Parties)] -> Party -> Party -> Text -> Script Account.K
-createAccount readAs factoryCid holdingFactoryCid obs custodian owner id = do
+createAccount : [Party] -> ContractId Account.F -> ContractId Holding.F -> Map Text (Set Parties) -> Party -> Party -> Text -> Script Account.K
+createAccount readAs factoryCid holdingFactoryCid observers custodian owner id = do
   let
     v = Account.View with custodian; owner; id = Id id; holdingFactoryCid; description = id
     k = Account.toKey v
   submitMulti [v.custodian, v.owner] readAs do
-    exerciseCmd factoryCid Account.Create with account = k; holdingFactoryCid; observers = M.fromList obs; description = id
+    exerciseCmd factoryCid Account.Create with account = k; holdingFactoryCid; observers; description = id
   pure k
 
 -- | Create a `Reference` for an instrument.
 -- Note: This should only be called together with an instrument creation
-createReference : ContractId Instrument.I -> Party -> Party -> [(Text, Set Parties)] -> Script Instrument.K
+createReference : ContractId Instrument.I -> Party -> Party -> Map Text (Set Parties) -> Script Instrument.K
 createReference cid depository issuer observers = do
   instrumentView <- submitMulti [depository, issuer] [] do exerciseCmd cid Instrument.GetView with viewer = issuer
-  let ref = Instrument.Reference with instrumentView; cid; observers = M.fromList observers
+  let ref = Instrument.Reference with instrumentView; cid; observers
   submitMulti [depository, issuer] [] do createCmd ref
   pure $ key ref
 
@@ -91,48 +86,46 @@ createPaymentPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConv
   periodicSchedule
 
 -- | Originate an `Instrument`.
-originate : Party -> Party -> [(Text, Set Parties)] -> Time -> Text -> Script Instrument.K
-originate depository issuer observers validAsOf label = do
-  let id = Id label; version = "0"
+originate : Party -> Party -> Map Text (Set Parties) -> Time -> Text -> Script Instrument.K
+originate depository issuer observers validAsOf id = do
   cid <- coerceContractId <$> submitMulti [depository, issuer] [] do
-    createCmd Instrument with depository; issuer; id; version; observers = M.fromList observers; validAsOf; description = show id
+    createCmd Instrument with depository; issuer; id = Id id; version = sha256 id; observers; validAsOf; description = id
   createReference cid depository issuer observers
 
-originateGeneric : Party -> Party -> [(Text, Set Parties)] -> Time -> Text -> C -> Script Instrument.K
-originateGeneric depository issuer observers acquisitionTime label claims = do
-  let id = Id label; version = "0"
+originateGeneric : Party -> Party -> Map Text (Set Parties) -> Time -> Text -> C -> Script Instrument.K
+originateGeneric depository issuer observers acquisitionTime id claims = do
   cid <- coerceContractId <$> submitMulti [depository, issuer] [] do
-    createCmd Generic.Instrument with depository; issuer; id; version; acquisitionTime; claims; observers = M.fromList observers; lastEventTimestamp = acquisitionTime; description = show id
+    createCmd Generic.Instrument with depository; issuer; id = Id id; version = sha256 id; acquisitionTime; claims; observers; lastEventTimestamp = acquisitionTime; description = id
   createReference cid depository issuer observers
 
-originateFixedRateBond : Party -> Party -> Text -> Text -> [(Text, Set Parties)] -> Time -> Date -> [Text] -> Party -> Date-> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> Instrument.K -> Script Instrument.K
-originateFixedRateBond depository issuer label description observers lastEventTimestamp issueDate holidayCalendarIds calendarDataProvider firstCouponDate maturityDate dayCountConvention businessDayConvention couponRate couponPeriod couponPeriodMultiplier currency = do
+originateFixedRateBond : Party -> Party -> Text -> Text -> Map Text (Set Parties) -> Time -> Date -> [Text] -> Party -> Date-> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> Instrument.K -> Script Instrument.K
+originateFixedRateBond depository issuer id description observers lastEventTimestamp issueDate holidayCalendarIds calendarDataProvider firstCouponDate maturityDate dayCountConvention businessDayConvention couponRate couponPeriod couponPeriodMultiplier currency = do
   let
     periodicSchedule = createPaymentPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
   cid <- toInterfaceContractId @Instrument.I <$> submitMulti [depository, issuer] [] do
-    createCmd FixedRate.Instrument with depository; issuer; id = Id label; version = "0"; description; observers = M.fromList observers; lastEventTimestamp; periodicSchedule; holidayCalendarIds; calendarDataProvider; dayCountConvention; couponRate; currency
+    createCmd FixedRate.Instrument with depository; issuer; id = Id id; version = sha256 id; description; observers; lastEventTimestamp; periodicSchedule; holidayCalendarIds; calendarDataProvider; dayCountConvention; couponRate; currency
   createReference cid depository issuer observers
 
-originateZeroCouponBond : Party -> Party -> Text -> Text -> [(Text, Set Parties)] -> Time -> Date -> Date -> Instrument.K -> Script Instrument.K
-originateZeroCouponBond depository issuer label description observers lastEventTimestamp issueDate maturityDate currency = do
+originateZeroCouponBond : Party -> Party -> Text -> Text -> Map Text (Set Parties) -> Time -> Date -> Date -> Instrument.K -> Script Instrument.K
+originateZeroCouponBond depository issuer id description observers lastEventTimestamp issueDate maturityDate currency = do
   cid <- toInterfaceContractId <$> submitMulti [depository, issuer] [] do
-    createCmd ZeroCoupon.Instrument with depository; issuer; id = Id label; version = "0"; description; observers = M.fromList observers; lastEventTimestamp; issueDate; maturityDate; currency
+    createCmd ZeroCoupon.Instrument with depository; issuer; id = Id id; version = sha256 id; description; observers; lastEventTimestamp; issueDate; maturityDate; currency
   createReference cid depository issuer observers
 
-originateFloatingRateBond : Party -> Party -> Text -> Text -> [(Text, Set Parties)] -> Time -> Date -> [Text] -> Party -> Date -> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> Instrument.K -> Text -> Script Instrument.K
-originateFloatingRateBond depository issuer label description observers lastEventTimestamp issueDate holidayCalendarIds calendarDataProvider firstCouponDate maturityDate dayCountConvention businessDayConvention couponRate couponPeriod couponPeriodMultiplier currency referenceRateId = do
+originateFloatingRateBond : Party -> Party -> Text -> Text -> Map Text (Set Parties) -> Time -> Date -> [Text] -> Party -> Date -> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> Instrument.K -> Text -> Script Instrument.K
+originateFloatingRateBond depository issuer id description observers lastEventTimestamp issueDate holidayCalendarIds calendarDataProvider firstCouponDate maturityDate dayCountConvention businessDayConvention couponRate couponPeriod couponPeriodMultiplier currency referenceRateId = do
   let
     periodicSchedule = createPaymentPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
   cid <- toInterfaceContractId <$> submitMulti [depository, issuer] [] do
-    createCmd FloatingRate.Instrument with depository; issuer; id = Id label; version = "0"; description; observers = M.fromList observers; lastEventTimestamp; periodicSchedule; holidayCalendarIds; calendarDataProvider; dayCountConvention; couponSpread=couponRate; referenceRateId; currency
+    createCmd FloatingRate.Instrument with depository; issuer; id = Id id; version = sha256 id; description; observers; lastEventTimestamp; periodicSchedule; holidayCalendarIds; calendarDataProvider; dayCountConvention; couponSpread=couponRate; referenceRateId; currency
   createReference cid depository issuer observers
 
-originateInflationLinkedBond : Party -> Party -> Text -> Text -> [(Text, Set Parties)] -> Time -> Date -> [Text] -> Party -> Date -> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> Instrument.K -> Text -> Decimal -> Script Instrument.K
-originateInflationLinkedBond depository issuer label description observers lastEventTimestamp issueDate holidayCalendarIds calendarDataProvider firstCouponDate maturityDate dayCountConvention businessDayConvention couponRate couponPeriod couponPeriodMultiplier currency inflationIndexId inflationIndexBaseValue = do
+originateInflationLinkedBond : Party -> Party -> Text -> Text -> Map Text (Set Parties) -> Time -> Date -> [Text] -> Party -> Date -> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> Instrument.K -> Text -> Decimal -> Script Instrument.K
+originateInflationLinkedBond depository issuer id description observers lastEventTimestamp issueDate holidayCalendarIds calendarDataProvider firstCouponDate maturityDate dayCountConvention businessDayConvention couponRate couponPeriod couponPeriodMultiplier currency inflationIndexId inflationIndexBaseValue = do
   let
     periodicSchedule = createPaymentPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
   cid <- toInterfaceContractId <$> submitMulti [depository, issuer] [] do
-    createCmd InflationLinked.Instrument with depository; issuer; id = Id label; version = "0"; description; observers = M.fromList observers; lastEventTimestamp; periodicSchedule; holidayCalendarIds; calendarDataProvider; dayCountConvention; couponRate; inflationIndexId; currency; inflationIndexBaseValue
+    createCmd InflationLinked.Instrument with depository; issuer; id = Id id; version = sha256 id; description; observers; lastEventTimestamp; periodicSchedule; holidayCalendarIds; calendarDataProvider; dayCountConvention; couponRate; inflationIndexId; currency; inflationIndexBaseValue
   createReference cid depository issuer observers
 
 transfer : Party -> Account.K -> Party -> ContractId Transferable.I -> Script (ContractId Transferable.I)

@@ -7,13 +7,10 @@ import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Typography, Grid, Table, TableBody, TableCell, TableRow, Paper, Button, TableHead } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
 import useStyles from "../styles";
-import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Service";
+import { Service as Lifecycle } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Service";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
 import { and, C, claimToNode } from "../../components/Claims/util";
-import { Pending } from "@daml.js/contingent-claims/lib/ContingentClaims/Lifecycle";
-import { Time } from "@daml/types";
-import { InstrumentKey } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Common";
 import { useParties } from "../../context/PartiesContext";
 import { useInstruments } from "../../context/InstrumentsContext";
 import { useServices } from "../../context/ServicesContext";
@@ -22,15 +19,15 @@ import { Observable } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/F
 import { Effect } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Effect";
 import { Event } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Event";
 import { Clock } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Clock";
-import { Claims } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Util";
 import { shorten } from "../../util";
+import { Pending } from "@daml.js/daml-finance-interface-instrument-generic/lib/Daml/Finance/Interface/Instrument/Generic/Types";
 
 export const Instrument : React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
 
   const [ remaining, setRemaining ] = useState<C | null>(null);
-  const [ pending, setPending ] = useState<Pending<Time, InstrumentKey>[]>([]);
+  const [ pending, setPending ] = useState<Pending[]>([]);
   const [ node1, setNode1 ] = useState<ClaimTreeNode | undefined>();
   const [ node2, setNode2 ] = useState<ClaimTreeNode | undefined>();
 
@@ -44,31 +41,34 @@ export const Instrument : React.FC = () => {
   const { loading: l5, contracts: events } = useStreamQueries(Event);
   const { loading: l6, contracts: clocks } = useStreamQueries(Clock);
   const { contractId } = useParams<any>();
-
+  const isLoading = l1 || l2 || l3 || l4 || l5 || l6;
   const instrument = getByCid(contractId || "");
 
   useEffect(() => {
+    if (isLoading || !lifecycle) return;
     const setClaims = async () => {
-      const [res, ] = await ledger.createAndExercise(Claims.Get, { party }, { instrumentCid: instrument.claims!.contractId })
+      const observableCids = observables.map(c => c.contractId);
+      const [res, ] = await ledger.exercise(Lifecycle.GetCurrentClaims, lifecycle[0].contractId, { instrumentCid: instrument.claims!.contractId, observableCids })
       const claims = res.length > 1 ? and(res.map(r => r.claim)) : res[0].claim;
       setNode1(claimToNode(claims));
     };
     setClaims();
-  }, [ledger, party, instrument]);
+  }, [ledger, party, instrument, observables, lifecycle, isLoading]);
 
   useEffect(() => {
     if (!!remaining) setNode2(claimToNode(remaining));
   }, [remaining]);
 
-  if (l1 || l2 || l3 || l4 || l5 || l6) return (<Spinner />);
+  if (isLoading) return (<Spinner />);
   if (lifecycle.length === 0) return <Message text={"No lifecycle service found"} />;
 
   const effect = effects.find(c => c.payload.targetInstrument.id.unpack === instrument.payload.id.unpack && c.payload.targetInstrument.version === instrument.payload.version);
 
   const previewLifecycle = async () => {
     const observableCids = observables.map(c => c.contractId);
-    const [ res, ] = await ledger.exercise(Service.PreviewLifecycle, lifecycle[0].contractId, { today: clocks[0].payload.clockTime, observableCids, instrumentCid: instrument.claims!.contractId });
-    setRemaining(res._1);
+    const [ res, ] = await ledger.exercise(Lifecycle.PreviewLifecycle, lifecycle[0].contractId, { today: clocks[0].payload.clockTime, observableCids, instrumentCid: instrument.claims!.contractId });
+    const claims = res._1.length > 1 ? and(res._1.map(r => r.claim)) : res._1[0].claim;
+    setRemaining(claims);
     setPending(res._2);
   };
 
@@ -81,7 +81,7 @@ export const Instrument : React.FC = () => {
       observableCids,
       lifecyclableCid: instrument.lifecycle!.contractId
     }
-    await ledger.exercise(Service.Lifecycle, lifecycle[0].contractId, arg);
+    await ledger.exercise(Lifecycle.Lifecycle, lifecycle[0].contractId, arg);
     navigate("/servicing/settlement");
   };
 
@@ -149,7 +149,7 @@ export const Instrument : React.FC = () => {
                           <TableCell key={1} className={classes.tableCell}>{parseFloat(c.amount) < 0 ? "Owner" : "Custodian"}</TableCell>
                           <TableCell key={2} className={classes.tableCell}>{parseFloat(c.amount) < 0 ? "Custodian" : "Owner"}</TableCell>
                           <TableCell key={3} className={classes.tableCell}>{(Math.abs(parseFloat(c.amount))).toFixed(5)}</TableCell>
-                          <TableCell key={4} className={classes.tableCell}>{c.asset.id.unpack}</TableCell>
+                          <TableCell key={4} className={classes.tableCell}>{c.instrument.id.unpack}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

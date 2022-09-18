@@ -57,7 +57,7 @@ export const Effects : React.FC = () => {
                   <TableCell key={3} className={classes.tableCell}><b>Target</b></TableCell>
                   <TableCell key={4} className={classes.tableCell}><b>Produced</b></TableCell>
                   <TableCell key={5} className={classes.tableCell}><b>Holdings</b></TableCell>
-                  <TableCell key={6} className={classes.tableCell}><b>Holdings</b></TableCell>
+                  <TableCell key={6} className={classes.tableCell}><b>Detail</b></TableCell>
                   <TableCell key={7} className={classes.tableCell}>
                     <Button className={classes.choiceButton} size="large" variant="contained" color="primary" disabled={false} onClick={claimAll}>Claim All</Button>
                   </TableCell>

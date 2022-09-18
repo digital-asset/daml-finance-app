@@ -13,7 +13,7 @@ import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
 import IconButton from "@mui/material/IconButton";
 import KeyboardArrowRight from "@mui/icons-material/KeyboardArrowRight";
-import { useLedger, useStreamQueries } from "@daml/react";
+import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { Button } from "@mui/material";
@@ -26,11 +26,13 @@ import { Event } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Financ
 import { Observable } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Observable";
 import { Lifecycle } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Rule/Lifecycle";
 import { CreateEvent } from "@daml/ledger";
+import { shorten } from "../../util";
 
 export const Instruments : React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
   const { getName } = useParties();
+  const party = useParty();
   const ledger = useLedger();
   const svc = useServices();
   const inst = useInstruments();
@@ -41,7 +43,7 @@ export const Instruments : React.FC = () => {
 
   if (l1 || l2 || l3 || svc.loading || inst.loading) return (<Spinner />);
 
-  const hasLifecycle = inst.latests.filter(a => !!a.lifecycle);
+  const myInstruments = inst.latests.filter(a => !!a.lifecycle && a.lifecycle.payload.lifecycler === party);
 
   const lifecycleAll = async () => {
     const lifecycle = async (c : CreateEvent<Lifecycle>) => {
@@ -55,7 +57,7 @@ export const Instruments : React.FC = () => {
       }
       await ledger.exercise(Service.Lifecycle, svc.lifecycle[0].contractId, arg);
     }
-    await Promise.all(hasLifecycle.map(c => lifecycle(c.lifecycle!)));
+    await Promise.all(myInstruments.map(c => lifecycle(c.lifecycle!)));
     navigate("/servicing/effects");
   };
 
@@ -76,22 +78,24 @@ export const Instruments : React.FC = () => {
                     <TableCell key={2} className={classes.tableCell}><b>Id</b></TableCell>
                     <TableCell key={3} className={classes.tableCell}><b>Description</b></TableCell>
                     <TableCell key={4} className={classes.tableCell}><b>Version</b></TableCell>
-                    <TableCell key={5} className={classes.tableCell}><b>Lifecycler</b></TableCell>
-                    <TableCell key={6} className={classes.tableCell}>
-                      <Button className={classes.choiceButton} size="large" variant="contained" color="primary" onClick={lifecycleAll}>Lifecycle All</Button>
+                    <TableCell key={5} className={classes.tableCell}><b>ValidAsOf</b></TableCell>
+                    <TableCell key={6} className={classes.tableCell}><b>Lifecycler</b></TableCell>
+                    <TableCell key={7} className={classes.tableCell}>
+                      <Button className={classes.choiceButton} size="large" variant="contained" color="primary" disabled={myInstruments.length === 0} onClick={lifecycleAll}>Lifecycle All</Button>
                     </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {hasLifecycle.map((c, i) => (
+                  {myInstruments.map((c, i) => (
                     <TableRow key={i} className={classes.tableRow}>
                       <TableCell key={0} className={classes.tableCell}>{getName(c.payload.depository)}</TableCell>
                       <TableCell key={1} className={classes.tableCell}>{getName(c.payload.issuer)}</TableCell>
                       <TableCell key={2} className={classes.tableCell}>{c.payload.id.unpack}</TableCell>
                       <TableCell key={3} className={classes.tableCell}>{c.payload.description}</TableCell>
-                      <TableCell key={4} className={classes.tableCell}>{c.payload.version}</TableCell>
-                      <TableCell key={5} className={classes.tableCell}>{c.lifecycle!.payload.lifecycler}</TableCell>
-                      <TableCell key={6} className={classes.tableCell}>
+                      <TableCell key={4} className={classes.tableCell}>{shorten(c.payload.version)}</TableCell>
+                      <TableCell key={5} className={classes.tableCell}>{c.payload.validAsOf}</TableCell>
+                      <TableCell key={6} className={classes.tableCell}>{getName(c.lifecycle!.payload.lifecycler)}</TableCell>
+                      <TableCell key={7} className={classes.tableCell}>
                         <IconButton color="primary" size="small" component="span" onClick={() => navigate(c.contractId)}>
                           <KeyboardArrowRight fontSize="small"/>
                         </IconButton>
