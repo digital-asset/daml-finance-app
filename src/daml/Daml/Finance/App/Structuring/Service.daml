@@ -4,7 +4,7 @@
 module Daml.Finance.App.Structuring.Service where
 
 import DA.Date (toGregorian)
-import Daml.Finance.App.Structuring.Model (CreateBaseRequest(..), CreateGenericRequest(..), CreateFixedRateBondRequest(..), CreateFloatingRateBondRequest(..), CreateInflationLinkedBondRequest(..), CreateZeroCouponBondRequest(..))
+import Daml.Finance.App.Structuring.Model
 import Daml.Finance.App.Util (fetchAndArchive)
 import Daml.Finance.Interface.Instrument.Base.Factory qualified as Base (Factory, Create(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I, K)
@@ -12,6 +12,7 @@ import Daml.Finance.Interface.Instrument.Bond.FixedRate qualified as FixedRateBo
 import Daml.Finance.Interface.Instrument.Bond.FloatingRate qualified as FloatingRateBond (Factory, Create(..))
 import Daml.Finance.Interface.Instrument.Bond.InflationLinked qualified as InflationLinkedBond (Factory, Create(..))
 import Daml.Finance.Interface.Instrument.Bond.ZeroCoupon qualified as ZeroCouponBond (Factory, Create(..))
+import Daml.Finance.Interface.Instrument.Equity.Factory qualified as Equity (Factory, Create(..))
 import Daml.Finance.Interface.Instrument.Generic.Factory qualified as Generic (Factory, Create(..))
 import Daml.Finance.Interface.Instrument.Generic.Types (C)
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayAdjustment(..), BusinessDayConventionEnum)
@@ -23,6 +24,7 @@ import Daml.Finance.Interface.Types.Common (Id(..), InstrumentKey(..), Observers
 data Factories = Factories
   with
     base : ContractId Base.Factory
+    equity : ContractId Equity.Factory
     generic : ContractId Generic.Factory
     fixedRateBond : ContractId FixedRateBond.Factory
     floatingRateBond : ContractId FloatingRateBond.Factory
@@ -51,6 +53,16 @@ template Service
       controller customer
       do
         create CreateBaseRequest with ..
+
+    nonconsuming choice RequestCreateEquity : ContractId CreateEquityRequest
+      with
+        id : Text
+        description : Text
+        validAsOf : Time
+        observers : Observers
+      controller customer
+      do
+        create CreateEquityRequest with ..
 
     nonconsuming choice RequestCreateGeneric : ContractId CreateGenericRequest
       with
@@ -152,6 +164,16 @@ template Service
         let
           instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"
         exercise factories.base Base.Create with ..
+
+    nonconsuming choice CreateEquity : ContractId Instrument.I
+      with
+        createEquityRequestCid : ContractId CreateEquityRequest
+      controller provider
+      do
+        CreateEquityRequest{..} <- fetchAndArchive createEquityRequestCid
+        let
+          instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"
+        exercise factories.equity Equity.Create with ..
 
     nonconsuming choice CreateGeneric : ContractId Instrument.I
       with

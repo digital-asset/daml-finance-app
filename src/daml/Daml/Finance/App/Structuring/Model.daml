@@ -22,6 +22,18 @@ template CreateBaseRequest
   where
     signatory operator, provider, customer
 
+template CreateEquityRequest
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Text
+    description : Text
+    observers : Observers
+    validAsOf : Time
+  where
+    signatory operator, provider, customer
+
 template CreateGenericRequest
   with
     operator : Party

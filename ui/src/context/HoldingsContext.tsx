@@ -3,8 +3,9 @@
 
 import React from "react";
 import { CreateEvent } from "@daml/ledger";
-import { useLedger, useStreamQueries } from "@daml/react";
+import { useLedger, useQuery, useStreamQueries } from "@daml/react";
 import { keyEquals } from "../util";
+import { Fungible as FungibleT } from "@daml.js/daml-finance-holding/lib/Daml/Finance/Holding/Fungible";
 import { Base } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Base";
 import { Lockable } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Lockable";
 import { Transferable } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Transferable";
@@ -33,6 +34,8 @@ const empty = {
 const HoldingsContext = React.createContext<HoldingsState>(empty);
 
 export const HoldingsProvider : React.FC = ({ children }) => {
+
+  useQuery(FungibleT);
 
   const ledger = useLedger();
   const { contracts: holdings, loading: l1 } = useStreamQueries(Base);

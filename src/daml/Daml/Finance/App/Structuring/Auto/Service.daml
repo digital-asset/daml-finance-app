@@ -33,6 +33,17 @@ template Service
         createBaseRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreateBase with ..
         exerciseByKey @S.Service (operator, provider, customer) S.CreateBase with createBaseRequestCid
 
+    nonconsuming choice RequestAndCreateEquity : ContractId Instrument.I
+      with
+        id : Text
+        description : Text
+        validAsOf : Time
+        observers : Observers
+      controller customer
+      do
+        createEquityRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreateEquity with ..
+        exerciseByKey @S.Service (operator, provider, customer) S.CreateEquity with createEquityRequestCid
+
     nonconsuming choice RequestAndCreateGeneric : ContractId Instrument.I
       with
         id : Text

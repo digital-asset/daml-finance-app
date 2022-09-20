@@ -16,7 +16,7 @@ import { useServices } from "../../../context/ServicesContext";
 import { Service as Structuring } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Service";
 import { Service as StructuringAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service";
 
-export const NewBase : React.FC = () => {
+export const NewStock : React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
 

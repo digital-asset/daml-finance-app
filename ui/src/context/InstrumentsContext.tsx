@@ -3,8 +3,15 @@
 
 import React from "react";
 import { CreateEvent } from "@daml/ledger";
-import { useStreamQueries } from "@daml/react";
+import { useQuery, useStreamQueries } from "@daml/react";
 import { Instrument } from "@daml.js/daml-finance-interface-instrument-base/lib/Daml/Finance/Interface/Instrument/Base/Instrument";
+import { Instrument as Base } from "@daml.js/daml-finance-instrument-base/lib/Daml/Finance/Instrument/Base/Instrument";
+import { Instrument as Equity } from "@daml.js/daml-finance-instrument-equity/lib/Daml/Finance/Instrument/Equity/Instrument";
+import { Instrument as Generic } from "@daml.js/daml-finance-instrument-generic/lib/Daml/Finance/Instrument/Generic/Instrument";
+import { Instrument as FixedRateBond } from "@daml.js/daml-finance-instrument-bond/lib/Daml/Finance/Instrument/Bond/FixedRate";
+import { Instrument as FloatingRateBond } from "@daml.js/daml-finance-instrument-bond/lib/Daml/Finance/Instrument/Bond/FloatingRate";
+import { Instrument as InflationLinkedBond } from "@daml.js/daml-finance-instrument-bond/lib/Daml/Finance/Instrument/Bond/InflationLinked";
+import { Instrument as ZeroCouponBond } from "@daml.js/daml-finance-instrument-bond/lib/Daml/Finance/Instrument/Bond/ZeroCoupon";
 import { Lifecycle } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Rule/Lifecycle";
 import { HasClaims } from "@daml.js/daml-finance-interface-instrument-generic/lib/Daml/Finance/Interface/Instrument/Generic/HasClaims";
 import { Id, InstrumentKey } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Common";
@@ -45,6 +52,14 @@ const empty = {
 const InstrumentsContext = React.createContext<InstrumentsState>(empty);
 
 export const InstrumentsProvider : React.FC = ({ children }) => {
+
+  useQuery(Base);
+  useQuery(Equity);
+  useQuery(Generic);
+  useQuery(FixedRateBond);
+  useQuery(FloatingRateBond);
+  useQuery(InflationLinkedBond);
+  useQuery(ZeroCouponBond);
 
   const { contracts: instruments, loading: l1 } = useStreamQueries(Instrument);
   const { contracts: hasLifecycle, loading: l2 } = useStreamQueries(Lifecycle);

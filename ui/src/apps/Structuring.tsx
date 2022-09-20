@@ -14,11 +14,13 @@ import { NewFixedRateBond } from "../pages/structuring/bond/NewFixedRateBond";
 import { NewFloatingRateBond } from "../pages/structuring/bond/NewFloatingRateBond";
 import { NewInflationLinkedBond } from "../pages/structuring/bond/NewInflationLinkedBond";
 import { NewZeroCouponBond } from "../pages/structuring/bond/NewZeroCouponBond";
+import { NewStock } from "../pages/structuring/equity/NewStock";
 
 export const Structuring : React.FC = () => {
   const entries : RouteEntry[] =
     [ { path: "instruments", element: <Instruments />, label: "Instruments", icon: <PlayArrow/> }
     , { path: "new", element: <New />, label: "New", icon: <PlayArrow/> }
+    , { path: "new/equity/stock", element: <NewStock /> }
     , { path: "new/bond/fixedrate", element: <NewFixedRateBond /> }
     , { path: "new/bond/floatingrate", element: <NewFloatingRateBond /> }
     , { path: "new/bond/inflationlinked", element: <NewInflationLinkedBond /> }
