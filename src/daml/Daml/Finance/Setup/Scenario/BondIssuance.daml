@@ -68,13 +68,13 @@ run = do
 
   -- Accounts
   let createAcc = createAccount [public] accountFactoryCid holdingFactoryCid
-  issuerCashAccount      <- createAcc empty centralBank issuer    "Issuer@CentralBank"
-  custodianCashAccount   <- createAcc empty centralBank custodian "Custodian@CentralBank"
+  issuerCashAccount      <- createAcc empty centralBank issuer    "Issuer@CentralBank/Cash"
+  custodianCashAccount   <- createAcc empty centralBank custodian "Custodian@CentralBank/Cash"
   aliceCashAccount       <- createAcc empty custodian   alice     "Alice@Custodian/Cash"
   bobCashAccount         <- createAcc empty custodian   bob       "Bob@Custodian/Cash"
   charlieCashAccount     <- createAcc empty custodian   charlie   "Charlie@Custodian/Cash"
-  issuerSecAccount       <- createAcc empty registry    issuer    "Issuer@Registry"
-  custodianSecAccount    <- createAcc empty registry    custodian "Custodian@Registry"
+  issuerSecAccount       <- createAcc empty registry    issuer    "Issuer@Registry/Securties"
+  custodianSecAccount    <- createAcc empty registry    custodian "Custodian@Registry/Securities"
   aliceSecAccount        <- createAcc empty custodian   alice     "Alice@Custodian/Securities"
   bobSecAccount          <- createAcc empty custodian   bob       "Bob@Custodian/Securities"
   charlieSecAccount      <- createAcc empty custodian   charlie   "Charlie@Custodian/Securities"
