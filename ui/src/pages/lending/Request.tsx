@@ -7,7 +7,6 @@ import classnames from "classnames";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Grid, Paper, Typography, Table, TableRow, TableCell, TableBody, TextField, Button, FormControl, InputLabel, Select, MenuItem, MenuProps } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
-import { Fungible } from "@daml.js/daml-finance-holding/lib/Daml/Finance/Holding/Fungible";
 import { Service as Lending } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lending/Service";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { Reference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
@@ -16,7 +15,10 @@ import { useParties } from "../../context/PartiesContext";
 import { useInstruments } from "../../context/InstrumentsContext";
 import { useServices } from "../../context/ServicesContext";
 import { BorrowOfferRequest } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lending/Model";
-import { createKey, fmt, getHolding } from "../../util";
+import { fmt } from "../../util";
+import { useHoldings } from "../../context/HoldingsContext";
+import { ContractId } from "@daml/types";
+import { Transferable } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Transferable";
 
 export const Request : React.FC = () => {
   const classes = useStyles();
@@ -30,26 +32,25 @@ export const Request : React.FC = () => {
   const { getName } = useParties();
   const party = useParty();
   const ledger = useLedger();
-  const inst = useInstruments();
-  const svc = useServices();
-  const { contracts: requests, loading: l1 } = useStreamQueries(BorrowOfferRequest);
-  const { contracts: holdings, loading: l2 } = useStreamQueries(Fungible);
-  const { contracts: accounts, loading: l3 } = useStreamQueries(Reference);
+  const { loading: l1, lending } = useServices();
+  const { loading: l2, tokens } = useInstruments();
+  const { loading: l3, getFungible } = useHoldings();
+  const { loading: l4, contracts: requests } = useStreamQueries(BorrowOfferRequest);
+  const { loading: l5, contracts: accounts } = useStreamQueries(Reference);
 
   const { contractId } = useParams<any>();
   const request = requests.find(b => b.contractId === contractId);
-  const borrowedInstrument = inst.tokens.find(c => c.payload.id.unpack === request?.payload.borrowed.unit.id.unpack);
-  const interestInstrument = inst.tokens.find(c => c.payload.id.unpack === interestInstrumentLabel);
-  const collateralInstrument = inst.tokens.find(c => c.payload.id.unpack === collateralInstrumentLabel);
+  const borrowedInstrument = tokens.find(c => c.payload.id.unpack === request?.payload.borrowed.unit.id.unpack);
+  const interestInstrument = tokens.find(c => c.payload.id.unpack === interestInstrumentLabel);
+  const collateralInstrument = tokens.find(c => c.payload.id.unpack === collateralInstrumentLabel);
 
-  if (inst.loading || svc.loading || l1 || l2 || l3) return (<Spinner />);
+  if (l1 || l2 || l3 || l4 || l5) return (<Spinner />);
 
-  const providerServices = svc.lending.filter(c => c.payload.provider === party);
-  const customerServices = svc.lending.filter(c => c.payload.customer === party);
+  const providerServices = lending.filter(c => c.payload.provider === party);
+  const customerServices = lending.filter(c => c.payload.customer === party);
   const isProvider = providerServices.length > 0;
   const isCustomer = customerServices.length > 0;
 
-  const myHoldings = holdings.filter(c => c.payload.account.owner === party);
 
   if (!isProvider && !isCustomer) return <Message text="No lending service found" />
   if (!request) return <Message text="Borrow request not found" />
@@ -61,16 +62,16 @@ export const Request : React.FC = () => {
     const lenderBorrowedAccount = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === borrowedInstrument.payload.depository)?.key;
     const lenderInterestAccount = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === interestInstrument.payload.depository)?.key;
     if (!lenderBorrowedAccount || !lenderInterestAccount) throw new Error("Borrowed or interest account not found");
-    const borrowedCid = await getHolding(ledger, myHoldings, parseFloat(request.payload.borrowed.amount), request.payload.borrowed.unit);
+    const borrowedCid = await getFungible(party, request.payload.borrowed.amount, request.payload.borrowed.unit);
     const arg = {
       borrowOfferRequestCid: request.contractId,
-      interest: { amount: interestAmount, unit: createKey(interestInstrument!) },
-      collateral: { amount: collateralAmount, unit: createKey(collateralInstrument!) },
-      borrowedCid,
+      interest: { amount: interestAmount, unit: interestInstrument!.key },
+      collateral: { amount: collateralAmount, unit: collateralInstrument!.key },
+      borrowedCid: borrowedCid as string as ContractId<Transferable>,
       lenderBorrowedAccount,
       lenderInterestAccount
     };
-    await ledger.exercise(Lending.CreateBorrowOffer, svc.lending[0].contractId, arg);
+    await ledger.exercise(Lending.CreateBorrowOffer, lending[0].contractId, arg);
     navigate("/lending/offers");
   };
 
@@ -118,14 +119,14 @@ export const Request : React.FC = () => {
                     <FormControl className={classes.inputField} fullWidth>
                       <InputLabel className={classes.selectLabel}>Interest Instrument</InputLabel>
                       <Select fullWidth value={interestInstrumentLabel} onChange={e => setInterestInstrumentLabel(e.target.value as string)} MenuProps={menuProps}>
-                        {inst.tokens.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
+                        {tokens.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
                       </Select>
                     </FormControl>
                     <TextField className={classes.inputField} fullWidth label="Interest Amount" type="number" value={interestAmount} onChange={e => setInterestAmount(e.target.value as string)} />
                     <FormControl className={classes.inputField} fullWidth>
                       <InputLabel className={classes.selectLabel}>Collateral Instrument</InputLabel>
                       <Select fullWidth value={collateralInstrumentLabel} onChange={e => setCollateralInstrumentLabel(e.target.value as string)} MenuProps={menuProps}>
-                        {inst.tokens.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
+                        {tokens.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
                       </Select>
                     </FormControl>
                     <TextField className={classes.inputField} fullWidth label="Collateral Amount" type="number" value={collateralAmount} onChange={e => setCollateralAmount(e.target.value as string)} />

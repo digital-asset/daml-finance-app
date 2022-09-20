@@ -5,86 +5,90 @@ import React, { useEffect, useState } from "react";
 import classnames from "classnames";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Typography, Grid, Table, TableBody, TableCell, TableRow, Paper, Button, TableHead } from "@mui/material";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import useStyles from "../styles";
-import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Service";
+import { Service as Lifecycle } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Service";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
-import { C, claimToNode } from "../../components/Claims/util";
-import { createKey, id, version } from "../../util";
-import { Effect } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/Effect";
-import { DateClock, DateClockUpdateEvent } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefData/Time/DateClock";
-import { Pending } from "@daml.js/contingent-claims/lib/ContingentClaims/Lifecycle";
-import { Time } from "@daml/types";
-import { InstrumentKey } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Common";
-import { Observation } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefData/Observation";
+import { and, C, claimToNode } from "../../components/Claims/util";
 import { useParties } from "../../context/PartiesContext";
 import { useInstruments } from "../../context/InstrumentsContext";
 import { useServices } from "../../context/ServicesContext";
 import { Message } from "../../components/Message/Message";
+import { Observable } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Observable";
+import { Effect } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Effect";
+import { Event } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Event";
+import { Clock } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Clock";
+import { shorten } from "../../util";
+import { Pending } from "@daml.js/daml-finance-interface-instrument-generic/lib/Daml/Finance/Interface/Instrument/Generic/Types";
 
 export const Instrument : React.FC = () => {
   const classes = useStyles();
+  const navigate = useNavigate();
 
   const [ remaining, setRemaining ] = useState<C | null>(null);
-  const [ pending, setPending ] = useState<Pending<Time, InstrumentKey>[]>([]);
+  const [ pending, setPending ] = useState<Pending[]>([]);
   const [ node1, setNode1 ] = useState<ClaimTreeNode | undefined>();
   const [ node2, setNode2 ] = useState<ClaimTreeNode | undefined>();
 
   const { getName } = useParties();
   const party = useParty();
   const ledger = useLedger();
-  const svc = useServices();
-  const inst = useInstruments();
-  const { contracts: observations, loading: l1 } = useStreamQueries(Observation);
-  const { contracts: effects, loading: l2 } = useStreamQueries(Effect);
-  const { contracts: events, loading: l3 } = useStreamQueries(DateClockUpdateEvent);
-  const { contracts: clocks, loading: l4 } = useStreamQueries(DateClock);
+  const { loading: l1, lifecycle } = useServices();
+  const { loading: l2, getByCid } = useInstruments();
+  const { loading: l3, contracts: observables } = useStreamQueries(Observable);
+  const { loading: l4, contracts: effects } = useStreamQueries(Effect);
+  const { loading: l5, contracts: events } = useStreamQueries(Event);
+  const { loading: l6, contracts: clocks } = useStreamQueries(Clock);
   const { contractId } = useParams<any>();
-
-  const cid = contractId?.replace("_", "#");
-  const instrument = inst.generics.find(c => c.contractId === cid && c.payload.issuer === party);
+  const isLoading = l1 || l2 || l3 || l4 || l5 || l6;
+  const instrument = getByCid(contractId || "");
 
   useEffect(() => {
-    if (!!instrument) setNode1(claimToNode(instrument.payload.claims));
-  }, [instrument]);
+    if (isLoading || !lifecycle) return;
+    const setClaims = async () => {
+      const observableCids = observables.map(c => c.contractId);
+      const [res, ] = await ledger.exercise(Lifecycle.GetCurrentClaims, lifecycle[0].contractId, { instrumentCid: instrument.claims!.contractId, observableCids })
+      const claims = res.length > 1 ? and(res.map(r => r.claim)) : res[0].claim;
+      setNode1(claimToNode(claims));
+    };
+    setClaims();
+  }, [ledger, party, instrument, observables, lifecycle, isLoading]);
 
   useEffect(() => {
     if (!!remaining) setNode2(claimToNode(remaining));
   }, [remaining]);
 
-  if (l1 || l2 || l3 || l4 || svc.loading || inst.loading) return (<Spinner />);
-  if (!instrument) return <Message text={"Instrument [" + cid + "] not found"} />;
-  if (svc.lifecycle.length === 0) return <Message text={"No lifecycle service found"} />;
+  if (isLoading) return (<Spinner />);
+  if (lifecycle.length === 0) return <Message text={"No lifecycle service found"} />;
 
   const effect = effects.find(c => c.payload.targetInstrument.id.unpack === instrument.payload.id.unpack && c.payload.targetInstrument.version === instrument.payload.version);
 
   const previewLifecycle = async () => {
-    const todayDate = new Date(clocks[0].payload.u.unpack);
-    todayDate.setHours(14);
-    const today = todayDate.toISOString(); // TODO: Add date control
-    const observableCids = observations.map(c => c.contractId);
-    const [ res, ] = await ledger.exercise(Service.PreviewLifecycle, svc.lifecycle[0].contractId, { today, observableCids, claims: instrument.payload.claims });
-    setRemaining(res._1);
+    const observableCids = observables.map(c => c.contractId);
+    const [ res, ] = await ledger.exercise(Lifecycle.PreviewLifecycle, lifecycle[0].contractId, { today: clocks[0].payload.clockTime, observableCids, instrumentCid: instrument.claims!.contractId });
+    const claims = res._1.length > 1 ? and(res._1.map(r => r.claim)) : res._1[0].claim;
+    setRemaining(claims);
     setPending(res._2);
   };
 
   const executeLifecycle = async () => {
-    const observableCids = observations.map(c => c.contractId);
+    const observableCids = observables.map(c => c.contractId);
     const arg = {
       ruleName: "Time",
       eventCid: events[0].contractId,
       clockCid: clocks[0].contractId,
       observableCids,
-      lifecyclableCid: instrument.contractId
+      lifecyclableCid: instrument.lifecycle!.contractId
     }
-    await ledger.exercise(Service.Lifecycle, svc.lifecycle[0].contractId, arg);
+    await ledger.exercise(Lifecycle.Lifecycle, lifecycle[0].contractId, arg);
+    navigate("/servicing/settlement");
   };
 
   return (
     <Grid container direction="column" spacing={0}>
       <Grid item xs={12}>
-        <Typography variant="h3" className={classes.heading}>{id(createKey(instrument))}</Typography>
+        <Typography variant="h3" className={classes.heading}>{instrument.payload.description}</Typography>
       </Grid>
       <Grid item xs={12}>
         <Grid container direction="row" spacing={4}>
@@ -103,12 +107,20 @@ export const Instrument : React.FC = () => {
                         <TableCell key={1} className={classes.tableCellSmall}>{getName(instrument.payload.issuer)}</TableCell>
                       </TableRow>
                       <TableRow key={2} className={classes.tableRow}>
-                        <TableCell key={0} className={classes.tableCellSmall}><b>Instrument</b></TableCell>
+                        <TableCell key={0} className={classes.tableCellSmall}><b>Id</b></TableCell>
                         <TableCell key={1} className={classes.tableCellSmall}>{instrument.payload.id.unpack}</TableCell>
                       </TableRow>
                       <TableRow key={3} className={classes.tableRow}>
+                        <TableCell key={0} className={classes.tableCellSmall}><b>Description</b></TableCell>
+                        <TableCell key={1} className={classes.tableCellSmall}>{instrument.payload.description}</TableCell>
+                      </TableRow>
+                      <TableRow key={4} className={classes.tableRow}>
                         <TableCell key={0} className={classes.tableCellSmall}><b>Version</b></TableCell>
-                        <TableCell key={1} className={classes.tableCellSmall}>{version(createKey(instrument))}</TableCell>
+                        <TableCell key={1} className={classes.tableCellSmall}>{shorten(instrument.payload.version)}</TableCell>
+                      </TableRow>
+                      <TableRow key={5} className={classes.tableRow}>
+                        <TableCell key={0} className={classes.tableCellSmall}><b>ValidAsOf</b></TableCell>
+                        <TableCell key={1} className={classes.tableCellSmall}>{instrument.payload.validAsOf}</TableCell>
                       </TableRow>
                     </TableBody>
                   </Table>
@@ -134,16 +146,17 @@ export const Instrument : React.FC = () => {
                       {pending.map((c, i) => (
                         <TableRow key={i} className={classes.tableRow}>
                           <TableCell key={0} className={classes.tableCell}>{c.t}</TableCell>
-                          <TableCell key={1} className={classes.tableCell}>{parseFloat(c.amount) < 0 ? "Counterparty" : getName(instrument.payload.issuer)}</TableCell>
-                          <TableCell key={2} className={classes.tableCell}>{parseFloat(c.amount) < 0 ? getName(instrument.payload.issuer) : "Counterparty"}</TableCell>
+                          <TableCell key={1} className={classes.tableCell}>{parseFloat(c.amount) < 0 ? "Owner" : "Custodian"}</TableCell>
+                          <TableCell key={2} className={classes.tableCell}>{parseFloat(c.amount) < 0 ? "Custodian" : "Owner"}</TableCell>
                           <TableCell key={3} className={classes.tableCell}>{(Math.abs(parseFloat(c.amount))).toFixed(5)}</TableCell>
-                          <TableCell key={4} className={classes.tableCell}>{c.asset.id.unpack}</TableCell>
+                          <TableCell key={4} className={classes.tableCell}>{c.instrument.id.unpack}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
                 </Paper>}
-                {!!effect &&
+                {/* TODO: We don't have consumed or produced on the effect interface: https://github.com/digital-asset/daml-finance/issues/147 */}
+                {/* {!!effect &&
                 <Paper className={classes.paper}>
                   <Grid container direction="row" justifyContent="center" className={classes.paperHeading}><Typography variant="h5">Lifecycle Effect</Typography></Grid>
                   <Table size="small">
@@ -180,7 +193,7 @@ export const Instrument : React.FC = () => {
                       ))}
                     </TableBody>
                   </Table>
-                </Paper>}
+                </Paper>} */}
               </Grid>
             </Grid>
           </Grid>

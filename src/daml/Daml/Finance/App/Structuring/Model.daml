@@ -4,20 +4,45 @@
 module Daml.Finance.App.Structuring.Model where
 
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K)
+import Daml.Finance.Interface.Instrument.Generic.Types (C)
 import Daml.Finance.Interface.Types.Common (Observers)
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum)
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum)
 
-template CreateZeroCouponBondRequest
+template CreateBaseRequest
   with
     operator : Party
     provider : Party
     customer : Party
     id : Text
-    issueDate : Date
-    maturityDate : Date
-    currency : Instrument.K
+    description : Text
+    observers : Observers
+    validAsOf : Time
+  where
+    signatory operator, provider, customer
+
+template CreateEquityRequest
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Text
+    description : Text
+    observers : Observers
+    validAsOf : Time
+  where
+    signatory operator, provider, customer
+
+template CreateGenericRequest
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Text
+    description : Text
+    claims : C
+    acquisitionTime : Time
     observers : Observers
     lastEventTimestamp : Time
   where
@@ -29,6 +54,7 @@ template CreateFixedRateBondRequest
     provider : Party
     customer : Party
     id : Text
+    description : Text
     couponRate : Decimal
     issueDate : Date
     firstCouponDate : Date
@@ -51,6 +77,7 @@ template CreateFloatingRateBondRequest
     provider : Party
     customer : Party
     id : Text
+    description : Text
     referenceRateId : Text
     couponSpread : Decimal
     issueDate : Date
@@ -74,6 +101,7 @@ template CreateInflationLinkedBondRequest
     provider : Party
     customer : Party
     id : Text
+    description : Text
     inflationIndexId : Text
     inflationIndexBaseValue : Decimal
     couponRate : Decimal
@@ -91,3 +119,19 @@ template CreateInflationLinkedBondRequest
     lastEventTimestamp : Time
   where
     signatory operator, provider, customer
+
+template CreateZeroCouponBondRequest
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Text
+    description : Text
+    issueDate : Date
+    maturityDate : Date
+    currency : Instrument.K
+    observers : Observers
+    lastEventTimestamp : Time
+  where
+    signatory operator, provider, customer
+

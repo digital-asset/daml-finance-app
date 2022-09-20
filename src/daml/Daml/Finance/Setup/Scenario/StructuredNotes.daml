@@ -6,29 +6,37 @@ module Daml.Finance.Setup.Scenario.StructuredNotes where
 import ContingentClaims.Financial (unrollDates)
 import DA.Date (Month(..), addDays, date, toDateUTC, toGregorian)
 import DA.Foldable (mapA_)
-import DA.Map (fromList)
-import DA.Set (empty, singleton)
+import DA.Map (empty, fromList)
+import DA.Set (singleton)
 import DA.Time (time)
 import Daml.Finance.App.BackToBack.Service qualified as BackToBack
 import Daml.Finance.App.Distribution.Subscription.Model qualified as Subscription
 import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription
+import Daml.Finance.Holding.Account qualified as Account (Factory(..))
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
 import Daml.Finance.Interface.Types.Common (Id(..))
 import Daml.Finance.RefData.Observation (Observation(..))
 import Daml.Finance.RefData.Time.DateClock (DateClock(..), DateClockUpdateEvent(..), Unit(..))
-import Daml.Finance.Settlement.Factory (Factory(..))
-import Daml.Finance.Setup.Payoff (bond, brc, buyWriteNote, futureDvp, putOptionCash, rc)
-import Daml.Finance.Setup.Util.Common (PartyInfo, allocateParties)
-import Daml.Finance.Setup.Util.Role (createCustodianRole, createDistributorRole, createOperatorRole)
-import Daml.Finance.Setup.Util.Service (createBackToBackIssuanceService, createCustodyService, createIssuanceService, createLifecycleService, createStructuringService, createSubscriptionService)
-import Daml.Finance.Setup.Util.Workflow (createAccount, createFactory, deposit, originate, originateGeneric)
-import Daml.Script (Script, createCmd, exerciseByKeyCmd, exerciseCmd, submitMulti)
+import Daml.Finance.Settlement.Factory qualified as Settlement (Factory(..))
+import Daml.Finance.Setup.Payoff
+import Daml.Finance.Setup.Util.Common
+import Daml.Finance.Setup.Util.Role
+import Daml.Finance.Setup.Util.Service
+import Daml.Finance.Setup.Util.Workflow
+import Daml.Script
 
 run : Script [PartyInfo]
 run  = do
   parties <- allocateParties "Structured Notes" ["Operator", "Public", "CentralBank", "Depository", "Issuer", "RiskTaker", "Alice", "Bob", "Charlie"]
-  let [operator, public, centralBank, depository, issuer, riskTaker, alice, bob, charlie] = map (.id) parties
+  let
+    [operator, public, centralBank, depository, issuer, riskTaker, alice, bob, charlie] = map (.id) parties
+    pub = fromList [("Public", singleton $ singleton public)]
+
+  -- Factories
+  accountFactoryCid    <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
+  holdingFactoryCid    <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
+  settlementFactoryCid <- toInterfaceContractId <$> submit operator do createCmd Settlement.Factory with provider = operator; observers = singleton public
 
   -- Roles
   createOperatorRole operator
@@ -38,27 +46,38 @@ run  = do
   createDistributorRole operator issuer
 
   -- Services
-  createCustodyService operator centralBank issuer
-  createCustodyService operator centralBank riskTaker
-  createCustodyService operator centralBank alice
-  createCustodyService operator centralBank bob
-  createCustodyService operator centralBank charlie
-  createCustodyService operator riskTaker issuer
-  createCustodyService operator issuer alice
-  createCustodyService operator issuer bob
-  createCustodyService operator issuer charlie
-
+  createCustodyService operator centralBank issuer settlementFactoryCid
+  createCustodyService operator centralBank riskTaker settlementFactoryCid
+  createCustodyService operator centralBank alice settlementFactoryCid
+  createCustodyService operator centralBank bob settlementFactoryCid
+  createCustodyService operator centralBank charlie settlementFactoryCid
+  createCustodyService operator riskTaker issuer settlementFactoryCid
+  createCustodyService operator issuer alice settlementFactoryCid
+  createCustodyService operator issuer bob settlementFactoryCid
+  createCustodyService operator issuer charlie settlementFactoryCid
   createStructuringService operator issuer issuer
   createIssuanceService operator issuer issuer
   createIssuanceService operator riskTaker riskTaker
   createBackToBackIssuanceService operator riskTaker issuer public
   createLifecycleService operator riskTaker riskTaker
   createLifecycleService operator issuer issuer
-
   createSubscriptionService operator issuer issuer public
 
-  settlementFactoryCid <- toInterfaceContractId <$> submit issuer do createCmd Factory with provider = issuer; observers = empty
+  -- Accounts
+  let createAcc = createAccount [public] accountFactoryCid holdingFactoryCid
+  riskTakerCashAccount   <- createAcc (fromList [("b2b", singleton $ singleton issuer)]) centralBank riskTaker "RiskTaker@CentralBank"
+  issuerCashAccount      <- createAcc empty centralBank issuer "Issuer@CentralBank"
+  aliceCashAccount       <- createAcc empty centralBank alice "Alice@CentralBank"
+  bobCashAccount         <- createAcc empty centralBank bob "Bob@CentralBank"
+  charlieCashAccount     <- createAcc empty centralBank charlie "Charlie@CentralBank"
+  issuerSecAccount       <- createAcc empty riskTaker issuer "Issuer@RiskTaker"
+  aliceSecAccount        <- createAcc empty issuer alice "Alice@Issuer"
+  bobSecAccount          <- createAcc empty issuer bob "Bob@Issuer"
+  charlieSecAccount      <- createAcc empty issuer charlie "Charlie@Issuer"
+  issuerOwnAccount       <- createAcc empty issuer issuer "Issuer@Issuer"
+  riskTakerOwnAccount    <- createAcc (fromList [("b2b", singleton $ singleton issuer)]) riskTaker riskTaker "RiskTaker@RiskTaker"
 
+  -- Time
   t <- getTime
   let
     today = toDateUTC t
@@ -66,28 +85,11 @@ run  = do
     fixTime = time (date 2022 Jul 5) 12 0 0
     maturity = addDays today 365
     (todayYear, todayMonth, todayDay) = toGregorian today
-    pub = [("Public", singleton $ singleton public)]
 
   -- Create clock and events
-  let clock = DateClock with u = Unit today, id = Id "Clock", provider = issuer, observers = fromList pub
+  let clock = DateClock with u = Unit today, id = Id "Clock", provider = issuer, observers = pub
   submitMulti [issuer] [] do createCmd clock
   submitMulti [issuer] [] do createCmd DateClockUpdateEvent with clock; id = Id $ "Update to " <> show today
-
-  -- Create accounts
-  accountFactoryCid <- toInterfaceContractId <$> createFactory operator pub
-  holdingFactoryCid <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory with provider = operator; observers = fromList pub
-  let createAcc = createAccount [public] accountFactoryCid holdingFactoryCid
-  riskTakerCashAccount   <- createAcc [("b2b", singleton $ singleton issuer)] centralBank riskTaker "RiskTaker@CentralBank"
-  issuerCashAccount      <- createAcc [] centralBank issuer "Issuer@CentralBank"
-  aliceCashAccount       <- createAcc [] centralBank alice "Alice@CentralBank"
-  bobCashAccount         <- createAcc [] centralBank bob "Bob@CentralBank"
-  charlieCashAccount     <- createAcc [] centralBank charlie "Charlie@CentralBank"
-  issuerSecAccount       <- createAcc [] riskTaker issuer "Issuer@RiskTaker"
-  aliceSecAccount        <- createAcc [] issuer alice "Alice@Issuer"
-  bobSecAccount          <- createAcc [] issuer bob "Bob@Issuer"
-  charlieSecAccount      <- createAcc [] issuer charlie "Charlie@Issuer"
-  issuerOwnAccount       <- createAcc [] issuer issuer "Issuer@Issuer"
-  riskTakerOwnAccount    <- createAcc [("b2b", singleton $ singleton issuer)] riskTaker riskTaker "RiskTaker@RiskTaker"
 
   -- Observables
   let
@@ -98,8 +100,8 @@ run  = do
     libor6M = "LIB-USD-6M"
 
   -- Instruments
-  usd     <- originate            centralBank centralBank pub todayTime "USD"
-  tsla    <- originate            depository  issuer      pub todayTime "TSLA"
+  usd     <- originate         centralBank centralBank pub todayTime "USD"
+  tsla    <- originate         depository  issuer      pub todayTime "TSLA"
   fwd     <- originateGeneric  depository  issuer      pub todayTime "Forward on TSLA"                       $ futureDvp tsla 200.0 usd 100_000.0 today
   opt     <- originateGeneric  depository  issuer      pub todayTime "Put Option on TSLA"                    $ putOptionCash tslaO usd 1_000.0 maturity
   bnd     <- originateGeneric  depository  issuer      pub todayTime "Bond 5Y/4.875%"                        $ bond usd 1.0 0.04875 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
@@ -108,6 +110,7 @@ run  = do
   bwn1    <- originateGeneric  depository  issuer      pub todayTime "Synthetic Buy-Write Notes on AMD"      $ buyWriteNote (date 2022 Jul 16) (date 2023 Jul 19) (date 2023 Jul 23) amd usd 0.1776 91.6300 100.7930 -- Issue size: 77'300
   bwn2    <- originateGeneric  depository  issuer      pub todayTime "Synthetic Buy-Write Notes on QUALCOMM" $ buyWriteNote (date 2022 Jun 30) (date 2022 Jul 05) (date 2022 Jul 07) qc usd 0.1312 147.2566 161.9823
 
+  -- Distribution
   issuerCashCid1  <- coerceContractId <$> deposit operator centralBank issuer  public (Instrument.qty 4_417_698.0 usd) issuerCashAccount
   aliceCashCid1   <- coerceContractId <$> deposit operator centralBank alice   public (Instrument.qty 1_472_566.0 usd) aliceCashAccount
   bobCashCid1     <- coerceContractId <$> deposit operator centralBank bob     public (Instrument.qty 1_472_566.0 usd) bobCashAccount
@@ -118,15 +121,21 @@ run  = do
   bobCashCid2     <- coerceContractId <$> deposit operator centralBank bob     public (Instrument.qty 1_000_000.0 usd) bobCashAccount
   charlieCashCid2 <- coerceContractId <$> deposit operator centralBank charlie public (Instrument.qty 1_000_000.0 usd) charlieCashAccount
 
+  -- Observations
   let
     obs =
-      [ Observation with provider = issuer; obsKey = tslaO; observations = fromList [(todayTime, 580.0)]; observers = fromList pub
-      , Observation with provider = issuer; obsKey = qc; observations = fromList [(fixTime, 170.0)]; observers = fromList pub ]
+      [ Observation with provider = issuer; obsKey = tslaO; observations = fromList [(todayTime, 580.0)]; observers = pub
+      , Observation with provider = issuer; obsKey = qc; observations = fromList [(fixTime, 170.0)]; observers = pub ]
+  mapA_ (\f -> submitMulti [issuer, issuer] [] do createCmd f) obs
+
+  -- Workflows
+  let
     issuance quantity = do
       submitMulti [issuer] [public] do
         exerciseByKeyCmd @BackToBack.Service (operator, riskTaker, issuer) BackToBack.CreateIssuance
           with
-            id = "ISSUANCE-" <> show quantity.unit.id
+            id = Id $ "ISSUANCE-" <> show quantity.unit.id
+            description = "Issuance of " <> show quantity.amount <> " " <> show quantity.unit.id
             quantity
             customerAccount = issuerOwnAccount
             providerAccount = riskTakerOwnAccount
@@ -163,8 +172,6 @@ run  = do
             offeringCid
             subscriptionCids = [aliceSubscriptionCid, bobSubscriptionCid, charlieSubscriptionCid]
       pure ()
-
-  mapA_ (\f -> submitMulti [issuer, issuer] [] do createCmd f) obs
 
   -- (_, rcIssuerHoldingCid, rcRiskTakerHoldingCid) <- issuance $ Instrument.qty 3_000_000.0 rc
   -- subscription (Instrument.qty 3_000_000.0 rc) (Instrument.qty 1.0 usd) issuerCashCid1 rcIssuerHoldingCid rcRiskTakerHoldingCid aliceCashCid1 bobCashCid1 charlieCashCid1

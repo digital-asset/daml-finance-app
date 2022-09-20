@@ -13,7 +13,7 @@ import { useServices } from "../../context/ServicesContext";
 import { useInstruments } from "../../context/InstrumentsContext";
 import { Service as Lending } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lending/Service";
 import { Message } from "../../components/Message/Message";
-import { createKey, parseDate } from "../../util";
+import { parseDate } from "../../util";
 import { DatePicker } from "@mui/lab";
 
 export const New : React.FC = () => {
@@ -25,22 +25,22 @@ export const New : React.FC = () => {
   const [ maturity, setMaturity ] = useState<Date | null>(null);
 
   const ledger = useLedger();
-  const svc = useServices();
-  const inst = useInstruments();
+  const { loading: l1, lending } = useServices();
+  const { loading: l2, tokens } = useInstruments();
 
-  const borrowed = inst.tokens.find(c => c.payload.id.unpack === borrowedLabel);
+  const borrowed = tokens.find(c => c.payload.id.unpack === borrowedLabel);
   const canRequest = !!borrowedLabel && !!amount && !!maturity && !!borrowed;
 
-  if (svc.loading || inst.loading) return (<Spinner />);
-  if (!svc.issuance) return (<Message text="No issuance service found" />);
+  if (l1 || l2) return (<Spinner />);
+  if (!lending) return (<Message text="No lending service found" />);
 
   const requestBorrowOffer = async () => {
     const arg = {
       id: uuidv4(),
-      borrowed: { amount, unit: createKey(borrowed!) },
+      borrowed: { amount, unit: borrowed!.key },
       maturity: parseDate(maturity)
     };
-    await ledger.exercise(Lending.RequestBorrowOffer, svc.lending[0].contractId, arg);
+    await ledger.exercise(Lending.RequestBorrowOffer, lending[0].contractId, arg);
     navigate("/lending/requests");
   }
 
@@ -60,7 +60,7 @@ export const New : React.FC = () => {
                   <FormControl className={classes.inputField} fullWidth>
                     <InputLabel className={classes.selectLabel}>Borrowed Instrument</InputLabel>
                     <Select fullWidth value={borrowedLabel} onChange={e => setBorrowedLabel(e.target.value as string)} MenuProps={menuProps}>
-                      {inst.tokens.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
+                      {tokens.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
                     </Select>
                   </FormControl>
                   <TextField className={classes.inputField} fullWidth label="Quantity" type="number" value={amount} onChange={e => setAmount(e.target.value as string)} />

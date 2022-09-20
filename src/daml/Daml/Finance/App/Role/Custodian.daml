@@ -10,7 +10,8 @@ import Daml.Finance.App.Issuance.Service qualified as Issuance (Approve(..), Off
 import Daml.Finance.App.Lending.Service qualified as Lending (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Structuring.Auto.Service qualified as StructuringAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
-import Daml.Finance.App.Structuring.Service qualified as Structuring (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Structuring.Service qualified as Structuring (Approve(..), Factories, Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Lifecycle (Claim)
 
 template Role
   with
@@ -25,16 +26,18 @@ template Role
     nonconsuming choice OfferCustodyService : ContractId Custody.Offer
       with
         customer : Party
+        claimRuleCid : ContractId Lifecycle.Claim
       controller provider
       do
-        create Custody.Offer with ..
+        create Custody.Offer with operator; provider; customer; claimRuleCid
 
     nonconsuming choice ApproveCustodyRequest : ContractId Custody.Service
       with
         custodyRequestCid : ContractId Custody.Request
+        claimRuleCid : ContractId Lifecycle.Claim
       controller provider
       do
-        exercise custodyRequestCid Custody.Approve with ..
+        exercise custodyRequestCid Custody.Approve with operator; claimRuleCid
 
     nonconsuming choice TerminateCustodyService : ()
       with
@@ -110,6 +113,7 @@ template Role
     nonconsuming choice OfferStructuringService : ContractId Structuring.Offer
       with
         customer : Party
+        factories : Structuring.Factories
       controller provider
       do
         create Structuring.Offer with ..
@@ -117,6 +121,7 @@ template Role
     nonconsuming choice ApproveStructuringRequest : ContractId Structuring.Service
       with
         structuringServiceRequestCid : ContractId Structuring.Request
+        factories : Structuring.Factories
       controller provider
       do
         exercise structuringServiceRequestCid Structuring.Approve with ..

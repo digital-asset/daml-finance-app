@@ -13,6 +13,9 @@ export const New : React.FC = () => {
   return (
     <Grid container direction="column">
       <Grid item xs={12}>
+        <InstrumentPanel label="Equity" expanded={expanded} setExpanded={setExpanded}>
+          <InstrumentCard label="Stock" path="equity/stock" />
+        </InstrumentPanel>
         <InstrumentPanel label="Bond" expanded={expanded} setExpanded={setExpanded}>
           <InstrumentCard label="Fixed Rate Bond" path="bond/fixedrate" />
           <InstrumentCard label="Floating Rate Bond" path="bond/floatingrate" />
@@ -20,8 +23,8 @@ export const New : React.FC = () => {
           <InstrumentCard label="Zero Coupon Bond" path="bond/zerocoupon" />
         </InstrumentPanel>
         <InstrumentPanel label="Other" expanded={expanded} setExpanded={setExpanded}>
-          {/* <InstrumentCard label="Base Instrument" path="base" /> */}
-          <InstrumentCard label="Custom Instrument" path="other/custom" />
+          <InstrumentCard label="Base Instrument" path="other/base" />
+          <InstrumentCard label="Generic Instrument" path="other/generic" />
         </InstrumentPanel>
       </Grid>
     </Grid>

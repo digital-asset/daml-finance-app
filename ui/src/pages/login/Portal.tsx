@@ -15,7 +15,7 @@ export const Portal : React.FC = () => {
   return (
     <>
       <img alt="loginLogo" src={damlLogin} style={{ position: "absolute", top: "10%", left: "50%", transform: "translate(-50%, 0%)", display: "inline-block", zIndex: 0 }} />
-      <Typography variant="h2" style={{ textAlign: "center" }}>Daml Finance Reference Application</Typography>
+      <Typography variant="h2" style={{ textAlign: "center" }}>Daml Finance</Typography>
       <Box className={classes.loginContainer} style={{ position: "absolute", top: "30%", left: "50%", transform: "translate(-50%, 0%)", width: "1600px", height: "600px", backgroundColor: "#f5f5f5" }}>
         <Grid container direction="column">
           <Grid item xs={12}>

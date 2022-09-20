@@ -35,7 +35,7 @@ export const Form : React.FC = () => {
   return (
     <>
       {branding.loginLogo}
-      <Typography variant="h2" style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, 0%)" }}>Daml Finance Reference Application</Typography>
+      <Typography variant="h2" style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, 0%)" }}>Daml Finance</Typography>
       <Box className={classes.loginContainer} style={{ position: "absolute", top: branding.loginY, left: "50%", transform: "translate(-50%, 0%)" }}>
         <TextField
           className={classes.loginField}

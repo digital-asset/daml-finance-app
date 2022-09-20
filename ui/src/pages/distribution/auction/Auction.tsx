@@ -13,11 +13,11 @@ import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribu
 import { Bid } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Bidding/Model";
 import { getAuctionStatus, getBidStatus, getBidAllocation } from "../Utils";
 import { Spinner } from "../../../components/Spinner/Spinner";
-import { Factory } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Factory";
 import { fmt } from "../../../util";
 import { Message } from "../../../components/Message/Message";
 import { useParties } from "../../../context/PartiesContext";
 import { useServices } from "../../../context/ServicesContext";
+import { Factory } from "@daml.js/daml-finance-interface-settlement/lib/Daml/Finance/Interface/Settlement/Factory";
 
 export const Auction: React.FC = () => {
   const classes = useStyles();

@@ -8,13 +8,15 @@ import ContingentClaims.Lifecycle qualified as Lifecycle
 import ContingentClaims.Math.Stochastic (Expr)
 import ContingentClaims.Observation (Observation(..))
 import ContingentClaims.Util (expiry, fixings, payoffs)
-import DA.Set (singleton)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I, K)
+import Daml.Finance.Interface.Instrument.Generic.HasClaims qualified as Generic (HasClaims, getClaims)
+import Daml.Finance.Interface.Instrument.Generic.Types (C, Pending, TaggedClaim)
+import Daml.Finance.Interface.Instrument.Generic.Util.Claims.Lifecycle qualified as Generic (lifecycle, lifecycleClaims, timeEvent)
 import Daml.Finance.Interface.Lifecycle.Effect (Effect)
 import Daml.Finance.Interface.Lifecycle.Clock qualified as Clock (I)
 import Daml.Finance.Interface.Lifecycle.Event qualified as Event (I)
-import Daml.Finance.Interface.Lifecycle.Observable qualified as Interface (Observable, Observe(..))
-import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Interface (Lifecycle, Evolve(..))
+import Daml.Finance.Interface.Lifecycle.Observable qualified as Observable (I)
+import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (I, Evolve(..))
 import Daml.Finance.App.Lifecycle.Pricing qualified as Pricing
 
 template Service
@@ -28,63 +30,84 @@ template Service
     key (operator, provider, customer) : (Party, Party, Party)
     maintainer key._1
 
-    nonconsuming choice PreviewLifecycle : (Claim Time Decimal Instrument.K Text, [Lifecycle.Pending Time Instrument.K])
+    nonconsuming choice PreviewLifecycle : ([TaggedClaim], [Pending])
       with
         today : Time
-        observableCids : [ContractId Interface.Observable]
-        claims : Claim Time Decimal Instrument.K Text
+        observableCids : [ContractId Observable.I]
+        instrumentCid : ContractId Generic.HasClaims
       controller customer
       do
-        observables <- zip observableCids <$> mapA fetch observableCids
-        let
-          spot id t = do
-            let Some (obsCid, obs) = find (\(_, o) -> (view o).obsKey == id) observables
-            exercise obsCid Interface.Observe with actors = singleton customer; t
-        Lifecycle.Result{remaining, pending} <- Lifecycle.lifecycle spot claims today today
-        pure (remaining, pending)
+        instrument <- fetch instrumentCid
+        claims <- exercise self GetCurrentClaims with instrumentCid; observableCids
+        Generic.lifecycleClaims observableCids ((view instrument).acquisitionTime) claims [Generic.timeEvent today]
 
-    nonconsuming choice Lifecycle : (ContractId Interface.Lifecycle, [ContractId Effect])
+    nonconsuming choice SimulateLifecycle : [[Lifecycle.Pending Time Instrument.K]]
+      with
+        today : Time
+        prices : [Decimal]
+        instrumentCid : ContractId Generic.HasClaims
+      controller customer
+      do
+        instrument <- fetch instrumentCid
+        claims <- mconcat . map (.claim) <$> Generic.getClaims instrument
+        let
+          simulate price = do
+            result <- Lifecycle.lifecycle (\_ t -> pure price) claims today today
+            pure result.pending
+        mapA simulate prices
+
+    nonconsuming choice GetCurrentClaims : [TaggedClaim]
+      with
+        instrumentCid : ContractId Generic.HasClaims
+        observableCids : [ContractId Observable.I]
+      controller customer
+      do
+        hasClaims <- fetch instrumentCid
+        instrument <- fetch (coerceContractId instrumentCid : ContractId Instrument.I)
+        fst <$> Generic.lifecycle observableCids hasClaims [Generic.timeEvent (view instrument).validAsOf]
+
+    nonconsuming choice Lifecycle : (ContractId Lifecycle.I, [ContractId Effect])
       with
         ruleName : Text
         eventCid : ContractId Event.I
         clockCid : ContractId Clock.I
-        observableCids : [ContractId Interface.Observable]
-        lifecyclableCid : ContractId Interface.Lifecycle
+        observableCids : [ContractId Observable.I]
+        lifecyclableCid : ContractId Lifecycle.I
       controller customer
       do
-        exercise lifecyclableCid Interface.Evolve with ruleName; settler = provider; eventCid; clockCid; observableCids
+        exercise lifecyclableCid Lifecycle.Evolve with ruleName; settler = provider; eventCid; clockCid; observableCids
 
     nonconsuming choice Expiry : Optional Time
       with
-        claims : Claim Time Decimal Instrument.K Text
+        claims : C
       controller customer
       do
         pure $ expiry claims
 
     nonconsuming choice Underlying : [Instrument.K]
       with
-        claims : Claim Time Decimal Instrument.K Text
+        claims : C
       controller customer
         do
           pure $ snd <$> payoffs claims
 
     nonconsuming choice Payoffs : [(Observation Time Decimal Text, Instrument.K)]
       with
-        claims : Claim Time Decimal Instrument.K Text
+        claims : C
       controller customer
         do
           pure $ payoffs claims
 
     nonconsuming choice Fixings : [Time]
       with
-        claims : Claim Time Decimal Instrument.K Text
+        claims : C
       controller customer
         do
           pure $ fixings claims
 
     nonconsuming choice Multipliers : [Decimal]
       with
-        claims : Claim Time Decimal Instrument.K Text
+        claims : C
       controller customer
         do
           let getConst : (Observation Time Decimal a, b) -> [Decimal]

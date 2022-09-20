@@ -11,10 +11,10 @@ import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
 import { CreateIssuanceRequest, ReduceIssuanceRequest } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Model";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Service";
-import { Account } from "@daml.js/daml-finance-holding/lib/Daml/Finance/Holding/Account";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
 import { useServices } from "../../context/ServicesContext";
+import { Message } from "../../components/Message/Message";
 
 export const Requests : React.FC = () => {
   const classes = useStyles();
@@ -22,19 +22,18 @@ export const Requests : React.FC = () => {
   const party = useParty();
   const ledger = useLedger();
   const { getName } = useParties();
-  const svc = useServices();
+  const { loading: l1, issuance } = useServices();
+  const { loading: l2, contracts: createRequests } = useStreamQueries(CreateIssuanceRequest);
+  const { loading: l3, contracts: reduceRequests } = useStreamQueries(ReduceIssuanceRequest);
 
-  const { contracts: createRequests, loading: l1 } = useStreamQueries(CreateIssuanceRequest);
-  const { contracts: reduceRequests, loading: l2 } = useStreamQueries(ReduceIssuanceRequest);
-  const { contracts: accounts, loading: l3 } = useStreamQueries(Account);
-  const providerServices = svc.issuance.filter(s => s.payload.provider === party);
+  const providerServices = issuance.filter(s => s.payload.provider === party);
 
-  if (l1 || l2 || l3 || svc.loading || providerServices.length === 0) return (<Spinner />);
+  if (l1 || l2 || l3) return (<Spinner />);
+  if (providerServices.length === 0) return <Message text="No provider issuance service found" />
 
   const createIssuance = async (c : CreateEvent<CreateIssuanceRequest>) => {
     const service = providerServices.find(s => s.payload.customer === c.payload.customer);
-    const account = accounts.find(c => c.payload.custodian === party && c.payload.owner === party);
-    if (!service || !account) return;
+    if (!service) return;
     await ledger.exercise(Service.CreateIssuance, service.contractId, { createIssuanceRequestCid: c.contractId });
     navigate("/issuance/issuances");
   }

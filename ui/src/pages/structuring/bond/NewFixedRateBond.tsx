@@ -7,8 +7,7 @@ import { Typography, Grid, Paper, Select, MenuItem, TextField, Button, MenuProps
 import classnames from "classnames";
 import { useLedger, useParty } from "@daml/react";
 import useStyles from "../../styles";
-import { createKey, parseDate, singleton } from "../../../util";
-import { RequestAndCreateFixedRateBond, Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service";
+import { parseDate, singleton } from "../../../util";
 import { DatePicker } from "@mui/lab";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { Message } from "../../../components/Message/Message";
@@ -19,6 +18,8 @@ import { BusinessDayConventionEnum } from "@daml.js/daml-finance-interface-types
 import { useParties } from "../../../context/PartiesContext";
 import { useInstruments } from "../../../context/InstrumentsContext";
 import { useServices } from "../../../context/ServicesContext";
+import { Service as Structuring } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Service";
+import { Service as StructuringAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service";
 
 export const NewFixedRateBond : React.FC = () => {
   const classes = useStyles();
@@ -40,19 +41,20 @@ export const NewFixedRateBond : React.FC = () => {
   const ledger = useLedger();
   const party = useParty();
   const { getParty } = useParties();
-  const svc = useServices();
-  const inst = useInstruments();
+  const { loading: l1, structuring, structuringAuto } = useServices();
+  const { loading: l2, tokens } = useInstruments();
 
-  if (svc.loading || inst.loading) return <Spinner />;
-  if (svc.structuringAuto.length === 0) return <Message text="No structuring service found" />
+  if (l1 || l2) return <Spinner />;
+  if (structuring.length === 0) return <Message text="No structuring service found" />
 
   const createFixedRateBond = async () => {
-    const ccy = inst.tokens.find(c => c.payload.id.unpack === currency);
+    const ccy = tokens.find(c => c.payload.id.unpack === currency);
     if (!ccy) throw new Error("Couldn't find currency " + currency);
     const couponPeriod = couponFrequency === "Annual" ? PeriodEnum.Y : PeriodEnum.M;
     const couponPeriodMultiplier = couponFrequency === "Annual" ? "1" : (couponFrequency === "Semi-annual" ? "6" : "3");
-    const arg : RequestAndCreateFixedRateBond = {
-      id: id,
+    const arg = {
+      id,
+      description: id,
       couponRate,
       issueDate: parseDate(issueDate),
       firstCouponDate: parseDate(firstCouponDate),
@@ -63,11 +65,12 @@ export const NewFixedRateBond : React.FC = () => {
       businessDayConvention: businessDayConvention as BusinessDayConventionEnum,
       couponPeriod,
       couponPeriodMultiplier,
-      currency: createKey(ccy),
+      currency: ccy.key,
       observers: emptyMap<string, any>().set("Public", singleton(singleton(getParty("Public")))),
       lastEventTimestamp: new Date().toISOString()
-    }
-    await ledger.exercise(Service.RequestAndCreateFixedRateBond, svc.structuringAuto[0].contractId, arg);
+    };
+    if (structuringAuto.length > 0) await ledger.exercise(StructuringAuto.RequestAndCreateFixedRateBond, structuringAuto[0].contractId, arg);
+    else await ledger.exercise(Structuring.RequestCreateFixedRateBond, structuring[0].contractId, arg);
     navigate("/structuring/instruments");
   };
 
@@ -89,7 +92,7 @@ export const NewFixedRateBond : React.FC = () => {
                   <FormControl className={classes.inputField} fullWidth>
                     <InputLabel className={classes.selectLabel}>Currency</InputLabel>
                     <Select value={currency} onChange={e => setCurrency(e.target.value as string)} MenuProps={menuProps}>
-                      {inst.tokens.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
+                      {tokens.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
                     </Select>
                   </FormControl>
                   <DatePicker className={classes.inputField} inputFormat="yyyy-MM-dd" label="Issue Date" value={issueDate} onChange={setIssueDate} renderInput={(props : TextFieldProps) => <TextField {...props} fullWidth />} />

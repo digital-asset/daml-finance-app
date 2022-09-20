@@ -13,46 +13,51 @@ import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
 import IconButton from "@mui/material/IconButton";
 import KeyboardArrowRight from "@mui/icons-material/KeyboardArrowRight";
-import { useLedger, useStreamQueries } from "@daml/react";
+import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { Button } from "@mui/material";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Service";
-import { DateClock, DateClockUpdateEvent } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefData/Time/DateClock";
-import { Observation } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefData/Observation";
-import { Effect } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/Effect";
 import { useParties } from "../../context/PartiesContext";
 import { useServices } from "../../context/ServicesContext";
 import { useInstruments } from "../../context/InstrumentsContext";
+import { Clock } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Clock";
+import { Event } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Event";
+import { Observable } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Observable";
+import { Lifecycle } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Rule/Lifecycle";
+import { CreateEvent } from "@daml/ledger";
+import { shorten } from "../../util";
 
 export const Instruments : React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
   const { getName } = useParties();
+  const party = useParty();
   const ledger = useLedger();
   const svc = useServices();
   const inst = useInstruments();
 
-  const { contracts: observations, loading: l1 } = useStreamQueries(Observation);
-  const { contracts: effects, loading: l2 } = useStreamQueries(Effect);
-  const { contracts: events, loading: l3 } = useStreamQueries(DateClockUpdateEvent);
-  const { contracts: clocks, loading: l4 } = useStreamQueries(DateClock);
+  const { contracts: observables, loading: l1 } = useStreamQueries(Observable);
+  const { contracts: events, loading: l2 } = useStreamQueries(Event);
+  const { contracts: clocks, loading: l3 } = useStreamQueries(Clock);
 
-  if (l1 || l2 || l3 || l4 || svc.loading || inst.loading) return (<Spinner />);
+  if (l1 || l2 || l3 || svc.loading || inst.loading) return (<Spinner />);
+
+  const myInstruments = inst.latests.filter(a => !!a.lifecycle && a.lifecycle.payload.lifecycler === party);
 
   const lifecycleAll = async () => {
-    const lifecycle = async (lifecyclableCid : any) => {
-      const observableCids = observations.map(c => c.contractId);
+    const lifecycle = async (c : CreateEvent<Lifecycle>) => {
       const arg = {
         ruleName: "Time",
+        // TODO: Assumes the only event we have is a DateClockUpdatedEvent
         eventCid: events[0].contractId,
         clockCid: clocks[0].contractId,
-        observableCids,
-        lifecyclableCid
+        observableCids: observables.map(o => o.contractId),
+        lifecyclableCid: c.contractId
       }
       await ledger.exercise(Service.Lifecycle, svc.lifecycle[0].contractId, arg);
     }
-    await Promise.all(inst.generics.map(i => lifecycle(i.contractId)));
+    await Promise.all(myInstruments.map(c => lifecycle(c.lifecycle!)));
     navigate("/servicing/effects");
   };
 
@@ -68,23 +73,29 @@ export const Instruments : React.FC = () => {
               <Table size="small">
                 <TableHead>
                   <TableRow className={classes.tableRow}>
-                    <TableCell key={0} className={classes.tableCell}><b>Issuer</b></TableCell>
-                    <TableCell key={1} className={classes.tableCell}><b>Depository</b></TableCell>
-                    <TableCell key={2} className={classes.tableCell}><b>Instrument</b></TableCell>
-                    <TableCell key={3} className={classes.tableCell}><b>Version</b></TableCell>
-                    <TableCell key={4} className={classes.tableCell}>
-                      <Button className={classes.choiceButton} size="large" variant="contained" color="primary" disabled={effects.length > 0} onClick={lifecycleAll}>Lifecycle All</Button>
+                    <TableCell key={0} className={classes.tableCell}><b>Depository</b></TableCell>
+                    <TableCell key={1} className={classes.tableCell}><b>Issuer</b></TableCell>
+                    <TableCell key={2} className={classes.tableCell}><b>Id</b></TableCell>
+                    <TableCell key={3} className={classes.tableCell}><b>Description</b></TableCell>
+                    <TableCell key={4} className={classes.tableCell}><b>Version</b></TableCell>
+                    <TableCell key={5} className={classes.tableCell}><b>ValidAsOf</b></TableCell>
+                    <TableCell key={6} className={classes.tableCell}><b>Lifecycler</b></TableCell>
+                    <TableCell key={7} className={classes.tableCell}>
+                      <Button className={classes.choiceButton} size="large" variant="contained" color="primary" disabled={myInstruments.length === 0} onClick={lifecycleAll}>Lifecycle All</Button>
                     </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {inst.generics.map((c, i) => (
+                  {myInstruments.map((c, i) => (
                     <TableRow key={i} className={classes.tableRow}>
-                      <TableCell key={0} className={classes.tableCell}>{getName(c.payload.issuer)}</TableCell>
-                      <TableCell key={1} className={classes.tableCell}>{getName(c.payload.depository)}</TableCell>
+                      <TableCell key={0} className={classes.tableCell}>{getName(c.payload.depository)}</TableCell>
+                      <TableCell key={1} className={classes.tableCell}>{getName(c.payload.issuer)}</TableCell>
                       <TableCell key={2} className={classes.tableCell}>{c.payload.id.unpack}</TableCell>
-                      <TableCell key={3} className={classes.tableCell}>{c.payload.version}</TableCell>
-                      <TableCell key={4} className={classes.tableCell}>
+                      <TableCell key={3} className={classes.tableCell}>{c.payload.description}</TableCell>
+                      <TableCell key={4} className={classes.tableCell}>{shorten(c.payload.version)}</TableCell>
+                      <TableCell key={5} className={classes.tableCell}>{c.payload.validAsOf}</TableCell>
+                      <TableCell key={6} className={classes.tableCell}>{getName(c.lifecycle!.payload.lifecycler)}</TableCell>
+                      <TableCell key={7} className={classes.tableCell}>
                         <IconButton color="primary" size="small" component="span" onClick={() => navigate(c.contractId)}>
                           <KeyboardArrowRight fontSize="small"/>
                         </IconButton>

@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Set } from "@daml.js/97b883cd8a2b7f49f90d5d39c981cf6e110cf1f1c64427a28a6d58ec88c43657/lib/DA/Set/Types"
-import { Fungible } from "@daml.js/daml-finance-holding/lib/Daml/Finance/Holding/Fungible";
+import { Instrument } from "@daml.js/daml-finance-interface-instrument-base/lib/Daml/Finance/Interface/Instrument/Base/Instrument";
 import { InstrumentKey } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Common";
-import Ledger, { CreateEvent } from "@daml/ledger";
-import { ContractId, emptyMap } from "@daml/types";
+import { CreateEvent } from "@daml/ledger";
+import { emptyMap } from "@daml/types";
 
 export function values<T>(set: Set<T>): T[] {
   const r: T[] = [];
@@ -48,6 +48,10 @@ export const keyEquals = (k1 : InstrumentKey, k2 : InstrumentKey) : boolean => {
   return k1.depository === k2.depository && k1.issuer === k2.issuer && k1.id.unpack === k2.id.unpack && k1.version === k2.version;
 };
 
+export const keyString = (k : InstrumentKey) : string => {
+  return k.depository + "-" + k.issuer + "-" + k.id.unpack + "@" + k.version;
+};
+
 export const fmt = (x : number | string, decimals?: number) => {
   return (typeof x === "string" ? parseFloat(x) : x).toFixed(decimals || 0).replace(/\B(?<!\.\d*)(?=(\d{3})+(?!\d))/g, "'");
 }
@@ -56,37 +60,15 @@ export const dedup = (array : string[]) : string[] => {
   return array.filter((v, i, a) => a.indexOf(v) === i);
 };
 
-export const createKey = (c : CreateEvent<any>) : InstrumentKey => {
+export const key = (c : CreateEvent<Instrument>) : InstrumentKey => {
   return { depository: c.payload.depository, issuer: c.payload.issuer, id: c.payload.id, version: c.payload.version };
 };
 
-export const version = (k : InstrumentKey) : string => {
-  return k.version.substring(0, 8) + "..";
-};
-
-export const id = (k : InstrumentKey) : string => {
-  return k.id.unpack + " (" + version(k) + ")";
+export const shorten = (s : string) : string => {
+  return s.substring(0, 8);
 };
 
 export function getTemplateId(t : string) {
   const parts = t.split(":").slice(1)
   return parts[0] + "." + parts[1];
-}
-
-export const getHolding = async (ledger : Ledger, holdings : CreateEvent<Fungible>[], amount : number, instrument: InstrumentKey) : Promise<ContractId<Fungible>> => {
-  const filtered = holdings.filter(c => keyEquals(c.payload.instrument, instrument) && !c.payload.lock);
-  const sum = filtered.reduce((a, b) => a + parseFloat(b.payload.amount), 0);
-  if (filtered.length === 0 || sum < amount) throw new Error("Insufficient holdings (" + sum.toFixed(4) + ") found for: " + amount.toFixed(4) + " " + instrument.id.unpack);
-  if (filtered.length === 1 && sum === amount) return filtered[0].contractId;
-  if (filtered.length === 1 && sum > amount) {
-    const [ { splitCids, }, ] = await ledger.exercise(Fungible.Split, filtered[0].contractId, { amounts: [ amount.toString() ] });
-    return splitCids[0];
-  }
-  const [h, ...t] = filtered;
-  const [fungibleCid, ] = await ledger.exercise(Fungible.Merge, h.contractId, { fungibleCids: t.map(c => c.contractId) });
-  const mergedCid = fungibleCid as unknown as ContractId<Fungible>;
-  if (sum === amount) return mergedCid;
-
-  const [ { splitCids, }, ] = await ledger.exercise(Fungible.Split, mergedCid, { amounts: [ amount.toString() ] });
-  return splitCids[0];
 }

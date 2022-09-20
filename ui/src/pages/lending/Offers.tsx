@@ -9,12 +9,14 @@ import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
 import { BorrowOffer } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lending/Model";
-import { fmt, getHolding } from "../../util";
+import { fmt } from "../../util";
 import { useServices } from "../../context/ServicesContext";
 import { Service as Lending } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lending/Service";
-import { Fungible } from "@daml.js/daml-finance-holding/lib/Daml/Finance/Holding/Fungible";
 import { Reference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
 import { CreateEvent } from "@daml/ledger";
+import { useHoldings } from "../../context/HoldingsContext";
+import { ContractId } from "@daml/types";
+import { Transferable } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Transferable";
 
 export const Offers : React.FC = () => {
   const classes = useStyles();
@@ -22,27 +24,25 @@ export const Offers : React.FC = () => {
   const { getName } = useParties();
   const ledger = useLedger();
   const party = useParty();
-  const svc = useServices();
+  const { loading: l1, lending } = useServices();
+  const { loading: l2, getFungible } = useHoldings();
+  const { loading: l3, contracts: offers } = useStreamQueries(BorrowOffer);
+  const { loading: l4, contracts: accounts } = useStreamQueries(Reference);
+  if (l1 || l2 || l3 || l4) return (<Spinner />);
 
-  const { contracts: offers, loading: l1 } = useStreamQueries(BorrowOffer);
-  const { contracts: holdings, loading: l2 } = useStreamQueries(Fungible);
-  const { contracts: accounts, loading: l3 } = useStreamQueries(Reference);
-  if (svc.loading || l1 || l2 || l3) return (<Spinner />);
-
-  const customerServices = svc.lending.filter(c => c.payload.customer === party);
+  const customerServices = lending.filter(c => c.payload.customer === party);
   const isCustomer = customerServices.length > 0;
-  const myHoldings = holdings.filter(c => c.payload.account.owner === party);
 
   const acceptBorrowOffer = async (offer : CreateEvent<BorrowOffer>) => {
     const borrowerAccount = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === offer.payload.borrowed.unit.depository)?.key;
-    const collateralCid = await getHolding(ledger, myHoldings, parseFloat(offer.payload.collateral.amount), offer.payload.collateral.unit);
+    const collateralCid = await getFungible(party, offer.payload.collateral.amount, offer.payload.collateral.unit);
     if (!borrowerAccount) throw new Error("No suitable account found");
     const arg = {
       borrowOfferCid: offer.contractId,
-      collateralCid,
+      collateralCid: collateralCid as string as ContractId<Transferable>,
       account: borrowerAccount
     };
-    await ledger.exercise(Lending.AcceptBorrowOffer, svc.lending[0].contractId, arg);
+    await ledger.exercise(Lending.AcceptBorrowOffer, lending[0].contractId, arg);
     navigate("/lending/trades");
   };
 

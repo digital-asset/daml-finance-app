@@ -3,11 +3,11 @@
 
 import React from "react";
 import { Table, TableBody, TableCell, TableRow, TableHead, Grid, Paper, Typography } from "@mui/material";
-import { useParty, useStreamQueries } from "@daml/react";
+import { useParty } from "@daml/react";
 import useStyles from "../styles";
-import { Fungible } from "@daml.js/daml-finance-holding/lib/Daml/Finance/Holding/Fungible";
 import { fmt } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
+import { useHoldings } from "../../context/HoldingsContext";
 
 type BalanceEntry = {
   // providers : string[]
@@ -23,7 +23,7 @@ export const Balance : React.FC = () => {
   const classes = useStyles();
   const party = useParty();
 
-  const { contracts: holdings, loading: l1 } = useStreamQueries(Fungible);
+  const { loading: l1, holdings } = useHoldings();
   if (l1) return (<Spinner />);
 
   const assetsAndLiabilities = holdings.filter(c => c.payload.account.custodian === party || c.payload.account.owner === party);

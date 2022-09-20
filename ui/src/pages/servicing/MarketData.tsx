@@ -6,12 +6,13 @@ import { Table, TableBody, TableCell, TableRow, TableHead, Grid, Paper, Typograp
 import { useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { Observation } from "@daml.js/daml-finance-refdata/lib/Daml/Finance/RefData/Observation";
+import { Observable } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Observable";
+import { useParties } from "../../context/PartiesContext";
 
 export const MarketData : React.FC = () => {
   const classes = useStyles();
-
-  const { contracts: observations, loading: l1 } = useStreamQueries(Observation);
+  const { getName } = useParties();
+  const { loading: l1, contracts: observables } = useStreamQueries(Observable);
   if (l1) return (<Spinner />);
 
   return (
@@ -24,20 +25,16 @@ export const MarketData : React.FC = () => {
               <Table size="small">
                 <TableHead>
                   <TableRow className={classes.tableRow}>
-                    <TableCell key={0} className={classes.tableCell}><b>Observable</b></TableCell>
-                    <TableCell key={2} className={classes.tableCell}><b>Date</b></TableCell>
-                    <TableCell key={1} className={classes.tableCell}><b>Value</b></TableCell>
+                    <TableCell key={0} className={classes.tableCell}><b>Provider</b></TableCell>
+                    <TableCell key={1} className={classes.tableCell}><b>Observable</b></TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {observations.map((c, i) =>
-                    c.payload.observations.entriesArray().map(([date, value], j) => (
-                      <TableRow key={i * 10 + j} className={classes.tableRow}>
-                        <TableCell key={0} className={classes.tableCell}>{c.payload.obsKey}</TableCell>
-                        <TableCell key={1} className={classes.tableCell}>{date}</TableCell>
-                        <TableCell key={2} className={classes.tableCell}>{value}</TableCell>
-                      </TableRow>))
-                  )}
+                  {observables.map((c, i) => (
+                    <TableRow key={i} className={classes.tableRow}>
+                      <TableCell key={0} className={classes.tableCell}>{getName(c.payload.provider)}</TableCell>
+                      <TableCell key={1} className={classes.tableCell}>{c.payload.obsKey}</TableCell>
+                    </TableRow>))}
                 </TableBody>
               </Table>
             </Paper>

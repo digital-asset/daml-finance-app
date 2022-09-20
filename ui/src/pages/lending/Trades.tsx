@@ -8,32 +8,32 @@ import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
 import { BorrowAgreement } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lending/Model";
-import { fmt, getHolding } from "../../util";
+import { fmt } from "../../util";
 import { useServices } from "../../context/ServicesContext";
-import { Fungible } from "@daml.js/daml-finance-holding/lib/Daml/Finance/Holding/Fungible";
 import { CreateEvent } from "@daml/ledger";
+import { useHoldings } from "../../context/HoldingsContext";
+import { ContractId } from "@daml/types";
+import { Transferable } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Transferable";
 
 export const Trades : React.FC = () => {
   const classes = useStyles();
   const party = useParty();
   const ledger = useLedger();
   const { getName } = useParties();
-  const svc = useServices();
+  const { loading: l1, lending } = useServices();
+  const { loading: l2, getFungible } = useHoldings();
+  const { loading: l3, contracts: trades } = useStreamQueries(BorrowAgreement);
+  if (l1 || l2 || l3) return (<Spinner />);
 
-  const { contracts: trades, loading: l1 } = useStreamQueries(BorrowAgreement);
-  const { contracts: holdings, loading: l2 } = useStreamQueries(Fungible);
-  if (svc.loading || l1 || l2) return (<Spinner />);
-
-  const customerServices = svc.lending.filter(c => c.payload.customer === party);
+  const customerServices = lending.filter(c => c.payload.customer === party);
   const isCustomer = customerServices.length > 0;
-  const myHoldings = holdings.filter(c => c.payload.account.owner === party);
 
   const repay = async (trade : CreateEvent<BorrowAgreement>) => {
-    const borrowedCid = await getHolding(ledger, myHoldings, parseFloat(trade.payload.borrowed.amount), trade.payload.borrowed.unit);
-    const interestCid = await getHolding(ledger, myHoldings, parseFloat(trade.payload.interest.amount), trade.payload.interest.unit);
+    const borrowedCid = await getFungible(party, trade.payload.borrowed.amount, trade.payload.borrowed.unit);
+    const interestCid = await getFungible(party, trade.payload.interest.amount, trade.payload.interest.unit);
     const arg = {
-      borrowedCid,
-      interestCid
+      borrowedCid: borrowedCid as string as ContractId<Transferable>,
+      interestCid: interestCid as string as ContractId<Transferable>
     };
     await ledger.exercise(BorrowAgreement.Repay, trade.contractId, arg);
   };
