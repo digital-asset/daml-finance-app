@@ -43,7 +43,7 @@ export const Instruments : React.FC = () => {
 
   if (l1 || l2 || l3 || svc.loading || inst.loading) return (<Spinner />);
 
-  const myInstruments = inst.latests.filter(a => !!a.lifecycle && a.lifecycle.payload.lifecycler === party);
+  const myInstruments = inst.latests.filter(a => (!!a.lifecycle && a.lifecycle.payload.lifecycler === party) || (!!a.equity && a.payload.issuer === party));
 
   const lifecycleAll = async () => {
     const lifecycle = async (c : CreateEvent<Lifecycle>) => {
@@ -79,8 +79,7 @@ export const Instruments : React.FC = () => {
                     <TableCell key={3} className={classes.tableCell}><b>Description</b></TableCell>
                     <TableCell key={4} className={classes.tableCell}><b>Version</b></TableCell>
                     <TableCell key={5} className={classes.tableCell}><b>ValidAsOf</b></TableCell>
-                    <TableCell key={6} className={classes.tableCell}><b>Lifecycler</b></TableCell>
-                    <TableCell key={7} className={classes.tableCell}>
+                    <TableCell key={6} className={classes.tableCell}>
                       <Button className={classes.choiceButton} size="large" variant="contained" color="primary" disabled={myInstruments.length === 0} onClick={lifecycleAll}>Lifecycle All</Button>
                     </TableCell>
                   </TableRow>
@@ -94,8 +93,7 @@ export const Instruments : React.FC = () => {
                       <TableCell key={3} className={classes.tableCell}>{c.payload.description}</TableCell>
                       <TableCell key={4} className={classes.tableCell}>{shorten(c.payload.version)}</TableCell>
                       <TableCell key={5} className={classes.tableCell}>{c.payload.validAsOf}</TableCell>
-                      <TableCell key={6} className={classes.tableCell}>{getName(c.lifecycle!.payload.lifecycler)}</TableCell>
-                      <TableCell key={7} className={classes.tableCell}>
+                      <TableCell key={6} className={classes.tableCell}>
                         <IconButton color="primary" size="small" component="span" onClick={() => navigate(c.contractId)}>
                           <KeyboardArrowRight fontSize="small"/>
                         </IconButton>

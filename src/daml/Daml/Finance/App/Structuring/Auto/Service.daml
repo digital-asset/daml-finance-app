@@ -6,7 +6,7 @@ module Daml.Finance.App.Structuring.Auto.Service where
 import Daml.Finance.App.Structuring.Service qualified as S
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I, K)
 import Daml.Finance.Interface.Instrument.Generic.Types (C)
-import Daml.Finance.Interface.Types.Common (Observers)
+import Daml.Finance.Interface.Types.Common (Id, Observers)
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum)
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum)
@@ -35,8 +35,9 @@ template Service
 
     nonconsuming choice RequestAndCreateEquity : ContractId Instrument.I
       with
-        id : Text
+        id : Id
         description : Text
+        version : Text
         validAsOf : Time
         observers : Observers
       controller customer

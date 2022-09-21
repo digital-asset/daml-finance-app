@@ -17,6 +17,7 @@
     "@daml.js/daml-finance-interface-lifecycle": "file:daml.js/d689c502bd53faa8789eb8bc3e100f8deefda6890b454747e9706d7865c6bc45",
     "@daml.js/daml-finance-interface-settlement": "file:daml.js/df4a971347f2b054af9b74cdf9014ae78d3273b1e4aa153dacf4bc2a0faaa652",
     "@daml.js/daml-finance-interface-types": "file:daml.js/3e8e24958c0a9edcb2ed680cc234ea4538b10ae16cb98241096fe2488bd3c724",
+    "@daml.js/daml-finance-interface-util": "file:daml.js/c3158fcc90f657fc9fd25bd848d79cfdbd7d03e0a5177883f28a6f6de6f94258",
     "@daml.js/daml-finance-lifecycle": "file:daml.js/9bdfedb6d9579077b300e22ae412011822711150a0c5c15e68724f4b00924d71",
     "@daml.js/daml-finance-refdata": "file:daml.js/b23dd481fced77a2314866b38b425d018b0407eceabfb285dfd70e501b177407",
     "@daml.js/daml-finance-settlement": "file:daml.js/ada63bf56a257b50fb1fa1b78ca91e9bb380d5c2ab5a165f8b6caf1893044662",

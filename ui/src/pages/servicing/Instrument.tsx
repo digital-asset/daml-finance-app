@@ -3,8 +3,8 @@
 
 import React, { useEffect, useState } from "react";
 import classnames from "classnames";
-import { useLedger, useParty, useStreamQueries } from "@daml/react";
-import { Typography, Grid, Table, TableBody, TableCell, TableRow, Paper, Button, TableHead } from "@mui/material";
+import { useLedger, useParty, useQuery, useStreamQueries } from "@daml/react";
+import { Typography, Grid, Table, TableBody, TableCell, TableRow, Paper, Button, TableHead, Accordion, AccordionSummary, AccordionDetails, TextField, FormControl, InputLabel, Select, MenuItem, TextFieldProps, MenuProps } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
 import useStyles from "../styles";
 import { Service as Lifecycle } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Service";
@@ -19,8 +19,12 @@ import { Observable } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/F
 import { Effect } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Effect";
 import { Event } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Event";
 import { Clock } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Clock";
-import { shorten } from "../../util";
+import { Effect as EffectT } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/Effect";
+import { Event as Distribution } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/Event/Distribution";
+import { parseDate, shorten } from "../../util";
 import { Pending } from "@daml.js/daml-finance-interface-instrument-generic/lib/Daml/Finance/Interface/Instrument/Generic/Types";
+import { ExpandMore } from "@mui/icons-material";
+import { DatePicker } from "@mui/lab";
 
 export const Instrument : React.FC = () => {
   const classes = useStyles();
@@ -30,38 +34,48 @@ export const Instrument : React.FC = () => {
   const [ pending, setPending ] = useState<Pending[]>([]);
   const [ node1, setNode1 ] = useState<ClaimTreeNode | undefined>();
   const [ node2, setNode2 ] = useState<ClaimTreeNode | undefined>();
+  const [ expanded, setExpanded ] = useState("");
+  const [ id, setId ] = useState("");
+  const [ description, setDescription ] = useState("");
+  const [ effectiveDate, setEffectiveDate ] = useState<Date | null>(null);
+  const [ currency, setCurrency ] = useState("");
+  const [ amount, setAmount ] = useState("");
+
+  useQuery(Distribution);
+  useQuery(EffectT);
 
   const { getName } = useParties();
   const party = useParty();
   const ledger = useLedger();
   const { loading: l1, lifecycle } = useServices();
-  const { loading: l2, getByCid } = useInstruments();
+  const { loading: l2, tokens, getByCid } = useInstruments();
   const { loading: l3, contracts: observables } = useStreamQueries(Observable);
   const { loading: l4, contracts: effects } = useStreamQueries(Effect);
   const { loading: l5, contracts: events } = useStreamQueries(Event);
   const { loading: l6, contracts: clocks } = useStreamQueries(Clock);
   const { contractId } = useParams<any>();
-  const isLoading = l1 || l2 || l3 || l4 || l5 || l6;
+  const loading = l1 || l2 || l3 || l4 || l5 || l6;
   const instrument = getByCid(contractId || "");
 
   useEffect(() => {
-    if (isLoading || !lifecycle) return;
     const setClaims = async () => {
+      if (loading || !lifecycle || !instrument.claims) return;
       const observableCids = observables.map(c => c.contractId);
-      const [res, ] = await ledger.exercise(Lifecycle.GetCurrentClaims, lifecycle[0].contractId, { instrumentCid: instrument.claims!.contractId, observableCids })
+      const [res, ] = await ledger.exercise(Lifecycle.GetCurrentClaims, lifecycle[0].contractId, { instrumentCid: instrument.claims.contractId, observableCids })
       const claims = res.length > 1 ? and(res.map(r => r.claim)) : res[0].claim;
       setNode1(claimToNode(claims));
     };
     setClaims();
-  }, [ledger, party, instrument, observables, lifecycle, isLoading]);
+  }, [ledger, party, instrument, observables, lifecycle, loading]);
 
   useEffect(() => {
     if (!!remaining) setNode2(claimToNode(remaining));
   }, [remaining]);
 
-  if (isLoading) return (<Spinner />);
+  if (loading) return (<Spinner />);
   if (lifecycle.length === 0) return <Message text={"No lifecycle service found"} />;
 
+  const canDeclareDividend = !!id && !!description && !!effectiveDate && !!currency && !!amount;
   const effect = effects.find(c => c.payload.targetInstrument.id.unpack === instrument.payload.id.unpack && c.payload.targetInstrument.version === instrument.payload.version);
 
   const previewLifecycle = async () => {
@@ -82,9 +96,31 @@ export const Instrument : React.FC = () => {
       lifecyclableCid: instrument.lifecycle!.contractId
     }
     await ledger.exercise(Lifecycle.Lifecycle, lifecycle[0].contractId, arg);
-    navigate("/servicing/settlement");
+    navigate("/servicing/effects");
   };
 
+  const toggle = (label : string) => {
+    if (expanded === label) setExpanded("");
+    else setExpanded(label);
+  };
+
+  const declareDividend = async () => {
+    const ccy = tokens.find(c => c.payload.id.unpack === currency);
+    if (!lifecycle || !instrument.equity || !ccy) throw new Error("Cannot declare dividend on non-equity instrument");
+    const arg = {
+      clockCid: clocks[0].contractId,
+      equityCid: instrument.equity.contractId,
+      newVersion: (parseInt(instrument.payload.version) + 1).toString(),
+      id: { unpack: id },
+      description,
+      effectiveDate: parseDate(effectiveDate),
+      perUnitDistribution: [ { amount, unit: ccy.key } ]
+    };
+    await ledger.exercise(Lifecycle.DeclareDividend, lifecycle[0].contractId, arg);
+    navigate("/servicing/effects");
+  };
+
+  const menuProps : Partial<MenuProps> = { anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" } };
   return (
     <Grid container direction="column" spacing={0}>
       <Grid item xs={12}>
@@ -124,8 +160,12 @@ export const Instrument : React.FC = () => {
                       </TableRow>
                     </TableBody>
                   </Table>
-                  <Button color="primary" size="large" className={classes.actionButton} variant="outlined" disabled={!!remaining || !!effect} onClick={() => previewLifecycle()}>Preview Lifecycle</Button>
-                  <Button color="primary" size="large" className={classes.actionButton} variant="outlined" disabled={!remaining || !!effect} onClick={() => executeLifecycle()}>Execute Lifecycle</Button>
+                  {!!instrument.lifecycle &&
+                  <>
+                    <Button color="primary" size="large" className={classes.actionButton} variant="outlined" disabled={!!remaining || !!effect} onClick={() => previewLifecycle()}>Preview Lifecycle</Button>
+                    <Button color="primary" size="large" className={classes.actionButton} variant="outlined" disabled={!remaining || !!effect} onClick={() => executeLifecycle()}>Execute Lifecycle</Button>
+                  </>
+                  }
                 </Paper>
               </Grid>
               <Grid item xs={12}>
@@ -199,12 +239,13 @@ export const Instrument : React.FC = () => {
           </Grid>
           <Grid item xs={8}>
             <Grid container direction="column" spacing={2}>
+              {!!instrument.lifecycle &&
               <Grid item xs={12}>
                 <Paper className={classnames(classes.fullWidth, classes.paper)}>
                   <Typography variant="h5" className={classes.heading}>Current State</Typography>
                   <ClaimsTreeBuilder node={node1} setNode={setNode1} assets={[]} height="40vh"/>
                 </Paper>
-              </Grid>
+              </Grid>}
               {!!remaining &&
               <Grid item xs={12}>
                 <Paper className={classnames(classes.fullWidth, classes.paper)}>
@@ -212,6 +253,27 @@ export const Instrument : React.FC = () => {
                   <ClaimsTreeBuilder node={node2} setNode={setNode2} assets={[]} height="40vh"/>
                 </Paper>
               </Grid>}
+              {!!instrument.equity &&
+              <Grid item xs={12}>
+                <Accordion expanded={expanded === "Dividends"} onChange={() => toggle("Dividends")}>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <Typography gutterBottom variant="h5" component="h2">Dividends</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <TextField className={classes.inputField} fullWidth label="Id" type="text" value={id} onChange={e => setId(e.target.value as string)} />
+                    <TextField className={classes.inputField} fullWidth label="Description" type="text" value={description} onChange={e => setDescription(e.target.value as string)} />
+                    <DatePicker className={classes.inputField} inputFormat="yyyy-MM-dd" label="Effective Date" value={effectiveDate} onChange={setEffectiveDate} renderInput={(props : TextFieldProps) => <TextField {...props} fullWidth />} />
+                    <FormControl className={classes.inputField} fullWidth>
+                      <InputLabel className={classes.selectLabel}>Currency</InputLabel>
+                      <Select value={currency} onChange={e => setCurrency(e.target.value as string)} MenuProps={menuProps}>
+                        {tokens.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
+                      </Select>
+                    </FormControl>
+                    <TextField className={classes.inputField} fullWidth label="Amount" type="number" value={amount} onChange={e => setAmount(e.target.value as string)} />
+                    <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canDeclareDividend} onClick={declareDividend}>Declare Dividend</Button>
+                  </AccordionDetails>
+                </Accordion>
+                </Grid>}
             </Grid>
           </Grid>
         </Grid>

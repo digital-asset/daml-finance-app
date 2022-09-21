@@ -5,17 +5,30 @@ Copyright © 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All Ri
 
 # Prerequisites
 
-- [yq](https://github.com/marketplace/actions/yq-portable-yaml-processor)
+- [Daml SDK](https://docs.daml.com/getting-started/installation.html)
+- [NodeJS](https://nodejs.org/en/): install v16.x
 
 # Running
 
-Console 1:
+If on Linux or MacOS, run the following commands:
 ```
-make
+./script/get-dependencies.sh
+daml start
+```
+If on Windows, run the following:
+```
+./script/get-dependencies.sh
 daml start
 ```
 
-Console 2:
+Wait until the sandbox is up and running, indicated by the following output:
+```
+...
+Press 'r' to re-build and upload the package to the sandbox.
+Press 'Ctrl-C' to quit.
+```
+
+Then, in another console run:
 ```
 cd ui
 npm install

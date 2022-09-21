@@ -20,7 +20,7 @@ export const Portal : React.FC = () => {
         <Grid container direction="column">
           <Grid item xs={12}>
             <Grid container direction="row" spacing={4}>
-              {scenarios.map(s => (<Scenario {...s} width={6} />))}
+              {scenarios.map((s, i) => (<Scenario key={i} {...s} width={6} />))}
             </Grid>
           </Grid>
         </Grid>

@@ -42,14 +42,14 @@ run  = do
   createCustodianRole operator lender
 
   -- Create custody services
-  createCustodyService operator centralBank borrower  settlementFactoryCid
-  createCustodyService operator centralBank lender    settlementFactoryCid
-  createCustodyService operator registry    borrower  settlementFactoryCid
-  createCustodyService operator registry    lender    settlementFactoryCid
-  createCustodyService operator lender      borrower  settlementFactoryCid
-  createLendingService operator lender borrower
-  createStructuringService operator registry lender
-  createLifecycleService operator registry lender
+  createCustodyService      operator centralBank  borrower  settlementFactoryCid
+  createCustodyService      operator centralBank  lender    settlementFactoryCid
+  createCustodyService      operator registry     borrower  settlementFactoryCid
+  createCustodyService      operator registry     lender    settlementFactoryCid
+  createCustodyService      operator lender       borrower  settlementFactoryCid
+  createLendingService      operator lender       borrower
+  createStructuringService  operator registry     lender
+  createLifecycleService    operator registry     lender    public
 
   -- Accounts
   let createAcc = createAccount [public] accountFactoryCid holdingFactoryCid
@@ -70,8 +70,8 @@ run  = do
   submitMulti [lender] [] do createCmd DateClockUpdateEvent with clock; id = Id $ "Update to " <> show today
 
   -- Instruments
-  usd   <- originate         centralBank centralBank pub todayTime "USD"
-  tsla  <- originate         registry    registry    pub todayTime "TSLA"
+  usd   <- originate         centralBank centralBank pub todayTime "USD" "United States Dollar"
+  tsla  <- originate         registry    registry    pub todayTime "TSLA" "Tesla, Inc. Common Stock"
   deal1 <- originateGeneric  registry      lender    pub todayTime "DEAL1" $ loan today (addDays today 28) tsla 0.002 usd [addDays today 7, addDays today 14, addDays today 21, addDays today 28]
 
   -- Distribution

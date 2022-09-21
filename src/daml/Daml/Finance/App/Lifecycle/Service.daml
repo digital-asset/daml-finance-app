@@ -8,27 +8,55 @@ import ContingentClaims.Lifecycle qualified as Lifecycle
 import ContingentClaims.Math.Stochastic (Expr)
 import ContingentClaims.Observation (Observation(..))
 import ContingentClaims.Util (expiry, fixings, payoffs)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I, K)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I, K, Q)
+import Daml.Finance.Interface.Instrument.Equity.Instrument qualified as Equity (I, DeclareDividend(..))
 import Daml.Finance.Interface.Instrument.Generic.HasClaims qualified as Generic (HasClaims, getClaims)
 import Daml.Finance.Interface.Instrument.Generic.Types (C, Pending, TaggedClaim)
 import Daml.Finance.Interface.Instrument.Generic.Util.Claims.Lifecycle qualified as Generic (lifecycle, lifecycleClaims, timeEvent)
-import Daml.Finance.Interface.Lifecycle.Effect (Effect)
+import Daml.Finance.Interface.Lifecycle.Effect qualified as Effect (I)
 import Daml.Finance.Interface.Lifecycle.Clock qualified as Clock (I)
 import Daml.Finance.Interface.Lifecycle.Event qualified as Event (I)
 import Daml.Finance.Interface.Lifecycle.Observable qualified as Observable (I)
 import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (I, Evolve(..))
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I)
+import Daml.Finance.Interface.Types.Common (Id, InstrumentKey(..))
 import Daml.Finance.App.Lifecycle.Pricing qualified as Pricing
+import Daml.Finance.App.Structuring.Auto.Service qualified as Structuring
 
 template Service
   with
     operator : Party
     provider : Party
     customer : Party
+    distributionRuleCid : ContractId Lifecycle.I
+    replacementRuleCid : ContractId Lifecycle.I
   where
     signatory operator, provider, customer
 
     key (operator, provider, customer) : (Party, Party, Party)
     maintainer key._1
+
+    nonconsuming choice DeclareDividend : [ContractId Effect.I]
+      with
+        clockCid : ContractId Clock.I
+        equityCid : ContractId Equity.I
+        newVersion : Text
+        id : Id
+        description : Text
+        effectiveDate : Date
+        perUnitDistribution : [ Instrument.Q ]
+      controller customer
+      do
+        equity <- fetch equityCid
+        let
+          instrument = toInterface @Instrument.I equity
+          disclosure = toInterface @Disclosure.I instrument
+          v = view instrument
+          dv = view disclosure
+          newInstrument = InstrumentKey with depository = provider; issuer = customer; id = v.id; version = newVersion
+        newEquityCid <- exerciseByKey @Structuring.Service (operator, provider, customer) Structuring.RequestAndCreateEquity with id = v.id; description = v.description; version = newVersion; validAsOf = v.validAsOf; observers = dv.observers
+        eventCid <- exercise equityCid Equity.DeclareDividend with id; description; effectiveDate; newInstrument; perUnitDistribution
+        snd <$> exercise distributionRuleCid Lifecycle.Evolve with ruleName = "Dividend"; settler = provider; eventCid; clockCid; observableCids = []
 
     nonconsuming choice PreviewLifecycle : ([TaggedClaim], [Pending])
       with
@@ -66,7 +94,7 @@ template Service
         instrument <- fetch (coerceContractId instrumentCid : ContractId Instrument.I)
         fst <$> Generic.lifecycle observableCids hasClaims [Generic.timeEvent (view instrument).validAsOf]
 
-    nonconsuming choice Lifecycle : (ContractId Lifecycle.I, [ContractId Effect])
+    nonconsuming choice Lifecycle : (ContractId Lifecycle.I, [ContractId Effect.I])
       with
         ruleName : Text
         eventCid : ContractId Event.I
@@ -137,6 +165,8 @@ template Offer
     operator : Party
     provider : Party
     customer : Party
+    distributionRuleCid : ContractId Lifecycle.I
+    replacementRuleCid : ContractId Lifecycle.I
   where
     signatory operator, provider
     observer customer
@@ -173,6 +203,8 @@ template Request
     choice Approve : ContractId Service
       with
         operator : Party
+        distributionRuleCid : ContractId Lifecycle.I
+        replacementRuleCid : ContractId Lifecycle.I
       controller operator, provider
       do
         create Service with ..

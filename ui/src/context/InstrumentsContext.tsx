@@ -5,6 +5,7 @@ import React from "react";
 import { CreateEvent } from "@daml/ledger";
 import { useQuery, useStreamQueries } from "@daml/react";
 import { Instrument } from "@daml.js/daml-finance-interface-instrument-base/lib/Daml/Finance/Interface/Instrument/Base/Instrument";
+import { Instrument as EquityI } from "@daml.js/daml-finance-interface-instrument-equity/lib/Daml/Finance/Interface/Instrument/Equity/Instrument";
 import { Instrument as Base } from "@daml.js/daml-finance-instrument-base/lib/Daml/Finance/Instrument/Base/Instrument";
 import { Instrument as Equity } from "@daml.js/daml-finance-instrument-equity/lib/Daml/Finance/Instrument/Equity/Instrument";
 import { Instrument as Generic } from "@daml.js/daml-finance-instrument-generic/lib/Daml/Finance/Instrument/Generic/Instrument";
@@ -16,6 +17,7 @@ import { Lifecycle } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Fi
 import { HasClaims } from "@daml.js/daml-finance-interface-instrument-generic/lib/Daml/Finance/Interface/Instrument/Generic/HasClaims";
 import { Id, InstrumentKey } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Common";
 import { key } from "../util";
+import { Disclosure } from "@daml.js/daml-finance-interface-util/lib/Daml/Finance/Interface/Util/Disclosure";
 
 type InstrumentsState = {
   loading : boolean
@@ -29,6 +31,8 @@ export type InstrumentAggregate = CreateEvent<Instrument> & {
   key : InstrumentKey
   lifecycle : CreateEvent<Lifecycle> | undefined
   claims : CreateEvent<HasClaims> | undefined
+  equity : CreateEvent<EquityI> | undefined
+  disclosure : CreateEvent<Disclosure> | undefined
 }
 
 type InstrumentGroup = {
@@ -64,8 +68,9 @@ export const InstrumentsProvider : React.FC = ({ children }) => {
   const { contracts: instruments, loading: l1 } = useStreamQueries(Instrument);
   const { contracts: hasLifecycle, loading: l2 } = useStreamQueries(Lifecycle);
   const { contracts: hasClaims, loading: l3 } = useStreamQueries(HasClaims);
-
-  const loading = l1 || l2 || l3;
+  const { contracts: equities, loading: l4 } = useStreamQueries(EquityI);
+  const { contracts: disclosures, loading: l5 } = useStreamQueries(Disclosure);
+  const loading = l1 || l2 || l3 || l4 || l5;
 
   if (loading) {
     return (
@@ -77,9 +82,18 @@ export const InstrumentsProvider : React.FC = ({ children }) => {
     const aggregatesByCid : Map<string, InstrumentAggregate> = new Map();
     const lifecycleByCid : Map<string, CreateEvent<Lifecycle>> = new Map(hasLifecycle.map(c => [c.contractId, c]));
     const hasClaimsByCid : Map<string, CreateEvent<HasClaims>> = new Map(hasClaims.map(c => [c.contractId, c]));
+    const equitiesByCid : Map<string, CreateEvent<EquityI>> = new Map(equities.map(c => [c.contractId, c]));
+    const disclosuresByCid : Map<string, CreateEvent<Disclosure>> = new Map(disclosures.map(c => [c.contractId, c]));
     const groupMap : Map<string, InstrumentGroup> = new Map();
     instruments.forEach(c => {
-      const aggregate = { ...c, key: key(c), lifecycle: lifecycleByCid.get(c.contractId), claims: hasClaimsByCid.get(c.contractId) };
+      const aggregate = {
+        ...c,
+        key: key(c),
+        lifecycle: lifecycleByCid.get(c.contractId),
+        claims: hasClaimsByCid.get(c.contractId),
+        equity: equitiesByCid.get(c.contractId),
+        disclosure: disclosuresByCid.get(c.contractId)
+      };
       const groupKey = c.payload.id.unpack;
       const group = groupMap.get(groupKey) || { key: groupKey, depository: c.payload.depository, issuer: c.payload.issuer, id: c.payload.id, description: c.payload.description, versions: [], latest: aggregate };
       group.versions.push(aggregate);
@@ -96,7 +110,7 @@ export const InstrumentsProvider : React.FC = ({ children }) => {
     // TODO: This comes closes to being able to select base instruments (ie. tokens).
     const groups = Array.from(groupMap.values())
     const latests = groups.map(g => g.latest);
-    const tokens = latests.filter(a => !a.claims && !a.lifecycle);
+    const tokens = latests.filter(a => !a.claims && !a.lifecycle && !a.equity);
     const value = {
       loading,
       groups,

@@ -68,11 +68,11 @@ export const Effects : React.FC = () => {
                   <TableRow key={i} className={classes.tableRow}>
                     <TableCell key={0} className={classes.tableCell}>{getName(c.payload.provider)}</TableCell>
                     <TableCell key={1} className={classes.tableCell}>{c.payload.id.unpack}</TableCell>
-                    <TableCell key={1} className={classes.tableCell}>{c.payload.description}</TableCell>
-                    <TableCell key={2} className={classes.tableCell}>{c.payload.targetInstrument.id.unpack} ({shorten(c.payload.targetInstrument.version)})</TableCell>
-                    <TableCell key={3} className={classes.tableCell}>{c.payload.producedInstrument && c.payload.targetInstrument.id.unpack + " (" + shorten(c.payload.producedInstrument.version) + ")"}</TableCell>
-                    <TableCell key={6} className={classes.tableCell}>{holdings.filter(h => keyEquals(c.payload.targetInstrument, h.payload.instrument)).length}</TableCell>
-                    <TableCell key={7} className={classes.tableCell}>
+                    <TableCell key={2} className={classes.tableCell}>{c.payload.description}</TableCell>
+                    <TableCell key={3} className={classes.tableCell}>{c.payload.targetInstrument.id.unpack} ({shorten(c.payload.targetInstrument.version)})</TableCell>
+                    <TableCell key={4} className={classes.tableCell}>{c.payload.producedInstrument && c.payload.targetInstrument.id.unpack + " (" + shorten(c.payload.producedInstrument.version) + ")"}</TableCell>
+                    <TableCell key={5} className={classes.tableCell}>{holdings.filter(h => keyEquals(c.payload.targetInstrument, h.payload.instrument)).length}</TableCell>
+                    <TableCell key={6} className={classes.tableCell}>
                       <IconButton color="primary" size="small" component="span" onClick={() => navigate("/servicing/effects/" + c.contractId)}>
                         <KeyboardArrowRight fontSize="small"/>
                       </IconButton>
