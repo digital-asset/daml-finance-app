@@ -53,18 +53,18 @@ run = do
   createCustodianRole operator custodian
 
   -- Services
-  createCustodyService operator centralBank issuer    settlementFactoryCid
-  createCustodyService operator centralBank custodian settlementFactoryCid
-  createCustodyService operator registry    issuer    settlementFactoryCid
-  createCustodyService operator registry    custodian settlementFactoryCid
-  createCustodyService operator custodian   alice     settlementFactoryCid
-  createCustodyService operator custodian   bob       settlementFactoryCid
-  createCustodyService operator custodian   charlie   settlementFactoryCid
-  createIssuanceService operator registry issuer
-  createIssuanceAutoService operator registry issuer
-  createStructuringService operator registry issuer
-  createStructuringAutoService operator registry issuer
-  createLifecycleService operator registry issuer
+  createCustodyService          operator centralBank  issuer    settlementFactoryCid
+  createCustodyService          operator centralBank  custodian settlementFactoryCid
+  createCustodyService          operator registry     issuer    settlementFactoryCid
+  createCustodyService          operator registry     custodian settlementFactoryCid
+  createCustodyService          operator custodian    alice     settlementFactoryCid
+  createCustodyService          operator custodian    bob       settlementFactoryCid
+  createCustodyService          operator custodian    charlie   settlementFactoryCid
+  createIssuanceService         operator registry     issuer
+  createIssuanceAutoService     operator registry     issuer
+  createStructuringService      operator registry     issuer
+  createStructuringAutoService  operator registry     issuer
+  createLifecycleService        operator registry     issuer    public
 
   -- Accounts
   let createAcc = createAccount [public] accountFactoryCid holdingFactoryCid
@@ -92,7 +92,7 @@ run = do
   eventCid <- toInterfaceContractId @Event.I <$> submitMulti [registry] [] do createCmd DateClockUpdateEvent with clock; id = Id $ "Update to " <> show today
 
   -- Instruments
-  usd   <- originate centralBank centralBank pub epoch "USD"
+  usd   <- originate centralBank centralBank pub epoch "USD" "United States Dollar"
   bond1 <- originateZeroCouponBond      registry issuer "BOND1" "ZERO-5Y"       pub (tt $ date 2022 tm td) (date 2022 tm td) (date 2027 Sep td) usd
   bond2 <- originateFixedRateBond       registry issuer "BOND2" "FIXED-5Y-1.1%" pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.011 M 12 usd
   bond3 <- originateFloatingRateBond    registry issuer "BOND3" "FLOAT-5Y-0.8%" pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.005 M 12 usd "USD-LIBOR-12M"

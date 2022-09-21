@@ -12,6 +12,7 @@ import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Approve(..), O
 import Daml.Finance.App.Structuring.Auto.Service qualified as StructuringAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Structuring.Service qualified as Structuring (Approve(..), Factories, Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Lifecycle (Claim)
+import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (I)
 
 template Role
   with
@@ -157,6 +158,8 @@ template Role
     nonconsuming choice OfferLifecycleService : ContractId Lifecycle.Offer
       with
         customer : Party
+        distributionRuleCid : ContractId Lifecycle.I
+        replacementRuleCid : ContractId Lifecycle.I
       controller provider
       do
         create Lifecycle.Offer with ..
@@ -164,6 +167,8 @@ template Role
     nonconsuming choice ApproveLifecycleRequest : ContractId Lifecycle.Service
       with
         lifecycleServiceRequestCid : ContractId Lifecycle.Request
+        distributionRuleCid : ContractId Lifecycle.I
+        replacementRuleCid : ContractId Lifecycle.I
       controller provider
       do
         exercise lifecycleServiceRequestCid Lifecycle.Approve with ..

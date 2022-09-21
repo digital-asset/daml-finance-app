@@ -58,7 +58,7 @@ run  = do
   createIssuanceAutoService     operator registry    issuer
   createStructuringService      operator registry    issuer
   createStructuringAutoService  operator registry    issuer
-  createLifecycleService        operator registry    issuer
+  createLifecycleService        operator registry    issuer   public
   createListingService          operator exchange    issuer
   createListingAutoService      operator exchange    issuer
   createTradingService          operator exchange    issuer   settlementFactoryCid
@@ -109,10 +109,10 @@ run  = do
     tslaObs = "TSLA"
 
   -- Instruments
-  usd     <- originate         centralBank centralBank pub todayTime "USD"
-  tsla    <- originate         registry    issuer      pub todayTime "TSLA"
-  nflx    <- originate         registry    issuer      pub todayTime "NFLX"
-  dax     <- originate         registry    issuer      pub todayTime "DAX"
+  usd     <- originate         centralBank centralBank pub todayTime "USD" "United States Dollar"
+  tsla    <- originate         registry    issuer      pub todayTime "TSLA" "Tesla, Inc. Common Stock"
+  nflx    <- originate         registry    issuer      pub todayTime "NFLX" "Netflix, Inc. Common Stock"
+  dax     <- originate         registry    issuer      pub todayTime "DAX" "DAX Index"
   pmt     <- originateGeneric  registry    issuer      pub todayTime "PMT-USD"                  $ payment usd 10_000.0
   del     <- originateGeneric  registry    issuer      pub todayTime "DEL-TSLA"                 $ delivery tsla 20.0
   dvp     <- originateGeneric  registry    issuer      pub todayTime "DVP-TSLA-USD"             $ dvp tsla 20.0 usd 10_000.0

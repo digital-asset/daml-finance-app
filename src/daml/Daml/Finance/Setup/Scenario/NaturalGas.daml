@@ -43,7 +43,7 @@ run  = do
   createCustodyService    operator cashProvider buyer   settlementFactoryCid
   createCustodyService    operator seller       buyer   settlementFactoryCid
   createIssuanceService   operator seller       seller
-  createLifecycleService  operator seller       seller
+  createLifecycleService  operator seller       seller  public
 
   -- Accounts
   let createAcc = createAccount [public] accountFactoryCid holdingFactoryCid
@@ -64,10 +64,10 @@ run  = do
   submitMulti [seller] [] do createCmd DateClockUpdateEvent with clock; id = Id $ "Update to " <> show t1
 
   -- Base Instruments
-  usd     <- originate cashProvider cashProvider pub todayTime "USD"
-  z4200L  <- originate seller      seller      pub todayTime "Z4200L"
-  z4GEN   <- originate seller      seller      pub todayTime "Z4GEN"
-  z4300L  <- originate seller      seller      pub todayTime "Z4300L"
+  usd     <- originate cashProvider cashProvider pub todayTime "USD" "United States Dollar"
+  z4200L  <- originate seller      seller      pub todayTime "Z4200L" "Z4200L"
+  z4GEN   <- originate seller      seller      pub todayTime "Z4GEN" "Z4GEN"
+  z4300L  <- originate seller      seller      pub todayTime "Z4300L" "Z4300L"
 
   -- Structured Instruments
   let

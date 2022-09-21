@@ -5,7 +5,7 @@ module Daml.Finance.App.Structuring.Model where
 
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K)
 import Daml.Finance.Interface.Instrument.Generic.Types (C)
-import Daml.Finance.Interface.Types.Common (Observers)
+import Daml.Finance.Interface.Types.Common (Id, Observers)
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum)
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum)
@@ -27,8 +27,9 @@ template CreateEquityRequest
     operator : Party
     provider : Party
     customer : Party
-    id : Text
+    id : Id
     description : Text
+    version : Text
     observers : Observers
     validAsOf : Time
   where

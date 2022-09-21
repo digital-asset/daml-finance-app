@@ -39,29 +39,29 @@ run  = do
   settlementFactoryCid <- toInterfaceContractId <$> submit operator do createCmd Settlement.Factory with provider = operator; observers = singleton public
 
   -- Roles
-  createOperatorRole operator
-  createCustodianRole operator centralBank
-  createCustodianRole operator issuer
-  createCustodianRole operator riskTaker
+  createOperatorRole    operator
+  createCustodianRole   operator centralBank
+  createCustodianRole   operator issuer
+  createCustodianRole   operator riskTaker
   createDistributorRole operator issuer
 
   -- Services
-  createCustodyService operator centralBank issuer settlementFactoryCid
-  createCustodyService operator centralBank riskTaker settlementFactoryCid
-  createCustodyService operator centralBank alice settlementFactoryCid
-  createCustodyService operator centralBank bob settlementFactoryCid
-  createCustodyService operator centralBank charlie settlementFactoryCid
-  createCustodyService operator riskTaker issuer settlementFactoryCid
-  createCustodyService operator issuer alice settlementFactoryCid
-  createCustodyService operator issuer bob settlementFactoryCid
-  createCustodyService operator issuer charlie settlementFactoryCid
-  createStructuringService operator issuer issuer
-  createIssuanceService operator issuer issuer
-  createIssuanceService operator riskTaker riskTaker
-  createBackToBackIssuanceService operator riskTaker issuer public
-  createLifecycleService operator riskTaker riskTaker
-  createLifecycleService operator issuer issuer
-  createSubscriptionService operator issuer issuer public
+  createCustodyService            operator centralBank  issuer    settlementFactoryCid
+  createCustodyService            operator centralBank  riskTaker settlementFactoryCid
+  createCustodyService            operator centralBank  alice     settlementFactoryCid
+  createCustodyService            operator centralBank  bob       settlementFactoryCid
+  createCustodyService            operator centralBank  charlie   settlementFactoryCid
+  createCustodyService            operator riskTaker    issuer    settlementFactoryCid
+  createCustodyService            operator issuer       alice     settlementFactoryCid
+  createCustodyService            operator issuer       bob       settlementFactoryCid
+  createCustodyService            operator issuer       charlie   settlementFactoryCid
+  createStructuringService        operator issuer       issuer
+  createIssuanceService           operator issuer       issuer
+  createIssuanceService           operator riskTaker    riskTaker
+  createBackToBackIssuanceService operator riskTaker    issuer    public
+  createLifecycleService          operator riskTaker    riskTaker public
+  createLifecycleService          operator issuer       issuer    public
+  createSubscriptionService       operator issuer       issuer    public
 
   -- Accounts
   let createAcc = createAccount [public] accountFactoryCid holdingFactoryCid
@@ -100,8 +100,8 @@ run  = do
     libor6M = "LIB-USD-6M"
 
   -- Instruments
-  usd     <- originate         centralBank centralBank pub todayTime "USD"
-  tsla    <- originate         depository  issuer      pub todayTime "TSLA"
+  usd     <- originate         centralBank centralBank pub todayTime "USD" "United States Dollar"
+  tsla    <- originate         depository  issuer      pub todayTime "TSLA" "Tesla, Inc. Common Stock"
   fwd     <- originateGeneric  depository  issuer      pub todayTime "Forward on TSLA"                       $ futureDvp tsla 200.0 usd 100_000.0 today
   opt     <- originateGeneric  depository  issuer      pub todayTime "Put Option on TSLA"                    $ putOptionCash tslaO usd 1_000.0 maturity
   bnd     <- originateGeneric  depository  issuer      pub todayTime "Bond 5Y/4.875%"                        $ bond usd 1.0 0.04875 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay

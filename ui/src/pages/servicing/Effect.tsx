@@ -3,9 +3,9 @@
 
 import React from "react";
 import classnames from "classnames";
-import { useParty, useLedger, useStreamQueries } from "@daml/react";
+import { useParty, useLedger, useStreamQueries, useQuery } from "@daml/react";
 import { Typography, Grid, Table, TableBody, TableCell, TableRow, Paper, Button, TableHead } from "@mui/material";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import useStyles from "../styles";
 import { fmt, shorten } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
@@ -16,9 +16,15 @@ import { Message } from "../../components/Message/Message";
 import { Claim } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Rule/Claim";
 import { useServices } from "../../context/ServicesContext";
 import { HoldingAggregate, useHoldings } from "../../context/HoldingsContext";
+import { Batch } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Batch";
+import { Instruction } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Instruction";
 
 export const Effect : React.FC = () => {
   const classes = useStyles();
+  const navigate = useNavigate();
+
+  useQuery(Batch);
+  useQuery(Instruction);
 
   const { getName } = useParties();
   const ledger = useLedger();
@@ -48,6 +54,7 @@ export const Effect : React.FC = () => {
       await ledger.exercise(Claim.ClaimEffect, service.payload.claimRuleCid, arg);
     };
     await Promise.all(filteredHoldings.map(claimHolding));
+    navigate("/servicing/settlement");
   };
 
   return (

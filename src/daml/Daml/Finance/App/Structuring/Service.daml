@@ -56,8 +56,9 @@ template Service
 
     nonconsuming choice RequestCreateEquity : ContractId CreateEquityRequest
       with
-        id : Text
+        id : Id
         description : Text
+        version : Text
         validAsOf : Time
         observers : Observers
       controller customer
@@ -172,7 +173,7 @@ template Service
       do
         CreateEquityRequest{..} <- fetchAndArchive createEquityRequestCid
         let
-          instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"
+          instrument = InstrumentKey with depository = provider; issuer = customer; id; version
         exercise factories.equity Equity.Create with ..
 
     nonconsuming choice CreateGeneric : ContractId Instrument.I

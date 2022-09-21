@@ -66,7 +66,7 @@ export const scenarios : Scenario[] = [
       [ "Bob",          { x:  400, y: 300 } ],
       [ "Charlie",      { x:  800, y: 300 } ]
     ]),
-    useNetworkLogin: true
+    useNetworkLogin: false
   },
   {
     label: "Bond Issuance",
@@ -78,13 +78,31 @@ export const scenarios : Scenario[] = [
       [ "Public",       { x:    0, y:   0 } ],
       [ "CentralBank",  { x:  400, y:   0 } ],
       [ "Registry",     { x:  800, y:   0 } ],
-      [ "Custodian",          { x:  400, y: 300 } ],
+      [ "Custodian",    { x:  400, y: 300 } ],
       [ "Issuer",       { x:  800, y: 300 } ],
       [ "Alice",        { x:    0, y: 600 } ],
       [ "Bob",          { x:  400, y: 600 } ],
       [ "Charlie",      { x:  800, y: 600 } ]
     ]),
-    useNetworkLogin: true
+    useNetworkLogin: false
+  },
+  {
+    label: "Corporate Actions",
+    description: "Equity workflows for corporate actions",
+    image: bondIssuanceImage,
+    apps: [ structuring, issuance, custody, distribution, servicing, listing, trading, network ],
+    positions: new Map([
+      [ "Operator",     { x:    0, y:   0 } ],
+      [ "Public",       { x:    0, y:   0 } ],
+      [ "CentralBank",  { x:  400, y:   0 } ],
+      [ "Registry",     { x:  800, y:   0 } ],
+      [ "Custodian",    { x:  400, y: 300 } ],
+      [ "Issuer",       { x:  800, y: 300 } ],
+      [ "Alice",        { x:    0, y: 600 } ],
+      [ "Bob",          { x:  400, y: 600 } ],
+      [ "Charlie",      { x:  800, y: 600 } ]
+    ]),
+    useNetworkLogin: false
   },
   {
     label: "Securities Lending",
@@ -99,7 +117,7 @@ export const scenarios : Scenario[] = [
       [ "Borrower",     { x:  400, y: 400 } ],
       [ "Lender",       { x:  800, y: 200 } ]
     ]),
-    useNetworkLogin: true
+    useNetworkLogin: false
   },
   {
     label: "Natural Gas",
@@ -113,7 +131,7 @@ export const scenarios : Scenario[] = [
       [ "Seller",       { x:  400, y: 200 } ],
       [ "Buyer",        { x:    0, y: 400 } ]
     ]),
-    useNetworkLogin: true
+    useNetworkLogin: false
   },
   {
     label: "Structured Notes",
@@ -131,7 +149,7 @@ export const scenarios : Scenario[] = [
       [ "Bob",          { x:  400, y: 450 } ],
       [ "Charlie",      { x:  600, y: 450 } ]
     ]),
-    useNetworkLogin: true
+    useNetworkLogin: false
   }
 ];
 
