@@ -7,6 +7,7 @@ import DA.Date (toGregorian)
 import DA.List (head)
 import DA.Map (Map)
 import DA.Set (Set, singleton)
+import DA.Text (parseInt)
 import Daml.Finance.App.Custody.Service qualified as Custody (Deposit(..), RequestDeposit(..), Service)
 import Daml.Finance.App.Distribution.Bidding.Model qualified as Bidding (Bid)
 import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (CreateBid(..), RequestCreateBid(..), S)
@@ -14,6 +15,7 @@ import Daml.Finance.App.Distribution.Auction.Model qualified as Auction (T)
 import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (CreateAuction(..), ProcessAuction(..), RequestCreateAuction(..), S)
 import Daml.Finance.App.Issuance.Model qualified as Issuance (T)
 import Daml.Finance.App.Issuance.Service qualified as Issuance (CreateIssuance(..), RequestCreateIssuance(..), Service)
+import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Service, DeclareDividend(..), DeclareStockSplit(..), DeclareReplacement(..))
 import Daml.Finance.App.Listing.Model qualified as Listing (T)
 import Daml.Finance.App.Listing.Service qualified as Listing (CreateListing(..), RequestCreateListing(..), Service)
 import Daml.Finance.App.Trading.Model qualified as Trading (Order, Side(..))
@@ -33,14 +35,21 @@ import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I, Transfer(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (GetView(..), I, K, Q, Reference(..))
 import Daml.Finance.Interface.Instrument.Generic.Types (C)
+import Daml.Finance.Interface.Lifecycle.Effect qualified as Effect (I)
+import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Claim (ClaimEffect(..), ClaimResult(..))
+import Daml.Finance.Interface.Settlement.Batch qualified as Batch (I)
+import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (I, Allocate(..), Approve(..))
+import Daml.Finance.Interface.Settlement.Types qualified as Settlement (Allocation, Approval)
 import Daml.Finance.Interface.Types.Common (Id(..), Parties)
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayAdjustment(..), BusinessDayConventionEnum)
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum, RollConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.Schedule (Frequency(..), PeriodicSchedule(..))
+import Daml.Finance.RefData.Time.DateClock (DateClock)
 import Daml.Finance.Settlement.Factory qualified as Settlement (Factory)
+import Daml.Finance.Settlement.Instruction qualified as Instruction (T)
 import Daml.Finance.Setup.Util.Common (getHolding)
-import Daml.Script (Script, createCmd, exerciseCmd, exerciseByKeyCmd, query, queryFilter, submitMulti)
+import Daml.Script
 
 -- | Create `Account`.
 createAccount : [Party] -> ContractId Account.F -> ContractId Holding.F -> Map Text (Set Parties) -> Party -> Party -> Text -> Script Account.K
@@ -192,3 +201,63 @@ processAuction operator provider customer public auctionCid bidCids = do
         settlementFactoryCid = toInterfaceContractId factoryCid
         auctionCid
         bidCids
+
+declareDividend : Party -> Party -> Party -> Party -> Instrument.K -> Date -> [Instrument.Q] -> Script (ContractId Effect.I)
+declareDividend operator provider issuer public equity effectiveDate perUnitDistribution = do
+  [(clockCid, _)] <- query @DateClock public
+  let
+    id = "Dividend-" <> show equity.id <> "-" <> equity.version
+    Some version = parseInt equity.version
+  head <$> submitMulti [issuer] [public] do
+    exerciseByKeyCmd @Lifecycle.Service (operator, provider, issuer) Lifecycle.DeclareDividend
+      with
+        clockCid = toInterfaceContractId clockCid
+        equity
+        newVersion = show (version + 1)
+        id = Id id
+        description = id
+        effectiveDate
+        perUnitDistribution
+
+declareReplacement : Party -> Party -> Party -> Party -> Instrument.K -> Date -> [Instrument.Q] -> Script (ContractId Effect.I)
+declareReplacement operator provider issuer public equity effectiveDate perUnitReplacement = do
+  [(clockCid, _)] <- query @DateClock issuer
+  let id = "Replacement-" <> show equity.id <> "-" <> equity.version
+  head <$> submitMulti [issuer] [public] do
+    exerciseByKeyCmd @Lifecycle.Service (operator, provider, issuer) Lifecycle.DeclareReplacement
+      with
+        clockCid = toInterfaceContractId clockCid
+        equity
+        id = Id id
+        description = id
+        effectiveDate
+        perUnitReplacement
+
+declareStockSplit : Party -> Party -> Party -> Party -> Instrument.K -> Date -> Decimal -> Script (ContractId Effect.I)
+declareStockSplit operator provider issuer public equity effectiveDate adjustmentFactor = do
+  [(clockCid, _)] <- query @DateClock issuer
+  let
+    id = "StockSplit-" <> show equity.id <> "-" <> equity.version
+    Some version = parseInt equity.version
+  head <$> submitMulti [issuer] [public] do
+    exerciseByKeyCmd @Lifecycle.Service (operator, provider, issuer) Lifecycle.DeclareStockSplit
+      with
+        clockCid = toInterfaceContractId clockCid
+        equity
+        newVersion = show (version + 1)
+        id = Id id
+        description = id
+        effectiveDate
+        adjustmentFactor
+
+claimEffect : Party -> Party -> Party -> Party -> ContractId Effect.I -> [ContractId Holding.I] -> Script (ContractId Batch.I, [ContractId Instruction.I])
+claimEffect operator custodian owner public effectCid holdingCids = do
+  Some (_, cs) <- queryContractKey @Custody.Service owner (operator, custodian, owner)
+  Claim.ClaimResult{batchCid; instructionCids} <- submitMulti [owner] [public] do exerciseCmd cs.claimRuleCid Claim.ClaimEffect with claimer = owner; effectCid; holdingCids
+  pure (batchCid, instructionCids)
+
+allocateAndApprove : Party -> Party -> ContractId Instruction.I -> Settlement.Allocation -> Settlement.Approval -> Script (ContractId Instruction.I)
+allocateAndApprove operator settler instructionCid allocation approval = do
+  Some i <- queryContractId @Instruction.T settler $ coerceContractId instructionCid
+  instructionCid <- submit i.step.sender do exerciseCmd instructionCid Instruction.Allocate with allocation
+  submit i.step.receiver do exerciseCmd instructionCid Instruction.Approve with approval

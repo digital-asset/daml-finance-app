@@ -20,9 +20,10 @@ import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (Accep
 import Daml.Finance.App.Distribution.Bidding.Auto.Service qualified as BiddingAuto (Accept(..), Service)
 import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Accept(..), Service)
 import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Accept(..), Service)
-import Daml.Finance.App.Role.Custodian qualified as Custodian (OfferBackToBackService(..), OfferCustodyService(..), OfferIssuanceAutoService(..), OfferIssuanceService(..), OfferLendingService(..), OfferLifecycleService(..), OfferStructuringService(..), OfferStructuringAutoService(..), Role)
-import Daml.Finance.App.Role.Distributor qualified as Distributor (OfferAuctionAutoService(..), OfferAuctionService(..), OfferBiddingAutoService(..), OfferBiddingService(..), OfferSubscriptionService(..), Role)
-import Daml.Finance.App.Role.Exchange qualified as Exchange (OfferListingAutoService(..), OfferListingService(..), OfferTradingAutoService(..), OfferTradingService(..), Role)
+import Daml.Finance.App.Role.Custodian qualified as Custodian
+import Daml.Finance.App.Role.Distributor qualified as Distributor
+import Daml.Finance.App.Role.Exchange qualified as Exchange
+import Daml.Finance.App.Settlement.Service qualified as Settlement (Accept(..), Service)
 import Daml.Finance.App.Structuring.Auto.Service qualified as StructuringAuto (Accept(..), Service)
 import Daml.Finance.App.Structuring.Service qualified as Structuring (Accept(..), Factories(..), Service)
 import Daml.Finance.Instrument.Base.Instrument qualified as Base (Factory(..))
@@ -134,3 +135,8 @@ createLendingService : Party -> Party -> Party -> Script (ContractId Lending.Ser
 createLendingService operator lender borrower = do
   offerCid <- submit lender do exerciseByKeyCmd @Custodian.Role (operator, lender) Custodian.OfferLendingService with customer = borrower
   submit borrower do exerciseCmd offerCid Lending.Accept
+
+createSettlementService : Party -> Party -> Party -> Script (ContractId Settlement.Service)
+createSettlementService operator custodian customer = do
+  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferSettlementService with customer
+  submit customer do exerciseCmd offerCid Settlement.Accept

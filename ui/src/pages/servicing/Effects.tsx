@@ -56,7 +56,7 @@ export const Effects : React.FC = () => {
                   <TableCell key={2} className={classes.tableCell}><b>Description</b></TableCell>
                   <TableCell key={3} className={classes.tableCell}><b>Target</b></TableCell>
                   <TableCell key={4} className={classes.tableCell}><b>Produced</b></TableCell>
-                  <TableCell key={5} className={classes.tableCell}><b>Holdings</b></TableCell>
+                  <TableCell key={5} className={classes.tableCell}><b>Positions</b></TableCell>
                   <TableCell key={6} className={classes.tableCell}><b>Detail</b></TableCell>
                   <TableCell key={7} className={classes.tableCell}>
                     <Button className={classes.choiceButton} size="large" variant="contained" color="primary" disabled={false} onClick={claimAll}>Claim All</Button>
@@ -69,8 +69,8 @@ export const Effects : React.FC = () => {
                     <TableCell key={0} className={classes.tableCell}>{getName(c.payload.provider)}</TableCell>
                     <TableCell key={1} className={classes.tableCell}>{c.payload.id.unpack}</TableCell>
                     <TableCell key={2} className={classes.tableCell}>{c.payload.description}</TableCell>
-                    <TableCell key={3} className={classes.tableCell}>{c.payload.targetInstrument.id.unpack} ({shorten(c.payload.targetInstrument.version)})</TableCell>
-                    <TableCell key={4} className={classes.tableCell}>{c.payload.producedInstrument && c.payload.targetInstrument.id.unpack + " (" + shorten(c.payload.producedInstrument.version) + ")"}</TableCell>
+                    <TableCell key={3} className={classes.tableCell}>{c.payload.targetInstrument.id.unpack} (v{shorten(c.payload.targetInstrument.version)})</TableCell>
+                    <TableCell key={4} className={classes.tableCell}>{c.payload.producedInstrument && c.payload.targetInstrument.id.unpack + " (v" + shorten(c.payload.producedInstrument.version) + ")"}</TableCell>
                     <TableCell key={5} className={classes.tableCell}>{holdings.filter(h => keyEquals(c.payload.targetInstrument, h.payload.instrument)).length}</TableCell>
                     <TableCell key={6} className={classes.tableCell}>
                       <IconButton color="primary" size="small" component="span" onClick={() => navigate("/servicing/effects/" + c.contractId)}>

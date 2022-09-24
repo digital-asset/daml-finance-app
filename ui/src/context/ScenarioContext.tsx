@@ -66,7 +66,7 @@ export const scenarios : Scenario[] = [
       [ "Bob",          { x:  400, y: 300 } ],
       [ "Charlie",      { x:  800, y: 300 } ]
     ]),
-    useNetworkLogin: false
+    useNetworkLogin: true
   },
   {
     label: "Bond Issuance",
@@ -84,7 +84,7 @@ export const scenarios : Scenario[] = [
       [ "Bob",          { x:  400, y: 600 } ],
       [ "Charlie",      { x:  800, y: 600 } ]
     ]),
-    useNetworkLogin: false
+    useNetworkLogin: true
   },
   {
     label: "Corporate Actions",
@@ -98,11 +98,11 @@ export const scenarios : Scenario[] = [
       [ "Registry",     { x:  800, y:   0 } ],
       [ "Custodian",    { x:  400, y: 300 } ],
       [ "Issuer",       { x:  800, y: 300 } ],
-      [ "Alice",        { x:    0, y: 600 } ],
-      [ "Bob",          { x:  400, y: 600 } ],
-      [ "Charlie",      { x:  800, y: 600 } ]
+      [ "Investor1",    { x:    0, y: 600 } ],
+      [ "Investor2",    { x:  400, y: 600 } ],
+      [ "Investor3",    { x:  800, y: 600 } ]
     ]),
-    useNetworkLogin: false
+    useNetworkLogin: true
   },
   {
     label: "Securities Lending",
@@ -117,7 +117,7 @@ export const scenarios : Scenario[] = [
       [ "Borrower",     { x:  400, y: 400 } ],
       [ "Lender",       { x:  800, y: 200 } ]
     ]),
-    useNetworkLogin: false
+    useNetworkLogin: true
   },
   {
     label: "Natural Gas",
@@ -131,7 +131,7 @@ export const scenarios : Scenario[] = [
       [ "Seller",       { x:  400, y: 200 } ],
       [ "Buyer",        { x:    0, y: 400 } ]
     ]),
-    useNetworkLogin: false
+    useNetworkLogin: true
   },
   {
     label: "Structured Notes",
@@ -149,7 +149,7 @@ export const scenarios : Scenario[] = [
       [ "Bob",          { x:  400, y: 450 } ],
       [ "Charlie",      { x:  600, y: 450 } ]
     ]),
-    useNetworkLogin: false
+    useNetworkLogin: true
   }
 ];
 

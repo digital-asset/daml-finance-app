@@ -9,6 +9,7 @@ import Daml.Finance.App.Issuance.Auto.Service qualified as IssuanceAuto (Approve
 import Daml.Finance.App.Issuance.Service qualified as Issuance (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Lending.Service qualified as Lending (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Settlement.Service qualified as Settlement (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Structuring.Auto.Service qualified as StructuringAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Structuring.Service qualified as Structuring (Approve(..), Factories, Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Lifecycle (Claim)
@@ -110,6 +111,27 @@ template Role
       controller provider
       do
         exerciseByKey @BackToBack.Service (operator, provider, customer) BackToBack.Terminate with actor = provider
+
+    nonconsuming choice OfferSettlementService : ContractId Settlement.Offer
+      with
+        customer : Party
+      controller provider
+      do
+        create Settlement.Offer with ..
+
+    nonconsuming choice ApproveSettlementRequest : ContractId Settlement.Service
+      with
+        settlementServiceRequestCid : ContractId Settlement.Request
+      controller provider
+      do
+        exercise settlementServiceRequestCid Settlement.Approve with ..
+
+    nonconsuming choice TerminateSettlementService : ()
+      with
+        customer : Party
+      controller provider
+      do
+        exerciseByKey @Settlement.Service (operator, provider, customer) Settlement.Terminate with actor = provider
 
     nonconsuming choice OfferStructuringService : ContractId Structuring.Offer
       with

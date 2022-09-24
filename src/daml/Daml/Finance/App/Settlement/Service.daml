@@ -1,0 +1,91 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Settlement.Service where
+
+import Daml.Finance.Interface.Settlement.Types qualified as Settlement (Allocation, Approval)
+import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (I, Allocate(..), Approve(..))
+
+template Service
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, customer) : (Party, Party, Party)
+    maintainer key._1
+
+    nonconsuming choice AllocateInstruction : ContractId Instruction.I
+      with
+        actor : Party
+        instructionCid : ContractId Instruction.I
+        allocation : Settlement.Allocation
+      controller actor
+      do
+        assertMsg "Actor must be provider or customer" $ actor == customer || actor == provider
+        exercise instructionCid Instruction.Allocate with allocation
+
+    nonconsuming choice ApproveInstruction : ContractId Instruction.I
+      with
+        actor : Party
+        instructionCid : ContractId Instruction.I
+        approval : Settlement.Approval
+      controller actor
+      do
+        assertMsg "Actor must be provider or customer" $ actor == customer || actor == provider
+        exercise instructionCid Instruction.Approve with approval
+
+    choice Terminate : ()
+      with
+        actor : Party
+      controller actor
+      do
+        assert $ actor == operator || actor == provider || actor == customer
+        pure ()
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider
+    observer customer
+
+    choice Accept : ContractId Service
+      controller customer
+      do
+        create Service with operator; provider; customer
+
+    choice Decline : ()
+      controller customer
+      do pure ()
+
+    choice Withdraw : ()
+      controller provider
+      do pure ()
+
+template Request
+  with
+    customer : Party
+    provider : Party
+  where
+    signatory customer
+    observer provider
+
+    choice Cancel : ()
+      controller customer
+      do pure ()
+
+    choice Reject : ()
+      controller provider
+      do pure ()
+
+    choice Approve : ContractId Service
+      with
+        operator : Party
+      controller operator, provider
+      do
+        create Service with operator; provider; customer
