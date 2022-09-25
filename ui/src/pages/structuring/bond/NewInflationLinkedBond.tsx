@@ -75,7 +75,7 @@ export const NewInflationLinkedBond : React.FC = () => {
     };
     if (structuringAuto.length > 0) await ledger.exercise(StructuringAuto.RequestAndCreateInflationLinkedBond, structuringAuto[0].contractId, arg);
     else await ledger.exercise(Structuring.RequestCreateInflationLinkedBond, structuring[0].contractId, arg);
-    navigate("/structuring/instruments");
+    navigate("/app/structuring/instruments");
   };
 
   const menuProps : Partial<MenuProps> = { anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" } };

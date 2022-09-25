@@ -35,7 +35,7 @@ const UserProvider : React.FC = ({ children }) => {
 
   const party = getParty(name);
   const token = getToken(party);
-  
+
   var [state, dispatch] = React.useReducer(userReducer, {
     isAuthenticated: !!token,
     name: name || "",
@@ -82,10 +82,10 @@ const loginUser = async (
   if (!!name) {
 
     localStorage.setItem("daml.name", name);
-  
+
     dispatch({ type: "LOGIN_SUCCESS", name, party, token });
     setError(false);
-    navigate("/apps");
+    navigate("/app");
   } else {
     dispatch({ type: "LOGIN_FAILURE" });
     setError(true);

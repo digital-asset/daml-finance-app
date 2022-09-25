@@ -29,8 +29,8 @@ export const AccountProvider : React.FC = ({ children }) => {
   useQuery(Instruction);
 
   const party = useParty();
-  const { loading: l1, contracts: refs } =  useStreamQueries(Reference);
-  const { loading: l2, contracts: directories } = useStreamQueries(AccountDirectory);
+  const { loading: l1, contracts: refs } =  useQuery(Reference);
+  const { loading: l2, contracts: directories } = useQuery(AccountDirectory);
   const loading = l1 || l2;
   const directory = directories.find(c => c.payload.provider === party);
   const accounts = refs.map(c => c.key);

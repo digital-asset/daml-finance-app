@@ -66,10 +66,10 @@ export const New : React.FC = () => {
     };
     if (myAutoServices.length > 0) {
       await ledger.exercise(AuctionAuto.RequestAndCreateAuction, myAutoServices[0].contractId, arg);
-      navigate("/distribution/auctions");
+      navigate("/app/distribution/auctions");
     } else {
       await ledger.exercise(Auction.RequestCreateAuction, myServices[0].contractId, arg);
-      navigate("/distribution/requests");
+      navigate("/app/distribution/requests");
     }
   }
 

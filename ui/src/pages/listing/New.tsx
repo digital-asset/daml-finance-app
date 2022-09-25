@@ -50,10 +50,10 @@ export const New : React.FC = () => {
     };
     if (myAutoListingServices.length > 0) {
       await ledger.exercise(AutoService.RequestAndCreateListing, myAutoListingServices[0].contractId, arg);
-      navigate("/listing/listings");
+      navigate("/app/listing/listings");
     } else {
       await ledger.exercise(Service.RequestCreateListing, myListingServices[0].contractId, arg);
-      navigate("/listing/requests");
+      navigate("/app/listing/requests");
     }
   }
 

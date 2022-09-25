@@ -53,7 +53,7 @@ export const NewGeneric : React.FC = () => {
     };
     if (structuringAuto.length > 0) await ledger.exercise(StructuringAuto.RequestAndCreateGeneric, structuringAuto[0].contractId, arg);
     else await ledger.exercise(Structuring.RequestCreateGeneric, structuring[0].contractId, arg);
-    navigate("/structuring/instruments");
+    navigate("/app/structuring/instruments");
   };
 
   return (

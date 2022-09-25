@@ -34,7 +34,6 @@ export const Batches : React.FC = () => {
 
   const settle = async (c : CreateEvent<Batch>) => {
     await ledger.exercise(Batch.Settle, c.contractId, { actors: singleton(party) });
-    navigate("/settlement/batches");
   };
 
   return (

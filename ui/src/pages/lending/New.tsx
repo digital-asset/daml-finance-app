@@ -41,7 +41,7 @@ export const New : React.FC = () => {
       maturity: parseDate(maturity)
     };
     await ledger.exercise(Lending.RequestBorrowOffer, lending[0].contractId, arg);
-    navigate("/lending/requests");
+    navigate("/app/lending/requests");
   }
 
   const menuProps : Partial<MenuProps> = { anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" } };

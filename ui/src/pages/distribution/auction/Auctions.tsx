@@ -49,7 +49,7 @@ export const Auctions : React.FC = () => {
                       <TableCell key={3} className={classes.tableCell}>{fmt(c.payload.floor, 4)} {c.payload.currency.id.unpack}</TableCell>
                       <TableCell key={4} className={classes.tableCell}>{getAuctionStatus(c.payload.status)}</TableCell>
                       <TableCell key={5} className={classes.tableCell}>
-                        <IconButton color="primary" size="small" component="span" onClick={() => navigate((party === c.payload.provider || party === c.payload.customer ? "/distribution/auctions/" : "/distribution/auction/") + c.contractId)}>                          <KeyboardArrowRight fontSize="small"/>
+                        <IconButton color="primary" size="small" component="span" onClick={() => navigate((party === c.payload.provider || party === c.payload.customer ? "/app/distribution/auctions/" : "/app/distribution/auction/") + c.contractId)}>                          <KeyboardArrowRight fontSize="small"/>
                         </IconButton>
                       </TableCell>
                     </TableRow>

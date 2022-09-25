@@ -41,7 +41,7 @@ export const NewToken : React.FC = () => {
     };
     if (structuringAuto.length > 0) await ledger.exercise(StructuringAuto.RequestAndCreateToken, structuringAuto[0].contractId, arg);
     else await ledger.exercise(Structuring.RequestCreateToken, structuring[0].contractId, arg);
-    navigate("/structuring/instruments");
+    navigate("/app/structuring/instruments");
   };
 
   return (

@@ -100,7 +100,7 @@ export const Instrument : React.FC = () => {
       lifecyclableCid: instrument.lifecycle!.contractId
     }
     await ledger.exercise(Lifecycle.Lifecycle, lifecycle[0].contractId, arg);
-    navigate("/servicing/effects");
+    navigate("/app/servicing/effects");
   };
 
   const toggle = (label : string) => {
@@ -121,7 +121,7 @@ export const Instrument : React.FC = () => {
       perUnitDistribution: [ { amount, unit: ccy.key } ]
     };
     await ledger.exercise(Lifecycle.DeclareDividend, lifecycle[0].contractId, arg);
-    navigate("/servicing/effects");
+    navigate("/app/servicing/effects");
   };
 
   const declareStockSplit = async () => {
@@ -136,7 +136,7 @@ export const Instrument : React.FC = () => {
       adjustmentFactor: amount
     };
     await ledger.exercise(Lifecycle.DeclareStockSplit, lifecycle[0].contractId, arg);
-    navigate("/servicing/effects");
+    navigate("/app/servicing/effects");
   };
 
   const declareReplacement = async () => {
@@ -152,7 +152,7 @@ export const Instrument : React.FC = () => {
       perUnitReplacement: [ { amount, unit: ccy.key } ]
     };
     await ledger.exercise(Lifecycle.DeclareReplacement, lifecycle[0].contractId, arg);
-    navigate("/servicing/effects");
+    navigate("/app/servicing/effects");
   };
 
   const menuProps : Partial<MenuProps> = { anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" } };

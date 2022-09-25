@@ -1,7 +1,7 @@
 // Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
@@ -9,11 +9,12 @@ import IconButton from "@mui/material/IconButton";
 import Typography from "@mui/material/Typography";
 import Grid from "@mui/material/Grid";
 import Box from "@mui/material/Box";
+import { FormControl, MenuItem, Select } from "@mui/material";
 import ExitToApp from "@mui/icons-material/ExitToApp";
 import Apps from "@mui/icons-material/Apps";
 import { useParty, useStreamQueries } from "@daml/react";
 import useStyles from "./styles";
-import { useUserDispatch, signOut } from "../../context/UserContext";
+import { useUserDispatch, signOut, loginUser } from "../../context/UserContext";
 import { useBranding } from "../../context/BrandingContext";
 import { Spinner } from "../Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
@@ -27,11 +28,12 @@ interface HeaderProps {
 export const Header : React.FC<HeaderProps> = ({ app } : HeaderProps) => {
   const classes = useStyles();
   const navigate = useNavigate();
-  const branding = useBranding();
   const userDispatch = useUserDispatch();
-  const { getName } = useParties();
+  const branding = useBranding();
+  const { getName, getParty, getToken, users } = useParties();
   const party = useParty();
   const scenario = useScenario();
+  const [, setError] = useState(false);
 
   const { contracts: clocks, loading: l1 } = useStreamQueries(Clock);
 
@@ -39,6 +41,12 @@ export const Header : React.FC<HeaderProps> = ({ app } : HeaderProps) => {
     signOut(userDispatch);
     if (scenario.selected.useNetworkLogin) navigate("/login/network");
     else navigate("/login/form");
+  };
+
+  const changeUser = async (user : string) => {
+    const party = getParty(user);
+    const token = getToken(party);
+    await loginUser(userDispatch, user, party, token, navigate, setError);
   };
 
   return (
@@ -66,13 +74,19 @@ export const Header : React.FC<HeaderProps> = ({ app } : HeaderProps) => {
               <Grid item xs={12}><Typography variant="body2" style={{ color: "#666" }}>Lifecycle date: {new Date(clocks[0].payload.clockTime).toISOString().substring(0, 10)}</Typography></Grid>
             </Grid>
           </Box>
-          <Box className={classes.userBox} style={{ width: "120px" }}>
+          <Box style={{ width: "120px" }}>
             <Grid container direction="column" alignItems="center">
-              <Grid item xs={12}><Typography variant="caption">{getName(party)}</Typography></Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <Select value={getName(party)} onChange={e => changeUser(e.target.value as string)} disableUnderline MenuProps={{ anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" } }}>
+                    {users.map((c, i) => (<MenuItem key={i} value={c}>{c}</MenuItem>))}
+                  </Select>
+                </FormControl>
+              </Grid>
             </Grid>
           </Box>
         </>}
-        <IconButton className={classes.headerMenuButton} color="inherit" onClick={() => navigate("/apps")}>
+        <IconButton className={classes.headerMenuButton} color="inherit" onClick={() => navigate("/app")}>
           <Apps classes={{ root: classes.headerIcon }} />
         </IconButton>
         <IconButton className={classes.headerMenuButton} color="inherit" onClick={exit}>

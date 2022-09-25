@@ -41,7 +41,7 @@ export const Effects : React.FC = () => {
       await ledger.exercise(Claim.ClaimEffect, claimRules[0].contractId, arg);
     };
     await Promise.all(effects.map(claimEffect));
-    navigate("/servicing/settlement");
+    navigate("/app/settlement/batches");
   };
 
   return (
@@ -75,7 +75,7 @@ export const Effects : React.FC = () => {
                     <TableCell key={4} className={classes.tableCell}>{c.payload.producedInstrument && c.payload.targetInstrument.id.unpack + " (v" + shorten(c.payload.producedInstrument.version) + ")"}</TableCell>
                     <TableCell key={5} className={classes.tableCell}>{holdings.filter(h => keyEquals(c.payload.targetInstrument, h.payload.instrument)).length}</TableCell>
                     <TableCell key={6} className={classes.tableCell}>
-                      <IconButton color="primary" size="small" component="span" onClick={() => navigate("/servicing/effects/" + c.contractId)}>
+                      <IconButton color="primary" size="small" component="span" onClick={() => navigate("/app/servicing/effects/" + c.contractId)}>
                         <KeyboardArrowRight fontSize="small"/>
                       </IconButton>
                     </TableCell>

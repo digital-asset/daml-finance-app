@@ -48,7 +48,7 @@ export const Offerings : React.FC = () => {
                       <TableCell key={3} className={classes.tableCell}>{fmt(c.payload.asset.amount)} {c.payload.asset.unit.id.unpack}</TableCell>
                       <TableCell key={4} className={classes.tableCell} align="right">{fmt(c.payload.price.amount, 4)} {c.payload.price.unit.id.unpack}</TableCell>
                       <TableCell key={5} className={classes.tableCell}>
-                        <IconButton color="primary" size="small" component="span" onClick={() => navigate("/distribution/subscriptions/" + c.contractId)}>
+                        <IconButton color="primary" size="small" component="span" onClick={() => navigate("/app/distribution/subscriptions/" + c.contractId)}>
                           <KeyboardArrowRight fontSize="small"/>
                         </IconButton>
                       </TableCell>

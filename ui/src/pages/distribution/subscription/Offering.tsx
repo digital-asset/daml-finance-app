@@ -54,7 +54,7 @@ export const Offering : React.FC = () => {
     const subscriptionCids = subscriptions.map(c => c.contractId);
     const arg = { settlementFactoryCid: factories[0].contractId, offeringCid: offering.contractId, subscriptionCids };
     const [result, ] = await ledger.exercise(Service.ProcessOffering, service.contractId, arg);
-    navigate("/distribution/subscriptions/" + result)
+    navigate("/app/distribution/subscriptions/" + result)
   };
 
   const subscribe = async () => {

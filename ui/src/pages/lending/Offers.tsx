@@ -43,7 +43,7 @@ export const Offers : React.FC = () => {
       account: borrowerAccount
     };
     await ledger.exercise(Lending.AcceptBorrowOffer, lending[0].contractId, arg);
-    navigate("/lending/trades");
+    navigate("/app/lending/trades");
   };
 
   return (

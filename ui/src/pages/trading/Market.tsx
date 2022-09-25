@@ -97,7 +97,6 @@ export const Market : React.FC = () => {
     const account = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === (isBuy ? listing.payload.tradedInstrument : listing.payload.quotedInstrument).depository);
     const orderCids = isBuy ? asks.map(c => c.contractId) : bids.map(c => c.contractId);
     if (!collateralCid || !account) return;
-    console.log(account);
     const arg = {
       id: { unpack: uuidv4() },
       listingId: listing.payload.id,

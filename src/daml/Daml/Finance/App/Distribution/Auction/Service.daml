@@ -123,9 +123,10 @@ template Service
 
         -- Settle transfers
         forA_ batchCids (`exercise` Batch.Settle with actors = singleton provider)
-        -- Return unallocated deposit back to the customer
+
+        -- Undisclose unallocated deposit
         whenSome remainingDepositCidOpt \depositCid -> do
-          exercise (coerceContractId depositCid : ContractId Lockable.I) Lockable.Release with context = auction.id
+          exercise (coerceContractId depositCid : ContractId Disclosure.I) Disclosure.RemoveObservers with disclosers = singleton customer; observersToRemove = (auction.id, singleton provider)
           pure ()
 
         -- Undisclose accounts

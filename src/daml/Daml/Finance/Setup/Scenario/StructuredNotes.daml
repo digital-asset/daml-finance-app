@@ -94,15 +94,15 @@ run  = do
     libor6M = "LIB-USD-6M"
 
   -- Instruments
-  usd     <- originate         centralBank centralBank pub todayTime "USD" "United States Dollar"
-  tsla    <- originate         depository  issuer      pub todayTime "TSLA" "Tesla, Inc. Common Stock"
-  fwd     <- originateGeneric  depository  issuer      pub todayTime "Forward on TSLA"                       $ futureDvp tsla 200.0 usd 100_000.0 today
-  opt     <- originateGeneric  depository  issuer      pub todayTime "Put Option on TSLA"                    $ putOptionCash tslaO usd 1_000.0 maturity
-  bnd     <- originateGeneric  depository  issuer      pub todayTime "Bond 5Y/4.875%"                        $ bond usd 1.0 0.04875 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
-  rc      <- originateGeneric  depository  issuer      pub todayTime "Reverse Convertible on TSLA"           $ rc tslaO usd 0.02 800.0 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
-  brc     <- originateGeneric  depository  issuer      pub todayTime "Barrier Reverse Convertible on TSLA"   $ brc tslaO usd 0.05 800.0 600.0 today $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
-  bwn1    <- originateGeneric  depository  issuer      pub todayTime "Synthetic Buy-Write Notes on AMD"      $ buyWriteNote (date 2022 Jul 16) (date 2023 Jul 19) (date 2023 Jul 23) amd usd 0.1776 91.6300 100.7930 -- Issue size: 77'300
-  bwn2    <- originateGeneric  depository  issuer      pub todayTime "Synthetic Buy-Write Notes on QUALCOMM" $ buyWriteNote (date 2022 Jun 30) (date 2022 Jul 05) (date 2022 Jul 07) qc usd 0.1312 147.2566 161.9823
+  usd     <- originate         centralBank centralBank pub todayTime "USD"    "United States Dollar"
+  tsla    <- originate         depository  issuer      pub todayTime "TSLA"   "Tesla, Inc. Common Stock"
+  fwd     <- originateGeneric  depository  issuer      pub todayTime "FWD1"   "Forward on TSLA"                       $ futureDvp tsla 200.0 usd 100_000.0 today
+  opt     <- originateGeneric  depository  issuer      pub todayTime "OPT1"   "Put Option on TSLA"                    $ putOptionCash tslaO usd 1_000.0 maturity
+  bnd     <- originateGeneric  depository  issuer      pub todayTime "BOND1"  "Bond 5Y/4.875%"                        $ bond usd 1.0 0.04875 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
+  rc      <- originateGeneric  depository  issuer      pub todayTime "RC1"    "Reverse Convertible on TSLA"           $ rc tslaO usd 0.02 800.0 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
+  brc     <- originateGeneric  depository  issuer      pub todayTime "BRC1"   "Barrier Reverse Convertible on TSLA"   $ brc tslaO usd 0.05 800.0 600.0 today $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
+  bwn1    <- originateGeneric  depository  issuer      pub todayTime "BWN1"   "Synthetic Buy-Write Notes on AMD"      $ buyWriteNote (date 2022 Jul 16) (date 2023 Jul 19) (date 2023 Jul 23) amd usd 0.1776 91.6300 100.7930 -- Issue size: 77'300
+  bwn2    <- originateGeneric  depository  issuer      pub todayTime "BWN2"   "Synthetic Buy-Write Notes on QUALCOMM" $ buyWriteNote (date 2022 Jun 30) (date 2022 Jul 05) (date 2022 Jul 07) qc usd 0.1312 147.2566 161.9823
   let securities = [tsla, fwd, opt, bnd, rc, brc, bwn1, bwn2]
 
   -- Distribution

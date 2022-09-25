@@ -72,7 +72,7 @@ export const Request : React.FC = () => {
       lenderInterestAccount
     };
     await ledger.exercise(Lending.CreateBorrowOffer, lending[0].contractId, arg);
-    navigate("/lending/offers");
+    navigate("/app/lending/offers");
   };
 
   const menuProps : Partial<MenuProps> = { anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" } };

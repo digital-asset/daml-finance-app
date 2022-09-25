@@ -31,7 +31,7 @@ export const Instrument : React.FC = () => {
           <Stepper nonLinear alternativeLabel activeStep={activeStep}>
             {group.versions.map((inst, i) => (
               <Step key={inst.contractId} completed={false}>
-                <StepButton icon={shorten(inst.payload.version)} color="inherit" onClick={() => setActiveStep(i)}>
+                <StepButton icon={i.toString()} color="inherit" onClick={() => setActiveStep(i)}>
                   {inst.payload.validAsOf.substring(0, 10)}
                 </StepButton>
               </Step>

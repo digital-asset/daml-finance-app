@@ -20,9 +20,7 @@ const createToken = (party : string, pub : string) => {
 };
 
 export type PartyState = {
-  partyIds : string[]
-  partyNames : string[]
-  partyTokens : string[]
+  users : string[]
   getParty : (name : string) => string,
   getName : (id : string) => string,
   getNames : (ids : Set<string>) => string,
@@ -30,9 +28,7 @@ export type PartyState = {
 }
 
 const empty = {
-  partyIds: [],
-  partyNames: [],
-  partyTokens: [],
+  users: [],
   getParty: (name : string) => "",
   getName: (id : string) => "",
   getNames: (ids : Set<string>) => "",
@@ -65,7 +61,7 @@ export const PartyProvider : React.FC = ({ children }) => {
   const getToken = (id : string) => (partyTokens[id] || "") as string;
 
   return (
-    <PartyContext.Provider value={{ partyIds, partyNames, partyTokens, getParty, getName, getNames, getToken }}>
+    <PartyContext.Provider value={{ users: Object.keys(partyIds), getParty, getName, getNames, getToken }}>
         {children}
     </PartyContext.Provider>
   );

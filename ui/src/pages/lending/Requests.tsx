@@ -49,7 +49,7 @@ export const Requests : React.FC = () => {
                       <TableCell key={3} className={classes.tableCell}>{fmt(c.payload.borrowed.amount, 0)} {c.payload.borrowed.unit.id.unpack}</TableCell>
                       <TableCell key={4} className={classes.tableCell}>{c.payload.maturity}</TableCell>
                       <TableCell key={5} className={classes.tableCell}>
-                        <IconButton color="primary" size="small" component="span" onClick={() => navigate("/lending/requests/request/" + c.contractId)}>
+                        <IconButton color="primary" size="small" component="span" onClick={() => navigate("/app/lending/requests/request/" + c.contractId)}>
                           <KeyboardArrowRight fontSize="small"/>
                         </IconButton>
                       </TableCell>

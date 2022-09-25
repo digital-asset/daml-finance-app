@@ -57,7 +57,7 @@ export const New : React.FC = () => {
         providerAccount: providerAccount.key
       };
       await ledger.exercise(BackToBack.CreateIssuance, myB2BServices[0].contractId, arg);
-      navigate("/issuance/issuances");
+      navigate("/app/issuance/issuances");
     } else {
       const hasAuto = issuanceAuto.length > 0;
       const myAutoSvc = issuanceAuto.filter(s => s.payload.customer === party)[0];
@@ -73,7 +73,7 @@ export const New : React.FC = () => {
       };
       if (hasAuto) await ledger.exercise(IssuanceAuto.RequestAndCreateIssuance, myAutoSvc.contractId, arg);
       else await ledger.exercise(Issuance.RequestCreateIssuance, mySvc.contractId, arg);
-      navigate("/issuance/issuances");
+      navigate("/app/issuance/issuances");
     }
   }
 

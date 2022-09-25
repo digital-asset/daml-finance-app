@@ -31,7 +31,7 @@ export const Requests : React.FC = () => {
     const service = providerServices.find(s => s.payload.customer === c.payload.customer);
     if (!service) return; // TODO: Display error
     await ledger.exercise(Service.CreateAuction, service.contractId, { createAuctionRequestCid: c.contractId });
-    navigate("/distribution/auctions");
+    navigate("/app/distribution/auctions");
   }
 
   return (

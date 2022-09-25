@@ -56,7 +56,7 @@ export const Effect : React.FC = () => {
       await ledger.exercise(Claim.ClaimEffect, service.payload.claimRuleCid, arg);
     };
     await Promise.all(filteredHoldings.map(claimHolding));
-    navigate("/settlement/batches");
+    navigate("/app/settlement/batches");
   };
 
   return (

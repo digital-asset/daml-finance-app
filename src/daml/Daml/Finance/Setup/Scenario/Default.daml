@@ -4,7 +4,7 @@
 module Daml.Finance.Setup.Scenario.Default where
 
 import ContingentClaims.Financial (unrollDates)
-import DA.Date (DayOfWeek(Saturday, Sunday), Month(..), addDays, date, toDateUTC, toGregorian)
+import DA.Date (DayOfWeek(Saturday, Sunday), addDays, date, toDateUTC, toGregorian)
 import DA.Map (empty, fromList)
 import DA.Set (singleton)
 import DA.Time (time)
@@ -101,19 +101,16 @@ run  = do
     tslaObs = "TSLA"
 
   -- Instruments
-  usd     <- originate         centralBank centralBank pub yday "USD" "United States Dollar"
-  tsla    <- originateEquity   registry    issuer      pub yday "TSLA" "Tesla, Inc. Common Stock"
-  nflx    <- originateEquity   registry    issuer      pub yday "NFLX" "Netflix, Inc. Common Stock"
-  pmt     <- originateGeneric  registry    issuer      pub yday "PMT-USD"                  $ payment usd 10_000.0
-  del     <- originateGeneric  registry    issuer      pub yday "DEL-TSLA"                 $ delivery tsla 20.0
-  dvp     <- originateGeneric  registry    issuer      pub yday "DVP-TSLA-USD"             $ dvp tsla 20.0 usd 10_000.0
-  fwd     <- originateGeneric  registry    issuer      pub yday "FWD-TSLA-USD-20221022"    $ futureDvp tsla 20.0 usd 10_000.0 today
-  bnd     <- originateGeneric  registry    issuer      pub yday "BOND-USD-5Y-4.875%"       $ bond usd 1.0 0.04875 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
-  swp     <- originateGeneric  registry    issuer      pub yday "SWAP-LIBOR-6M/0.25%"      $ interestRateSwap libor6M 0.0025 usd $ unrollDates todayYear (todayYear + 2) [todayMonth] todayDay
-  bswp    <- originateGeneric  registry    issuer      pub yday "BSWAP-LIBOR-6M/3M+0.15%"  $ basisSwap libor3M libor6M 0.0015 usd $ unrollDates todayYear (todayYear + 2) [todayMonth] todayDay
-  opt     <- originateGeneric  registry    issuer      pub yday "OPT-TSLA-USD-20221022-P"  $ callOptionPhysical tsla 20.0 usd 10_000.0 (date 2022 Oct 22)
-  opt2    <- originateGeneric  registry    issuer      pub yday "OPT-TSLA-USD-20221022-C"  $ callOptionCashAuto tslaObs usd 700.0 (date 2022 Oct 22)
-  let securities = [tsla, nflx, pmt, del, dvp, fwd, bnd, swp, bswp, opt, opt2 ]
+  usd     <- originate         centralBank centralBank pub yday "USD"     "United States Dollar"
+  tsla    <- originateEquity   registry    issuer      pub yday "TSLA"    "Tesla, Inc. Common Stock"
+  nflx    <- originateEquity   registry    issuer      pub yday "NFLX"    "Netflix, Inc. Common Stock"
+  fwd     <- originateGeneric  registry    issuer      pub yday "FWD1"    "Forward on TSLA"                 $ futureDvp tsla 20.0 usd 10_000.0 today
+  bnd     <- originateGeneric  registry    issuer      pub yday "BOND1"   "Bond 5Y @ 4.875%"                $ bond usd 1.0 0.04875 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
+  swp     <- originateGeneric  registry    issuer      pub yday "SWAP1"   "Swap LIBOR-6M vs 0.25%"          $ interestRateSwap libor6M 0.0025 usd $ unrollDates todayYear (todayYear + 2) [todayMonth] todayDay
+  bswp    <- originateGeneric  registry    issuer      pub yday "BSWAP1"  "Basis Swap LIBOR-6M vs 3M+0.15%" $ basisSwap libor3M libor6M 0.0015 usd $ unrollDates todayYear (todayYear + 2) [todayMonth] todayDay
+  opt     <- originateGeneric  registry    issuer      pub yday "OPT1"    "Put on TSLA @ 500.0"             $ callOptionPhysical tsla 20.0 usd 10_000.0 (date (todayYear + 1) todayMonth todayDay)
+  opt2    <- originateGeneric  registry    issuer      pub yday "OPT2"    "Call on TSLA @ 700.0"            $ callOptionCashAuto tslaObs usd 700.0 (date (todayYear + 1) todayMonth todayDay)
+  let securities = [tsla, nflx, fwd, bnd, swp, bswp, opt, opt2 ]
 
   -- Distribution
   inv1CashCid    <- coerceContractId <$> deposit operator centralBank inv1   public (Instrument.qty 1_000_000.0 usd) inv1CashAccount
@@ -156,7 +153,7 @@ run  = do
       -- createAskOrder operator exchange issuer public "2" (Instrument.qty 250_000.0 swp) (Instrument.qty 0.90 usd) $ singleton public
       -- createBidOrder operator exchange inv1  public "3" (Instrument.qty 500_000.0 swp) (Instrument.qty 0.90 usd) $ singleton public
 
-  -- doAuction
+  --doAuction
   -- doTrade
 
   pure parties

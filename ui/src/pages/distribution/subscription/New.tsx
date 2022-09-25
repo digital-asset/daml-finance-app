@@ -92,7 +92,7 @@ export const New : React.FC = () => {
       };
       await ledger.exercise(Service.CreateOffering, myServices[0].contractId, arg);
     }
-    navigate("/distribution/offerings");
+    navigate("/app/distribution/offerings");
   }
 
   const menuProps : Partial<MenuProps> = { anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" } };

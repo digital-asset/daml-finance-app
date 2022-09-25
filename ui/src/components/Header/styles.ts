@@ -122,5 +122,12 @@ export default makeStyles((theme : any) => createStyles({
     backgroundColor: theme.palette.primary.main,
     padding: 5,
     borderRadius: 5,
-  }
+  },
+  inputField: {
+    marginTop: 10,
+  },
+  selectLabel: {
+    marginLeft: -14,
+    marginTop: 4
+  },
 }));

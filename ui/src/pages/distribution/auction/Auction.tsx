@@ -53,7 +53,7 @@ export const Auction: React.FC = () => {
     if (factories.length === 0) return new Error("No settlement factory found");
     const bidCids = filteredBids.map(c => c.contractId);
     const [result, ] = await ledger.exercise(Service.ProcessAuction, service.contractId, { settlementFactoryCid: factories[0].contractId, auctionCid: auction.contractId, bidCids });
-    navigate("/distribution/auctions/" + result);
+    navigate("/app/distribution/auctions/" + result);
   };
 
   const getFinalPrice = (auctionStatus: AuctionStatus): string => {
@@ -103,7 +103,7 @@ export const Auction: React.FC = () => {
                         <TableRow key={i + 1} className={classes.tableRow} hover={true}>
                           <TableCell key={0} className={classes.tableCell}>{getName(c.payload.customer)}</TableCell>
                           <TableCell key={1} className={classes.tableCell}>{fmt(c.payload.details.quantity.amount)}</TableCell>
-                          <TableCell key={2} className={classes.tableCell}>{fmt(c.payload.details.price.amount)}</TableCell>
+                          <TableCell key={2} className={classes.tableCell}>{fmt(c.payload.details.price.amount, 4)}</TableCell>
                           <TableCell key={3} className={classes.tableCell}>{fmt(100.0 * parseFloat(c.payload.details.quantity.amount) / parseFloat(auction.payload.quantity.amount), 2)}%</TableCell>
                           <TableCell key={4} className={classes.tableCell}>{c.payload.details.time}</TableCell>
                           <TableCell key={5} className={classes.tableCell}>{getBidStatus(c.payload.status)}</TableCell>

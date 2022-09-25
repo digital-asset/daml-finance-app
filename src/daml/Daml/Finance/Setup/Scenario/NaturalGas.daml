@@ -67,20 +67,16 @@ run  = do
 
   -- Structured Instruments
   let
-    ng1Name = "Multi-location Fixed-Price Daily"
-    ng2Name = "Location/Pricing Option Daily"
-    ng3Name = "Capped Pricing Daily"
-    ng4Name = "Price-conditional Location Daily"
     gdTgp219 = "GD TGP 24-219 + 0"
     gdTgp300 = "GD TGP 24-300 + 0"
     deliveries =
       [ Instrument.qty 2_000.0 z4200L
       , Instrument.qty 4_000.0 z4GEN
       , Instrument.qty 4_000.0 z4300L ]
-  ng1 <- originateGeneric seller seller pub todayTime ng1Name $ ngMultiLocation         t1 t3 deliveries 5.25 usd
-  ng2 <- originateGeneric seller seller pub todayTime ng2Name $ ngLocationPricingOption t1 t3  5_000.0 z4200L gdTgp219 z4GEN gdTgp300 usd
-  ng3 <- originateGeneric seller seller pub todayTime ng3Name $ ngCapped                t1 t3 10_000.0 z4200L gdTgp219 5.75 usd
-  ng4 <- originateGeneric seller seller pub todayTime ng4Name $ ngConditionalLocation   t1 t3 10_000.0 z4200L gdTgp219 5.50 z4GEN gdTgp300 usd
+  ng1 <- originateGeneric seller seller pub todayTime "NATGAS1" "Multi-location Fixed-Price Daily"  $ ngMultiLocation         t1 t3 deliveries 5.25 usd
+  ng2 <- originateGeneric seller seller pub todayTime "NATGAS2" "Location/Pricing Option Daily"     $ ngLocationPricingOption t1 t3  5_000.0 z4200L gdTgp219 z4GEN gdTgp300 usd
+  ng3 <- originateGeneric seller seller pub todayTime "NATGAS3" "Capped Pricing Daily"              $ ngCapped                t1 t3 10_000.0 z4200L gdTgp219 5.75 usd
+  ng4 <- originateGeneric seller seller pub todayTime "NATGAS4" "Price-conditional Location Daily"  $ ngConditionalLocation   t1 t3 10_000.0 z4200L gdTgp219 5.50 z4GEN gdTgp300 usd
 
   -- Data
   createAccountDirectory seller [(usd, sellerCashAccount)] $ singleton public

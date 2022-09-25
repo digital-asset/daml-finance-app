@@ -132,10 +132,10 @@ originateEquity depository issuer observers validAsOf id description = do
     createCmd Equity.Instrument with depository; issuer; id = Id id; version = "0"; observers; validAsOf; description
   createReference cid depository issuer observers
 
-originateGeneric : Party -> Party -> PartiesMap -> Time -> Text -> C -> Script Instrument.K
-originateGeneric depository issuer observers acquisitionTime id claims = do
+originateGeneric : Party -> Party -> PartiesMap -> Time -> Text -> Text -> C -> Script Instrument.K
+originateGeneric depository issuer observers acquisitionTime id description claims = do
   cid <- coerceContractId <$> submitMulti [depository, issuer] [] do
-    createCmd Generic.Instrument with depository; issuer; id = Id id; version = "0"; acquisitionTime; claims; observers; lastEventTimestamp = acquisitionTime; description = id
+    createCmd Generic.Instrument with depository; issuer; id = Id id; description; version = "0"; acquisitionTime; claims; observers; lastEventTimestamp = acquisitionTime
   createReference cid depository issuer observers
 
 originateFixedRateBond : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Date -> [Text] -> Party -> Date-> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> Instrument.K -> Script Instrument.K

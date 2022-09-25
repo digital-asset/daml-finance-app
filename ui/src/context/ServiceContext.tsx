@@ -3,7 +3,7 @@
 
 import React from "react";
 import { CreateEvent } from "@daml/ledger";
-import { useStreamQueries } from "@daml/react";
+import { useQuery, useStreamQueries } from "@daml/react";
 import { Service as BackToBackService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/BackToBack/Service"
 import { Service as CustodyService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Custody/Service"
 import { Service as AuctionService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Service"
@@ -71,24 +71,24 @@ const ServicesContext = React.createContext<ServicesState>(empty);
 
 export const ServicesProvider : React.FC = ({ children }) => {
 
-  const { contracts: backToBack,      loading: l1 } =  useStreamQueries(BackToBackService);
-  const { contracts: custody,         loading: l2 } =  useStreamQueries(CustodyService);
-  const { contracts: auctionAuto,     loading: l3 } =  useStreamQueries(AuctionAutoService);
-  const { contracts: auction,         loading: l4 } =  useStreamQueries(AuctionService);
-  const { contracts: biddingAuto,     loading: l5 } =  useStreamQueries(BiddingAutoService);
-  const { contracts: bidding,         loading: l6 } =  useStreamQueries(BiddingService);
-  const { contracts: issuanceAuto,    loading: l7 } =  useStreamQueries(IssuanceAutoService);
-  const { contracts: issuance,        loading: l8 } =  useStreamQueries(IssuanceService);
-  const { contracts: lending,         loading: l9 } =  useStreamQueries(LendingService);
-  const { contracts: lifecycle,       loading: l10 } = useStreamQueries(LifecycleService);
-  const { contracts: listingAuto,     loading: l11 } = useStreamQueries(ListingAutoService);
-  const { contracts: listing,         loading: l12 } = useStreamQueries(ListingService);
-  const { contracts: settlement,      loading: l13 } = useStreamQueries(SettlementService);
-  const { contracts: structuringAuto, loading: l14 } = useStreamQueries(StructuringAutoService);
-  const { contracts: structuring,     loading: l15 } = useStreamQueries(StructuringService);
-  const { contracts: subscription,    loading: l16 } = useStreamQueries(SubscriptionService);
-  const { contracts: tradingAuto,     loading: l17 } = useStreamQueries(TradingAutoService);
-  const { contracts: trading,         loading: l18 } = useStreamQueries(TradingService);
+  const { loading: l1,  contracts: backToBack }       = useQuery(BackToBackService);
+  const { loading: l2,  contracts: custody }          = useQuery(CustodyService);
+  const { loading: l3,  contracts: auctionAuto }      = useQuery(AuctionAutoService);
+  const { loading: l4,  contracts: auction }          = useQuery(AuctionService);
+  const { loading: l5,  contracts: biddingAuto }      = useQuery(BiddingAutoService);
+  const { loading: l6,  contracts: bidding }          = useQuery(BiddingService);
+  const { loading: l7,  contracts: issuanceAuto }     = useQuery(IssuanceAutoService);
+  const { loading: l8,  contracts: issuance }         = useQuery(IssuanceService);
+  const { loading: l9,  contracts: lending }          = useQuery(LendingService);
+  const { loading: l10, contracts: lifecycle }        = useQuery(LifecycleService);
+  const { loading: l11, contracts: listingAuto }      = useQuery(ListingAutoService);
+  const { loading: l12, contracts: listing }          = useQuery(ListingService);
+  const { loading: l13, contracts: settlement }       = useQuery(SettlementService);
+  const { loading: l14, contracts: structuringAuto }  = useQuery(StructuringAutoService);
+  const { loading: l15, contracts: structuring }      = useQuery(StructuringService);
+  const { loading: l16, contracts: subscription }     = useQuery(SubscriptionService);
+  const { loading: l17, contracts: tradingAuto }      = useQuery(TradingAutoService);
+  const { loading: l18, contracts: trading }          = useQuery(TradingService);
   const loading = l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8 || l9 || l10 || l11 || l12 || l13 || l14 || l15 || l16 || l17 || l18;
 
   const value = {

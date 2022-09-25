@@ -71,7 +71,7 @@ export const NewFixedRateBond : React.FC = () => {
     };
     if (structuringAuto.length > 0) await ledger.exercise(StructuringAuto.RequestAndCreateFixedRateBond, structuringAuto[0].contractId, arg);
     else await ledger.exercise(Structuring.RequestCreateFixedRateBond, structuring[0].contractId, arg);
-    navigate("/structuring/instruments");
+    navigate("/app/structuring/instruments");
   };
 
   const menuProps : Partial<MenuProps> = { anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" } };

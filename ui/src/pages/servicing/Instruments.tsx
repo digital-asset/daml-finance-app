@@ -58,7 +58,7 @@ export const Instruments : React.FC = () => {
       await ledger.exercise(Service.Lifecycle, svc.lifecycle[0].contractId, arg);
     }
     await Promise.all(myInstruments.map(c => lifecycle(c.lifecycle!)));
-    navigate("/servicing/effects");
+    navigate("/app/servicing/effects");
   };
 
   return (

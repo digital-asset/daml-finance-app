@@ -10,12 +10,11 @@ import { ServicesProvider } from "../../context/ServiceContext";
 import { Form } from "./Form";
 import { Network } from "./Network";
 
-export const Root : React.FC = () => {
+export const Login : React.FC = () => {
   const { getParty, getToken } = useParties();
   const operator = getParty("Operator");
   const token = getToken(operator);
-  console.log(operator);
-  console.log(token);
+
   return (
     <DamlLedger party={operator} token={token} httpBaseUrl={httpBaseUrl} wsBaseUrl={wsBaseUrl}>
       <ServicesProvider>

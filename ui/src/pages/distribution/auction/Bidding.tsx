@@ -149,13 +149,19 @@ export const Bidding : React.FC = () => {
                     <Table size="small">
                       <TableBody>
                         <TableRow key={0} className={classes.tableRow}>
-                          <TextField required autoFocus fullWidth type="number" label={"Quantity (" + auction.payload.quantity.unit.id.unpack + ")"} onChange={e => setAmount(parseFloat(e.target.value))} />
+                          <TableCell className={classes.tableCell}>
+                            <TextField required autoFocus fullWidth type="number" label={"Quantity (" + auction.payload.quantity.unit.id.unpack + ")"} onChange={e => setAmount(parseFloat(e.target.value))} />
+                          </TableCell>
                         </TableRow>
                         <TableRow key={1} className={classes.tableRow}>
-                          <TextField required fullWidth className={classes.inputField} type="number" label={"Price (" + auction.payload.currency.id.unpack + ")"} onChange={e => setPrice(parseFloat(e.target.value))} />
+                          <TableCell className={classes.tableCell}>
+                            <TextField required fullWidth className={classes.inputField} type="number" label={"Price (" + auction.payload.currency.id.unpack + ")"} onChange={e => setPrice(parseFloat(e.target.value))} />
+                          </TableCell>
                         </TableRow>
                         <TableRow key={2} className={classes.tableRow}>
-                          <Button color="primary" className={classnames(classes.fullWidth, classes.buttonMargin)} variant="contained" disabled={price === 0 || amount === 0} onClick={() => requestCreateBid()}>Bid</Button>
+                          <TableCell className={classes.tableCell}>
+                            <Button color="primary" className={classnames(classes.fullWidth, classes.buttonMargin)} variant="contained" disabled={price === 0 || amount === 0} onClick={() => requestCreateBid()}>Bid</Button>
+                          </TableCell>
                         </TableRow>
                       </TableBody>
                     </Table>

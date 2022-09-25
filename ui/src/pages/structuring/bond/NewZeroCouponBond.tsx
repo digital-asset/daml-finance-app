@@ -51,7 +51,7 @@ export const NewZeroCouponBond : React.FC = () => {
     };
     if (structuringAuto.length > 0) await ledger.exercise(StructuringAuto.RequestAndCreateZeroCouponBond, structuringAuto[0].contractId, arg);
     else await ledger.exercise(Structuring.RequestCreateZeroCouponBond, structuring[0].contractId, arg);
-    navigate("/structuring/instruments");
+    navigate("/app/structuring/instruments");
   };
 
   const menuProps : Partial<MenuProps> = { anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" } };

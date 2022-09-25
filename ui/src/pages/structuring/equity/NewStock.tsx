@@ -42,7 +42,7 @@ export const NewStock : React.FC = () => {
     };
     if (structuringAuto.length > 0) await ledger.exercise(StructuringAuto.RequestAndCreateEquity, structuringAuto[0].contractId, arg);
     else await ledger.exercise(Structuring.RequestCreateEquity, structuring[0].contractId, arg);
-    navigate("/structuring/instruments");
+    navigate("/app/structuring/instruments");
   };
 
   return (
