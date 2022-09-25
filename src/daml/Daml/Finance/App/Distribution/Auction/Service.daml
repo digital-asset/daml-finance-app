@@ -122,17 +122,17 @@ template Service
         (remainingDepositCidOpt, batchCids) <- foldlA (generateSettlementInstruction settlementFactoryCid provider auction.receivableAccount) (Some auctionCollateralClid, []) settleAllocations
 
         -- Settle transfers
-        forA_ batchCids (`exercise` Batch.Settle)
+        forA_ batchCids (`exercise` Batch.Settle with actors = singleton provider)
         -- Return unallocated deposit back to the customer
         whenSome remainingDepositCidOpt \depositCid -> do
           exercise (coerceContractId depositCid : ContractId Lockable.I) Lockable.Release with context = auction.id
           pure ()
 
         -- Undisclose accounts
-        Account.exerciseInterfaceByKey @Disclosure.I auction.receivableAccount provider Disclosure.RemoveObservers with observersToRemove = (auction.id, singleton provider)
-        Account.exerciseInterfaceByKey @Disclosure.I collateralAccount provider Disclosure.RemoveObservers with observersToRemove = (auction.id, singleton provider)
-        forA_ receivableAccounts (\a -> Account.exerciseInterfaceByKey @Disclosure.I a provider Disclosure.RemoveObservers with observersToRemove = (auction.id, singleton provider))
-        forA_ collateralAccounts (\a -> Account.exerciseInterfaceByKey @Disclosure.I a provider Disclosure.RemoveObservers with observersToRemove = (auction.id, singleton provider))
+        Account.exerciseInterfaceByKey @Disclosure.I auction.receivableAccount provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (auction.id, singleton provider)
+        Account.exerciseInterfaceByKey @Disclosure.I collateralAccount provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (auction.id, singleton provider)
+        forA_ receivableAccounts (\a -> Account.exerciseInterfaceByKey @Disclosure.I a provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (auction.id, singleton provider))
+        forA_ collateralAccounts (\a -> Account.exerciseInterfaceByKey @Disclosure.I a provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (auction.id, singleton provider))
 
         -- Update Auction contract with the outcome of the auction processing
         let newStatus = if

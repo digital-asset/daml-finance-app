@@ -1,0 +1,21 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Data.AccountDirectory where
+
+import DA.Map (Map)
+import Daml.Finance.Interface.Types.Common (AccountKey, Id, Parties)
+
+type T = AccountDirectory
+
+template AccountDirectory
+  with
+    provider : Party
+    accounts : Map Id AccountKey
+    observers : Parties
+  where
+    signatory provider
+    observer observers
+
+    key provider : Party
+    maintainer key

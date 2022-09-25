@@ -9,9 +9,9 @@ import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
 import { BorrowAgreement } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lending/Model";
 import { fmt } from "../../util";
-import { useServices } from "../../context/ServicesContext";
+import { useServices } from "../../context/ServiceContext";
 import { CreateEvent } from "@daml/ledger";
-import { useHoldings } from "../../context/HoldingsContext";
+import { useHoldings } from "../../context/HoldingContext";
 import { ContractId } from "@daml/types";
 import { Transferable } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Transferable";
 
@@ -23,7 +23,7 @@ export const Trades : React.FC = () => {
   const { loading: l1, lending } = useServices();
   const { loading: l2, getFungible } = useHoldings();
   const { loading: l3, contracts: trades } = useStreamQueries(BorrowAgreement);
-  if (l1 || l2 || l3) return (<Spinner />);
+  if (l1 || l2 || l3) return <Spinner />;
 
   const customerServices = lending.filter(c => c.payload.customer === party);
   const isCustomer = customerServices.length > 0;

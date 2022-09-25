@@ -13,7 +13,7 @@ import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/
 import { CreateListingRequest, DeleteListingRequest, Listing } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Model";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
-import { useServices } from "../../context/ServicesContext";
+import { useServices } from "../../context/ServiceContext";
 
 export const Requests : React.FC = () => {
   const classes = useStyles();
@@ -26,7 +26,7 @@ export const Requests : React.FC = () => {
   const { contracts: createRequests, loading: l1 } = useStreamQueries(CreateListingRequest);
   const { contracts: disableRequests, loading: l2 } = useStreamQueries(DeleteListingRequest);
   const { contracts: listings, loading: l3 } = useStreamQueries(Listing);
-  if (l1 || l2 || l3 || svc.loading) return (<Spinner />);
+  if (l1 || l2 || l3 || svc.loading) return <Spinner />;
 
   const providerServices = svc.listing.filter(s => s.payload.provider === party);
   const deleteEntries = disableRequests.map(dr => ({ request: dr, listing: listings.find(l => l.contractId === dr.payload.listingCid)?.payload }));

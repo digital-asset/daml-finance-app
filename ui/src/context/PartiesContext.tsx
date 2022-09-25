@@ -1,10 +1,12 @@
 // Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import React, { useMemo, useState } from 'react';
 import { encode } from 'jwt-simple';
 import { useScenario } from './ScenarioContext';
 import parties from "../parties.json";
-import React, { useMemo, useState } from 'react';
+import { Set } from "@daml.js/97b883cd8a2b7f49f90d5d39c981cf6e110cf1f1c64427a28a6d58ec88c43657/lib/DA/Set/Types"
+import { values } from '../util';
 
 const createToken = (party : string, pub : string) => {
   const payload = {
@@ -17,18 +19,28 @@ const createToken = (party : string, pub : string) => {
   return encode({ "https://daml.com/ledger-api": payload }, "secret", "HS256");
 };
 
-export type PartiesState = {
+export type PartyState = {
   partyIds : string[]
   partyNames : string[]
   partyTokens : string[]
   getParty : (name : string) => string,
   getName : (id : string) => string,
+  getNames : (ids : Set<string>) => string,
   getToken : (id : string) => string,
 }
 
-const PartiesContext = React.createContext<PartiesState>({ partyIds: [], partyNames: [], partyTokens: [], getParty: (name : string) => "", getName: (id : string) => "", getToken: (id : string) => "" });
+const empty = {
+  partyIds: [],
+  partyNames: [],
+  partyTokens: [],
+  getParty: (name : string) => "",
+  getName: (id : string) => "",
+  getNames: (ids : Set<string>) => "",
+  getToken: (id : string) => ""
+}
+const PartyContext = React.createContext<PartyState>(empty);
 
-export const PartiesProvider : React.FC = ({ children }) => {
+export const PartyProvider : React.FC = ({ children }) => {
   const scenario = useScenario();
   const [partyIds, setPartyIds] = useState<any>({});
   const [partyNames, setPartyNames] = useState<any>({});
@@ -49,15 +61,16 @@ export const PartiesProvider : React.FC = ({ children }) => {
 
   const getParty = (name : string) => (partyIds[name] || "") as string;
   const getName = (id : string) => (partyNames[id] || "") as string;
+  const getNames = (ids : Set<string>) => (values(ids).map(id => partyNames[id]).join(", ") || "") as string;
   const getToken = (id : string) => (partyTokens[id] || "") as string;
 
   return (
-    <PartiesContext.Provider value={{ partyIds, partyNames, partyTokens, getParty, getName, getToken }}>
+    <PartyContext.Provider value={{ partyIds, partyNames, partyTokens, getParty, getName, getNames, getToken }}>
         {children}
-    </PartiesContext.Provider>
+    </PartyContext.Provider>
   );
 }
 
 export const useParties = () => {
-  return React.useContext(PartiesContext);
+  return React.useContext(PartyContext);
 }

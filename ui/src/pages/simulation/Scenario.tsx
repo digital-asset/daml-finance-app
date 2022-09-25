@@ -13,10 +13,10 @@ import { and, claimToNode, findObservables } from "../../components/Claims/util"
 import { render } from "../../components/Claims/renderScenario";
 import { ExpandMore } from "@mui/icons-material";
 import { dedup } from "../../util";
-import { useServices } from "../../context/ServicesContext";
-import { useInstruments } from "../../context/InstrumentsContext";
+import { useServices } from "../../context/ServiceContext";
+import { useInstruments } from "../../context/InstrumentContext";
 import { Message } from "../../components/Message/Message";
-import { Observable } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Observable";
+import { Observable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/Observable";
 
 type Payout = {
   asset : string

@@ -14,9 +14,9 @@ import { Spinner } from "../../../components/Spinner/Spinner";
 import { singleton } from "../../../util";
 import { emptyMap } from "@daml/types";
 import { useParties } from "../../../context/PartiesContext";
-import { useInstruments } from "../../../context/InstrumentsContext";
+import { useInstruments } from "../../../context/InstrumentContext";
 import { Message } from "../../../components/Message/Message";
-import { useServices } from "../../../context/ServicesContext";
+import { useServices } from "../../../context/ServiceContext";
 import { Service as Structuring } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Service";
 import { Service as StructuringAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service";
 
@@ -31,7 +31,7 @@ export const NewGeneric : React.FC = () => {
   const ledger = useLedger();
   const { loading: l1, structuring, structuringAuto } = useServices();
   const { loading: l2, tokens } = useInstruments();
-  if (l1 || l2) return (<Spinner />);
+  if (l1 || l2) return <Spinner />;
   if (structuring.length === 0) return <Message text={"No structuring service found"} />;
 
   // TODO: What we actually want here is a list of underlyings, which in theory could be anything.

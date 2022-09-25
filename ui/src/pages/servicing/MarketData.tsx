@@ -6,14 +6,14 @@ import { Table, TableBody, TableCell, TableRow, TableHead, Grid, Paper, Typograp
 import { useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { Observable } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Observable";
+import { Observable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/Observable";
 import { useParties } from "../../context/PartiesContext";
 
 export const MarketData : React.FC = () => {
   const classes = useStyles();
   const { getName } = useParties();
   const { loading: l1, contracts: observables } = useStreamQueries(Observable);
-  if (l1) return (<Spinner />);
+  if (l1) return <Spinner />;
 
   return (
     <>
@@ -33,7 +33,7 @@ export const MarketData : React.FC = () => {
                   {observables.map((c, i) => (
                     <TableRow key={i} className={classes.tableRow}>
                       <TableCell key={0} className={classes.tableCell}>{getName(c.payload.provider)}</TableCell>
-                      <TableCell key={1} className={classes.tableCell}>{c.payload.obsKey}</TableCell>
+                      <TableCell key={1} className={classes.tableCell}>{c.payload.id.unpack}</TableCell>
                     </TableRow>))}
                 </TableBody>
               </Table>

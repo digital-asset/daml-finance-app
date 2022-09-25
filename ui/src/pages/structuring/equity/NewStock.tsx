@@ -12,7 +12,7 @@ import { Spinner } from "../../../components/Spinner/Spinner";
 import { Message } from "../../../components/Message/Message";
 import { emptyMap } from "@daml/types";
 import { useParties } from "../../../context/PartiesContext";
-import { useServices } from "../../../context/ServicesContext";
+import { useServices } from "../../../context/ServiceContext";
 import { Service as Structuring } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Service";
 import { Service as StructuringAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service";
 
@@ -32,22 +32,23 @@ export const NewStock : React.FC = () => {
   if (l1) return <Spinner />;
   if (structuring.length === 0) return <Message text="No structuring service found" />
 
-  const createBase = async () => {
+  const createEquity = async () => {
     const arg = {
-      id,
+      id: { unpack: id },
       description,
-      observers: emptyMap<string, any>().set("Public", singleton(singleton(getParty("Public")))),
+      observers: emptyMap<string, any>().set("Public", singleton(getParty("Public"))),
+      version: "0",
       validAsOf: new Date().toISOString()
     };
-    if (structuringAuto.length > 0) await ledger.exercise(StructuringAuto.RequestAndCreateBase, structuringAuto[0].contractId, arg);
-    else await ledger.exercise(Structuring.RequestCreateBase, structuring[0].contractId, arg);
+    if (structuringAuto.length > 0) await ledger.exercise(StructuringAuto.RequestAndCreateEquity, structuringAuto[0].contractId, arg);
+    else await ledger.exercise(Structuring.RequestCreateEquity, structuring[0].contractId, arg);
     navigate("/structuring/instruments");
   };
 
   return (
     <Grid container direction="column" spacing={2}>
       <Grid item xs={12}>
-        <Typography variant="h3" className={classes.heading}>New Base Instrument</Typography>
+        <Typography variant="h3" className={classes.heading}>New Equity Instrument</Typography>
       </Grid>
       <Grid item xs={12}>
         <Grid container spacing={4}>
@@ -58,7 +59,7 @@ export const NewStock : React.FC = () => {
                   <Typography variant="h5" className={classes.heading}>Parameters</Typography>
                   <TextField className={classes.inputField} fullWidth label="Id" type="text" value={id} onChange={e => setId(e.target.value as string)} />
                   <TextField className={classes.inputField} fullWidth label="Description" type="text" value={description} onChange={e => setDescription(e.target.value as string)} />
-                  <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={createBase}>Create Instrument</Button>
+                  <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={createEquity}>Create Instrument</Button>
                 </Paper>
               </Grid>
             </Grid>

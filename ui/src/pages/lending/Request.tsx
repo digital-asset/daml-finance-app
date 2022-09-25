@@ -12,11 +12,11 @@ import { Spinner } from "../../components/Spinner/Spinner";
 import { Reference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
 import { Message } from "../../components/Message/Message";
 import { useParties } from "../../context/PartiesContext";
-import { useInstruments } from "../../context/InstrumentsContext";
-import { useServices } from "../../context/ServicesContext";
+import { useInstruments } from "../../context/InstrumentContext";
+import { useServices } from "../../context/ServiceContext";
 import { BorrowOfferRequest } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lending/Model";
 import { fmt } from "../../util";
-import { useHoldings } from "../../context/HoldingsContext";
+import { useHoldings } from "../../context/HoldingContext";
 import { ContractId } from "@daml/types";
 import { Transferable } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Transferable";
 
@@ -44,7 +44,7 @@ export const Request : React.FC = () => {
   const interestInstrument = tokens.find(c => c.payload.id.unpack === interestInstrumentLabel);
   const collateralInstrument = tokens.find(c => c.payload.id.unpack === collateralInstrumentLabel);
 
-  if (l1 || l2 || l3 || l4 || l5) return (<Spinner />);
+  if (l1 || l2 || l3 || l4 || l5) return <Spinner />;
 
   const providerServices = lending.filter(c => c.payload.provider === party);
   const customerServices = lending.filter(c => c.payload.customer === party);

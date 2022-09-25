@@ -23,7 +23,7 @@ export const Distribution : React.FC = () => {
   const party = useParty();
   const { loading: l1, contracts: auction } = useStreamQueries(AuctionService);
   const { loading: l2, contracts: subscription } = useStreamQueries(SubscriptionService);
-  if (l1 || l2) return (<Spinner />);
+  if (l1 || l2) return <Spinner />;
 
   const providerAuctionService = auction.find(c => c.payload.provider === party);
   const customerAuctionService = auction.find(c => c.payload.customer === party);

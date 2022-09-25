@@ -3,8 +3,8 @@
 
 module Daml.Finance.Setup.Util.Service where
 
-import DA.Map (fromList)
-import DA.Set qualified as S (fromList, singleton)
+import DA.Map qualified as M (fromList)
+import DA.Set (fromList, singleton)
 import Daml.Finance.App.Custody.Service qualified as Custody (Accept(..), Service)
 import Daml.Finance.App.Issuance.Auto.Service qualified as IssuanceAuto (Accept(..), Service)
 import Daml.Finance.App.Issuance.Service qualified as Issuance (Accept(..), Service)
@@ -26,23 +26,26 @@ import Daml.Finance.App.Role.Exchange qualified as Exchange
 import Daml.Finance.App.Settlement.Service qualified as Settlement (Accept(..), Service)
 import Daml.Finance.App.Structuring.Auto.Service qualified as StructuringAuto (Accept(..), Service)
 import Daml.Finance.App.Structuring.Service qualified as Structuring (Accept(..), Factories(..), Service)
-import Daml.Finance.Instrument.Base.Instrument qualified as Base (Factory(..))
-import Daml.Finance.Instrument.Bond.FixedRate qualified as FixedRateBond (Factory(..))
-import Daml.Finance.Instrument.Bond.FloatingRate qualified as FloatingRateBond (Factory(..))
-import Daml.Finance.Instrument.Bond.InflationLinked qualified as InflationLinkedBond (Factory(..))
-import Daml.Finance.Instrument.Bond.ZeroCoupon qualified as ZeroCouponBond (Factory(..))
+import Daml.Finance.Instrument.Bond.FixedRate.Factory qualified as FixedRateBond (Factory(..))
+import Daml.Finance.Instrument.Bond.FloatingRate.Factory qualified as FloatingRateBond (Factory(..))
+import Daml.Finance.Instrument.Bond.InflationLinked.Factory qualified as InflationLinkedBond (Factory(..))
+import Daml.Finance.Instrument.Bond.ZeroCoupon.Factory qualified as ZeroCouponBond (Factory(..))
 import Daml.Finance.Instrument.Equity.Factory qualified as Equity (Factory(..))
 import Daml.Finance.Instrument.Generic.Factory qualified as Generic (Factory(..))
+import Daml.Finance.Instrument.Token.Factory qualified as Token (Factory(..))
+import Daml.Finance.Interface.Holding.Factory.Account qualified as Account (F)
+import Daml.Finance.Interface.Holding.Factory.Holding qualified as Holding (F)
 import Daml.Finance.Interface.Settlement.Factory qualified as Settlement (Factory)
 import Daml.Finance.Lifecycle.Rule.Claim qualified as Claim (Rule(..))
 import Daml.Finance.Lifecycle.Rule.Distribution qualified as Distribution (Rule(..))
 import Daml.Finance.Lifecycle.Rule.Replacement qualified as Replacement (Rule(..))
 import Daml.Script
 
-createCustodyService : Party -> Party -> Party -> ContractId Settlement.Factory -> Script (ContractId Custody.Service)
-createCustodyService operator custodian customer factoryCid = do
-  claimRuleCid <- toInterfaceContractId <$> submitMulti [custodian, customer] [] do createCmd Claim.Rule with custodian; owner = customer; claimers = S.fromList [custodian, customer]; settler = custodian; factoryCid
-  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferCustodyService with customer; claimRuleCid
+createCustodyService : Party -> Party -> Party -> ContractId Settlement.Factory -> ContractId Account.F -> ContractId Holding.F -> Script (ContractId Custody.Service)
+createCustodyService operator custodian customer settlementFactoryCid accountFactoryCid holdingFactoryCid = do
+  let providers = fromList [custodian, customer]
+  claimRuleCid <- toInterfaceContractId <$> submitMulti [custodian, customer] [] do createCmd Claim.Rule with providers = fromList [custodian, customer]; claimers = providers; settlers = providers; settlementFactoryCid
+  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferCustodyService with customer; claimRuleCid; accountFactoryCid; holdingFactoryCid
   submit customer do exerciseCmd offerCid Custody.Accept
 
 createIssuanceService : Party -> Party -> Party -> Script (ContractId Issuance.Service)
@@ -57,14 +60,14 @@ createIssuanceAutoService operator custodian customer = do
 
 createStructuringService : Party -> Party -> Party -> Script (ContractId Structuring.Service)
 createStructuringService operator custodian customer = do
-  base <- toInterfaceContractId <$> submit custodian do createCmd Base.Factory with provider = custodian; observers = fromList [("Default", S.singleton $ S.singleton customer)]
-  equity <- toInterfaceContractId <$> submit custodian do createCmd Equity.Factory with provider = custodian; observers = fromList [("Default", S.singleton $ S.singleton customer)]
-  generic <- toInterfaceContractId <$> submit custodian do createCmd Generic.Factory with provider = custodian; observers = fromList [("Default", S.singleton $ S.singleton customer)]
-  fixedRateBond <- toInterfaceContractId <$> submit custodian do createCmd FixedRateBond.Factory with provider = custodian; observers = fromList [("Default", S.singleton $ S.singleton customer)]
-  floatingRateBond <- toInterfaceContractId <$> submit custodian do createCmd FloatingRateBond.Factory with provider = custodian; observers = fromList [("Default", S.singleton $ S.singleton customer)]
-  inflationLinkedBond <- toInterfaceContractId <$> submit custodian do createCmd InflationLinkedBond.Factory with provider = custodian; observers = fromList [("Default", S.singleton $ S.singleton customer)]
-  zeroCouponBond <- toInterfaceContractId <$> submit custodian do createCmd ZeroCouponBond.Factory with provider = custodian; observers = fromList [("Default", S.singleton $ S.singleton customer)]
-  let factories = Structuring.Factories with base; equity; generic; fixedRateBond; floatingRateBond; inflationLinkedBond; zeroCouponBond
+  token <- toInterfaceContractId <$> submit custodian do createCmd Token.Factory with provider = custodian; observers = M.fromList [("Default", singleton customer)]
+  equity <- toInterfaceContractId <$> submit custodian do createCmd Equity.Factory with provider = custodian; observers = M.fromList [("Default", singleton customer)]
+  generic <- toInterfaceContractId <$> submit custodian do createCmd Generic.Factory with provider = custodian; observers = M.fromList [("Default", singleton customer)]
+  fixedRateBond <- toInterfaceContractId <$> submit custodian do createCmd FixedRateBond.Factory with provider = custodian; observers = M.fromList [("Default", singleton customer)]
+  floatingRateBond <- toInterfaceContractId <$> submit custodian do createCmd FloatingRateBond.Factory with provider = custodian; observers = M.fromList [("Default", singleton customer)]
+  inflationLinkedBond <- toInterfaceContractId <$> submit custodian do createCmd InflationLinkedBond.Factory with provider = custodian; observers = M.fromList [("Default", singleton customer)]
+  zeroCouponBond <- toInterfaceContractId <$> submit custodian do createCmd ZeroCouponBond.Factory with provider = custodian; observers = M.fromList [("Default", singleton customer)]
+  let factories = Structuring.Factories with token; equity; generic; fixedRateBond; floatingRateBond; inflationLinkedBond; zeroCouponBond
   offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferStructuringService with ..
   submit customer do exerciseCmd offerCid Structuring.Accept
 
@@ -80,9 +83,8 @@ createBackToBackIssuanceService operator custodian customer public = do
 
 createLifecycleService : Party -> Party -> Party -> Party -> Script (ContractId Lifecycle.Service)
 createLifecycleService operator custodian customer public = do
-  -- TODO: This should change to provider = custodian; lifecycler = customer after updating to latest packages.
-  distributionRuleCid <- toInterfaceContractId <$> submit customer do createCmd Distribution.Rule with provider = customer; observers = fromList [("Public", S.singleton $ S.singleton public)]
-  replacementRuleCid <- toInterfaceContractId <$> submit customer do createCmd Replacement.Rule with provider = customer; observers = fromList [("Public", S.singleton $ S.singleton public)]
+  distributionRuleCid <- toInterfaceContractId <$> submit custodian do createCmd Distribution.Rule with provider = singleton custodian; lifecycler = customer; observers = singleton public
+  replacementRuleCid <- toInterfaceContractId <$> submit custodian do createCmd Replacement.Rule with providers = singleton custodian; lifecycler = customer; observers = singleton public
   offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferLifecycleService with ..
   submit customer do exerciseCmd offerCid Lifecycle.Accept
 

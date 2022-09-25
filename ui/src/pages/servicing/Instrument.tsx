@@ -12,10 +12,10 @@ import { Spinner } from "../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
 import { and, C, claimToNode } from "../../components/Claims/util";
 import { useParties } from "../../context/PartiesContext";
-import { useInstruments } from "../../context/InstrumentsContext";
-import { useServices } from "../../context/ServicesContext";
+import { useInstruments } from "../../context/InstrumentContext";
+import { useServices } from "../../context/ServiceContext";
 import { Message } from "../../components/Message/Message";
-import { Observable } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Observable";
+import { Observable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/Observable";
 import { Effect } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Effect";
 import { Event } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Event";
 import { Clock } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Clock";
@@ -23,7 +23,7 @@ import { Effect as EffectT } from "@daml.js/daml-finance-lifecycle/lib/Daml/Fina
 import { Event as Distribution } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/Event/Distribution";
 import { Event as Replacement } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/Event/Replacement";
 import { parseDate, shorten } from "../../util";
-import { Pending } from "@daml.js/daml-finance-interface-instrument-generic/lib/Daml/Finance/Interface/Instrument/Generic/Types";
+import { Pending } from "@daml.js/daml-finance-interface-claims/lib/Daml/Finance/Interface/Claims/Types";
 import { ExpandMore } from "@mui/icons-material";
 import { DatePicker } from "@mui/lab";
 
@@ -74,7 +74,7 @@ export const Instrument : React.FC = () => {
     if (!!remaining) setNode2(claimToNode(remaining));
   }, [remaining]);
 
-  if (loading) return (<Spinner />);
+  if (loading) return <Spinner />;
   if (lifecycle.length === 0) return <Message text={"No lifecycle service found"} />;
 
   const canDeclareDividend = !!id && !!description && !!effectiveDate && !!currency && !!amount;

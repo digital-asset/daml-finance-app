@@ -11,12 +11,12 @@ import { Spinner } from "../../../components/Spinner/Spinner";
 import { Reference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
 import { createSet } from "../../../util";
 import { useParties } from "../../../context/PartiesContext";
-import { useInstruments } from "../../../context/InstrumentsContext";
-import { useServices } from "../../../context/ServicesContext";
+import { useInstruments } from "../../../context/InstrumentContext";
+import { useServices } from "../../../context/ServiceContext";
 import { Service as Auction } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Service";
 import { Service as AuctionAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Auto/Service";
 import { Message } from "../../../components/Message/Message";
-import { useHoldings } from "../../../context/HoldingsContext";
+import { useHoldings } from "../../../context/HoldingContext";
 import { Aggregate } from "../../../components/Instrument/Aggregate";
 
 export const New : React.FC = () => {
@@ -37,7 +37,7 @@ export const New : React.FC = () => {
   const { loading: l3, holdings, getFungible } = useHoldings();
   const { contracts: accounts, loading: l4 } = useStreamQueries(Reference);
 
-  if (l1 || l2 || l3 || l4) return (<Spinner />);
+  if (l1 || l2 || l3 || l4) return <Spinner />;
 
   const myServices = auction.filter(s => s.payload.customer === party);
   const myAutoServices = auctionAuto.filter(s => s.payload.customer === party);

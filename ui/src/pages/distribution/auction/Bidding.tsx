@@ -17,10 +17,10 @@ import { fmt } from "../../../util";
 import { Reference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
 import { Message } from "../../../components/Message/Message";
 import { useParties } from "../../../context/PartiesContext";
-import { useInstruments } from "../../../context/InstrumentsContext";
-import { useServices } from "../../../context/ServicesContext";
+import { useInstruments } from "../../../context/InstrumentContext";
+import { useServices } from "../../../context/ServiceContext";
 import { Aggregate } from "../../../components/Instrument/Aggregate";
-import { useHoldings } from "../../../context/HoldingsContext";
+import { useHoldings } from "../../../context/HoldingContext";
 
 export const Bidding : React.FC = () => {
   const classes = useStyles();
@@ -42,7 +42,7 @@ export const Bidding : React.FC = () => {
   const auction = auctions.find(b => b.contractId === contractId);
   const instrument = latests.find(c => c.payload.id.unpack === auction?.payload.quantity.unit.id.unpack);
 
-  if (l1 || l2 || l3 || l4 || l5 || l6) return (<Spinner />);
+  if (l1 || l2 || l3 || l4 || l5 || l6) return <Spinner />;
 
   const myServices = bidding.filter(c => c.payload.customer === party);
   const myAutoServices = biddingAuto.filter(c => c.payload.customer === party);

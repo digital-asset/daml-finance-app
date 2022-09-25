@@ -13,8 +13,8 @@ import { Spinner } from "../../../components/Spinner/Spinner";
 import { Message } from "../../../components/Message/Message";
 import { emptyMap } from "@daml/types";
 import { useParties } from "../../../context/PartiesContext";
-import { useInstruments } from "../../../context/InstrumentsContext";
-import { useServices } from "../../../context/ServicesContext";
+import { useInstruments } from "../../../context/InstrumentContext";
+import { useServices } from "../../../context/ServiceContext";
 import { Service as Structuring } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Service";
 import { Service as StructuringAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service";
 

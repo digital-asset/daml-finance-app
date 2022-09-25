@@ -12,7 +12,7 @@ import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribu
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { fmt } from "../../../util";
 import { useParties } from "../../../context/PartiesContext";
-import { useServices } from "../../../context/ServicesContext";
+import { useServices } from "../../../context/ServiceContext";
 
 export const Requests : React.FC = () => {
   const classes = useStyles();
@@ -23,7 +23,7 @@ export const Requests : React.FC = () => {
   const svc = useServices();
 
   const { contracts: requests, loading: l1 } = useStreamQueries(CreateAuctionRequest);
-  if (l1 || svc.loading) return (<Spinner />);
+  if (l1 || svc.loading) return <Spinner />;
 
   const providerServices = svc.auction.filter(s => s.payload.provider === party);
 

@@ -19,11 +19,11 @@ import { Spinner } from "../../components/Spinner/Spinner";
 import { Button } from "@mui/material";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Service";
 import { useParties } from "../../context/PartiesContext";
-import { useServices } from "../../context/ServicesContext";
-import { useInstruments } from "../../context/InstrumentsContext";
+import { useServices } from "../../context/ServiceContext";
+import { useInstruments } from "../../context/InstrumentContext";
 import { Clock } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Clock";
 import { Event } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Event";
-import { Observable } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Observable";
+import { Observable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/Observable";
 import { Lifecycle } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Rule/Lifecycle";
 import { CreateEvent } from "@daml/ledger";
 import { shorten } from "../../util";
@@ -41,7 +41,7 @@ export const Instruments : React.FC = () => {
   const { contracts: events, loading: l2 } = useStreamQueries(Event);
   const { contracts: clocks, loading: l3 } = useStreamQueries(Clock);
 
-  if (l1 || l2 || l3 || svc.loading || inst.loading) return (<Spinner />);
+  if (l1 || l2 || l3 || svc.loading || inst.loading) return <Spinner />;
 
   const myInstruments = inst.latests.filter(a => (!!a.lifecycle && a.lifecycle.payload.lifecycler === party) || (!!a.equity && a.payload.issuer === party));
 

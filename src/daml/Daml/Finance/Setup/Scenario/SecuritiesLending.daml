@@ -11,9 +11,8 @@ import Daml.Finance.App.Lending.Model qualified as Lending (Repay(..))
 import Daml.Finance.App.Lending.Service qualified as Lending (AcceptBorrowOffer(..), CreateBorrowOffer(..), RequestBorrowOffer(..), Service)
 import Daml.Finance.Holding.Account qualified as Account (Factory(..))
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
-import Daml.Finance.Interface.Types.Common (Id(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
-import Daml.Finance.RefData.Time.DateClock (DateClock(..), DateClockUpdateEvent(..), Unit(..))
+import Daml.Finance.Interface.Types.Common (Id(..))
 import Daml.Finance.Settlement.Factory qualified as Settlement (Factory(..))
 import Daml.Finance.Setup.Payoff
 import Daml.Finance.Setup.Util.Common
@@ -27,8 +26,8 @@ run  = do
   let scenario = "Securities Lending"
   parties <- allocateParties scenario ["Operator", "Public", "CentralBank", "Registry", "Borrower", "Lender"]
   let
-    [operator, public, centralBank, registry, borrower, lender] = map (.id) parties
-    pub = fromList [("Public", singleton $ singleton public)]
+    all@[operator, public, centralBank, registry, borrower, lender] = map (.id) parties
+    pub = fromList [("Public", singleton public)]
 
   -- Factories
   accountFactoryCid    <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
@@ -42,22 +41,21 @@ run  = do
   createCustodianRole operator lender
 
   -- Create custody services
-  createCustodyService      operator centralBank  borrower  settlementFactoryCid
-  createCustodyService      operator centralBank  lender    settlementFactoryCid
-  createCustodyService      operator registry     borrower  settlementFactoryCid
-  createCustodyService      operator registry     lender    settlementFactoryCid
-  createCustodyService      operator lender       borrower  settlementFactoryCid
+  createCustodyService      operator centralBank  borrower  settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService      operator centralBank  lender    settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService      operator registry     borrower  settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService      operator registry     lender    settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService      operator lender       borrower  settlementFactoryCid accountFactoryCid holdingFactoryCid
   createLendingService      operator lender       borrower
   createStructuringService  operator registry     lender
   createLifecycleService    operator registry     lender    public
 
   -- Accounts
-  let createAcc = createAccount [public] accountFactoryCid holdingFactoryCid
-  borrowerLenderAccount <- createAcc empty lender borrower  "Borrower@Lender"
-  borrowerCashAccount   <- createAcc empty centralBank borrower  "Borrower@CentralBank"
-  lenderCashAccount     <- createAcc empty centralBank lender    "Lender@CentralBank"
-  lenderSecAccount      <- createAcc empty registry    lender    "Lender@Registry"
-  borrowerSecAccount    <- createAcc empty registry    borrower  "Borrower@Registry"
+  borrowerLenderAccount <- createAccount operator lender      borrower  public (Id "Borrower@Lender")       "Borrower@Lender"       empty
+  borrowerCashAccount   <- createAccount operator centralBank borrower  public (Id "Borrower@CentralBank")  "Borrower@CentralBank"  empty
+  lenderCashAccount     <- createAccount operator centralBank lender    public (Id "Lender@CentralBank")    "Lender@CentralBank"    empty
+  lenderSecAccount      <- createAccount operator registry    lender    public (Id "Lender@Registry")       "Lender@Registry"       empty
+  borrowerSecAccount    <- createAccount operator registry    borrower  public (Id "Borrower@Registry")     "Borrower@Registry"     empty
 
   -- Time
   t <- getTime
@@ -65,14 +63,16 @@ run  = do
     today = toDateUTC t
     todayTime = time today 12 0 0
     (todayYear, todayMonth, todayDay) = toGregorian today
-    clock = DateClock with u = Unit today, id = Id "Clock", provider = lender, observers = pub
-  submit lender do createCmd clock
-  submitMulti [lender] [] do createCmd DateClockUpdateEvent with clock; id = Id $ "Update to " <> show today
+  createClockAndEvent all today (singleton public)
 
   -- Instruments
   usd   <- originate         centralBank centralBank pub todayTime "USD" "United States Dollar"
   tsla  <- originate         registry    registry    pub todayTime "TSLA" "Tesla, Inc. Common Stock"
   deal1 <- originateGeneric  registry      lender    pub todayTime "DEAL1" $ loan today (addDays today 28) tsla 0.002 usd [addDays today 7, addDays today 14, addDays today 21, addDays today 28]
+
+  -- Data
+  createAccountDirectory lender   [(usd, lenderCashAccount), (tsla, lenderSecAccount)] $ singleton public
+  createAccountDirectory borrower [(usd, borrowerCashAccount), (tsla, borrowerSecAccount), (deal1, borrowerLenderAccount)] $ singleton public
 
   -- Distribution
   deposit operator lender borrower public (Instrument.qty    10_000.0 deal1) borrowerLenderAccount

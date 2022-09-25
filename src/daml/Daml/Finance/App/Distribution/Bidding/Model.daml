@@ -93,4 +93,4 @@ template Bid
         transferableCid : ContractId Transferable.I
       controller provider
       do
-        exercise instructionCid Instruction.Allocate with allocation = T.Pledge transferableCid
+        fst <$> exercise instructionCid Instruction.Allocate with allocation = T.Pledge transferableCid

@@ -15,9 +15,9 @@ import { Reference as AccountReference } from "@daml.js/daml-finance-interface-h
 import { fmt } from "../../../util";
 import { Message } from "../../../components/Message/Message";
 import { useParties } from "../../../context/PartiesContext";
-import { useServices } from "../../../context/ServicesContext";
+import { useServices } from "../../../context/ServiceContext";
 import { Factory } from "@daml.js/daml-finance-interface-settlement/lib/Daml/Finance/Interface/Settlement/Factory";
-import { useHoldings } from "../../../context/HoldingsContext";
+import { useHoldings } from "../../../context/HoldingContext";
 
 export const Offering : React.FC = () => {
   const classes = useStyles();
@@ -40,7 +40,7 @@ export const Offering : React.FC = () => {
 
   const offering = offerings.find(c => c.contractId === cid);
 
-  if (l1 || l2 || l3 || l4 || l5 || l6) return (<Spinner />);
+  if (l1 || l2 || l3 || l4 || l5 || l6) return <Spinner />;
   if (!contractId) return <Message text="No contract id provided" />
   if (!offering) return <Message text="Subscription not found" />
 

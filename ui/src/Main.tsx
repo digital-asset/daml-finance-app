@@ -24,6 +24,7 @@ import { Network } from "./apps/Network";
 import { Root } from "./pages/login/Root";
 import { Portal } from "./pages/login/Portal";
 import { Lending } from "./apps/Lending";
+import { Settlement } from "./apps/Settlement";
 
 export const Main : React.FC = () => {
   const user = useUserState();
@@ -79,6 +80,7 @@ export const Main : React.FC = () => {
               <Route path="/custody/*" element={<Custody />} />
               <Route path="/distribution/*" element={<Distribution />} />
               <Route path="/servicing/*" element={<Servicing />} />
+              <Route path="/settlement/*" element={<Settlement />} />
               <Route path="/simulation/*" element={<Simulation />} />
               <Route path="/listing/*" element={<Listing />} />
               <Route path="/trading/*" element={<Trading />} />

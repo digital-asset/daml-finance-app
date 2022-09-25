@@ -8,7 +8,7 @@ import Daml.Finance.App.Trading.Service qualified as S (CancelOrder(..), CreateO
 import Daml.Finance.Interface.Holding.Account qualified as Account (K)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Types.Common (Parties)
+import Daml.Finance.Interface.Types.Common (Id, Parties)
 
 template Service
   with
@@ -23,7 +23,7 @@ template Service
 
     nonconsuming choice RequestAndCreateOrder : Optional (ContractId Order, Order)
       with
-        id : Text
+        id : Id
         listingId : Text
         quantity : Instrument.Q
         price : Instrument.Q

@@ -1,0 +1,110 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Custody.Auto.Service where
+
+import Daml.Finance.Interface.Holding.Account qualified as Account (K)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K, Q)
+import Daml.Finance.Interface.Types.Common (Id, PartiesMap)
+import Daml.Finance.App.Custody.Service qualified as S
+
+template Service
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, customer) : (Party, Party, Party)
+    maintainer key._1
+
+    nonconsuming choice RequestAndOpenAccount : Account.K
+      with
+        id : Id
+        description : Text
+        observers : PartiesMap
+      controller customer
+      do
+        openAccountRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestOpenAccount with id; description; observers
+        exerciseByKey @S.Service (operator, provider, customer) S.OpenAccount with openAccountRequestCid
+
+    nonconsuming choice RequestAndCloseAccount : ()
+      with
+        account : Account.K
+      controller customer
+      do
+        closeAccountRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCloseAccount with account
+        exerciseByKey @S.Service (operator, provider, customer) S.CloseAccount with closeAccountRequestCid
+
+    nonconsuming choice RequestAndDeposit : ContractId Holding.I
+      with
+        quantity : Instrument.Q
+        account : Account.K
+      controller customer
+      do
+        depositRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestDeposit with quantity; account
+        exerciseByKey @S.Service (operator, provider, customer) S.Deposit with depositRequestCid
+
+    nonconsuming choice RequestAndWithdraw : ()
+      with
+        instrument : Instrument.K
+        holdingCid : ContractId Holding.I
+      controller customer
+      do
+        withdrawalRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestWithdrawal with instrument; holdingCid
+        exerciseByKey @S.Service (operator, provider, customer) S.Withdrawal with withdrawalRequestCid
+
+    choice Terminate : ()
+      with
+        actor : Party
+      controller actor
+      do
+        assert $ actor == operator || actor == provider || actor == customer
+        pure ()
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider
+    observer customer
+
+    choice Accept : ContractId Service
+      controller customer
+      do
+        create Service with operator; provider; customer
+
+    choice Decline : ()
+      controller customer
+      do pure ()
+
+    choice Withdraw : ()
+      controller provider
+      do pure ()
+
+template Request
+  with
+    customer : Party
+    provider : Party
+  where
+    signatory customer
+    observer provider
+
+    choice Cancel : ()
+      controller customer
+      do pure ()
+
+    choice Reject : ()
+      controller provider
+      do pure ()
+
+    choice Approve : ContractId Service
+      with
+        operator : Party
+      controller operator, provider
+      do
+        create Service with operator; provider; customer

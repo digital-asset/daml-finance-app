@@ -25,7 +25,7 @@ template Service
       controller actor
       do
         assertMsg "Actor must be provider or customer" $ actor == customer || actor == provider
-        exercise instructionCid Instruction.Allocate with allocation
+        fst <$> exercise instructionCid Instruction.Allocate with allocation
 
     nonconsuming choice ApproveInstruction : ContractId Instruction.I
       with

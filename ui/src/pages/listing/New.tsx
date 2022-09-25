@@ -10,9 +10,9 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Message } from "../../components/Message/Message";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { useInstruments } from "../../context/InstrumentsContext";
+import { useInstruments } from "../../context/InstrumentContext";
 import { useParties } from "../../context/PartiesContext";
-import { useServices } from "../../context/ServicesContext";
+import { useServices } from "../../context/ServiceContext";
 import { createSet } from "../../util";
 import useStyles from "../styles";
 
@@ -37,7 +37,7 @@ export const New : React.FC = () => {
   const quotedInstrument = tokens.find(c => c.payload.id.unpack === quotedInstrumentLabel);
   const canRequest = !!tradedInstrumentLabel && !!tradedInstrument && !!quotedInstrumentLabel && !!quotedInstrument && !!id;
 
-  if (l1 || l2) return (<Spinner />);
+  if (l1 || l2) return <Spinner />;
   if (myListingServices.length === 0) return <Message text={"No listing service found for customer: " + party} />;
 
   const requestListing = async () => {

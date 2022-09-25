@@ -9,8 +9,8 @@ import { Typography, Grid, Paper, Select, MenuItem, TextField, Button, MenuProps
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { Reference as AccountReference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
-import { useServices } from "../../context/ServicesContext";
-import { useInstruments } from "../../context/InstrumentsContext";
+import { useServices } from "../../context/ServiceContext";
+import { useInstruments } from "../../context/InstrumentContext";
 import { Service as BackToBack } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/BackToBack/Service";
 import { Service as IssuanceAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Auto/Service";
 import { Service as Issuance } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Service";
@@ -36,7 +36,7 @@ export const New : React.FC = () => {
   const aggregates = latests.filter(c => c.payload.issuer === party);
   const aggregate = aggregates.find(c => c.payload.id.unpack === instrumentLabel);
 
-  if (l1 || l2 || l3) return (<Spinner />);
+  if (l1 || l2 || l3) return <Spinner />;
   if (!issuance) return (<Message text="No issuance service found" />);
 
   const myB2BServices = backToBack.filter(s => s.payload.customer === party);

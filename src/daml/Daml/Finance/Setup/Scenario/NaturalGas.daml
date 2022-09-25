@@ -7,12 +7,11 @@ import DA.Date (addDays, toDateUTC)
 import DA.Map (empty, fromList)
 import DA.Set (singleton)
 import DA.Time (time)
+import Daml.Finance.Data.Observable.Observation (Observation(..))
 import Daml.Finance.Holding.Account qualified as Account (Factory(..))
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
 import Daml.Finance.Interface.Types.Common (Id(..))
-import Daml.Finance.RefData.Observation (Observation(..))
-import Daml.Finance.RefData.Time.DateClock (DateClock(..), DateClockUpdateEvent(..), Unit(..))
 import Daml.Finance.Settlement.Factory qualified as Settlement (Factory(..))
 import Daml.Finance.Setup.Payoff
 import Daml.Finance.Setup.Util.Common
@@ -25,8 +24,8 @@ run : Script [PartyInfo]
 run  = do
   parties <- allocateParties "Natural Gas" ["Operator", "Public", "CashProvider", "Seller", "Buyer"]
   let
-    [operator, public, cashProvider, seller, buyer] = map (.id) parties
-    pub = fromList [("Public", singleton $ singleton public)]
+    all@[operator, public, cashProvider, seller, buyer] = map (.id) parties
+    pub = fromList [("Public", singleton public)]
 
   -- Factories
   accountFactoryCid    <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
@@ -39,17 +38,16 @@ run  = do
   createCustodianRole operator seller
 
   -- Services
-  createCustodyService    operator cashProvider seller  settlementFactoryCid
-  createCustodyService    operator cashProvider buyer   settlementFactoryCid
-  createCustodyService    operator seller       buyer   settlementFactoryCid
+  createCustodyService    operator cashProvider seller  settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService    operator cashProvider buyer   settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService    operator seller       buyer   settlementFactoryCid accountFactoryCid holdingFactoryCid
   createIssuanceService   operator seller       seller
   createLifecycleService  operator seller       seller  public
 
   -- Accounts
-  let createAcc = createAccount [public] accountFactoryCid holdingFactoryCid
-  sellerCashAccount   <- createAcc empty cashProvider seller "Seller@CashProvider"
-  buyerCashAccount    <- createAcc empty cashProvider buyer "Buyer@CashProvider"
-  buyerSecAccount     <- createAcc empty seller buyer "Buyer@Seller"
+  sellerCashAccount   <- createAccount operator cashProvider  seller  public (Id "Seller@CashProvider") "Seller@CashProvider" empty
+  buyerCashAccount    <- createAccount operator cashProvider  buyer   public (Id "Buyer@CashProvider")  "Buyer@CashProvider"  empty
+  buyerSecAccount     <- createAccount operator seller        buyer   public (Id "Buyer@Seller")        "Buyer@Seller"        empty
 
   -- Time
   t <- getTime
@@ -59,9 +57,7 @@ run  = do
     t1 = addDays today 1
     t1t = time t1 12 0 0
     t3 = addDays today 3
-    clock = DateClock with u = Unit t1, id = Id "Clock", provider = seller, observers = pub
-  submitMulti [seller] [] do createCmd clock
-  submitMulti [seller] [] do createCmd DateClockUpdateEvent with clock; id = Id $ "Update to " <> show t1
+  createClockAndEvent all today (singleton public)
 
   -- Base Instruments
   usd     <- originate cashProvider cashProvider pub todayTime "USD" "United States Dollar"
@@ -86,17 +82,21 @@ run  = do
   ng3 <- originateGeneric seller seller pub todayTime ng3Name $ ngCapped                t1 t3 10_000.0 z4200L gdTgp219 5.75 usd
   ng4 <- originateGeneric seller seller pub todayTime ng4Name $ ngConditionalLocation   t1 t3 10_000.0 z4200L gdTgp219 5.50 z4GEN gdTgp300 usd
 
+  -- Data
+  createAccountDirectory seller [(usd, sellerCashAccount)] $ singleton public
+  createAccountDirectory buyer  [(usd, buyerCashAccount), (ng1, buyerSecAccount), (ng3, buyerSecAccount), (ng4, buyerSecAccount)] $ singleton public
+
   -- Distribution
   buyerCashCid <- deposit operator cashProvider buyer public (Instrument.qty 1_000_000.0 usd) buyerCashAccount
-  buyerSecCid1 <- deposit operator seller buyer      public (Instrument.qty 1.0 ng1) buyerSecAccount
-  buyerSecCid2 <- deposit operator seller buyer      public (Instrument.qty 1.0 ng3) buyerSecAccount
-  buyerSecCid2 <- deposit operator seller buyer      public (Instrument.qty 1.0 ng4) buyerSecAccount
+  buyerSecCid1 <- deposit operator seller       buyer public (Instrument.qty 1.0 ng1)         buyerSecAccount
+  buyerSecCid2 <- deposit operator seller       buyer public (Instrument.qty 1.0 ng3)         buyerSecAccount
+  buyerSecCid2 <- deposit operator seller       buyer public (Instrument.qty 1.0 ng4)         buyerSecAccount
 
   -- Data
   let
     obs =
-      [ Observation with provider = seller; obsKey = gdTgp219; observations = fromList [(t1t, 6.00)]; observers = pub
-      , Observation with provider = seller; obsKey = gdTgp300; observations = fromList [(t1t, 5.90)]; observers = pub ]
+      [ Observation with provider = seller; id = Id gdTgp219; observations = fromList [(t1t, 6.00)]; observers = pub
+      , Observation with provider = seller; id = Id gdTgp300; observations = fromList [(t1t, 5.90)]; observers = pub ]
   obsCids <- mapA (\f -> submitMulti [seller] [] do createCmd f) obs
 
   pure parties

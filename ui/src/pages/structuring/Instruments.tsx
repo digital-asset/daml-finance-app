@@ -16,14 +16,14 @@ import KeyboardArrowRight from "@mui/icons-material/KeyboardArrowRight";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
-import { useInstruments } from "../../context/InstrumentsContext";
+import { useInstruments } from "../../context/InstrumentContext";
 
 export const Instruments : React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
   const { getName } = useParties();
   const { loading: l1, groups } = useInstruments();
-  if (l1) return (<Spinner />);
+  if (l1) return <Spinner />;
 
   return (
     <>

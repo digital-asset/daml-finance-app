@@ -11,7 +11,7 @@ import { Service as AutoService } from "@daml.js/daml-finance-app/lib/Daml/Finan
 import { Listing } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Model";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
-import { useServices } from "../../context/ServicesContext";
+import { useServices } from "../../context/ServiceContext";
 
 export const Listings : React.FC = () => {
   const classes = useStyles();
@@ -22,7 +22,7 @@ export const Listings : React.FC = () => {
   const svc = useServices();
 
   const { contracts: listings, loading: l1 } = useStreamQueries(Listing);
-  if (l1 || svc.loading) return (<Spinner />);
+  if (l1 || svc.loading) return <Spinner />;
 
   const myServices = svc.listing.filter(s => s.payload.customer === party);
   const myAutoServices = svc.listingAuto.filter(s => s.payload.customer === party);
@@ -37,42 +37,40 @@ export const Listings : React.FC = () => {
   }
 
   return (
-    <>
-      <Grid container direction="column">
-        <Grid container direction="row">
-          <Grid item xs={12}>
-            <Paper className={classes.paper}>
-              <Grid container direction="row" justifyContent="center" className={classes.paperHeading}><Typography variant="h2">Listings</Typography></Grid>
-              <Table size="small">
-                <TableHead>
-                  <TableRow className={classes.tableRow}>
-                    <TableCell key={0} className={classes.tableCell}><b>Provider</b></TableCell>
-                    <TableCell key={1} className={classes.tableCell}><b>Client</b></TableCell>
-                    <TableCell key={2} className={classes.tableCell}><b>Id</b></TableCell>
-                    <TableCell key={4} className={classes.tableCell}><b>Traded Asset</b></TableCell>
-                    <TableCell key={6} className={classes.tableCell}><b>Quoted Asset</b></TableCell>
-                    <TableCell key={8} className={classes.tableCell}><b>Action</b></TableCell>
+    <Grid container direction="column">
+      <Grid container direction="row">
+        <Grid item xs={12}>
+          <Paper className={classes.paper}>
+            <Grid container direction="row" justifyContent="center" className={classes.paperHeading}><Typography variant="h2">Listings</Typography></Grid>
+            <Table size="small">
+              <TableHead>
+                <TableRow className={classes.tableRow}>
+                  <TableCell key={0} className={classes.tableCell}><b>Provider</b></TableCell>
+                  <TableCell key={1} className={classes.tableCell}><b>Client</b></TableCell>
+                  <TableCell key={2} className={classes.tableCell}><b>Id</b></TableCell>
+                  <TableCell key={4} className={classes.tableCell}><b>Traded Asset</b></TableCell>
+                  <TableCell key={6} className={classes.tableCell}><b>Quoted Asset</b></TableCell>
+                  <TableCell key={8} className={classes.tableCell}><b>Action</b></TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {listings.map((c, i) => (
+                  <TableRow key={i} className={classes.tableRow}>
+                    <TableCell key={0} className={classes.tableCell}>{getName(c.payload.provider)}</TableCell>
+                    <TableCell key={1} className={classes.tableCell}>{getName(c.payload.customer)}</TableCell>
+                    <TableCell key={2} className={classes.tableCell}>{c.payload.id}</TableCell>
+                    <TableCell key={4} className={classes.tableCell}>{c.payload.tradedInstrument.id.unpack}</TableCell>
+                    <TableCell key={6} className={classes.tableCell}>{c.payload.quotedInstrument.id.unpack}</TableCell>
+                    <TableCell key={8} className={classes.tableCell}>
+                      {party === c.payload.customer && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => requestDeleteDelisting(c)}>Delist</Button>}
+                    </TableCell>
                   </TableRow>
-                </TableHead>
-                <TableBody>
-                  {listings.map((c, i) => (
-                    <TableRow key={i} className={classes.tableRow}>
-                      <TableCell key={0} className={classes.tableCell}>{getName(c.payload.provider)}</TableCell>
-                      <TableCell key={1} className={classes.tableCell}>{getName(c.payload.customer)}</TableCell>
-                      <TableCell key={2} className={classes.tableCell}>{c.payload.id}</TableCell>
-                      <TableCell key={4} className={classes.tableCell}>{c.payload.tradedInstrument.id.unpack}</TableCell>
-                      <TableCell key={6} className={classes.tableCell}>{c.payload.quotedInstrument.id.unpack}</TableCell>
-                      <TableCell key={8} className={classes.tableCell}>
-                        {party === c.payload.customer && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => requestDeleteDelisting(c)}>Delist</Button>}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Paper>
-          </Grid>
+                ))}
+              </TableBody>
+            </Table>
+          </Paper>
         </Grid>
       </Grid>
-    </>
+    </Grid>
   );
 };

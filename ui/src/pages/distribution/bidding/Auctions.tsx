@@ -21,7 +21,7 @@ export const Auctions: React.FC = () => {
 
   const { contracts: auctions, loading: l1 } = useStreamQueries(Auction);
   const { contracts: bids, loading: l2 } = useStreamQueries(Bid);
-  if (l1 || l2) return (<Spinner />);
+  if (l1 || l2) return <Spinner />;
 
   return (
     <Grid container direction="column">

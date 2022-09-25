@@ -4,31 +4,41 @@
 
 set -eu
 
-# Target Daml Finance version
-version="0.1.3"
-cc_version="3.0.0.20220721.1"
-
 # Create .lib directory if it doesn't exist
 if [[ ! -d .lib ]]; then
   mkdir .lib
 fi
 
+get_dependency () {
+  local package_name=$1
+  local module_name=$2
+  local version=$3
+  local url="https://github.com/digital-asset/daml-finance/releases/download/${module_name}/${version}/${package_name}-${version}.dar"
+  echo "Getting dependency ${package_name} v${version}"
+  if [[ ! -a ".lib/${package_name}-${version}.dar" ]]; then curl -Lf# $url -o .lib/$package_name-$version.dar; fi
+}
+
+cc_version="3.0.0.20220721.1"
 if [[ ! -a ".lib/contingent-claims-${cc_version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/contingent-claims/releases/download/v${cc_version}/contingent-claims-${cc_version}.dar" -o .lib/contingent-claims-${cc_version}.dar; fi
-if [[ ! -a ".lib/daml-finance-holding-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Holding/${version}/daml-finance-holding-${version}.dar" -o .lib/daml-finance-holding-${version}.dar; fi
-if [[ ! -a ".lib/daml-finance-instrument-base-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Instrument.Base/${version}/daml-finance-instrument-base-${version}.dar" -o .lib/daml-finance-instrument-base-${version}.dar; fi
-if [[ ! -a ".lib/daml-finance-instrument-bond-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Instrument.Bond/${version}/daml-finance-instrument-bond-${version}.dar" -o .lib/daml-finance-instrument-bond-${version}.dar; fi
-if [[ ! -a ".lib/daml-finance-instrument-equity-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Instrument.Equity/${version}/daml-finance-instrument-equity-${version}.dar" -o .lib/daml-finance-instrument-equity-${version}.dar; fi
-if [[ ! -a ".lib/daml-finance-instrument-generic-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Instrument.Generic/${version}/daml-finance-instrument-generic-${version}.dar" -o .lib/daml-finance-instrument-generic-${version}.dar; fi
-if [[ ! -a ".lib/daml-finance-interface-holding-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Interface.Holding/${version}/daml-finance-interface-holding-${version}.dar" -o .lib/daml-finance-interface-holding-${version}.dar; fi
-if [[ ! -a ".lib/daml-finance-interface-instrument-base-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Interface.Instrument.Base/${version}/daml-finance-interface-instrument-base-${version}.dar" -o .lib/daml-finance-interface-instrument-base-${version}.dar; fi
-if [[ ! -a ".lib/daml-finance-interface-instrument-bond-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Interface.Instrument.Bond/${version}/daml-finance-interface-instrument-bond-${version}.dar" -o .lib/daml-finance-interface-instrument-bond-${version}.dar; fi
-if [[ ! -a ".lib/daml-finance-interface-instrument-equity-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Interface.Instrument.Equity/${version}/daml-finance-interface-instrument-equity-${version}.dar" -o .lib/daml-finance-interface-instrument-equity-${version}.dar; fi
-if [[ ! -a ".lib/daml-finance-interface-instrument-generic-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Interface.Instrument.Generic/${version}/daml-finance-interface-instrument-generic-${version}.dar" -o .lib/daml-finance-interface-instrument-generic-${version}.dar; fi
-if [[ ! -a ".lib/daml-finance-interface-lifecycle-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Interface.Lifecycle/${version}/daml-finance-interface-lifecycle-${version}.dar" -o .lib/daml-finance-interface-lifecycle-${version}.dar; fi
-if [[ ! -a ".lib/daml-finance-interface-settlement-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Interface.Settlement/${version}/daml-finance-interface-settlement-${version}.dar" -o .lib/daml-finance-interface-settlement-${version}.dar; fi
-if [[ ! -a ".lib/daml-finance-interface-types-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Interface.Types/${version}/daml-finance-interface-types-${version}.dar" -o .lib/daml-finance-interface-types-${version}.dar; fi
-if [[ ! -a ".lib/daml-finance-interface-util-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Interface.Util/${version}/daml-finance-interface-util-${version}.dar" -o .lib/daml-finance-interface-util-${version}.dar; fi
-if [[ ! -a ".lib/daml-finance-lifecycle-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Lifecycle/${version}/daml-finance-lifecycle-${version}.dar" -o .lib/daml-finance-lifecycle-${version}.dar; fi
-if [[ ! -a ".lib/daml-finance-refdata-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.RefData/${version}/daml-finance-refdata-${version}.dar" -o .lib/daml-finance-refdata-${version}.dar; fi
-if [[ ! -a ".lib/daml-finance-settlement-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Settlement/${version}/daml-finance-settlement-${version}.dar" -o .lib/daml-finance-settlement-${version}.dar; fi
-if [[ ! -a ".lib/daml-finance-util-${version}.dar" ]]; then curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Util/${version}/daml-finance-util-${version}.dar" -o .lib/daml-finance-util-${version}.dar; fi
+
+get_dependency daml-finance-data                          Daml.Finance.Data                         0.1.4
+get_dependency daml-finance-holding                       Daml.Finance.Holding                      0.1.4
+get_dependency daml-finance-instrument-bond               Daml.Finance.Instrument.Bond              0.1.5
+get_dependency daml-finance-instrument-equity             Daml.Finance.Instrument.Equity            0.1.5
+get_dependency daml-finance-instrument-generic            Daml.Finance.Instrument.Generic           0.1.5
+get_dependency daml-finance-instrument-token              Daml.Finance.Instrument.Token             0.1.4
+get_dependency daml-finance-interface-claims              Daml.Finance.Interface.Claims             0.1.4
+get_dependency daml-finance-interface-data                Daml.Finance.Interface.Data               0.1.4
+get_dependency daml-finance-interface-holding             Daml.Finance.Interface.Holding            0.1.4
+get_dependency daml-finance-interface-instrument-base     Daml.Finance.Interface.Instrument.Base    0.1.4
+get_dependency daml-finance-interface-instrument-bond     Daml.Finance.Interface.Instrument.Bond    0.1.4
+get_dependency daml-finance-interface-instrument-equity   Daml.Finance.Interface.Instrument.Equity  0.1.5
+get_dependency daml-finance-interface-instrument-generic  Daml.Finance.Interface.Instrument.Generic 0.1.5
+get_dependency daml-finance-interface-instrument-token    Daml.Finance.Interface.Instrument.Token   0.1.4
+get_dependency daml-finance-interface-lifecycle           Daml.Finance.Interface.Lifecycle          0.1.5
+get_dependency daml-finance-interface-settlement          Daml.Finance.Interface.Settlement         0.1.5
+get_dependency daml-finance-interface-types               Daml.Finance.Interface.Types              0.1.4
+get_dependency daml-finance-interface-util                Daml.Finance.Interface.Util               0.1.4
+get_dependency daml-finance-lifecycle                     Daml.Finance.Lifecycle                    0.1.5
+get_dependency daml-finance-settlement                    Daml.Finance.Settlement                   0.1.5
+get_dependency daml-finance-util                          Daml.Finance.Util                         0.1.4

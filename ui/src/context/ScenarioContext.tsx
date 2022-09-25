@@ -47,6 +47,7 @@ const simulation   = <App key={6} label="Simulation"   description="Run market s
 const listing      = <App key={7} label="Listing"      description="List your assets on trading venues"      image={listingImage}       path="/listing/listings" />;
 const trading      = <App key={8} label="Trading"      description="Trade assets in the secondary market"    image={tradingImage}       path="/trading/markets" />;
 const network      = <App key={9} label="Network"      description="Explore the distributed ledger network"  image={networkImage}       path="/network/overview" />;
+const settlement   = <App key={10} label="Settlement"  description="Settle instructions in batches"          image={simulationImage}    path="/settlement/batches" />;
 
 export const scenarios : Scenario[] = [
   {
@@ -62,9 +63,9 @@ export const scenarios : Scenario[] = [
       [ "Exchange",     { x:  800, y: 550 } ],
       [ "Agent",        { x:  400, y: 600 } ],
       [ "Issuer",       { x: 1200, y: 300 } ],
-      [ "Alice",        { x:    0, y: 300 } ],
-      [ "Bob",          { x:  400, y: 300 } ],
-      [ "Charlie",      { x:  800, y: 300 } ]
+      [ "Investor1",    { x:    0, y: 300 } ],
+      [ "Investor2",    { x:  400, y: 300 } ],
+      [ "Investor3",    { x:  800, y: 300 } ]
     ]),
     useNetworkLogin: true
   },
@@ -72,7 +73,7 @@ export const scenarios : Scenario[] = [
     label: "Bond Issuance",
     description: "Simple bond issuance custody scenario",
     image: bondIssuanceImage,
-    apps: [ structuring, issuance, custody, distribution, servicing, listing, trading, network ],
+    apps: [ structuring, issuance, custody, distribution, servicing, listing, trading, settlement, network ],
     positions: new Map([
       [ "Operator",     { x:    0, y:   0 } ],
       [ "Public",       { x:    0, y:   0 } ],
@@ -80,9 +81,9 @@ export const scenarios : Scenario[] = [
       [ "Registry",     { x:  800, y:   0 } ],
       [ "Custodian",    { x:  400, y: 300 } ],
       [ "Issuer",       { x:  800, y: 300 } ],
-      [ "Alice",        { x:    0, y: 600 } ],
-      [ "Bob",          { x:  400, y: 600 } ],
-      [ "Charlie",      { x:  800, y: 600 } ]
+      [ "Investor1",    { x:    0, y: 600 } ],
+      [ "Investor2",    { x:  400, y: 600 } ],
+      [ "Investor3",    { x:  800, y: 600 } ]
     ]),
     useNetworkLogin: true
   },
@@ -90,7 +91,7 @@ export const scenarios : Scenario[] = [
     label: "Corporate Actions",
     description: "Equity workflows for corporate actions",
     image: bondIssuanceImage,
-    apps: [ structuring, issuance, custody, distribution, servicing, listing, trading, network ],
+    apps: [ structuring, issuance, custody, distribution, servicing, listing, trading, settlement, network ],
     positions: new Map([
       [ "Operator",     { x:    0, y:   0 } ],
       [ "Public",       { x:    0, y:   0 } ],
@@ -108,7 +109,7 @@ export const scenarios : Scenario[] = [
     label: "Securities Lending",
     description: "Stock borrowing and lending scenario",
     image: bondIssuanceImage,
-    apps: [ structuring, issuance, custody, lending, servicing, network ],
+    apps: [ structuring, issuance, custody, lending, servicing, settlement, network ],
     positions: new Map([
       [ "Operator",     { x:    0, y:   0 } ],
       [ "Public",       { x:    0, y:   0 } ],
@@ -136,7 +137,7 @@ export const scenarios : Scenario[] = [
   {
     label: "Structured Notes",
     description: "Synchronized issuance for structured products",
-    apps: [ structuring, issuance, custody, distribution, servicing, listing, trading, network ],
+    apps: [ structuring, issuance, custody, distribution, servicing, listing, trading, settlement, network ],
     image: structuredNotesImage,
     positions: new Map([
       [ "Operator",     { x:    0, y:   0 } ],
@@ -145,9 +146,9 @@ export const scenarios : Scenario[] = [
       [ "CentralBank",  { x:  200, y:   0 } ],
       [ "Issuer",       { x:  100, y: 300 } ],
       [ "RiskTaker",    { x:    0, y: 150 } ],
-      [ "Alice",        { x:  200, y: 450 } ],
-      [ "Bob",          { x:  400, y: 450 } ],
-      [ "Charlie",      { x:  600, y: 450 } ]
+      [ "Investor1",    { x:  200, y: 450 } ],
+      [ "Investor2",    { x:  400, y: 450 } ],
+      [ "Investor3",    { x:  600, y: 450 } ]
     ]),
     useNetworkLogin: true
   }

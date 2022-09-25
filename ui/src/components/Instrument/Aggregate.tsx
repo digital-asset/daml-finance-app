@@ -8,13 +8,13 @@ import { Typography, Grid, Paper, Table, TableBody, TableRow, TableCell } from "
 import useStyles from "../../pages/styles";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
 import { and, claimToNode } from "../../components/Claims/util";
-import { InstrumentAggregate } from "../../context/InstrumentsContext";
+import { InstrumentAggregate } from "../../context/InstrumentContext";
 import { Service as Lifecycle } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Service";
 import { useParties } from "../../context/PartiesContext";
 import { shorten } from "../../util";
 import { Spinner } from "../Spinner/Spinner";
-import { useServices } from "../../context/ServicesContext";
-import { Observable } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Observable";
+import { useServices } from "../../context/ServiceContext";
+import { Observable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/Observable";
 
 type AggregateProps = {
   instrument : InstrumentAggregate

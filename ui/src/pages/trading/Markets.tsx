@@ -18,7 +18,7 @@ export const Markets : React.FC = () => {
   const { getName } = useParties();
 
   const { contracts: listings, loading: l1 } = useStreamQueries(Listing);
-  if (l1) return (<Spinner />);
+  if (l1) return <Spinner />;
 
   return (
     <>

@@ -3,6 +3,7 @@
 
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { v4 as uuidv4 } from "uuid";
 import { Table, TableBody, TableCell, TableRow, TableHead, Grid, Paper, Typography, IconButton, Button } from "@mui/material";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
@@ -20,13 +21,13 @@ export const Effects : React.FC = () => {
   const party = useParty();
   const ledger = useLedger();
   const navigate = useNavigate();
-  const { getName } = useParties();
+  const { getNames } = useParties();
 
   const { contracts: effects, loading: l1 } = useStreamQueries(Effect);
   const { contracts: holdings, loading: l2 } = useStreamQueries(Base);
   const { contracts: claimRules, loading: l3 } = useStreamQueries(Claim);
 
-  if (l1 || l2 || l3) return (<Spinner />);
+  if (l1 || l2 || l3) return <Spinner />;
 
   const claimAll = async () => {
     const claimEffect = async (effect : CreateEvent<Effect>) => {
@@ -34,7 +35,8 @@ export const Effects : React.FC = () => {
       const arg = {
         claimer: party,
         holdingCids,
-        effectCid: effect.contractId
+        effectCid: effect.contractId,
+        batchId: { unpack: uuidv4() }
       }
       await ledger.exercise(Claim.ClaimEffect, claimRules[0].contractId, arg);
     };
@@ -51,7 +53,7 @@ export const Effects : React.FC = () => {
             <Table size="small">
               <TableHead>
                 <TableRow className={classes.tableRow}>
-                  <TableCell key={0} className={classes.tableCell}><b>Provider</b></TableCell>
+                  <TableCell key={0} className={classes.tableCell}><b>Providers</b></TableCell>
                   <TableCell key={1} className={classes.tableCell}><b>Id</b></TableCell>
                   <TableCell key={2} className={classes.tableCell}><b>Description</b></TableCell>
                   <TableCell key={3} className={classes.tableCell}><b>Target</b></TableCell>
@@ -66,7 +68,7 @@ export const Effects : React.FC = () => {
               <TableBody>
                 {effects.map((c, i) => (
                   <TableRow key={i} className={classes.tableRow}>
-                    <TableCell key={0} className={classes.tableCell}>{getName(c.payload.provider)}</TableCell>
+                    <TableCell key={0} className={classes.tableCell}>{getNames(c.payload.provider)}</TableCell>
                     <TableCell key={1} className={classes.tableCell}>{c.payload.id.unpack}</TableCell>
                     <TableCell key={2} className={classes.tableCell}>{c.payload.description}</TableCell>
                     <TableCell key={3} className={classes.tableCell}>{c.payload.targetInstrument.id.unpack} (v{shorten(c.payload.targetInstrument.version)})</TableCell>

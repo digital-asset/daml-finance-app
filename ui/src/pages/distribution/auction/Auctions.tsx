@@ -20,7 +20,7 @@ export const Auctions : React.FC = () => {
   const party = useParty();
   const { getName } = useParties();
   const { loading: l1, contracts: auctions } = useStreamQueries(Auction);
-  if (l1) return (<Spinner />);
+  if (l1) return <Spinner />;
 
   return (
     <>

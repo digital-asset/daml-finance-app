@@ -3,6 +3,7 @@
 
 import React from "react";
 import classnames from "classnames";
+import { v4 as uuidv4 } from "uuid";
 import { useParty, useLedger, useStreamQueries, useQuery } from "@daml/react";
 import { Typography, Grid, Table, TableBody, TableCell, TableRow, Paper, Button, TableHead } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
@@ -14,8 +15,8 @@ import { Effect as EffectI } from "@daml.js/daml-finance-interface-lifecycle/lib
 import { useParties } from "../../context/PartiesContext";
 import { Message } from "../../components/Message/Message";
 import { Claim } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Rule/Claim";
-import { useServices } from "../../context/ServicesContext";
-import { HoldingAggregate, useHoldings } from "../../context/HoldingsContext";
+import { useServices } from "../../context/ServiceContext";
+import { HoldingAggregate, useHoldings } from "../../context/HoldingContext";
 import { Batch } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Batch";
 import { Instruction } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Instruction";
 
@@ -26,7 +27,7 @@ export const Effect : React.FC = () => {
   useQuery(Batch);
   useQuery(Instruction);
 
-  const { getName } = useParties();
+  const { getName, getNames } = useParties();
   const ledger = useLedger();
   const party = useParty();
   const { loading: l1, custody } = useServices();
@@ -36,7 +37,7 @@ export const Effect : React.FC = () => {
   const { contractId } = useParams<any>();
   const effect = effects.find(c => c.contractId === contractId);
 
-  if (l1 || l2 || l3) return (<Spinner />);
+  if (l1 || l2 || l3) return <Spinner />;
   if (!effect) return <Message text={"Effect [" + contractId + "] not found"} />;
   if (custody.length === 0) return <Message text={"No custody service found"} />;
 
@@ -49,12 +50,13 @@ export const Effect : React.FC = () => {
       const arg = {
         claimer: party,
         holdingCids: [holding.contractId],
-        effectCid: effect.contractId
+        effectCid: effect.contractId,
+        batchId: { unpack: uuidv4() }
       }
       await ledger.exercise(Claim.ClaimEffect, service.payload.claimRuleCid, arg);
     };
     await Promise.all(filteredHoldings.map(claimHolding));
-    navigate("/servicing/settlement");
+    navigate("/settlement/batches");
   };
 
   return (
@@ -69,8 +71,8 @@ export const Effect : React.FC = () => {
               <Table size="small">
                 <TableBody>
                   <TableRow key={0} className={classes.tableRow}>
-                    <TableCell key={0} className={classes.tableCellSmall}><b>Provider</b></TableCell>
-                    <TableCell key={1} className={classes.tableCellSmall}>{getName(effect.payload.provider)}</TableCell>
+                    <TableCell key={0} className={classes.tableCellSmall}><b>Providers</b></TableCell>
+                    <TableCell key={1} className={classes.tableCellSmall}>{getNames(effect.payload.provider)}</TableCell>
                   </TableRow>
                   <TableRow key={1} className={classes.tableRow}>
                     <TableCell key={0} className={classes.tableCellSmall}><b>Id</b></TableCell>

@@ -75,8 +75,8 @@ generateSettlementInstruction settlementFactoryCid settler issuerAccount (Some i
     delivery = Step with sender = issuer; receiver = buyer; quantity = (Instrument.qty (getAmount allocatedDeposit) (getInstrument allocatedDeposit))
     id = bid.auctionId <> "-" <> partyToText buyer
 
-  (batchCid, [deliveryCid, paymentCid]) <- exercise settlementFactoryCid Instruct with instructors = singleton settler; settler; id = Id id ; steps = [delivery, payment]; description = "Settlement of auction " <> id
-  deliveryCid <- exercise deliveryCid Allocate with allocation = Pledge $ toInterfaceContractId allocatedDepositCid
+  (batchCid, [deliveryCid, paymentCid]) <- exercise settlementFactoryCid Instruct with instructors = singleton settler; settlers = singleton settler; id = Id id; description = "Settlement of auction " <> id; contextId = Some $ Id id; steps = [delivery, payment]
+  deliveryCid <- fst <$> exercise deliveryCid Allocate with allocation = Pledge $ toInterfaceContractId allocatedDepositCid
   exercise bidCid Bidding.ApproveInstruction with instructionCid = deliveryCid; account = bid.receivableAccount
   paymentCid <- exercise bidCid Bidding.AllocateInstruction with instructionCid = paymentCid; transferableCid = toInterfaceContractId bidDepositCid
   exercise paymentCid Approve with approval = TakeDelivery issuerAccount

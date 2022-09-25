@@ -18,9 +18,9 @@ import { Spinner } from "../../components/Spinner/Spinner";
 import { Percentage } from "../../components/Slider/Percentage";
 import { Reference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
 import { useParties } from "../../context/PartiesContext";
-import { useServices } from "../../context/ServicesContext";
+import { useServices } from "../../context/ServiceContext";
 import { Message } from "../../components/Message/Message";
-import { useHoldings } from "../../context/HoldingsContext";
+import { useHoldings } from "../../context/HoldingContext";
 
 export const Market : React.FC = () => {
   const classes = useStyles();
@@ -72,7 +72,7 @@ export const Market : React.FC = () => {
   const { contracts: orders, loading: l5 } = useStreamQueries(Order);
   const { contractId } = useParams<any>();
 
-  if (l1 || l2 || l3 || l4 || l5) return (<Spinner />);
+  if (l1 || l2 || l3 || l4 || l5) return <Spinner />;
 
   const myServices = trading.filter(s => s.payload.customer === party);
   const myAutoServices = tradingAuto.filter(s => s.payload.customer === party);
@@ -99,7 +99,7 @@ export const Market : React.FC = () => {
     if (!collateralCid || !account) return;
     console.log(account);
     const arg = {
-      id: uuidv4(),
+      id: { unpack: uuidv4() },
       listingId: listing.payload.id,
       quantity: { unit : listing.payload.tradedInstrument, amount: amount.toString() },
       price: { unit : listing.payload.quotedInstrument, amount: price.toString() },

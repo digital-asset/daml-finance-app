@@ -98,7 +98,7 @@ template Subscription
         transferableCid : ContractId Transferable.I
       controller provider
       do
-        exercise instructionCid Instruction.Allocate with allocation = Pledge transferableCid
+        fst <$> exercise instructionCid Instruction.Allocate with allocation = Pledge transferableCid
 
     nonconsuming choice UnlockHolding : ContractId Lockable.I
       with

@@ -9,8 +9,8 @@ import { useLedger } from "@daml/react";
 import { Typography, Grid, Paper, Select, MenuItem, TextField, Button, MenuProps, FormControl, InputLabel, TextFieldProps } from "@mui/material";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { useServices } from "../../context/ServicesContext";
-import { useInstruments } from "../../context/InstrumentsContext";
+import { useServices } from "../../context/ServiceContext";
+import { useInstruments } from "../../context/InstrumentContext";
 import { Service as Lending } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lending/Service";
 import { Message } from "../../components/Message/Message";
 import { parseDate } from "../../util";
@@ -31,7 +31,7 @@ export const New : React.FC = () => {
   const borrowed = tokens.find(c => c.payload.id.unpack === borrowedLabel);
   const canRequest = !!borrowedLabel && !!amount && !!maturity && !!borrowed;
 
-  if (l1 || l2) return (<Spinner />);
+  if (l1 || l2) return <Spinner />;
   if (!lending) return (<Message text="No lending service found" />);
 
   const requestBorrowOffer = async () => {

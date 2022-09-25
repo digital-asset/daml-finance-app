@@ -16,7 +16,7 @@ import { Spinner } from "../../../components/Spinner/Spinner";
 import { fmt } from "../../../util";
 import { Message } from "../../../components/Message/Message";
 import { useParties } from "../../../context/PartiesContext";
-import { useServices } from "../../../context/ServicesContext";
+import { useServices } from "../../../context/ServiceContext";
 import { Factory } from "@daml.js/daml-finance-interface-settlement/lib/Daml/Finance/Interface/Settlement/Factory";
 
 export const Auction: React.FC = () => {
@@ -37,7 +37,7 @@ export const Auction: React.FC = () => {
   const services = svc.auction.filter(s => s.payload.customer === party || s.payload.provider === party);
   const auction = auctions.find(c => c.contractId === contractId);
 
-  if (svc.loading || l1 || l2 || l3) return (<Spinner />);
+  if (svc.loading || l1 || l2 || l3) return <Spinner />;
   if (!contractId) return <Message text="No contract id provided" />;
   if (!auction) return <Message text="Auction not found" />;
   if (services.length === 0) return <Message text="No auction service found" />;

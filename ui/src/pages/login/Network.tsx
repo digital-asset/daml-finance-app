@@ -34,7 +34,7 @@ export const Network : React.FC = () => {
     floating: FloatingEdge,
   }), []);;
 
-  if (network.loading) return (<Spinner />);
+  if (network.loading) return <Spinner />;
 
   return (
     <>

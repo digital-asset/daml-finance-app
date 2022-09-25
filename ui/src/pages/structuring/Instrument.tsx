@@ -7,7 +7,7 @@ import { Typography, Grid, Stepper, Step, StepButton, Paper } from "@mui/materia
 import { useParams } from "react-router-dom";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { useInstruments } from "../../context/InstrumentsContext";
+import { useInstruments } from "../../context/InstrumentContext";
 import { Message } from "../../components/Message/Message";
 import { Aggregate } from "../../components/Instrument/Aggregate";
 import { shorten } from "../../util";

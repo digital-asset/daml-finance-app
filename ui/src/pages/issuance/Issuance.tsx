@@ -12,7 +12,7 @@ import { Aggregate } from "../../components/Instrument/Aggregate";
 import { fmt, keyEquals, keyString } from "../../util";
 import { useStreamQueries } from "@daml/react";
 import { Issuance as IssuanceContract } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Model";
-import { useInstruments } from "../../context/InstrumentsContext";
+import { useInstruments } from "../../context/InstrumentContext";
 import { useParties } from "../../context/PartiesContext";
 
 export const Issuance : React.FC = () => {

@@ -13,7 +13,7 @@ import { Fungible } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finan
 import { InstrumentKey } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Common";
 import { ContractId } from "@daml/types";
 
-type HoldingsState = {
+type HoldingState = {
   loading : boolean
   holdings : HoldingAggregate[]
   getFungible : (owner : string, amount : number | string, instrument: InstrumentKey) => Promise<ContractId<Fungible>>
@@ -31,9 +31,9 @@ const empty = {
   getFungible: (owner : string, amount : number | string, instrument: InstrumentKey) => { throw new Error("Not implemented"); }
 };
 
-const HoldingsContext = React.createContext<HoldingsState>(empty);
+const HoldingContext = React.createContext<HoldingState>(empty);
 
-export const HoldingsProvider : React.FC = ({ children }) => {
+export const HoldingProvider : React.FC = ({ children }) => {
 
   useQuery(FungibleT);
 
@@ -47,9 +47,9 @@ export const HoldingsProvider : React.FC = ({ children }) => {
 
   if (loading) {
     return (
-      <HoldingsContext.Provider value={empty}>
+      <HoldingContext.Provider value={empty}>
           {children}
-      </HoldingsContext.Provider>
+      </HoldingContext.Provider>
     );
   } else {
     const lockablesByCid : Map<string, CreateEvent<Lockable>> = new Map(lockables.map(c => [c.contractId, c]));
@@ -60,6 +60,7 @@ export const HoldingsProvider : React.FC = ({ children }) => {
     const getFungible = async (owner : string, amount : number | string, instrument: InstrumentKey) : Promise<ContractId<Fungible>> => {
       const qty = typeof amount === "string" ? parseFloat(amount) : amount;
       const filtered = aggregates.filter(c => c.payload.account.owner === owner && keyEquals(c.payload.instrument, instrument) && (!c.lockable || !c.lockable.payload.lock));
+      if (filtered.length === 0) throw new Error("Could not find unencumbered holding on instrument [" + instrument.id.unpack + "]");
       if (!filtered[0].fungible) throw new Error("Holdings are not fungible, cannot right-size to correct amount.");
       const sum = filtered.reduce((a, b) => a + parseFloat(b.payload.amount), 0);
       if (filtered.length === 0 || sum < qty) throw new Error("Insufficient holdings (" + sum.toFixed(4) + ") for " + qty.toFixed(4) + " " + instrument.id.unpack);
@@ -83,13 +84,13 @@ export const HoldingsProvider : React.FC = ({ children }) => {
     };
 
     return (
-      <HoldingsContext.Provider value={value}>
+      <HoldingContext.Provider value={value}>
           {children}
-      </HoldingsContext.Provider>
+      </HoldingContext.Provider>
     );
   }
 };
 
 export const useHoldings = () => {
-  return React.useContext(HoldingsContext);
+  return React.useContext(HoldingContext);
 }

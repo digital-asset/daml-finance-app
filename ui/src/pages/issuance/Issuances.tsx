@@ -19,7 +19,7 @@ export const Issuances : React.FC = () => {
   const { getName } = useParties();
 
   const { contracts: issuances, loading: l1 } = useStreamQueries(Issuance);
-  if (l1) return (<Spinner />);
+  if (l1) return <Spinner />;
 
   return (
     <>

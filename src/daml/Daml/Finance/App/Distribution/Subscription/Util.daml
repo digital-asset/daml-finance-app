@@ -17,8 +17,8 @@ import Daml.Finance.Interface.Settlement.Types (Allocation(Pledge), Approval(Tak
 import Daml.Finance.App.Distribution.Subscription.Model (AllocateInstruction(..), ApproveInstruction(..), Offering, Subscription)
 import Daml.Finance.Interface.Types.Common (Id(..))
 
-settleSubscription : ContractId Factory -> Offering -> (Decimal, Optional (ContractId Fungible.I)) -> (ContractId Subscription, Subscription) -> Update (Decimal, Optional (ContractId Fungible.I))
-settleSubscription settlementFactoryCid offering (remainingQuantity, issuerHoldingCidOpt) (subscriptionCid, subscription) = do
+settleSubscription : Party -> ContractId Factory -> Offering -> (Decimal, Optional (ContractId Fungible.I)) -> (ContractId Subscription, Subscription) -> Update (Decimal, Optional (ContractId Fungible.I))
+settleSubscription actor settlementFactoryCid offering (remainingQuantity, issuerHoldingCidOpt) (subscriptionCid, subscription) = do
   if remainingQuantity == 0.0
   then do pure (remainingQuantity, issuerHoldingCidOpt)
   else do
@@ -29,7 +29,7 @@ settleSubscription settlementFactoryCid offering (remainingQuantity, issuerHoldi
       payedQuantity = offering.price with amount = allocatedQuantity.amount * offering.price.amount
       delivery = Step with sender = offering.issuer; receiver = subscription.investor; quantity = allocatedQuantity
       payment = Step with sender = subscription.investor; receiver = offering.issuer; quantity = payedQuantity
-    (batchCid, [deliveryCid, paymentCid]) <- exercise settlementFactoryCid Instruct with instructors = singleton offering.provider; settler = offering.provider; id = Id offering.offeringId; steps = [delivery, payment]; description = offering.offeringId
+    (batchCid, [deliveryCid, paymentCid]) <- exercise settlementFactoryCid Instruct with instructors = singleton offering.provider; settlers = singleton offering.provider; id = Id offering.offeringId; description = offering.offeringId; contextId = None; steps = [delivery, payment]
 
     -- Settle
     allocatedHoldingCid :: remainingIssuerHoldingCids <-
@@ -42,11 +42,11 @@ settleSubscription settlementFactoryCid offering (remainingQuantity, issuerHoldi
       else do (\r -> r.splitCids <> optionalToList r.rest) <$> exercise subscription.holdingCid Fungible.Split with amounts = [payedQuantity.amount]
     -- paymentHolding <- fetch paymentHoldingCid
     -- paymentAccountCid <- getAccountCid paymentHolding
-    deliveryCid <- exercise deliveryCid Allocate with allocation = Pledge $ toInterfaceContractId allocatedHoldingCid
+    deliveryCid <- fst <$> exercise deliveryCid Allocate with allocation = Pledge $ toInterfaceContractId allocatedHoldingCid
     exercise subscriptionCid ApproveInstruction with instructionCid = deliveryCid; receiverAccount = subscription.accountKey
     paymentCid <- exercise subscriptionCid AllocateInstruction with instructionCid = paymentCid; transferableCid = toInterfaceContractId paymentHoldingCid
     exercise paymentCid Approve with approval = TakeDelivery offering.issuerAccount
-    transferredCids <- exercise batchCid Settle
+    transferredCids <- exercise batchCid Settle with actors = singleton actor
     -- forA_ transferredCids $ \cid -> exercise subscriptionCid UnlockHolding with lockableCid = toInterfaceContractId cid
 
     -- Process remainders
@@ -61,7 +61,7 @@ settleSubscription settlementFactoryCid offering (remainingQuantity, issuerHoldi
 
     -- Undisclose accounts (doesn't quite work)
     (_, accountProxy) <- fetchByKey @Account.R subscription.accountKey
-    exercise (coerceContractId accountProxy.cid : ContractId Disclosure.I) Disclosure.RemoveObservers with observersToRemove = (offering.offeringId, singleton offering.issuer)
+    exercise (coerceContractId accountProxy.cid : ContractId Disclosure.I) Disclosure.RemoveObservers with disclosers = singleton actor; observersToRemove = (offering.offeringId, singleton offering.issuer)
     -- exercise paymentAccountCid RemoveObserver with observerToRemove = (offering.offeringId, singleton offering.issuer)
 
     pure (max 0.0 $ remainingQuantity - subscription.quantity, remainingIssuerHoldingCid)

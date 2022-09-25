@@ -20,7 +20,7 @@ export const Requests : React.FC = () => {
 
   const { contracts: requests, loading: l1 } = useStreamQueries(BorrowOfferRequest);
 
-  if (l1) return (<Spinner />);
+  if (l1) return <Spinner />;
 
   return (
     <>

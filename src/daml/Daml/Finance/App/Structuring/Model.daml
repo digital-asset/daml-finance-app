@@ -4,20 +4,20 @@
 module Daml.Finance.App.Structuring.Model where
 
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K)
-import Daml.Finance.Interface.Instrument.Generic.Types (C)
-import Daml.Finance.Interface.Types.Common (Id, Observers)
+import Daml.Finance.Interface.Claims.Types (C)
+import Daml.Finance.Interface.Types.Common (Id, PartiesMap)
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum)
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum)
 
-template CreateBaseRequest
+template CreateTokenRequest
   with
     operator : Party
     provider : Party
     customer : Party
     id : Text
     description : Text
-    observers : Observers
+    observers : PartiesMap
     validAsOf : Time
   where
     signatory operator, provider, customer
@@ -30,7 +30,7 @@ template CreateEquityRequest
     id : Id
     description : Text
     version : Text
-    observers : Observers
+    observers : PartiesMap
     validAsOf : Time
   where
     signatory operator, provider, customer
@@ -44,7 +44,7 @@ template CreateGenericRequest
     description : Text
     claims : C
     acquisitionTime : Time
-    observers : Observers
+    observers : PartiesMap
     lastEventTimestamp : Time
   where
     signatory operator, provider, customer
@@ -67,7 +67,7 @@ template CreateFixedRateBondRequest
     couponPeriod : PeriodEnum
     couponPeriodMultiplier : Int
     currency : Instrument.K
-    observers : Observers
+    observers : PartiesMap
     lastEventTimestamp : Time
   where
     signatory operator, provider, customer
@@ -91,7 +91,7 @@ template CreateFloatingRateBondRequest
     couponPeriod : PeriodEnum
     couponPeriodMultiplier : Int
     currency : Instrument.K
-    observers : Observers
+    observers : PartiesMap
     lastEventTimestamp : Time
   where
     signatory operator, provider, customer
@@ -116,7 +116,7 @@ template CreateInflationLinkedBondRequest
     couponPeriod : PeriodEnum
     couponPeriodMultiplier : Int
     currency : Instrument.K
-    observers : Observers
+    observers : PartiesMap
     lastEventTimestamp : Time
   where
     signatory operator, provider, customer
@@ -131,7 +131,7 @@ template CreateZeroCouponBondRequest
     issueDate : Date
     maturityDate : Date
     currency : Instrument.K
-    observers : Observers
+    observers : PartiesMap
     lastEventTimestamp : Time
   where
     signatory operator, provider, customer

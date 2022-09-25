@@ -83,7 +83,7 @@ template Service
         -- Fetch Bid -> Extract their deposit -> Split and return unused allocation (if necessary) to the investor -> Update Bid Status
         bid <- fetch bidCid
         bidCollateralCid : ContractId Disclosure.I <- coerceContractId <$> exercise (coerceContractId bid.collateralCid : ContractId Lockable.I) Lockable.Release with context = bid.auctionId
-        bidCollateralCid <- coerceContractId . fromSome <$> exercise bidCollateralCid Disclosure.RemoveObservers with observersToRemove = (bid.auctionId, singleton provider)
+        bidCollateralCid <- coerceContractId . fromSome <$> exercise bidCollateralCid Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (bid.auctionId, singleton provider)
         bidCollateral <- fetch bidCollateralCid
         bidCollateralCid <-
           if getAmount bidCollateral > amount * price
