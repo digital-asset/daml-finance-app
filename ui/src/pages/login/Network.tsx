@@ -8,16 +8,18 @@ import useStyles from "./styles";
 import { Box } from "@mui/system";
 import { useNetwork } from "../../hooks/Network";
 import { Spinner } from "../../components/Spinner/Spinner";
-import damlLogin from "../../images/daml-logo-mark-light.png";
+import damlLogin from "../../images/daml-logo-mark-light.svg";
 import { loginUser, useUserDispatch } from "../../context/UserContext";
 import { useNavigate } from "react-router-dom";
 import { FloatingEdge } from "../../components/Network/FloatingEdge";
 import { useParties } from "../../context/PartiesContext";
 import ExitToApp from "@mui/icons-material/ExitToApp";
 import "./index.css"
+import { useBranding } from "../../context/BrandingContext";
 
 export const Network : React.FC = () => {
   const classes = useStyles();
+  const branding = useBranding();
   const userDispatch = useUserDispatch();
   const navigate = useNavigate();
   const [, setError] = useState(false);
@@ -38,9 +40,11 @@ export const Network : React.FC = () => {
 
   return (
     <>
-      <img alt="loginLogo" src={damlLogin} style={{ position: "absolute", top: "10%", left: "50%", transform: "translate(-50%, 0%)", display: "inline-block", zIndex: 0 }} />
-      <Typography variant="h2" style={{ textAlign: "center" }}>Daml Finance</Typography>
-      <Box className={classes.loginContainer} style={{ position: "absolute", top: "30%", left: "50%", transform: "translate(-50%, 0%)", width: "1600px", height: "600px", backgroundColor: "#f5f5f5" }} border={1} borderColor="primary.main">
+      {branding.background}
+      {/* {branding.loginLogo} */}
+      <Typography variant="h1" style={{ textAlign: "center", position: "absolute", top: "5%", left: "50%", transform: "translate(-50%, 0%)" }}>Daml Finance</Typography>
+      <Typography variant="h6" style={{ textAlign: "center", position: "absolute", top: "20%", left: "50%", transform: "translate(-50%, 0%)" }}>Select a party to login</Typography>
+      <Box className={classes.loginContainer} border={1} borderColor="lightgrey" style={{ position: "absolute", top: "25%", left: "50%", transform: "translate(-50%, 0%)", width: "1600px", height: "600px" }} >
         <ReactFlow
           nodes={network.nodes}
           edges={network.edges}
@@ -51,14 +55,14 @@ export const Network : React.FC = () => {
           snapToGrid
           snapGrid={[20, 20]}
           nodesConnectable={false}
-          nodesDraggable={true}
-          panOnDrag={true}
-          selectNodesOnDrag={true}
+          nodesDraggable={false}
+          panOnDrag={false}
+          selectNodesOnDrag={false}
+          zoomOnScroll={false}
           edgeTypes={edgeTypes}>
-          <Background />
         </ReactFlow>
       </Box>
-      <IconButton size="large" color="inherit" onClick={() => navigate("/login")} style={{ position: "absolute", top: "93%", left: "50%", transform: "translate(-50%, 0%)" }}>
+      <IconButton size="large" color="inherit" onClick={() => navigate("/login")} style={{ position: "absolute", top: "1%", left: "98%", transform: "translate(-50%, 0%)" }}>
         <ExitToApp fontSize="large" />
       </IconButton>
     </>

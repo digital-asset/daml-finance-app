@@ -3,7 +3,7 @@
 
 import React from "react";
 import { CreateEvent } from "@daml/ledger";
-import { useQuery, useStreamQueries } from "@daml/react";
+import { useQuery } from "@daml/react";
 import { Service as BackToBackService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/BackToBack/Service"
 import { Service as CustodyService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Custody/Service"
 import { Service as AuctionService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Service"

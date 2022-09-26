@@ -34,9 +34,10 @@ export const Form : React.FC = () => {
 
   return (
     <>
+      {branding.background}
       {branding.loginLogo}
-      <Typography variant="h2" style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, 0%)" }}>Daml Finance</Typography>
-      <Box className={classes.loginContainer} style={{ position: "absolute", top: branding.loginY, left: "50%", transform: "translate(-50%, 0%)" }}>
+      <Typography variant="h2" style={{ textAlign: "center", marginTop: 20 }}>Daml Finance</Typography>
+      <Box className={classes.loginContainer} style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, 0%)" }}>
         <TextField
           className={classes.loginField}
           // InputProps={{ style: { color: "white" } }}
@@ -55,11 +56,12 @@ export const Form : React.FC = () => {
           color="primary"
           size="large"
           fullWidth
+          style={{ borderRadius: 20 }}
         >
           Login
         </Button>
       </Box>
-      <IconButton size="large" color="inherit" onClick={() => navigate("/login")} style={{ position: "absolute", top: "90%", left: "50%", transform: "translate(-50%, 0%)" }}>
+      <IconButton size="large" color="inherit" onClick={() => navigate("/login")} style={{ position: "absolute", top: "1%", left: "98%", transform: "translate(-50%, 0%)" }}>
         <ExitToApp fontSize="large" />
       </IconButton>
     </>

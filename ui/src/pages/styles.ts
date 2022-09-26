@@ -16,42 +16,26 @@ export default makeStyles((theme : any) => createStyles({
     paddingBottom: 2,
     fontSize: "0.7rem"
   },
-  tableCellMini: {
-    verticalAlign: "center",
-    paddingTop: 2,
-    paddingBottom: 2,
-    paddingLeft: 4,
-    paddingRight: 6,
-    fontSize: "0.6rem"
-  },
-  tableCellButton: {
-    verticalAlign: "center",
-    paddingTop: 0,
-    paddingBottom: 0,
-    fontSize: "0.75rem"
-  },
   tableRow: {
     height: "auto"
   },
   heading: {
     paddingBottom: "20px",
     textAlign: "center"
-    // fontSize: theme.typography.pxToRem(15),
-    // fontWeight: theme.typography.fontWeightRegular,
-  },
-  buttonLifecycle: {
-    width: "90%",
-    paddingTop: 2,
-    paddingBottom: 2,
   },
   choiceButton: {
-    paddingTop: 0,
+    paddingTop: 3,
     paddingBottom: 0,
     marginRight: 5,
-    color: "white"
+    borderRadius: 15
   },
-  newButton: {
-    marginTop: 50,
+  actionButton: {
+    margin: 20,
+    borderRadius: 20
+  },
+  buttonMargin: {
+    marginTop: "20px",
+    borderRadius: 20
   },
   inputField: {
     marginTop: 10,
@@ -71,9 +55,6 @@ export default makeStyles((theme : any) => createStyles({
   },
   width50: {
     width: "50%"
-  },
-  marginLeft10: {
-    marginLeft: 10
   },
   default: {
     fill: "#fff",
@@ -105,9 +86,6 @@ export default makeStyles((theme : any) => createStyles({
     paddingTop: 20,
     paddingBottom: 20,
   },
-  actionButton: {
-    margin: 20
-  },
   dot: {
     padding: 0,
     borderColor: "#009900",
@@ -118,9 +96,6 @@ export default makeStyles((theme : any) => createStyles({
   },
   fullWidth: {
     width: "100%"
-  },
-  buttonMargin: {
-    marginTop: "20px",
   },
   buttonGreen: {
     root: {

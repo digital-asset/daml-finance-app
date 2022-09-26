@@ -21,7 +21,7 @@ export const App : React.FC<AppProps> = ({ label, description, image, path }) =>
   return (
     <Grid item xs={12} sm={6} md={4} lg={4}>
       <Card className={classes.card}>
-        <Box border={1} borderColor="primary.main" style={{ height: "100%"}}>
+        <Box border={1} borderColor="darkgrey" style={{ height: "100%"}}>
           <CardActionArea onClick={() => navigate(path)}>
             <CardMedia className={classes.cardMedia} image={image} title={label} />
             <CardContent>

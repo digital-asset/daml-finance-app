@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
-import { useParty, useQuery, useStreamQueries } from "@daml/react";
+import { useParty, useQuery } from "@daml/react";
 import { AccountKey, InstrumentKey } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Common";
 import { Reference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
 import { AccountDirectory } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Data/AccountDirectory";

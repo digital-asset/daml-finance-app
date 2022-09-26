@@ -194,8 +194,8 @@ export const Instrument : React.FC = () => {
                   </Table>
                   {!!instrument.lifecycle &&
                   <>
-                    <Button color="primary" size="large" className={classes.actionButton} variant="outlined" disabled={!!remaining} onClick={() => previewLifecycle()}>Preview Lifecycle</Button>
-                    <Button color="primary" size="large" className={classes.actionButton} variant="outlined" disabled={!remaining} onClick={() => executeLifecycle()}>Execute Lifecycle</Button>
+                    <Button color="primary" className={classes.actionButton} variant="contained" disabled={!!remaining} onClick={() => previewLifecycle()}>Preview Lifecycle</Button>
+                    <Button color="primary" className={classes.actionButton} variant="contained" disabled={!remaining} onClick={() => executeLifecycle()}>Execute Lifecycle</Button>
                   </>
                   }
                 </Paper>

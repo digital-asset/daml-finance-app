@@ -10,7 +10,6 @@ import { Spinner } from "../../components/Spinner/Spinner";
 import { useInstruments } from "../../context/InstrumentContext";
 import { Message } from "../../components/Message/Message";
 import { Aggregate } from "../../components/Instrument/Aggregate";
-import { shorten } from "../../util";
 
 export const Instrument : React.FC = () => {
   const classes = useStyles();
