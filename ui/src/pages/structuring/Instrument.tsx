@@ -7,7 +7,7 @@ import { Typography, Grid, Stepper, Step, StepButton, Paper } from "@mui/materia
 import { useParams } from "react-router-dom";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { useInstruments } from "../../context/InstrumentsContext";
+import { useInstruments } from "../../context/InstrumentContext";
 import { Message } from "../../components/Message/Message";
 import { Aggregate } from "../../components/Instrument/Aggregate";
 import { shorten } from "../../util";
@@ -31,7 +31,7 @@ export const Instrument : React.FC = () => {
           <Stepper nonLinear alternativeLabel activeStep={activeStep}>
             {group.versions.map((inst, i) => (
               <Step key={inst.contractId} completed={false}>
-                <StepButton icon={shorten(inst.payload.version)} color="inherit" onClick={() => setActiveStep(i)}>
+                <StepButton icon={i.toString()} color="inherit" onClick={() => setActiveStep(i)}>
                   {inst.payload.validAsOf.substring(0, 10)}
                 </StepButton>
               </Step>

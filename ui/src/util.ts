@@ -8,14 +8,7 @@ import { CreateEvent } from "@daml/ledger";
 import { emptyMap } from "@daml/types";
 
 export function values<T>(set: Set<T>): T[] {
-  const r: T[] = [];
-  const it = set.map.keys();
-  let i = it.next();
-  while (!i.done) {
-    r.push(i.value);
-    i = it.next();
-  }
-  return r;
+  return set.map.entriesArray().map(v => v[0]);
 };
 
 export const setEquals = <T>(a : Set<T>, b : Set<T>) : boolean => {

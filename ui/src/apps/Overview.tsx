@@ -4,10 +4,10 @@
 import React from "react";
 import { Grid, Theme } from "@mui/material";
 import { makeStyles, createStyles } from "@mui/styles";
-import { Header } from "./components/Header/Header";
-import { useScenario } from "./context/ScenarioContext";
+import { Header } from "../components/Header/Header";
+import { useScenario } from "../context/ScenarioContext";
 
-export const Apps : React.FC = () => {
+export const Overview : React.FC = () => {
   const classes = useStyles();
   const scenario = useScenario();
 

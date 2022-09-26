@@ -3,27 +3,17 @@
 
 import React from "react";
 import { HashRouter, Route, Routes, Navigate } from "react-router-dom";
-import ErrorComponent from "./pages/error/Error";
-import { useUserState } from "./context/UserContext";
-import { Apps } from "./Apps";
-import DamlLedger from "@daml/react";
-import { httpBaseUrl, wsBaseUrl } from "./config";
-import { Servicing } from "./apps/Servicing";
-import { Custody } from "./apps/Custody";
-import { Issuance } from "./apps/Issuance";
-import { Distribution } from "./apps/Distribution";
-import { Listing } from "./apps/Listing";
-import { Trading } from "./apps/Trading";
-import { Structuring } from "./apps/Structuring";
 import { createTheme, CssBaseline, ThemeOptions, ThemeProvider } from "@mui/material";
-import { Simulation } from "./apps/Simulation";
 import LocalizationProvider from "@mui/lab/LocalizationProvider";
 import AdapterDateFns from "@mui/lab/AdapterDateFns";
+import DamlLedger from "@daml/react";
 import { useBranding } from "./context/BrandingContext";
-import { Network } from "./apps/Network";
-import { Root } from "./pages/login/Root";
+import { useUserState } from "./context/UserContext";
+import { Root } from "./Root";
+import { Login } from "./pages/login/Login";
 import { Portal } from "./pages/login/Portal";
-import { Lending } from "./apps/Lending";
+import ErrorComponent from "./pages/error/Error";
+import { httpBaseUrl, wsBaseUrl } from "./config";
 
 export const Main : React.FC = () => {
   const user = useUserState();
@@ -69,20 +59,10 @@ export const Main : React.FC = () => {
         <DamlLedger party={user.party} token={user.token} httpBaseUrl={httpBaseUrl} wsBaseUrl={wsBaseUrl}>
           <HashRouter>
             <Routes>
-              <Route path="/" element={<Navigate to="/apps" />} />
+              <Route path="/" element={<Navigate to="/app" />} />
               <Route path="/login" element={<Portal />} />
-              <Route path="/login/*" element={<Root />} />
-              <Route path="/apps" element={<Private><Apps /></Private>} />
-              <Route path="/structuring/*" element={<Structuring />} />
-              <Route path="/issuance/*" element={<Issuance />} />
-              <Route path="/lending/*" element={<Lending />} />
-              <Route path="/custody/*" element={<Custody />} />
-              <Route path="/distribution/*" element={<Distribution />} />
-              <Route path="/servicing/*" element={<Servicing />} />
-              <Route path="/simulation/*" element={<Simulation />} />
-              <Route path="/listing/*" element={<Listing />} />
-              <Route path="/trading/*" element={<Trading />} />
-              <Route path="/network/*" element={<Network />} />
+              <Route path="/login/*" element={<Login />} />
+              <Route path="/app/*" element={<Private><Root /></Private>} />
               <Route element={<ErrorComponent />} />
             </Routes>
           </HashRouter>

@@ -4,9 +4,9 @@
 module Daml.Finance.App.Structuring.Auto.Service where
 
 import Daml.Finance.App.Structuring.Service qualified as S
+import Daml.Finance.Interface.Claims.Types (C)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I, K)
-import Daml.Finance.Interface.Instrument.Generic.Types (C)
-import Daml.Finance.Interface.Types.Common (Id, Observers)
+import Daml.Finance.Interface.Types.Common (Id, PartiesMap)
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum)
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum)
@@ -22,16 +22,16 @@ template Service
     key (operator, provider, customer) : (Party, Party, Party)
     maintainer key._1
 
-    nonconsuming choice RequestAndCreateBase : ContractId Instrument.I
+    nonconsuming choice RequestAndCreateToken : ContractId Instrument.I
       with
         id : Text
         description : Text
         validAsOf : Time
-        observers : Observers
+        observers : PartiesMap
       controller customer
       do
-        createBaseRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreateBase with ..
-        exerciseByKey @S.Service (operator, provider, customer) S.CreateBase with createBaseRequestCid
+        createTokenRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreateToken with ..
+        exerciseByKey @S.Service (operator, provider, customer) S.CreateToken with createTokenRequestCid
 
     nonconsuming choice RequestAndCreateEquity : ContractId Instrument.I
       with
@@ -39,7 +39,7 @@ template Service
         description : Text
         version : Text
         validAsOf : Time
-        observers : Observers
+        observers : PartiesMap
       controller customer
       do
         createEquityRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreateEquity with ..
@@ -52,7 +52,7 @@ template Service
         claims : C
         acquisitionTime : Time
         lastEventTimestamp : Time
-        observers : Observers
+        observers : PartiesMap
       controller customer
       do
         createGenericRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreateGeneric with ..
@@ -73,7 +73,7 @@ template Service
         couponPeriod : PeriodEnum
         couponPeriodMultiplier : Int
         currency : Instrument.K
-        observers : Observers
+        observers : PartiesMap
         lastEventTimestamp : Time
       controller customer
       do
@@ -96,7 +96,7 @@ template Service
         couponPeriod : PeriodEnum
         couponPeriodMultiplier : Int
         currency : Instrument.K
-        observers : Observers
+        observers : PartiesMap
         lastEventTimestamp : Time
       controller customer
       do
@@ -120,7 +120,7 @@ template Service
         couponPeriod : PeriodEnum
         couponPeriodMultiplier : Int
         currency : Instrument.K
-        observers : Observers
+        observers : PartiesMap
         lastEventTimestamp : Time
       controller customer
       do
@@ -134,7 +134,7 @@ template Service
         issueDate : Date
         maturityDate : Date
         currency : Instrument.K
-        observers : Observers
+        observers : PartiesMap
         lastEventTimestamp : Time
       controller customer
       do

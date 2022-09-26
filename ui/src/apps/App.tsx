@@ -7,9 +7,6 @@ import useStyles from "./styles";
 import { Header } from "../components/Header/Header";
 import { Sidebar } from "../components/Sidebar/Sidebar";
 import { RouteEntry } from "../components/Sidebar/RouteEntry";
-import { ServicesProvider } from "../context/ServicesContext";
-import { InstrumentsProvider } from "../context/InstrumentsContext";
-import { HoldingsProvider } from "../context/HoldingsContext";
 
 type AppProps = {
   title : string
@@ -20,26 +17,20 @@ export const App : React.FC<AppProps> = ({ title, entries } : AppProps) => {
   const classes = useStyles();
 
   return (
-    <ServicesProvider>
-      <InstrumentsProvider>
-        <HoldingsProvider>
-          <div className={classes.root}>
-            <>
-              <Header app={title} />
-              <Sidebar entries={entries.filter(e => !!e.label)} />
-              <div className={classes.content}>
-                <div className={classes.fakeToolbar} />
-                <Routes>
-                  {entries.map(e =>
-                    <Route key={e.path} path={e.path} element={e.element} />
-                  )}
-                </Routes>
-                <Outlet />
-              </div>
-            </>
-          </div>
-        </HoldingsProvider>
-      </InstrumentsProvider>
-    </ServicesProvider>
+    <div className={classes.root}>
+      <>
+        <Header app={title} />
+        <Sidebar entries={entries.filter(e => !!e.label)} />
+        <div className={classes.content}>
+          <div className={classes.fakeToolbar} />
+          <Routes>
+            {entries.map(e =>
+              <Route key={e.path} path={e.path} element={e.element} />
+            )}
+          </Routes>
+          <Outlet />
+        </div>
+      </>
+    </div>
   );
 }

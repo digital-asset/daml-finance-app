@@ -71,6 +71,6 @@ template BorrowAgreement
         borrowedCid <- exercise borrowedCid Transferable.Transfer with newOwnerAccount = lenderBorrowedAccount
         interestCid <- exercise interestCid Transferable.Transfer with newOwnerAccount = lenderInterestAccount
         unlockedCid <- coerceContractId <$> exercise (coerceContractId collateralCid : ContractId Lockable.I) Lockable.Release with context = id
-        Account.exerciseInterfaceByKey @Disclosure.I lenderBorrowedAccount provider Disclosure.RemoveObservers with observersToRemove = (id, singleton customer)
-        Account.exerciseInterfaceByKey @Disclosure.I lenderInterestAccount provider Disclosure.RemoveObservers with observersToRemove = (id, singleton customer)
+        Account.exerciseInterfaceByKey @Disclosure.I lenderBorrowedAccount provider Disclosure.RemoveObservers with disclosers = singleton customer; observersToRemove = (id, singleton customer)
+        Account.exerciseInterfaceByKey @Disclosure.I lenderInterestAccount provider Disclosure.RemoveObservers with disclosers = singleton customer; observersToRemove = (id, singleton customer)
         pure (unlockedCid, borrowedCid, interestCid)

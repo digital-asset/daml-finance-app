@@ -13,11 +13,11 @@ import { Spinner } from "../../../components/Spinner/Spinner";
 import { Reference as AccountReference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
 import { dedup } from "../../../util";
 import { BackToBack } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Model";
-import { useServices } from "../../../context/ServicesContext";
-import { useInstruments } from "../../../context/InstrumentsContext";
+import { useServices } from "../../../context/ServiceContext";
+import { useInstruments } from "../../../context/InstrumentContext";
 import { Message } from "../../../components/Message/Message";
 import { Aggregate } from "../../../components/Instrument/Aggregate";
-import { useHoldings } from "../../../context/HoldingsContext";
+import { useHoldings } from "../../../context/HoldingContext";
 
 export const New : React.FC = () => {
   const classes = useStyles();
@@ -46,7 +46,7 @@ export const New : React.FC = () => {
   const myHoldingLabels = dedup(myHoldings.map(c => c.payload.instrument.id.unpack));
   const canRequest = !!offeredInstLabel && !!offeredInst && !!priceInstLabel && !!priceInst && !!amount && !!price;
 
-  if (l1 || l2 || l3 || l4) return (<Spinner />);
+  if (l1 || l2 || l3 || l4) return <Spinner />;
   if (myServices.length === 0) return <Message text={"No subscription service found for customer: " + party} />;
 
   const createOffering = async () => {
@@ -92,7 +92,7 @@ export const New : React.FC = () => {
       };
       await ledger.exercise(Service.CreateOffering, myServices[0].contractId, arg);
     }
-    navigate("/distribution/offerings");
+    navigate("/app/distribution/offerings");
   }
 
   const menuProps : Partial<MenuProps> = { anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" } };

@@ -13,7 +13,7 @@ import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/
 import { CreateListingRequest, DeleteListingRequest, Listing } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Model";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
-import { useServices } from "../../context/ServicesContext";
+import { useServices } from "../../context/ServiceContext";
 
 export const Requests : React.FC = () => {
   const classes = useStyles();
@@ -26,7 +26,7 @@ export const Requests : React.FC = () => {
   const { contracts: createRequests, loading: l1 } = useStreamQueries(CreateListingRequest);
   const { contracts: disableRequests, loading: l2 } = useStreamQueries(DeleteListingRequest);
   const { contracts: listings, loading: l3 } = useStreamQueries(Listing);
-  if (l1 || l2 || l3 || svc.loading) return (<Spinner />);
+  if (l1 || l2 || l3 || svc.loading) return <Spinner />;
 
   const providerServices = svc.listing.filter(s => s.payload.provider === party);
   const deleteEntries = disableRequests.map(dr => ({ request: dr, listing: listings.find(l => l.contractId === dr.payload.listingCid)?.payload }));
@@ -34,14 +34,14 @@ export const Requests : React.FC = () => {
     const service = providerServices.find(s => s.payload.customer === c.payload.customer);
     if (!service) return; // TODO: Display error
     await ledger.exercise(Service.CreateListing, service.contractId, { createListingRequestCid: c.contractId });
-    navigate("/listing/listings");
+    navigate("/app/listing/listings");
   }
 
   const deleteListing = async (c : CreateEvent<DeleteListingRequest>) => {
     const service = providerServices.find(s => s.payload.customer === c.payload.customer);
     if (!service) return; // TODO: Display error
     await ledger.exercise(Service.DeleteListing, service.contractId, { deleteListingRequestCid: c.contractId });
-    navigate("/listing/listings");
+    navigate("/app/listing/listings");
   }
 
   return (
@@ -78,7 +78,7 @@ export const Requests : React.FC = () => {
                         {/* {party === c.payload.client && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => cancelRequest(c)}>Cancel</Button>} */}
                       </TableCell>
                       <TableCell key={7} className={classes.tableCell}>
-                        <IconButton color="primary" size="small" component="span" onClick={() => navigate("/listing/createrequest/" + c.contractId)}>
+                        <IconButton color="primary" size="small" component="span" onClick={() => navigate("/app/listing/createrequest/" + c.contractId)}>
                           <KeyboardArrowRight fontSize="small"/>
                         </IconButton>
                       </TableCell>
@@ -118,7 +118,7 @@ export const Requests : React.FC = () => {
                         {/* {party === c.payload.client && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => cancelRequest(c)}>Cancel</Button>} */}
                       </TableCell>
                       <TableCell key={7} className={classes.tableCell}>
-                        <IconButton color="primary" size="small" component="span" onClick={() => navigate("/listing/deleterequest/" + c.request.contractId)}>
+                        <IconButton color="primary" size="small" component="span" onClick={() => navigate("/app/listing/deleterequest/" + c.request.contractId)}>
                           <KeyboardArrowRight fontSize="small"/>
                         </IconButton>
                       </TableCell>

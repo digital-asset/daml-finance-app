@@ -6,6 +6,27 @@ module Daml.Finance.App.Custody.Model where
 import Daml.Finance.Interface.Holding.Account qualified as Account (K)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
+import Daml.Finance.Interface.Types.Common (Id, PartiesMap)
+
+template OpenAccountRequest
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Id
+    description : Text
+    observers : PartiesMap
+  where
+    signatory operator, provider, customer
+
+template CloseAccountRequest
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    account : Account.K
+  where
+    signatory operator, provider, customer
 
 template DepositRequest
   with

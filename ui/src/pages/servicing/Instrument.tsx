@@ -12,17 +12,18 @@ import { Spinner } from "../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
 import { and, C, claimToNode } from "../../components/Claims/util";
 import { useParties } from "../../context/PartiesContext";
-import { useInstruments } from "../../context/InstrumentsContext";
-import { useServices } from "../../context/ServicesContext";
+import { useInstruments } from "../../context/InstrumentContext";
+import { useServices } from "../../context/ServiceContext";
 import { Message } from "../../components/Message/Message";
-import { Observable } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Observable";
+import { Observable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/Observable";
 import { Effect } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Effect";
 import { Event } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Event";
 import { Clock } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Clock";
 import { Effect as EffectT } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/Effect";
 import { Event as Distribution } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/Event/Distribution";
+import { Event as Replacement } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/Event/Replacement";
 import { parseDate, shorten } from "../../util";
-import { Pending } from "@daml.js/daml-finance-interface-instrument-generic/lib/Daml/Finance/Interface/Instrument/Generic/Types";
+import { Pending } from "@daml.js/daml-finance-interface-claims/lib/Daml/Finance/Interface/Claims/Types";
 import { ExpandMore } from "@mui/icons-material";
 import { DatePicker } from "@mui/lab";
 
@@ -41,6 +42,7 @@ export const Instrument : React.FC = () => {
   const [ currency, setCurrency ] = useState("");
   const [ amount, setAmount ] = useState("");
 
+  useQuery(Replacement);
   useQuery(Distribution);
   useQuery(EffectT);
 
@@ -72,10 +74,12 @@ export const Instrument : React.FC = () => {
     if (!!remaining) setNode2(claimToNode(remaining));
   }, [remaining]);
 
-  if (loading) return (<Spinner />);
+  if (loading) return <Spinner />;
   if (lifecycle.length === 0) return <Message text={"No lifecycle service found"} />;
 
   const canDeclareDividend = !!id && !!description && !!effectiveDate && !!currency && !!amount;
+  const canDeclareStockSplit = !!id && !!description && !!effectiveDate && !!amount;
+  const canDeclareReplacement = !!id && !!description && !!effectiveDate && !!currency && !!amount;
   const effect = effects.find(c => c.payload.targetInstrument.id.unpack === instrument.payload.id.unpack && c.payload.targetInstrument.version === instrument.payload.version);
 
   const previewLifecycle = async () => {
@@ -96,7 +100,7 @@ export const Instrument : React.FC = () => {
       lifecyclableCid: instrument.lifecycle!.contractId
     }
     await ledger.exercise(Lifecycle.Lifecycle, lifecycle[0].contractId, arg);
-    navigate("/servicing/effects");
+    navigate("/app/servicing/effects");
   };
 
   const toggle = (label : string) => {
@@ -109,7 +113,7 @@ export const Instrument : React.FC = () => {
     if (!lifecycle || !instrument.equity || !ccy) throw new Error("Cannot declare dividend on non-equity instrument");
     const arg = {
       clockCid: clocks[0].contractId,
-      equityCid: instrument.equity.contractId,
+      equity: instrument.key,
       newVersion: (parseInt(instrument.payload.version) + 1).toString(),
       id: { unpack: id },
       description,
@@ -117,7 +121,38 @@ export const Instrument : React.FC = () => {
       perUnitDistribution: [ { amount, unit: ccy.key } ]
     };
     await ledger.exercise(Lifecycle.DeclareDividend, lifecycle[0].contractId, arg);
-    navigate("/servicing/effects");
+    navigate("/app/servicing/effects");
+  };
+
+  const declareStockSplit = async () => {
+    if (!lifecycle || !instrument.equity) throw new Error("Cannot declare stock split on non-equity instrument");
+    const arg = {
+      clockCid: clocks[0].contractId,
+      equity: instrument.key,
+      newVersion: (parseInt(instrument.payload.version) + 1).toString(),
+      id: { unpack: id },
+      description,
+      effectiveDate: parseDate(effectiveDate),
+      adjustmentFactor: amount
+    };
+    await ledger.exercise(Lifecycle.DeclareStockSplit, lifecycle[0].contractId, arg);
+    navigate("/app/servicing/effects");
+  };
+
+  const declareReplacement = async () => {
+    const ccy = tokens.find(c => c.payload.id.unpack === currency);
+    if (!lifecycle || !instrument.equity || !ccy) throw new Error("Cannot declare replacement on non-equity instrument");
+    const arg = {
+      clockCid: clocks[0].contractId,
+      equity: instrument.key,
+      newVersion: (parseInt(instrument.payload.version) + 1).toString(),
+      id: { unpack: id },
+      description,
+      effectiveDate: parseDate(effectiveDate),
+      perUnitReplacement: [ { amount, unit: ccy.key } ]
+    };
+    await ledger.exercise(Lifecycle.DeclareReplacement, lifecycle[0].contractId, arg);
+    navigate("/app/servicing/effects");
   };
 
   const menuProps : Partial<MenuProps> = { anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" } };
@@ -255,9 +290,9 @@ export const Instrument : React.FC = () => {
               </Grid>}
               {!!instrument.equity &&
               <Grid item xs={12}>
-                <Accordion expanded={expanded === "Dividends"} onChange={() => toggle("Dividends")}>
+                <Accordion expanded={expanded === "Dividend"} onChange={() => toggle("Dividend")}>
                   <AccordionSummary expandIcon={<ExpandMore />}>
-                    <Typography gutterBottom variant="h5" component="h2">Dividends</Typography>
+                    <Typography gutterBottom variant="h5" component="h2">Dividend</Typography>
                   </AccordionSummary>
                   <AccordionDetails>
                     <TextField className={classes.inputField} fullWidth label="Id" type="text" value={id} onChange={e => setId(e.target.value as string)} />
@@ -273,7 +308,37 @@ export const Instrument : React.FC = () => {
                     <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canDeclareDividend} onClick={declareDividend}>Declare Dividend</Button>
                   </AccordionDetails>
                 </Accordion>
-                </Grid>}
+                <Accordion expanded={expanded === "Stock Split"} onChange={() => toggle("Stock Split")}>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <Typography gutterBottom variant="h5" component="h2">Stock Split</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <TextField className={classes.inputField} fullWidth label="Id" type="text" value={id} onChange={e => setId(e.target.value as string)} />
+                    <TextField className={classes.inputField} fullWidth label="Description" type="text" value={description} onChange={e => setDescription(e.target.value as string)} />
+                    <DatePicker className={classes.inputField} inputFormat="yyyy-MM-dd" label="Effective Date" value={effectiveDate} onChange={setEffectiveDate} renderInput={(props : TextFieldProps) => <TextField {...props} fullWidth />} />
+                    <TextField className={classes.inputField} fullWidth label="Adjustment Factor" type="number" value={amount} onChange={e => setAmount(e.target.value as string)} />
+                    <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canDeclareStockSplit} onClick={declareStockSplit}>Declare StockSplit</Button>
+                  </AccordionDetails>
+                </Accordion>
+                <Accordion expanded={expanded === "Replacement"} onChange={() => toggle("Replacement")}>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <Typography gutterBottom variant="h5" component="h2">Replacement</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <TextField className={classes.inputField} fullWidth label="Id" type="text" value={id} onChange={e => setId(e.target.value as string)} />
+                    <TextField className={classes.inputField} fullWidth label="Description" type="text" value={description} onChange={e => setDescription(e.target.value as string)} />
+                    <DatePicker className={classes.inputField} inputFormat="yyyy-MM-dd" label="Effective Date" value={effectiveDate} onChange={setEffectiveDate} renderInput={(props : TextFieldProps) => <TextField {...props} fullWidth />} />
+                    <FormControl className={classes.inputField} fullWidth>
+                      <InputLabel className={classes.selectLabel}>Replacement Asset</InputLabel>
+                      <Select value={currency} onChange={e => setCurrency(e.target.value as string)} MenuProps={menuProps}>
+                        {tokens.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
+                      </Select>
+                    </FormControl>
+                    <TextField className={classes.inputField} fullWidth label="Per Unit Replacement" type="number" value={amount} onChange={e => setAmount(e.target.value as string)} />
+                    <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canDeclareReplacement} onClick={declareReplacement}>Declare Replacement</Button>
+                  </AccordionDetails>
+                </Accordion>
+              </Grid>}
             </Grid>
           </Grid>
         </Grid>

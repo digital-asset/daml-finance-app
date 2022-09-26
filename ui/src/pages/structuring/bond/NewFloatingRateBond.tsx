@@ -16,8 +16,8 @@ import { emptyMap } from "@daml/types";
 import { DayCountConventionEnum } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Date/DayCount";
 import { BusinessDayConventionEnum } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Date/Calendar";
 import { useParties } from "../../../context/PartiesContext";
-import { useInstruments } from "../../../context/InstrumentsContext";
-import { useServices } from "../../../context/ServicesContext";
+import { useInstruments } from "../../../context/InstrumentContext";
+import { useServices } from "../../../context/ServiceContext";
 import { Service as Structuring } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Service";
 import { Service as StructuringAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service";
 
@@ -73,7 +73,7 @@ export const NewFloatingRateBond : React.FC = () => {
     };
     if (structuringAuto.length > 0) await ledger.exercise(StructuringAuto.RequestAndCreateFloatingRateBond, structuringAuto[0].contractId, arg);
     else await ledger.exercise(Structuring.RequestCreateFloatingRateBond, structuring[0].contractId, arg);
-    navigate("/structuring/instruments");
+    navigate("/app/structuring/instruments");
   };
 
   const menuProps : Partial<MenuProps> = { anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" } };

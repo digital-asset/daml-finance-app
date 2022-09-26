@@ -7,7 +7,7 @@ import { Edge, EdgeChange, MarkerType, Node, NodeChange, useEdgesState, useNodes
 import { useEffect, useState } from "react";
 import { useParties } from "../context/PartiesContext";
 import { useScenario } from "../context/ScenarioContext";
-import { useServices } from "../context/ServicesContext";
+import { useServices } from "../context/ServiceContext";
 
 export type Network = {
   nodes : Node<any>[],
@@ -32,15 +32,16 @@ export const useNetwork = () : Network => {
   const scenario = useScenario();
   const svc = useServices();
   const services : CreateEvent<any>[] = Array.prototype.concat.apply([], [
+    svc.auction,
     svc.backToBack,
     svc.custody,
-    svc.auction,
     svc.bidding,
-    svc.subscription,
     svc.issuance,
     svc.lending,
     svc.lifecycle,
+    svc.settlement,
     svc.structuring,
+    svc.subscription,
     svc.listing,
     svc.trading,
   ]);

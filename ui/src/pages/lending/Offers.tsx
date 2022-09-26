@@ -10,11 +10,11 @@ import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
 import { BorrowOffer } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lending/Model";
 import { fmt } from "../../util";
-import { useServices } from "../../context/ServicesContext";
+import { useServices } from "../../context/ServiceContext";
 import { Service as Lending } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lending/Service";
 import { Reference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
 import { CreateEvent } from "@daml/ledger";
-import { useHoldings } from "../../context/HoldingsContext";
+import { useHoldings } from "../../context/HoldingContext";
 import { ContractId } from "@daml/types";
 import { Transferable } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Transferable";
 
@@ -28,7 +28,7 @@ export const Offers : React.FC = () => {
   const { loading: l2, getFungible } = useHoldings();
   const { loading: l3, contracts: offers } = useStreamQueries(BorrowOffer);
   const { loading: l4, contracts: accounts } = useStreamQueries(Reference);
-  if (l1 || l2 || l3 || l4) return (<Spinner />);
+  if (l1 || l2 || l3 || l4) return <Spinner />;
 
   const customerServices = lending.filter(c => c.payload.customer === party);
   const isCustomer = customerServices.length > 0;
@@ -43,7 +43,7 @@ export const Offers : React.FC = () => {
       account: borrowerAccount
     };
     await ledger.exercise(Lending.AcceptBorrowOffer, lending[0].contractId, arg);
-    navigate("/lending/trades");
+    navigate("/app/lending/trades");
   };
 
   return (

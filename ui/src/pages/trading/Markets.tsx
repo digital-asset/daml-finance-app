@@ -18,7 +18,7 @@ export const Markets : React.FC = () => {
   const { getName } = useParties();
 
   const { contracts: listings, loading: l1 } = useStreamQueries(Listing);
-  if (l1) return (<Spinner />);
+  if (l1) return <Spinner />;
 
   return (
     <>
@@ -47,7 +47,7 @@ export const Markets : React.FC = () => {
                       <TableCell key={3} className={classes.tableCell}>{c.payload.tradedInstrument.id.unpack}</TableCell>
                       <TableCell key={4} className={classes.tableCell}>{c.payload.quotedInstrument.id.unpack}</TableCell>
                       <TableCell key={5} className={classes.tableCell}>
-                        <IconButton color="primary" size="small" component="span" onClick={() => navigate("/trading/markets/" + c.contractId)}>
+                        <IconButton color="primary" size="small" component="span" onClick={() => navigate("/app/trading/markets/" + c.contractId)}>
                           <KeyboardArrowRight fontSize="small"/>
                         </IconButton>
                       </TableCell>

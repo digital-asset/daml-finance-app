@@ -9,8 +9,8 @@ import { Typography, Grid, Paper, Select, MenuItem, TextField, Button, MenuProps
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { Reference as AccountReference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
-import { useServices } from "../../context/ServicesContext";
-import { useInstruments } from "../../context/InstrumentsContext";
+import { useServices } from "../../context/ServiceContext";
+import { useInstruments } from "../../context/InstrumentContext";
 import { Service as BackToBack } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/BackToBack/Service";
 import { Service as IssuanceAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Auto/Service";
 import { Service as Issuance } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Service";
@@ -36,7 +36,7 @@ export const New : React.FC = () => {
   const aggregates = latests.filter(c => c.payload.issuer === party);
   const aggregate = aggregates.find(c => c.payload.id.unpack === instrumentLabel);
 
-  if (l1 || l2 || l3) return (<Spinner />);
+  if (l1 || l2 || l3) return <Spinner />;
   if (!issuance) return (<Message text="No issuance service found" />);
 
   const myB2BServices = backToBack.filter(s => s.payload.customer === party);
@@ -57,7 +57,7 @@ export const New : React.FC = () => {
         providerAccount: providerAccount.key
       };
       await ledger.exercise(BackToBack.CreateIssuance, myB2BServices[0].contractId, arg);
-      navigate("/issuance/issuances");
+      navigate("/app/issuance/issuances");
     } else {
       const hasAuto = issuanceAuto.length > 0;
       const myAutoSvc = issuanceAuto.filter(s => s.payload.customer === party)[0];
@@ -73,7 +73,7 @@ export const New : React.FC = () => {
       };
       if (hasAuto) await ledger.exercise(IssuanceAuto.RequestAndCreateIssuance, myAutoSvc.contractId, arg);
       else await ledger.exercise(Issuance.RequestCreateIssuance, mySvc.contractId, arg);
-      navigate("/issuance/issuances");
+      navigate("/app/issuance/issuances");
     }
   }
 

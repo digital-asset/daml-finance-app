@@ -12,9 +12,9 @@ import damlLogin from "../../images/daml-logo-mark-light.png";
 import { loginUser, useUserDispatch } from "../../context/UserContext";
 import { useNavigate } from "react-router-dom";
 import { FloatingEdge } from "../../components/Network/FloatingEdge";
-import "./index.css"
 import { useParties } from "../../context/PartiesContext";
 import ExitToApp from "@mui/icons-material/ExitToApp";
+import "./index.css"
 
 export const Network : React.FC = () => {
   const classes = useStyles();
@@ -34,7 +34,7 @@ export const Network : React.FC = () => {
     floating: FloatingEdge,
   }), []);;
 
-  if (network.loading) return (<Spinner />);
+  if (network.loading) return <Spinner />;
 
   return (
     <>

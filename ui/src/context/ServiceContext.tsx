@@ -3,7 +3,7 @@
 
 import React from "react";
 import { CreateEvent } from "@daml/ledger";
-import { useStreamQueries } from "@daml/react";
+import { useQuery, useStreamQueries } from "@daml/react";
 import { Service as BackToBackService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/BackToBack/Service"
 import { Service as CustodyService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Custody/Service"
 import { Service as AuctionService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Service"
@@ -19,6 +19,7 @@ import { Service as StructuringService } from "@daml.js/daml-finance-app/lib/Dam
 import { Service as StructuringAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service"
 import { Service as ListingService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Service"
 import { Service as ListingAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Auto/Service"
+import { Service as SettlementService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Settlement/Service"
 import { Service as TradingService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Trading/Service"
 import { Service as TradingAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Trading/Auto/Service"
 
@@ -36,6 +37,7 @@ export type ServicesState = {
   lifecycle : readonly CreateEvent<LifecycleService, LifecycleService.Key>[]
   listingAuto : readonly CreateEvent<ListingAutoService, ListingAutoService.Key>[]
   listing : readonly CreateEvent<ListingService, ListingService.Key>[]
+  settlement : readonly CreateEvent<SettlementService, SettlementService.Key>[]
   structuringAuto : readonly CreateEvent<StructuringAutoService, StructuringAutoService.Key>[]
   structuring : readonly CreateEvent<StructuringService, StructuringService.Key>[]
   subscription  :readonly  CreateEvent<SubscriptionService, SubscriptionService.Key>[]
@@ -57,6 +59,7 @@ const empty = {
   lifecycle: [],
   listingAuto: [],
   listing: [],
+  settlement: [],
   structuringAuto: [],
   structuring: [],
   subscription: [],
@@ -68,24 +71,25 @@ const ServicesContext = React.createContext<ServicesState>(empty);
 
 export const ServicesProvider : React.FC = ({ children }) => {
 
-  const { contracts: backToBack,      loading: l1 } =  useStreamQueries(BackToBackService);
-  const { contracts: custody,         loading: l2 } =  useStreamQueries(CustodyService);
-  const { contracts: auctionAuto,     loading: l3 } =  useStreamQueries(AuctionAutoService);
-  const { contracts: auction,         loading: l4 } =  useStreamQueries(AuctionService);
-  const { contracts: biddingAuto,     loading: l5 } =  useStreamQueries(BiddingAutoService);
-  const { contracts: bidding,         loading: l6 } =  useStreamQueries(BiddingService);
-  const { contracts: issuanceAuto,    loading: l7 } =  useStreamQueries(IssuanceAutoService);
-  const { contracts: issuance,        loading: l8 } =  useStreamQueries(IssuanceService);
-  const { contracts: lending,         loading: l9 } =  useStreamQueries(LendingService);
-  const { contracts: lifecycle,       loading: l10 } = useStreamQueries(LifecycleService);
-  const { contracts: listingAuto,     loading: l11 } = useStreamQueries(ListingAutoService);
-  const { contracts: listing,         loading: l12 } = useStreamQueries(ListingService);
-  const { contracts: structuringAuto, loading: l13 } = useStreamQueries(StructuringAutoService);
-  const { contracts: structuring,     loading: l14 } = useStreamQueries(StructuringService);
-  const { contracts: subscription,    loading: l15 } = useStreamQueries(SubscriptionService);
-  const { contracts: tradingAuto,     loading: l16 } = useStreamQueries(TradingAutoService);
-  const { contracts: trading,         loading: l17 } = useStreamQueries(TradingService);
-  const loading = l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8 || l9 || l10 || l11 || l12 || l13 || l14 || l15 || l16 || l17;
+  const { loading: l1,  contracts: backToBack }       = useQuery(BackToBackService);
+  const { loading: l2,  contracts: custody }          = useQuery(CustodyService);
+  const { loading: l3,  contracts: auctionAuto }      = useQuery(AuctionAutoService);
+  const { loading: l4,  contracts: auction }          = useQuery(AuctionService);
+  const { loading: l5,  contracts: biddingAuto }      = useQuery(BiddingAutoService);
+  const { loading: l6,  contracts: bidding }          = useQuery(BiddingService);
+  const { loading: l7,  contracts: issuanceAuto }     = useQuery(IssuanceAutoService);
+  const { loading: l8,  contracts: issuance }         = useQuery(IssuanceService);
+  const { loading: l9,  contracts: lending }          = useQuery(LendingService);
+  const { loading: l10, contracts: lifecycle }        = useQuery(LifecycleService);
+  const { loading: l11, contracts: listingAuto }      = useQuery(ListingAutoService);
+  const { loading: l12, contracts: listing }          = useQuery(ListingService);
+  const { loading: l13, contracts: settlement }       = useQuery(SettlementService);
+  const { loading: l14, contracts: structuringAuto }  = useQuery(StructuringAutoService);
+  const { loading: l15, contracts: structuring }      = useQuery(StructuringService);
+  const { loading: l16, contracts: subscription }     = useQuery(SubscriptionService);
+  const { loading: l17, contracts: tradingAuto }      = useQuery(TradingAutoService);
+  const { loading: l18, contracts: trading }          = useQuery(TradingService);
+  const loading = l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8 || l9 || l10 || l11 || l12 || l13 || l14 || l15 || l16 || l17 || l18;
 
   const value = {
     loading,
@@ -101,6 +105,7 @@ export const ServicesProvider : React.FC = ({ children }) => {
     lifecycle,
     listingAuto,
     listing,
+    settlement,
     structuringAuto,
     structuring,
     subscription,

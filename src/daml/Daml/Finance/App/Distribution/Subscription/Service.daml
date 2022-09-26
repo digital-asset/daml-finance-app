@@ -77,7 +77,7 @@ template Service
         -- Settle subscriptions
         offering <- fetch offeringCid
         subscriptions <- zip subscriptionCids <$> forA subscriptionCids fetch
-        (remainingIssuerQuantity, remainingIssuerHoldingCidOpt) <- foldlA (settleSubscription settlementFactoryCid offering) (offering.asset.amount, Some offering.issuerHoldingCid) subscriptions
+        (remainingIssuerQuantity, remainingIssuerHoldingCidOpt) <- foldlA (settleSubscription provider settlementFactoryCid offering) (offering.asset.amount, Some offering.issuerHoldingCid) subscriptions
 
         -- Settle back-to-back trade
         whenSome offering.backToBack \b2b -> do

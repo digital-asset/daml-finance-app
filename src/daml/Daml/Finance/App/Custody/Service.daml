@@ -4,13 +4,15 @@
 module Daml.Finance.App.Custody.Service where
 
 import Daml.Finance.Interface.Holding.Account qualified as Account (Credit(..), Debit(..), K, R)
+import Daml.Finance.Interface.Holding.Factory.Account qualified as Account (F, Create(..), Remove(..))
+import Daml.Finance.Interface.Holding.Factory.Holding qualified as Holding (F)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Holding.Util (getAccount)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K, Q)
 import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Lifecycle (Claim)
+import Daml.Finance.Interface.Types.Common (AccountKey(..), Id, PartiesMap)
 import Daml.Finance.App.Custody.Model qualified as Custody
 import Daml.Finance.App.Util (fetchAndArchive)
-import Prelude hiding (lookup)
 
 template Service
   with
@@ -18,11 +20,29 @@ template Service
     provider : Party
     customer : Party
     claimRuleCid : ContractId Lifecycle.Claim
+    accountFactoryCid : ContractId Account.F
+    holdingFactoryCid : ContractId Holding.F
   where
     signatory operator, provider, customer
 
     key (operator, provider, customer) : (Party, Party, Party)
     maintainer key._1
+
+    nonconsuming choice RequestOpenAccount : ContractId Custody.OpenAccountRequest
+      with
+        id : Id
+        description : Text
+        observers : PartiesMap
+      controller customer
+      do
+        create Custody.OpenAccountRequest with ..
+
+    nonconsuming choice RequestCloseAccount : ContractId Custody.CloseAccountRequest
+      with
+        account : Account.K
+      controller customer
+      do
+        create Custody.CloseAccountRequest with ..
 
     nonconsuming choice RequestDeposit : ContractId Custody.DepositRequest
       with
@@ -39,6 +59,24 @@ template Service
       controller customer
       do
         create Custody.WithdrawalRequest with ..
+
+    nonconsuming choice OpenAccount : Account.K
+      with
+        openAccountRequestCid : ContractId Custody.OpenAccountRequest
+      controller provider
+      do
+        Custody.OpenAccountRequest{id; description; observers} <- fetchAndArchive openAccountRequestCid
+        let account = AccountKey with custodian = provider; owner = customer; id
+        exercise accountFactoryCid Account.Create with account; description; holdingFactoryCid; observers
+        pure account
+
+    nonconsuming choice CloseAccount : ()
+      with
+        closeAccountRequestCid : ContractId Custody.CloseAccountRequest
+      controller provider
+      do
+        Custody.CloseAccountRequest{account} <- fetchAndArchive closeAccountRequestCid
+        exercise accountFactoryCid Account.Remove with account
 
     nonconsuming choice Deposit : ContractId Holding.I
       with
@@ -74,6 +112,8 @@ template Offer
     provider : Party
     customer : Party
     claimRuleCid : ContractId Lifecycle.Claim
+    accountFactoryCid : ContractId Account.F
+    holdingFactoryCid : ContractId Holding.F
   where
     signatory operator, provider
     observer customer
@@ -81,7 +121,7 @@ template Offer
     choice Accept : ContractId Service
       controller customer
       do
-        create Service with operator; provider; customer; claimRuleCid
+        create Service with operator; provider; customer; claimRuleCid; accountFactoryCid; holdingFactoryCid
 
     choice Decline : ()
       controller customer
@@ -111,6 +151,8 @@ template Request
       with
         operator : Party
         claimRuleCid : ContractId Lifecycle.Claim
+        accountFactoryCid : ContractId Account.F
+        holdingFactoryCid : ContractId Holding.F
       controller operator, provider
       do
-        create Service with operator; provider; customer; claimRuleCid
+        create Service with operator; provider; customer; claimRuleCid; accountFactoryCid; holdingFactoryCid

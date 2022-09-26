@@ -16,7 +16,7 @@ export const Accounts : React.FC = () => {
   const { getName } = useParties();
 
   const { contracts: accounts, loading: l1 } = useStreamQueries(Account);
-  if (l1) return (<Spinner />);
+  if (l1) return <Spinner />;
 
   const custodianAccounts = accounts.filter(s => s.payload.custodian === party);
   const ownerAccounts = accounts.filter(s => s.payload.owner === party);

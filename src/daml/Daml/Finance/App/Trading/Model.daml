@@ -32,7 +32,7 @@ template Order
     operator : Party
     provider : Party
     customer : Party
-    id : Text
+    id : Id
     timestamp : Time
     listingId : Text
     quantity : Instrument.Q
@@ -45,7 +45,7 @@ template Order
     signatory operator, provider, customer
     observer observers
 
-    key (operator, provider, id) : (Party, Party, Text)
+    key (operator, provider, id) : (Party, Party, Id)
     maintainer key._1
 
     choice Fill : FillResult
@@ -62,19 +62,19 @@ template Order
           remaining = quantity.amount - min quantity.amount other.quantity.amount
           deliverable = if side == Buy then price.unit else quantity.unit
           step = Step with sender = customer; receiver = other.customer; quantity = Instrument.qty amount deliverable
-        (batchCid, [instructionCid]) <- exercise settlementFactoryCid Factory.Instruct with instructors = singleton provider; id = Id id; settler = provider; steps = [step]; description = id
+        (batchCid, [instructionCid]) <- exercise settlementFactoryCid Factory.Instruct with instructors = singleton provider; id; settlers = singleton provider; steps = [step]; contextId = Some id; description = show id
         Fungible.SplitResult [splitCid] restCidOpt <- exercise collateralCid Fungible.Split with amounts = [ amount ]
         if remaining == 0.0
         then do
-          instructionCid <- exercise instructionCid Instruction.Allocate with allocation = Pledge $ toInterfaceContractId splitCid
+          instructionCid <- fst <$> exercise instructionCid Instruction.Allocate with allocation = Pledge $ toInterfaceContractId splitCid
           whenSome restCidOpt (\restCid -> do
-            unlockedCid <- exercise (coerceContractId restCid : ContractId Lockable.I) Lockable.Release with context = id
+            unlockedCid <- exercise (coerceContractId restCid : ContractId Lockable.I) Lockable.Release with context = show id
             -- TODO: We can't undisclose here since the choice is controlled by the observers, which includes the public party
             --exercise (toInterfaceContractId unlockedCid : ContractId Disclosure.I) Disclosure.RemoveObservers with observersToRemove = (id, provider `insert` observers)
             pure ())
           pure FillResult with orderOpt = None; batchCid; instructionCid
         else do
-          instructionCid <- exercise instructionCid Instruction.Allocate with allocation = Pledge $ toInterfaceContractId splitCid
+          instructionCid <- fst <$> exercise instructionCid Instruction.Allocate with allocation = Pledge $ toInterfaceContractId splitCid
           case restCidOpt of
             Some restCid -> do
               let new = this with quantity.amount = remaining; collateralCid = restCid
@@ -94,7 +94,7 @@ template CreateOrderRequest
     operator : Party
     provider : Party
     customer : Party
-    id : Text
+    id : Id
     timestamp : Time
     listingId : Text
     quantity : Instrument.Q
@@ -107,7 +107,7 @@ template CreateOrderRequest
   where
     signatory operator, provider, customer
 
-    key (operator, provider, id) : (Party, Party, Text)
+    key (operator, provider, id) : (Party, Party, Id)
     maintainer key._1
 
 template CancelOrderRequest

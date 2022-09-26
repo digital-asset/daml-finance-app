@@ -10,22 +10,18 @@ import DA.Set (singleton)
 import DA.Time (time)
 import Daml.Finance.Holding.Account qualified as Account (Factory(..))
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
-import Daml.Finance.Instrument.Bond.FixedRate qualified as FixedRateBond (Instrument)
-import Daml.Finance.Instrument.Bond.FloatingRate qualified as FloatingRateBond (Instrument)
-import Daml.Finance.Instrument.Bond.InflationLinked qualified as InflationLinkedBond (Instrument)
+import Daml.Finance.Instrument.Bond.FixedRate.Instrument qualified as FixedRateBond (Instrument)
+import Daml.Finance.Instrument.Bond.FloatingRate.Instrument qualified as FloatingRateBond (Instrument)
+import Daml.Finance.Instrument.Bond.InflationLinked.Instrument qualified as InflationLinkedBond (Instrument)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I, getKey, qty)
 import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (Evolve(..), I)
-import Daml.Finance.Interface.Lifecycle.Observable qualified as Observable (I)
-import Daml.Finance.Interface.Lifecycle.Clock qualified as Clock (I)
-import Daml.Finance.Interface.Lifecycle.Event qualified as Event (I)
 import Daml.Finance.Interface.Types.Common (Id(..))
-import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum(..), HolidayCalendarData(..))
+import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum(..))
+import Daml.Finance.Lifecycle.Event.DateClock qualified as DateClock (Event)
+import Daml.Finance.Lifecycle.DateClock qualified as Lifecycle (DateClock)
 import Daml.Finance.Lifecycle.Effect qualified as Lifecycle (Effect)
-import Daml.Finance.RefData.HolidayCalendar (HolidayCalendar(..))
-import Daml.Finance.RefData.Observation (Observation(..))
-import Daml.Finance.RefData.Time.DateClock (DateClock(..), DateClockUpdateEvent(..), Unit(..))
 import Daml.Finance.Settlement.Factory qualified as Settlement (Factory(..))
 import Daml.Finance.Setup.Util.Common
 import Daml.Finance.Setup.Util.Role
@@ -36,10 +32,10 @@ import Daml.Script
 run : Script [PartyInfo]
 run = do
   let scenario = "Bond Issuance"
-  parties <- allocateParties scenario ["Operator", "Public", "CentralBank", "Registry", "Issuer", "Custodian", "Alice", "Bob", "Charlie"]
+  parties <- allocateParties scenario ["Operator", "Public", "CentralBank", "Registry", "Issuer", "Custodian", "Investor1", "Investor2", "Investor3"]
   let
-    [operator, public, centralBank, registry, issuer, custodian, alice, bob, charlie] = map (.id) parties
-    pub = fromList [("Public", singleton $ singleton public)]
+    all@[operator, public, centralBank, registry, issuer, custodian, inv1, inv2, inv3] = map (.id) parties
+    pub = fromList [("Public", singleton public)]
 
   -- Factories
   accountFactoryCid    <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
@@ -53,13 +49,14 @@ run = do
   createCustodianRole operator custodian
 
   -- Services
-  createCustodyService          operator centralBank  issuer    settlementFactoryCid
-  createCustodyService          operator centralBank  custodian settlementFactoryCid
-  createCustodyService          operator registry     issuer    settlementFactoryCid
-  createCustodyService          operator registry     custodian settlementFactoryCid
-  createCustodyService          operator custodian    alice     settlementFactoryCid
-  createCustodyService          operator custodian    bob       settlementFactoryCid
-  createCustodyService          operator custodian    charlie   settlementFactoryCid
+  createCustodyService          operator centralBank  registry  settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank  issuer    settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank  custodian settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator registry     issuer    settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator registry     custodian settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator custodian    inv1      settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator custodian    inv2      settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator custodian    inv3      settlementFactoryCid accountFactoryCid holdingFactoryCid
   createIssuanceService         operator registry     issuer
   createIssuanceAutoService     operator registry     issuer
   createStructuringService      operator registry     issuer
@@ -67,17 +64,17 @@ run = do
   createLifecycleService        operator registry     issuer    public
 
   -- Accounts
-  let createAcc = createAccount [public] accountFactoryCid holdingFactoryCid
-  issuerCashAccount      <- createAcc empty centralBank issuer    "Issuer@CentralBank/Cash"
-  custodianCashAccount   <- createAcc empty centralBank custodian "Custodian@CentralBank/Cash"
-  aliceCashAccount       <- createAcc empty custodian   alice     "Alice@Custodian/Cash"
-  bobCashAccount         <- createAcc empty custodian   bob       "Bob@Custodian/Cash"
-  charlieCashAccount     <- createAcc empty custodian   charlie   "Charlie@Custodian/Cash"
-  issuerSecAccount       <- createAcc empty registry    issuer    "Issuer@Registry/Securties"
-  custodianSecAccount    <- createAcc empty registry    custodian "Custodian@Registry/Securities"
-  aliceSecAccount        <- createAcc empty custodian   alice     "Alice@Custodian/Securities"
-  bobSecAccount          <- createAcc empty custodian   bob       "Bob@Custodian/Securities"
-  charlieSecAccount      <- createAcc empty custodian   charlie   "Charlie@Custodian/Securities"
+  registryCashAccount   <- createAccount operator centralBank registry  public (Id "Registry@CentralBank/Cash")       "Registry@CentralBank/Cash"       empty
+  issuerCashAccount     <- createAccount operator centralBank issuer    public (Id "Issuer@CentralBank/Cash")         "Issuer@CentralBank/Cash"         empty
+  custodianCashAccount  <- createAccount operator centralBank custodian public (Id "Custodian@CentralBank/Cash")      "Custodian@CentralBank/Cash"      empty
+  inv1CashAccount       <- createAccount operator custodian   inv1      public (Id "Investor1@Custodian/Cash")        "Investor1@Custodian/Cash"        empty
+  inv2CashAccount       <- createAccount operator custodian   inv2      public (Id "Investor2@Custodian/Cash")        "Investor2@Custodian/Cash"        empty
+  inv3CashAccount       <- createAccount operator custodian   inv3      public (Id "Investor3@Custodian/Cash")        "Investor3@Custodian/Cash"        empty
+  issuerSecAccount      <- createAccount operator registry    issuer    public (Id "Issuer@Registry/Securties")       "Issuer@Registry/Securties"       empty
+  custodianSecAccount   <- createAccount operator registry    custodian public (Id "Custodian@Registry/Securities")   "Custodian@Registry/Securities"   empty
+  inv1SecAccount        <- createAccount operator custodian   inv1      public (Id "Investor1@Custodian/Securities")  "Investor1@Custodian/Securities"  empty
+  inv2SecAccount        <- createAccount operator custodian   inv2      public (Id "Investor2@Custodian/Securities")  "Investor2@Custodian/Securities"  empty
+  inv3SecAccount        <- createAccount operator custodian   inv3      public (Id "Investor3@Custodian/Securities")  "Investor3@Custodian/Securities"  empty
 
   -- Time
   t <- getTime
@@ -87,16 +84,15 @@ run = do
     tt d = time d 12 0 0
     epoch = tt $ date 1970 Jan 1
     (ty, tm, td) = toGregorian today
-    clock = DateClock with u = Unit $ date 2021 tm td, id = Id "Clock", provider = registry, observers = pub
-  clockCid <- toInterfaceContractId @Clock.I <$> submitMulti [registry] [] do createCmd clock
-  eventCid <- toInterfaceContractId @Event.I <$> submitMulti [registry] [] do createCmd DateClockUpdateEvent with clock; id = Id $ "Update to " <> show today
+  (clockCid, eventCid) <- createClockAndEvent all (date 2021 tm td) (singleton public)
 
   -- Instruments
-  usd   <- originate centralBank centralBank pub epoch "USD" "United States Dollar"
-  bond1 <- originateZeroCouponBond      registry issuer "BOND1" "ZERO-5Y"       pub (tt $ date 2022 tm td) (date 2022 tm td) (date 2027 Sep td) usd
-  bond2 <- originateFixedRateBond       registry issuer "BOND2" "FIXED-5Y-1.1%" pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.011 M 12 usd
-  bond3 <- originateFloatingRateBond    registry issuer "BOND3" "FLOAT-5Y-0.8%" pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.005 M 12 usd "USD-LIBOR-12M"
-  bond4 <- originateInflationLinkedBond registry issuer "BOND4" "INFL-5Y-0.75%" pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.005 M 12 usd "CPI" 100.0
+  usd   <- originate                    centralBank centralBank pub epoch "USD"   "United States Dollar"
+  bond1 <- originateZeroCouponBond      registry    issuer                "BOND1" "Zero Coupon Bond 5Y"                       pub (tt $ date 2022 tm td) (date 2022 tm td) (date 2027 Sep td) usd
+  bond2 <- originateFixedRateBond       registry    issuer                "BOND2" "Fixed Rate Bond 5Y @ 1.1%"                 pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.011 M 12 usd
+  bond3 <- originateFloatingRateBond    registry    issuer                "BOND3" "Floating Rate Bond 5Y @ LIBOR-12M + 0.5%"  pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.005 M 12 usd "USD-LIBOR-12M"
+  bond4 <- originateInflationLinkedBond registry    issuer                "BOND4" "Inflation Linked Bond 5Y @ CPI + 0.5%"     pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.005 M 12 usd "CPI" 100.0
+  let securities = [bond1, bond2, bond3, bond4]
 
   -- Data
   let
@@ -107,26 +103,26 @@ run = do
     cpi =
       [ (tt $ date 2021 tm td, 102.2500)
       , (tt $ date 2022 tm td, 104.5000) ]
-    obs =
-      [ Observation with provider = issuer; obsKey = "USD-LIBOR-12M"; observations = fromList libor; observers = pub
-      , Observation with provider = issuer; obsKey = "CPI";           observations = fromList cpi; observers = pub ]
-    calendar = HolidayCalendarData with id = "EMPTY"; weekend = []; holidays = []
-  observableCids <- mapA (\f -> toInterfaceContractId @Observable.I <$> submitMulti [registry, issuer] [] do createCmd f) obs
-  calendarCid <- submitMulti [registry] [] do createCmd HolidayCalendar with agency = registry; entity = calendar.id; calendar; observers = pub
+  obsCid1 <- createObservation issuer "USD-LIBOR-12M"  libor pub
+  obsCid2 <- createObservation issuer "CPI"            cpi   pub
+  createCalendar registry "EMPTY" [] [] pub
+  createAccountDirectory issuer     ([(usd, issuerCashAccount)] <> map (\s -> (s, issuerSecAccount)) securities)        $ singleton public
+  createAccountDirectory custodian  ([(usd, custodianCashAccount)] <> map (\s -> (s, custodianSecAccount)) securities)  $ singleton public
+  createAccountDirectory inv1       ([(usd, inv1CashAccount)] <> map (\s -> (s, inv1SecAccount)) securities)            $ singleton public
+  createAccountDirectory inv2       ([(usd, inv2CashAccount)] <> map (\s -> (s, inv2SecAccount)) securities)            $ singleton public
+  createAccountDirectory inv3       ([(usd, inv3CashAccount)] <> map (\s -> (s, inv3SecAccount)) securities)            $ singleton public
 
   -- Lifecycle
-  (bond2Cid, effectCids2) <- submitExerciseInterfaceByKeyCmd @Lifecycle.I [issuer] [public] bond2 Lifecycle.Evolve with ruleName = "Time"; settler = registry; eventCid; clockCid; observableCids
-  (bond3Cid, effectCids3) <- submitExerciseInterfaceByKeyCmd @Lifecycle.I [issuer] [public] bond3 Lifecycle.Evolve with ruleName = "Time"; settler = registry; eventCid; clockCid; observableCids
-  (bond4Cid, effectCids4) <- submitExerciseInterfaceByKeyCmd @Lifecycle.I [issuer] [public] bond4 Lifecycle.Evolve with ruleName = "Time"; settler = registry; eventCid; clockCid; observableCids
-  mapA_ (\eCid -> submit issuer do archiveCmd $ fromInterfaceContractId @Lifecycle.Effect eCid) effectCids2
-  mapA_ (\eCid -> submit issuer do archiveCmd $ fromInterfaceContractId @Lifecycle.Effect eCid) effectCids3
-  mapA_ (\eCid -> submit issuer do archiveCmd $ fromInterfaceContractId @Lifecycle.Effect eCid) effectCids4
-  submit registry do archiveCmd $ fromInterfaceContractId @DateClock clockCid
-  submit registry do archiveCmd $ fromInterfaceContractId @DateClockUpdateEvent eventCid
+  (bond2Cid, effectCids2) <- submitExerciseInterfaceByKeyCmd @Lifecycle.I [issuer] [public] bond2 Lifecycle.Evolve with ruleName = "Time"; settlers = singleton registry; eventCid; clockCid; observableCids = [obsCid1, obsCid2]
+  (bond3Cid, effectCids3) <- submitExerciseInterfaceByKeyCmd @Lifecycle.I [issuer] [public] bond3 Lifecycle.Evolve with ruleName = "Time"; settlers = singleton registry; eventCid; clockCid; observableCids = [obsCid1, obsCid2]
+  (bond4Cid, effectCids4) <- submitExerciseInterfaceByKeyCmd @Lifecycle.I [issuer] [public] bond4 Lifecycle.Evolve with ruleName = "Time"; settlers = singleton registry; eventCid; clockCid; observableCids = [obsCid1, obsCid2]
+  mapA_ (\eCid -> submitMulti [registry, issuer] [] do archiveCmd $ fromInterfaceContractId @Lifecycle.Effect eCid) effectCids2
+  mapA_ (\eCid -> submitMulti [registry, issuer] [] do archiveCmd $ fromInterfaceContractId @Lifecycle.Effect eCid) effectCids3
+  mapA_ (\eCid -> submitMulti [registry, issuer] [] do archiveCmd $ fromInterfaceContractId @Lifecycle.Effect eCid) effectCids4
+  submitMulti all [] do archiveCmd $ fromInterfaceContractId @Lifecycle.DateClock clockCid
+  submitMulti all [] do archiveCmd $ fromInterfaceContractId @DateClock.Event eventCid
 
-  let clock = DateClock with u = Unit today, id = Id "Clock", provider = registry, observers = pub
-  clockCid <- toInterfaceContractId @Clock.I <$> submitMulti [registry] [] do createCmd clock
-  eventCid <- toInterfaceContractId @Event.I <$> submitMulti [registry] [] do createCmd DateClockUpdateEvent with clock; id = Id $ "Update to " <> show today
+  (clockCid, eventCid) <- createClockAndEvent all today (singleton public)
 
   -- Distribution
   Some bond2I <- queryContractId issuer (coerceContractId bond2Cid : ContractId FixedRateBond.Instrument)
@@ -144,19 +140,20 @@ run = do
   transfer issuer custodianSecAccount public $ coerceContractId bond3HoldingCid
   transfer issuer custodianSecAccount public $ coerceContractId bond4HoldingCid
 
-  deposit operator custodian alice   public (Instrument.qty 50_000_000.0 bond2) aliceSecAccount
-  deposit operator custodian bob     public (Instrument.qty 30_000_000.0 bond2) bobSecAccount
-  deposit operator custodian charlie public (Instrument.qty 20_000_000.0 bond2) charlieSecAccount
-  deposit operator custodian alice   public (Instrument.qty 60_000_000.0 bond3) aliceSecAccount
-  deposit operator custodian bob     public (Instrument.qty 30_000_000.0 bond3) bobSecAccount
-  deposit operator custodian charlie public (Instrument.qty 10_000_000.0 bond3) charlieSecAccount
-  deposit operator custodian alice   public (Instrument.qty 70_000_000.0 bond4) aliceSecAccount
-  deposit operator custodian bob     public (Instrument.qty 20_000_000.0 bond4) bobSecAccount
-  deposit operator custodian charlie public (Instrument.qty 10_000_000.0 bond4) charlieSecAccount
+  deposit operator custodian inv1 public (Instrument.qty 50_000_000.0 bond2) inv1SecAccount
+  deposit operator custodian inv2 public (Instrument.qty 30_000_000.0 bond2) inv2SecAccount
+  deposit operator custodian inv3 public (Instrument.qty 20_000_000.0 bond2) inv3SecAccount
+  deposit operator custodian inv1 public (Instrument.qty 60_000_000.0 bond3) inv1SecAccount
+  deposit operator custodian inv2 public (Instrument.qty 30_000_000.0 bond3) inv2SecAccount
+  deposit operator custodian inv3 public (Instrument.qty 10_000_000.0 bond3) inv3SecAccount
+  deposit operator custodian inv1 public (Instrument.qty 70_000_000.0 bond4) inv1SecAccount
+  deposit operator custodian inv2 public (Instrument.qty 20_000_000.0 bond4) inv2SecAccount
+  deposit operator custodian inv3 public (Instrument.qty 10_000_000.0 bond4) inv3SecAccount
 
-  deposit operator centralBank custodian public (Instrument.qty 120_000_000.0 usd) custodianCashAccount
-  deposit operator custodian alice       public (Instrument.qty  50_000_000.0 usd) aliceCashAccount
-  deposit operator custodian bob         public (Instrument.qty  40_000_000.0 usd) bobCashAccount
-  deposit operator custodian charlie     public (Instrument.qty  30_000_000.0 usd) charlieCashAccount
+  deposit operator centralBank  registry  public (Instrument.qty 120_000_000.0 usd) registryCashAccount
+  deposit operator centralBank  custodian public (Instrument.qty 120_000_000.0 usd) custodianCashAccount
+  deposit operator custodian    inv1      public (Instrument.qty  50_000_000.0 usd) inv1CashAccount
+  deposit operator custodian    inv2      public (Instrument.qty  40_000_000.0 usd) inv2CashAccount
+  deposit operator custodian    inv3      public (Instrument.qty  30_000_000.0 usd) inv3CashAccount
 
   pure parties

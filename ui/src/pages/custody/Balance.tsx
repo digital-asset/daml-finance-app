@@ -7,7 +7,7 @@ import { useParty } from "@daml/react";
 import useStyles from "../styles";
 import { fmt } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { useHoldings } from "../../context/HoldingsContext";
+import { useHoldings } from "../../context/HoldingContext";
 
 type BalanceEntry = {
   // providers : string[]
@@ -24,7 +24,7 @@ export const Balance : React.FC = () => {
   const party = useParty();
 
   const { loading: l1, holdings } = useHoldings();
-  if (l1) return (<Spinner />);
+  if (l1) return <Spinner />;
 
   const assetsAndLiabilities = holdings.filter(c => c.payload.account.custodian === party || c.payload.account.owner === party);
   const assets = assetsAndLiabilities.filter(c => c.payload.account.owner === party);

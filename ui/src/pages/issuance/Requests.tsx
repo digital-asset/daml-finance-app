@@ -13,7 +13,7 @@ import { CreateIssuanceRequest, ReduceIssuanceRequest } from "@daml.js/daml-fina
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Service";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
-import { useServices } from "../../context/ServicesContext";
+import { useServices } from "../../context/ServiceContext";
 import { Message } from "../../components/Message/Message";
 
 export const Requests : React.FC = () => {
@@ -28,21 +28,21 @@ export const Requests : React.FC = () => {
 
   const providerServices = issuance.filter(s => s.payload.provider === party);
 
-  if (l1 || l2 || l3) return (<Spinner />);
+  if (l1 || l2 || l3) return <Spinner />;
   if (providerServices.length === 0) return <Message text="No provider issuance service found" />
 
   const createIssuance = async (c : CreateEvent<CreateIssuanceRequest>) => {
     const service = providerServices.find(s => s.payload.customer === c.payload.customer);
     if (!service) return;
     await ledger.exercise(Service.CreateIssuance, service.contractId, { createIssuanceRequestCid: c.contractId });
-    navigate("/issuance/issuances");
+    navigate("/app/issuance/issuances");
   }
 
   const deleteIssuance = async (c : CreateEvent<ReduceIssuanceRequest>) => {
     const service = providerServices.find(s => s.payload.customer === c.payload.customer);
     if (!service) return;
     await ledger.exercise(Service.ReduceIssuance, service.contractId, { reduceIssuanceRequestCid: c.contractId });
-    navigate("/issuance/issuances");
+    navigate("/app/issuance/issuances");
   }
 
   return (
@@ -77,7 +77,7 @@ export const Requests : React.FC = () => {
                         {/* {party === c.payload.client && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => cancelRequest(c)}>Cancel</Button>} */}
                       </TableCell>
                       <TableCell key={7} className={classes.tableCell}>
-                        <IconButton color="primary" size="small" component="span" onClick={() => navigate("/issuance/createrequest/" + c.contractId)}>
+                        <IconButton color="primary" size="small" component="span" onClick={() => navigate("/app/issuance/createrequest/" + c.contractId)}>
                           <KeyboardArrowRight fontSize="small"/>
                         </IconButton>
                       </TableCell>
@@ -119,7 +119,7 @@ export const Requests : React.FC = () => {
                         {/* {party === c.payload.client && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => cancelRequest(c)}>Cancel</Button>} */}
                       </TableCell>
                       <TableCell key={8} className={classes.tableCell}>
-                        <IconButton color="primary" size="small" component="span" onClick={() => navigate("/issuance/deleterequest/" + c.contractId)}>
+                        <IconButton color="primary" size="small" component="span" onClick={() => navigate("/app/issuance/deleterequest/" + c.contractId)}>
                           <KeyboardArrowRight fontSize="small"/>
                         </IconButton>
                       </TableCell>

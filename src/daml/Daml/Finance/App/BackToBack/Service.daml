@@ -72,7 +72,7 @@ template Service
           totalNotional = totalQuantity * offering.price.amount
           delivery = Step with sender = b2b.party; receiver = offering.issuer; quantity = (offering.asset with amount = totalQuantity)
           payment = Step with sender = offering.issuer; receiver = b2b.party; quantity = (offering.price with amount = totalNotional)
-        (batchCid, [deliveryCid, paymentCid]) <- exercise settlementFactoryCid Factory.Instruct with instructors = singleton customer; settler = offering.issuer; id = Id offering.offeringId; steps = [ delivery, payment ]; description = "Settlement for offering " <> offering.offeringId
+        (batchCid, [deliveryCid, paymentCid]) <- exercise settlementFactoryCid Factory.Instruct with instructors = singleton customer; settlers = singleton offering.issuer; id = Id offering.offeringId; contextId = None; steps = [ delivery, payment ]; description = "Settlement for offering " <> offering.offeringId
 
         b2bDeliverable <- fetch b2b.b2bDeliverableCid
         b2bSizedDeliverableCid <-
@@ -84,11 +84,11 @@ template Service
           if getAmount issuerDeliverable > totalNotional
           then head . (.splitCids) <$> exercise b2b.issuerDeliverableCid Fungible.Split with amounts = [ totalNotional ]
           else pure b2b.issuerDeliverableCid
-        deliveryCid <- exercise deliveryCid Instruction.Allocate with allocation = Pledge $ coerceContractId b2bSizedDeliverableCid
+        deliveryCid <- fst <$> exercise deliveryCid Instruction.Allocate with allocation = Pledge $ coerceContractId b2bSizedDeliverableCid
         deliveryCid <- exercise deliveryCid Instruction.Approve with approval = TakeDelivery b2b.issuerReceivableAccount
-        paymentCid <- exercise paymentCid Instruction.Allocate with allocation = Pledge $ coerceContractId issuerSizedDeliverableCid
+        paymentCid <- fst <$> exercise paymentCid Instruction.Allocate with allocation = Pledge $ coerceContractId issuerSizedDeliverableCid
         paymentCid <- exercise paymentCid Instruction.Approve with approval = TakeDelivery b2b.b2bReceivableAccount
-        deliveredCids <- exercise batchCid Batch.Settle
+        deliveredCids <- exercise batchCid Batch.Settle with actors = singleton customer
         -- mapA (\cid -> coerceContractId <$> exercise (coerceContractId cid : ContractId Lockable.I) Lockable.Release with context = offering.offeringId) deliveredCids
         pure deliveredCids
 

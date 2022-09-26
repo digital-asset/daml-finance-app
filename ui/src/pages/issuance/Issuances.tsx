@@ -19,7 +19,7 @@ export const Issuances : React.FC = () => {
   const { getName } = useParties();
 
   const { contracts: issuances, loading: l1 } = useStreamQueries(Issuance);
-  if (l1) return (<Spinner />);
+  if (l1) return <Spinner />;
 
   return (
     <>
@@ -50,7 +50,7 @@ export const Issuances : React.FC = () => {
                       <TableCell key={5} className={classes.tableCell} align="right">{fmt(c.payload.quantity.amount, 0)}</TableCell>
                       <TableCell key={6} className={classes.tableCell}>{c.payload.quantity.unit.id.unpack}</TableCell>
                       <TableCell key={7} className={classes.tableCell}>
-                        <IconButton color="primary" size="small" component="span" onClick={() => navigate("/issuance/issuances/" + c.contractId)}>
+                        <IconButton color="primary" size="small" component="span" onClick={() => navigate("/app/issuance/issuances/" + c.contractId)}>
                           <KeyboardArrowRight fontSize="small"/>
                         </IconButton>
                       </TableCell>

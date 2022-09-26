@@ -8,7 +8,7 @@ import useStyles from "../styles";
 import { fmt } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
-import { useHoldings } from "../../context/HoldingsContext";
+import { useHoldings } from "../../context/HoldingContext";
 
 export type HoldingsProps = {
   showAssets : boolean
@@ -30,7 +30,7 @@ export const Holdings : React.FC<HoldingsProps> = ({ showAssets }) => {
   const { getName } = useParties();
 
   const { loading: l1, holdings } = useHoldings();
-  if (l1) return (<Spinner />);
+  if (l1) return <Spinner />;
 
   const filtered = holdings.filter(c => showAssets ? c.payload.account.owner === party : c.payload.account.custodian === party);
 

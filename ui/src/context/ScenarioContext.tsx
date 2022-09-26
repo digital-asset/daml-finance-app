@@ -37,16 +37,17 @@ export type ScenarioState = {
   select : (name : string) => Scenario
 }
 
-const structuring  = <App key={0} label="Structuring"  description="Structure and design new assets"         image={structuringImage}   path="/structuring/instruments" />;
-const issuance     = <App key={1} label="Issuance"     description="Issue new assets"                        image={issuanceImage}      path="/issuance/issuances" />;
-const custody      = <App key={2} label="Custody"      description="Manage assets in custody"                image={custodyImage}       path="/custody/assets" />;
-const distribution = <App key={3} label="Distribution" description="Distribute assets in the primary market" image={distributionImage}  path="/distribution/auctions" />;
-const lending      = <App key={4} label="Lending"      description="Borrow and lend securities"              image={lendingImage}       path="/lending/trades" />;
-const servicing    = <App key={5} label="Servicing"    description="Service and lifecycle your assets"       image={lifecyclingImage}   path="/servicing/instruments" />;
-const simulation   = <App key={6} label="Simulation"   description="Run market scenarios on your assets"     image={simulationImage}    path="/simulation/scenario" />;
-const listing      = <App key={7} label="Listing"      description="List your assets on trading venues"      image={listingImage}       path="/listing/listings" />;
-const trading      = <App key={8} label="Trading"      description="Trade assets in the secondary market"    image={tradingImage}       path="/trading/markets" />;
-const network      = <App key={9} label="Network"      description="Explore the distributed ledger network"  image={networkImage}       path="/network/overview" />;
+const structuring  = <App key={0} label="Structuring"  description="Structure and design new assets"         image={structuringImage}   path="/app/structuring/instruments" />;
+const issuance     = <App key={1} label="Issuance"     description="Issue new assets"                        image={issuanceImage}      path="/app/issuance/issuances" />;
+const custody      = <App key={2} label="Custody"      description="Manage assets in custody"                image={custodyImage}       path="/app/custody/assets" />;
+const distribution = <App key={3} label="Distribution" description="Distribute assets in the primary market" image={distributionImage}  path="/app/distribution/auctions" />;
+const lending      = <App key={4} label="Lending"      description="Borrow and lend securities"              image={lendingImage}       path="/app/lending/trades" />;
+const servicing    = <App key={5} label="Servicing"    description="Service and lifecycle your assets"       image={lifecyclingImage}   path="/app/servicing/instruments" />;
+const simulation   = <App key={6} label="Simulation"   description="Run market scenarios on your assets"     image={simulationImage}    path="/app/simulation/scenario" />;
+const listing      = <App key={7} label="Listing"      description="List your assets on trading venues"      image={listingImage}       path="/app/listing/listings" />;
+const trading      = <App key={8} label="Trading"      description="Trade assets in the secondary market"    image={tradingImage}       path="/app/trading/markets" />;
+const network      = <App key={9} label="Network"      description="Explore the distributed ledger network"  image={networkImage}       path="/app/network/overview" />;
+const settlement   = <App key={10} label="Settlement"  description="Settle instructions in batches"          image={simulationImage}    path="/app/settlement/batches" />;
 
 export const scenarios : Scenario[] = [
   {
@@ -62,17 +63,17 @@ export const scenarios : Scenario[] = [
       [ "Exchange",     { x:  800, y: 550 } ],
       [ "Agent",        { x:  400, y: 600 } ],
       [ "Issuer",       { x: 1200, y: 300 } ],
-      [ "Alice",        { x:    0, y: 300 } ],
-      [ "Bob",          { x:  400, y: 300 } ],
-      [ "Charlie",      { x:  800, y: 300 } ]
+      [ "Investor1",    { x:    0, y: 300 } ],
+      [ "Investor2",    { x:  400, y: 300 } ],
+      [ "Investor3",    { x:  800, y: 300 } ]
     ]),
-    useNetworkLogin: false
+    useNetworkLogin: true
   },
   {
     label: "Bond Issuance",
     description: "Simple bond issuance custody scenario",
     image: bondIssuanceImage,
-    apps: [ structuring, issuance, custody, distribution, servicing, listing, trading, network ],
+    apps: [ structuring, issuance, custody, distribution, servicing, listing, trading, settlement, network ],
     positions: new Map([
       [ "Operator",     { x:    0, y:   0 } ],
       [ "Public",       { x:    0, y:   0 } ],
@@ -80,17 +81,17 @@ export const scenarios : Scenario[] = [
       [ "Registry",     { x:  800, y:   0 } ],
       [ "Custodian",    { x:  400, y: 300 } ],
       [ "Issuer",       { x:  800, y: 300 } ],
-      [ "Alice",        { x:    0, y: 600 } ],
-      [ "Bob",          { x:  400, y: 600 } ],
-      [ "Charlie",      { x:  800, y: 600 } ]
+      [ "Investor1",    { x:    0, y: 600 } ],
+      [ "Investor2",    { x:  400, y: 600 } ],
+      [ "Investor3",    { x:  800, y: 600 } ]
     ]),
-    useNetworkLogin: false
+    useNetworkLogin: true
   },
   {
     label: "Corporate Actions",
     description: "Equity workflows for corporate actions",
     image: bondIssuanceImage,
-    apps: [ structuring, issuance, custody, distribution, servicing, listing, trading, network ],
+    apps: [ structuring, issuance, custody, distribution, servicing, listing, trading, settlement, network ],
     positions: new Map([
       [ "Operator",     { x:    0, y:   0 } ],
       [ "Public",       { x:    0, y:   0 } ],
@@ -98,17 +99,17 @@ export const scenarios : Scenario[] = [
       [ "Registry",     { x:  800, y:   0 } ],
       [ "Custodian",    { x:  400, y: 300 } ],
       [ "Issuer",       { x:  800, y: 300 } ],
-      [ "Alice",        { x:    0, y: 600 } ],
-      [ "Bob",          { x:  400, y: 600 } ],
-      [ "Charlie",      { x:  800, y: 600 } ]
+      [ "Investor1",    { x:    0, y: 600 } ],
+      [ "Investor2",    { x:  400, y: 600 } ],
+      [ "Investor3",    { x:  800, y: 600 } ]
     ]),
-    useNetworkLogin: false
+    useNetworkLogin: true
   },
   {
     label: "Securities Lending",
     description: "Stock borrowing and lending scenario",
     image: bondIssuanceImage,
-    apps: [ structuring, issuance, custody, lending, servicing, network ],
+    apps: [ structuring, issuance, custody, lending, servicing, settlement, network ],
     positions: new Map([
       [ "Operator",     { x:    0, y:   0 } ],
       [ "Public",       { x:    0, y:   0 } ],
@@ -117,7 +118,7 @@ export const scenarios : Scenario[] = [
       [ "Borrower",     { x:  400, y: 400 } ],
       [ "Lender",       { x:  800, y: 200 } ]
     ]),
-    useNetworkLogin: false
+    useNetworkLogin: true
   },
   {
     label: "Natural Gas",
@@ -131,12 +132,12 @@ export const scenarios : Scenario[] = [
       [ "Seller",       { x:  400, y: 200 } ],
       [ "Buyer",        { x:    0, y: 400 } ]
     ]),
-    useNetworkLogin: false
+    useNetworkLogin: true
   },
   {
     label: "Structured Notes",
     description: "Synchronized issuance for structured products",
-    apps: [ structuring, issuance, custody, distribution, servicing, listing, trading, network ],
+    apps: [ structuring, issuance, custody, distribution, servicing, listing, trading, settlement, network ],
     image: structuredNotesImage,
     positions: new Map([
       [ "Operator",     { x:    0, y:   0 } ],
@@ -145,11 +146,11 @@ export const scenarios : Scenario[] = [
       [ "CentralBank",  { x:  200, y:   0 } ],
       [ "Issuer",       { x:  100, y: 300 } ],
       [ "RiskTaker",    { x:    0, y: 150 } ],
-      [ "Alice",        { x:  200, y: 450 } ],
-      [ "Bob",          { x:  400, y: 450 } ],
-      [ "Charlie",      { x:  600, y: 450 } ]
+      [ "Investor1",    { x:  200, y: 450 } ],
+      [ "Investor2",    { x:  400, y: 450 } ],
+      [ "Investor3",    { x:  600, y: 450 } ]
     ]),
-    useNetworkLogin: false
+    useNetworkLogin: true
   }
 ];
 
