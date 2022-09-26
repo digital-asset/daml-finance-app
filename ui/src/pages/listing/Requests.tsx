@@ -21,25 +21,25 @@ export const Requests : React.FC = () => {
   const party = useParty();
   const ledger = useLedger();
   const { getName } = useParties();
-  const svc = useServices();
 
-  const { contracts: createRequests, loading: l1 } = useStreamQueries(CreateListingRequest);
-  const { contracts: disableRequests, loading: l2 } = useStreamQueries(DeleteListingRequest);
-  const { contracts: listings, loading: l3 } = useStreamQueries(Listing);
-  if (l1 || l2 || l3 || svc.loading) return <Spinner />;
+  const { loading: l1, listing } = useServices();
+  const { loading: l2, contracts: createRequests } = useStreamQueries(CreateListingRequest);
+  const { loading: l3, contracts: disableRequests } = useStreamQueries(DeleteListingRequest);
+  const { loading: l4, contracts: listings } = useStreamQueries(Listing);
+  if (l1 || l2 || l3 || l4) return <Spinner />;
 
-  const providerServices = svc.listing.filter(s => s.payload.provider === party);
+  const providerServices = listing.filter(s => s.payload.provider === party);
   const deleteEntries = disableRequests.map(dr => ({ request: dr, listing: listings.find(l => l.contractId === dr.payload.listingCid)?.payload }));
   const createListing = async (c : CreateEvent<CreateListingRequest>) => {
     const service = providerServices.find(s => s.payload.customer === c.payload.customer);
-    if (!service) return; // TODO: Display error
+    if (!service) throw new Error("No listing service found");
     await ledger.exercise(Service.CreateListing, service.contractId, { createListingRequestCid: c.contractId });
     navigate("/app/listing/listings");
   }
 
   const deleteListing = async (c : CreateEvent<DeleteListingRequest>) => {
     const service = providerServices.find(s => s.payload.customer === c.payload.customer);
-    if (!service) return; // TODO: Display error
+    if (!service) throw new Error("No listing service found");
     await ledger.exercise(Service.DeleteListing, service.contractId, { deleteListingRequestCid: c.contractId });
     navigate("/app/listing/listings");
   }

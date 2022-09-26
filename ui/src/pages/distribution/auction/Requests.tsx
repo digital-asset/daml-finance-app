@@ -20,16 +20,16 @@ export const Requests : React.FC = () => {
   const { getName } = useParties();
   const party = useParty();
   const ledger = useLedger();
-  const svc = useServices();
 
-  const { contracts: requests, loading: l1 } = useStreamQueries(CreateAuctionRequest);
-  if (l1 || svc.loading) return <Spinner />;
+  const { loading: l1, auction } = useServices();
+  const { loading: l2, contracts: requests } = useStreamQueries(CreateAuctionRequest);
+  if (l1 || l2) return <Spinner />;
 
-  const providerServices = svc.auction.filter(s => s.payload.provider === party);
+  const providerServices = auction.filter(s => s.payload.provider === party);
 
   const createAuction = async (c : CreateEvent<CreateAuctionRequest>) => {
     const service = providerServices.find(s => s.payload.customer === c.payload.customer);
-    if (!service) return; // TODO: Display error
+    if (!service) throw new Error("No auction service found");
     await ledger.exercise(Service.CreateAuction, service.contractId, { createAuctionRequestCid: c.contractId });
     navigate("/app/distribution/auctions");
   }
