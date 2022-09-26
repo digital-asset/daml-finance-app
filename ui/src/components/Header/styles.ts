@@ -119,9 +119,7 @@ export default makeStyles((theme : any) => createStyles({
   },
   userBox: {
     color: "white",
-    backgroundColor: theme.palette.primary.main,
-    padding: 5,
-    borderRadius: 5,
+    backgroundColor: "lightgrey",
   },
   inputField: {
     marginTop: 10,

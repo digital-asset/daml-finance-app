@@ -3,11 +3,9 @@
 
 module Daml.Finance.App.Trading.Model where
 
-import DA.Optional (whenSome)
 import DA.Set (singleton)
 import Daml.Finance.Interface.Holding.Account qualified as Account (K)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..), SplitResult(..))
-import Daml.Finance.Interface.Holding.Lockable qualified as Lockable (I, Release(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q, qty)
 import Daml.Finance.Interface.Settlement.Factory qualified as Factory (I, Instruct(..))
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (I, Allocate(..), Approve(..))
@@ -67,11 +65,6 @@ template Order
         if remaining == 0.0
         then do
           instructionCid <- fst <$> exercise instructionCid Instruction.Allocate with allocation = Pledge $ toInterfaceContractId splitCid
-          whenSome restCidOpt (\restCid -> do
-            unlockedCid <- exercise (coerceContractId restCid : ContractId Lockable.I) Lockable.Release with context = show id
-            -- TODO: We can't undisclose here since the choice is controlled by the observers, which includes the public party
-            --exercise (toInterfaceContractId unlockedCid : ContractId Disclosure.I) Disclosure.RemoveObservers with observersToRemove = (id, provider `insert` observers)
-            pure ())
           pure FillResult with orderOpt = None; batchCid; instructionCid
         else do
           instructionCid <- fst <$> exercise instructionCid Instruction.Allocate with allocation = Pledge $ toInterfaceContractId splitCid

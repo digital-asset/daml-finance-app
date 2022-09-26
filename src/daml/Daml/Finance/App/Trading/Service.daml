@@ -86,8 +86,7 @@ template Service
       controller provider
       do
         order <- fetch orderCid
-        -- TODO: Filter out own orders
-        orders <- filter (\(_, o) -> if order.side == Buy then o.side == Sell && o.price.amount <= order.price.amount else o.side == Buy && o.price.amount >= order.price.amount) . zip orderCids <$> mapA fetch orderCids
+        orders <- filter (\(_, o) -> o.customer /= customer && if order.side == Buy then o.side == Sell && o.price.amount <= order.price.amount else o.side == Buy && o.price.amount >= order.price.amount) . zip orderCids <$> mapA fetch orderCids
         let
           match : Optional (ContractId Order, Order) -> (ContractId Order, Order) -> Update (Optional (ContractId Order, Order))
           match myOpt (otherCid, other) =
@@ -102,11 +101,11 @@ template Service
                 FillResult{orderOpt; batchCid; instructionCid} <- exercise myCid Fill with settlementFactoryCid; other; isResting = False
                 exercise otherCid ApproveInstruction with instructionCid
                 [transferableCid] <- exercise batchCid Batch.Settle with actors = singleton provider
-                -- exercise (coerceContractId transferableCid : ContractId Lockable.I) Lockable.Release with context = my.id
+                exercise (coerceContractId transferableCid : ContractId Lockable.I) Lockable.Release with context = show my.id
                 FillResult{orderOpt = otherOpt; batchCid; instructionCid} <- exercise otherCid Fill with settlementFactoryCid; other = my; isResting = True
                 exercise instructionCid Instruction.Approve with approval = TakeDelivery my.account
                 [transferableCid] <- exercise batchCid Batch.Settle with actors = singleton provider
-                -- exercise (coerceContractId transferableCid : ContractId Lockable.I) Lockable.Release with context = other.id
+                exercise (coerceContractId transferableCid : ContractId Lockable.I) Lockable.Release with context = show other.id
                 when (isNone orderOpt) do
                   Account.exerciseInterfaceByKey @Disclosure.I my.account provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (show my.id, singleton provider)
                   Account.exerciseInterfaceByKey @Disclosure.I (getAccount myCollateral) provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (show my.id, singleton provider)

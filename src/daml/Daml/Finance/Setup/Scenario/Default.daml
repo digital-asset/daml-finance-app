@@ -113,9 +113,9 @@ run  = do
   let securities = [tsla, nflx, fwd, bnd, swp, bswp, opt, opt2 ]
 
   -- Distribution
-  inv1CashCid    <- coerceContractId <$> deposit operator centralBank inv1   public (Instrument.qty 1_000_000.0 usd) inv1CashAccount
-  inv2CashCid      <- coerceContractId <$> deposit operator centralBank inv2     public (Instrument.qty 1_000_000.0 usd) inv2CashAccount
-  inv3CashCid  <- coerceContractId <$> deposit operator centralBank inv3 public (Instrument.qty 1_000_000.0 usd) inv3CashAccount
+  inv1CashCid <- coerceContractId <$> deposit operator centralBank inv1 public (Instrument.qty 1_000_000.0 usd) inv1CashAccount
+  inv2CashCid <- coerceContractId <$> deposit operator centralBank inv2 public (Instrument.qty 1_000_000.0 usd) inv2CashAccount
+  inv3CashCid <- coerceContractId <$> deposit operator centralBank inv3 public (Instrument.qty 1_000_000.0 usd) inv3CashAccount
 
   (_, ad1) <- issue operator registry issuer public (Instrument.qty 1.0 fwd)           issuerSecAccount
   (_, ad2) <- issue operator registry issuer public (Instrument.qty 1_000_000.0 bnd)   issuerSecAccount
@@ -146,14 +146,14 @@ run  = do
 
     doTrade = do
       list operator exchange issuer "SWAP/USD" swp usd $ singleton public
-      createAskOrder operator exchange issuer public (Id "1") (Instrument.qty 250_000.0 swp) (Instrument.qty 0.80 usd) $ singleton public
-      createAskOrder operator exchange issuer public (Id "2") (Instrument.qty 250_000.0 swp) (Instrument.qty 0.90 usd) $ singleton public
-      createBidOrder operator exchange inv1  public (Id "3") (Instrument.qty 500_000.0 swp) (Instrument.qty 0.90 usd) $ singleton public
+      createAskOrder operator exchange issuer public (Id "1") (Instrument.qty 250_000.0 swp) (Instrument.qty 1.00 usd) $ singleton public
+      createAskOrder operator exchange issuer public (Id "2") (Instrument.qty 250_000.0 swp) (Instrument.qty 1.00 usd) $ singleton public
+      createBidOrder operator exchange inv1  public (Id "3") (Instrument.qty 400_000.0 swp) (Instrument.qty 1.00 usd) $ singleton public
       -- createAskOrder operator exchange issuer public "1" (Instrument.qty 250_000.0 swp) (Instrument.qty 0.80 usd) $ singleton public
       -- createAskOrder operator exchange issuer public "2" (Instrument.qty 250_000.0 swp) (Instrument.qty 0.90 usd) $ singleton public
       -- createBidOrder operator exchange inv1  public "3" (Instrument.qty 500_000.0 swp) (Instrument.qty 0.90 usd) $ singleton public
 
   --doAuction
-  -- doTrade
+  --doTrade
 
   pure parties

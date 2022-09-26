@@ -6,7 +6,7 @@ import classnames from "classnames";
 import { v4 as uuidv4 } from "uuid";
 import { useParty, useLedger, useStreamQueries, useQuery } from "@daml/react";
 import { Typography, Grid, Table, TableBody, TableCell, TableRow, Paper, Button, TableHead } from "@mui/material";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import useStyles from "../styles";
 import { fmt, shorten } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
@@ -17,15 +17,15 @@ import { Message } from "../../components/Message/Message";
 import { Claim } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Rule/Claim";
 import { useServices } from "../../context/ServiceContext";
 import { HoldingAggregate, useHoldings } from "../../context/HoldingContext";
-import { Batch } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Batch";
-import { Instruction } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Instruction";
+import { Batch as BatchT } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Batch";
+import { Instruction as InstructionT } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Instruction";
+import { Batch } from "@daml.js/daml-finance-interface-settlement/lib/Daml/Finance/Interface/Settlement/Batch";
 
 export const Effect : React.FC = () => {
   const classes = useStyles();
-  const navigate = useNavigate();
 
-  useQuery(Batch);
-  useQuery(Instruction);
+  useQuery(BatchT);
+  useQuery(InstructionT);
 
   const { getName, getNames } = useParties();
   const ledger = useLedger();
@@ -33,15 +33,18 @@ export const Effect : React.FC = () => {
   const { loading: l1, custody } = useServices();
   const { loading: l2, holdings } = useHoldings();
   const { loading: l3, contracts: effects } = useStreamQueries(EffectI);
+  const { loading: l4, contracts: batches } = useStreamQueries(Batch);
+  const loading = l1 || l2 || l3 || l4;
 
   const { contractId } = useParams<any>();
   const effect = effects.find(c => c.contractId === contractId);
 
-  if (l1 || l2 || l3) return <Spinner />;
+  if (loading) return <Spinner />;
   if (!effect) return <Message text={"Effect [" + contractId + "] not found"} />;
   if (custody.length === 0) return <Message text={"No custody service found"} />;
 
   const filteredHoldings = holdings.filter(c => keyEquals(c.payload.instrument, effect.payload.targetInstrument));
+  const filteredBatches = batches.filter(c => !!c.payload.contextId && c.payload.contextId.unpack === effect.payload.id.unpack);
 
   const claimEffect = async () => {
     const claimHolding = async (holding : HoldingAggregate) => {
@@ -56,7 +59,6 @@ export const Effect : React.FC = () => {
       await ledger.exercise(Claim.ClaimEffect, service.payload.claimRuleCid, arg);
     };
     await Promise.all(filteredHoldings.map(claimHolding));
-    navigate("/app/settlement/batches");
   };
 
   return (
@@ -92,11 +94,10 @@ export const Effect : React.FC = () => {
                   </TableRow>}
                 </TableBody>
               </Table>
-              <Button color="primary" size="large" className={classes.actionButton} variant="outlined" onClick={() => claimEffect()}>Claim Effect</Button>
+              <Button color="primary" size="large" className={classes.actionButton} variant="outlined" disabled={filteredHoldings.length === 0 || filteredBatches.length > 0} onClick={() => claimEffect()}>Claim Effect</Button>
             </Paper>
           </Grid>
-          {/* TODO: Needs https://github.com/digital-asset/daml-finance/issues/147 */}
-          {/* <Grid item xs={8}>
+          <Grid item xs={8}>
             <Paper className={classes.paper}>
               <Grid container direction="row" justifyContent="center" className={classes.paperHeading}><Typography variant="h5">Unit Asset Movements</Typography></Grid>
               <Table size="small">
@@ -113,28 +114,28 @@ export const Effect : React.FC = () => {
                 <TableBody>
                   {effect.payload.consumed.map((c, i) => (
                     <TableRow key={i} className={classes.tableRow}>
-                      <TableCell key={0} className={classes.tableCellSmall}>Holder</TableCell>
+                      <TableCell key={0} className={classes.tableCellSmall}>Owner</TableCell>
                       <TableCell key={1} className={classes.tableCellSmall}>{"=>"}</TableCell>
-                      <TableCell key={2} className={classes.tableCellSmall}>Issuer</TableCell>
+                      <TableCell key={2} className={classes.tableCellSmall}>Custodian</TableCell>
                       <TableCell key={3} className={classes.tableCellSmall}>{(Math.abs(parseFloat(c.amount))).toFixed(5)}</TableCell>
                       <TableCell key={4} className={classes.tableCellSmall}>{c.unit.id.unpack}</TableCell>
-                      <TableCell key={5} className={classes.tableCellSmall}>{version(c.unit)}</TableCell>
+                      <TableCell key={5} className={classes.tableCellSmall}>{shorten(c.unit.version)}</TableCell>
                     </TableRow>
                   ))}
                   {effect.payload.produced.map((c, i) => (
                     <TableRow key={effect.payload.consumed.length + i} className={classes.tableRow}>
-                      <TableCell key={0} className={classes.tableCellSmall}>Issuer</TableCell>
+                      <TableCell key={0} className={classes.tableCellSmall}>Custodian</TableCell>
                       <TableCell key={1} className={classes.tableCellSmall}>{"=>"}</TableCell>
-                      <TableCell key={2} className={classes.tableCellSmall}>Holder</TableCell>
+                      <TableCell key={2} className={classes.tableCellSmall}>Owner</TableCell>
                       <TableCell key={3} className={classes.tableCellSmall}>{(Math.abs(parseFloat(c.amount))).toFixed(5)}</TableCell>
                       <TableCell key={4} className={classes.tableCellSmall}>{c.unit.id.unpack}</TableCell>
-                      <TableCell key={5} className={classes.tableCellSmall}>{version(c.unit)}</TableCell>
+                      <TableCell key={5} className={classes.tableCellSmall}>{shorten(c.unit.version)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </Paper>
-          </Grid> */}
+          </Grid>
           <Grid item xs={12}>
             <Paper className={classes.paper}>
               <Grid container direction="row" justifyContent="center" className={classes.paperHeading}><Typography variant="h5">Positions</Typography></Grid>
@@ -162,8 +163,7 @@ export const Effect : React.FC = () => {
               </Table>
             </Paper>
           </Grid>
-          {/* TODO: Can't currently link a batch back to its effect. */}
-          {/* {filteredBatches.length > 0 && <Grid item xs={12}>
+          {filteredBatches.length > 0 && <Grid item xs={12}>
             <Paper className={classes.paper}>
               <Grid container direction="row" justifyContent="center" className={classes.paperHeading}><Typography variant="h5">Settlement</Typography></Grid>
               <Table size="small">
@@ -189,7 +189,7 @@ export const Effect : React.FC = () => {
                 </TableBody>
               </Table>
             </Paper>
-          </Grid>} */}
+          </Grid>}
         </Grid>
       </Grid>
     </Grid>

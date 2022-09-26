@@ -74,16 +74,12 @@ export const Header : React.FC<HeaderProps> = ({ app } : HeaderProps) => {
               <Grid item xs={12}><Typography variant="body2" style={{ color: "#666" }}>Lifecycle date: {new Date(clocks[0].payload.clockTime).toISOString().substring(0, 10)}</Typography></Grid>
             </Grid>
           </Box>
-          <Box style={{ width: "120px" }}>
-            <Grid container direction="column" alignItems="center">
-              <Grid item xs={12}>
-                <FormControl fullWidth>
-                  <Select value={getName(party)} onChange={e => changeUser(e.target.value as string)} disableUnderline MenuProps={{ anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" } }}>
-                    {users.map((c, i) => (<MenuItem key={i} value={c}>{c}</MenuItem>))}
-                  </Select>
-                </FormControl>
-              </Grid>
-            </Grid>
+          <Box border={1} borderColor={"secondary.main"} borderRadius={3} className={classes.userBox} style={{ width: "120px" }}>
+            <FormControl fullWidth style={{ paddingLeft: 10, paddingRight: 10 }}>
+              <Select value={getName(party)} onChange={e => changeUser(e.target.value as string)} disableUnderline MenuProps={{ anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" } }}>
+                {users.map((c, i) => (<MenuItem key={i} value={c}>{c}</MenuItem>))}
+              </Select>
+            </FormControl>
           </Box>
         </>}
         <IconButton className={classes.headerMenuButton} color="inherit" onClick={() => navigate("/app")}>

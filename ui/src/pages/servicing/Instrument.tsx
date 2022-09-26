@@ -16,7 +16,6 @@ import { useInstruments } from "../../context/InstrumentContext";
 import { useServices } from "../../context/ServiceContext";
 import { Message } from "../../components/Message/Message";
 import { Observable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/Observable";
-import { Effect } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Effect";
 import { Event } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Event";
 import { Clock } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Clock";
 import { Effect as EffectT } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/Effect";
@@ -52,11 +51,10 @@ export const Instrument : React.FC = () => {
   const { loading: l1, lifecycle } = useServices();
   const { loading: l2, tokens, getByCid } = useInstruments();
   const { loading: l3, contracts: observables } = useStreamQueries(Observable);
-  const { loading: l4, contracts: effects } = useStreamQueries(Effect);
-  const { loading: l5, contracts: events } = useStreamQueries(Event);
-  const { loading: l6, contracts: clocks } = useStreamQueries(Clock);
+  const { loading: l4, contracts: events } = useStreamQueries(Event);
+  const { loading: l5, contracts: clocks } = useStreamQueries(Clock);
   const { contractId } = useParams<any>();
-  const loading = l1 || l2 || l3 || l4 || l5 || l6;
+  const loading = l1 || l2 || l3 || l4 || l5;
   const instrument = getByCid(contractId || "");
 
   useEffect(() => {
@@ -80,7 +78,6 @@ export const Instrument : React.FC = () => {
   const canDeclareDividend = !!id && !!description && !!effectiveDate && !!currency && !!amount;
   const canDeclareStockSplit = !!id && !!description && !!effectiveDate && !!amount;
   const canDeclareReplacement = !!id && !!description && !!effectiveDate && !!currency && !!amount;
-  const effect = effects.find(c => c.payload.targetInstrument.id.unpack === instrument.payload.id.unpack && c.payload.targetInstrument.version === instrument.payload.version);
 
   const previewLifecycle = async () => {
     const observableCids = observables.map(c => c.contractId);
@@ -197,14 +194,14 @@ export const Instrument : React.FC = () => {
                   </Table>
                   {!!instrument.lifecycle &&
                   <>
-                    <Button color="primary" size="large" className={classes.actionButton} variant="outlined" disabled={!!remaining || !!effect} onClick={() => previewLifecycle()}>Preview Lifecycle</Button>
-                    <Button color="primary" size="large" className={classes.actionButton} variant="outlined" disabled={!remaining || !!effect} onClick={() => executeLifecycle()}>Execute Lifecycle</Button>
+                    <Button color="primary" size="large" className={classes.actionButton} variant="outlined" disabled={!!remaining} onClick={() => previewLifecycle()}>Preview Lifecycle</Button>
+                    <Button color="primary" size="large" className={classes.actionButton} variant="outlined" disabled={!remaining} onClick={() => executeLifecycle()}>Execute Lifecycle</Button>
                   </>
                   }
                 </Paper>
               </Grid>
               <Grid item xs={12}>
-                {!!remaining && !effect &&
+                {!!remaining &&
                 <Paper className={classes.paper}>
                   <Grid container direction="row" justifyContent="center" className={classes.paperHeading}><Typography variant="h5">Settlement Preview</Typography></Grid>
                   <Table size="small">
@@ -230,45 +227,6 @@ export const Instrument : React.FC = () => {
                     </TableBody>
                   </Table>
                 </Paper>}
-                {/* TODO: We don't have consumed or produced on the effect interface: https://github.com/digital-asset/daml-finance/issues/147 */}
-                {/* {!!effect &&
-                <Paper className={classes.paper}>
-                  <Grid container direction="row" justifyContent="center" className={classes.paperHeading}><Typography variant="h5">Lifecycle Effect</Typography></Grid>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow className={classes.tableRow}>
-                        <TableCell key={0} className={classes.tableCell}><b>From</b></TableCell>
-                        <TableCell key={1} className={classes.tableCell}></TableCell>
-                        <TableCell key={2} className={classes.tableCell}><b>To</b></TableCell>
-                        <TableCell key={3} className={classes.tableCell}><b>Quantity</b></TableCell>
-                        <TableCell key={4} className={classes.tableCell}><b>Instrument</b></TableCell>
-                        <TableCell key={5} className={classes.tableCell}><b>Version</b></TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {effect.payload.consumed.map((c, i) => (
-                        <TableRow key={i} className={classes.tableRow}>
-                          <TableCell key={0} className={classes.tableCellSmall}>Counterparty</TableCell>
-                          <TableCell key={1} className={classes.tableCellSmall}>{"=>"}</TableCell>
-                          <TableCell key={2} className={classes.tableCellSmall}>{getName(effect.payload.provider)}</TableCell>
-                          <TableCell key={3} className={classes.tableCellSmall}>{(Math.abs(parseFloat(c.amount))).toFixed(5)}</TableCell>
-                          <TableCell key={4} className={classes.tableCellSmall}>{c.unit.id.unpack}</TableCell>
-                          <TableCell key={5} className={classes.tableCellSmall}>{version(c.unit)}</TableCell>
-                        </TableRow>
-                      ))}
-                      {effect.payload.produced.map((c, i) => (
-                        <TableRow key={effect.payload.consumed.length + i} className={classes.tableRow}>
-                          <TableCell key={0} className={classes.tableCellSmall}>{getName(effect.payload.provider)}</TableCell>
-                          <TableCell key={1} className={classes.tableCellSmall}>{"=>"}</TableCell>
-                          <TableCell key={2} className={classes.tableCellSmall}>Counterparty</TableCell>
-                          <TableCell key={3} className={classes.tableCellSmall}>{(Math.abs(parseFloat(c.amount))).toFixed(5)}</TableCell>
-                          <TableCell key={4} className={classes.tableCellSmall}>{c.unit.id.unpack}</TableCell>
-                          <TableCell key={5} className={classes.tableCellSmall}>{version(c.unit)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </Paper>} */}
               </Grid>
             </Grid>
           </Grid>
