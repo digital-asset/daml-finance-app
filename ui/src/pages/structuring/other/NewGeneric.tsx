@@ -30,13 +30,13 @@ export const NewGeneric : React.FC = () => {
   const { getParty } = useParties();
   const ledger = useLedger();
   const { loading: l1, structuring, structuringAuto } = useServices();
-  const { loading: l2, tokens } = useInstruments();
+  const { loading: l2, tokens, equities } = useInstruments();
   if (l1 || l2) return <Spinner />;
   if (structuring.length === 0) return <Message text={"No structuring service found"} />;
 
   // TODO: What we actually want here is a list of underlyings, which in theory could be anything.
-  // But for demo simplicity purposes we keep it to base instruments for now.
-  const keys = tokens.map(a => a.key);
+  // But for demo simplicity purposes we keep it to tokens and equities for now.
+  const keys = tokens.map(a => a.key).concat(equities.map(a => a.key));
 
   const requestOrigination = async () => {
     if (!node || node.tag === "Claim") return;

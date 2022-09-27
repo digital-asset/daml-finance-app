@@ -5,14 +5,28 @@ import React from "react";
 import { CreateEvent } from "@daml/ledger";
 import { useQuery, useStreamQueries } from "@daml/react";
 import { Instrument as Base } from "@daml.js/daml-finance-interface-instrument-base/lib/Daml/Finance/Interface/Instrument/Base/Instrument";
-import { Instrument as EquityI } from "@daml.js/daml-finance-interface-instrument-equity/lib/Daml/Finance/Interface/Instrument/Equity/Instrument";
-import { Instrument as Token } from "@daml.js/daml-finance-instrument-token/lib/Daml/Finance/Instrument/Token/Instrument";
-import { Instrument as Equity } from "@daml.js/daml-finance-instrument-equity/lib/Daml/Finance/Instrument/Equity/Instrument";
-import { Instrument as Generic } from "@daml.js/daml-finance-instrument-generic/lib/Daml/Finance/Instrument/Generic/Instrument";
-import { Instrument as FixedRateBond } from "@daml.js/daml-finance-instrument-bond/lib/Daml/Finance/Instrument/Bond/FixedRate/Instrument";
-import { Instrument as FloatingRateBond } from "@daml.js/daml-finance-instrument-bond/lib/Daml/Finance/Instrument/Bond/FloatingRate/Instrument";
-import { Instrument as InflationLinkedBond } from "@daml.js/daml-finance-instrument-bond/lib/Daml/Finance/Instrument/Bond/InflationLinked/Instrument";
-import { Instrument as ZeroCouponBond } from "@daml.js/daml-finance-instrument-bond/lib/Daml/Finance/Instrument/Bond/ZeroCoupon/Instrument";
+import { Instrument as FixedRateBond } from "@daml.js/daml-finance-interface-instrument-bond/lib/Daml/Finance/Interface/Instrument/Bond/FixedRate/Instrument";
+import { Instrument as FloatingRateBond } from "@daml.js/daml-finance-interface-instrument-bond/lib/Daml/Finance/Interface/Instrument/Bond/FloatingRate/Instrument";
+import { Instrument as InflationLinkedBond } from "@daml.js/daml-finance-interface-instrument-bond/lib/Daml/Finance/Interface/Instrument/Bond/InflationLinked/Instrument";
+import { Instrument as ZeroCouponBond } from "@daml.js/daml-finance-interface-instrument-bond/lib/Daml/Finance/Interface/Instrument/Bond/ZeroCoupon/Instrument";
+import { Instrument as Equity } from "@daml.js/daml-finance-interface-instrument-equity/lib/Daml/Finance/Interface/Instrument/Equity/Instrument";
+import { Instrument as Generic } from "@daml.js/daml-finance-interface-instrument-generic/lib/Daml/Finance/Interface/Instrument/Generic/Instrument";
+import { Instrument as CreditDefaultSwap } from "@daml.js/daml-finance-interface-instrument-swap/lib/Daml/Finance/Interface/Instrument/Swap/CreditDefault/Instrument";
+import { Instrument as CurrencySwap } from "@daml.js/daml-finance-interface-instrument-swap/lib/Daml/Finance/Interface/Instrument/Swap/Currency/Instrument";
+import { Instrument as ForeignExchangeSwap } from "@daml.js/daml-finance-interface-instrument-swap/lib/Daml/Finance/Interface/Instrument/Swap/ForeignExchange/Instrument";
+import { Instrument as InterestRateSwap } from "@daml.js/daml-finance-interface-instrument-swap/lib/Daml/Finance/Interface/Instrument/Swap/InterestRate/Instrument";
+import { Instrument as Token } from "@daml.js/daml-finance-interface-instrument-token/lib/Daml/Finance/Interface/Instrument/Token/Instrument";
+import { Instrument as FixedRateBondT } from "@daml.js/daml-finance-instrument-bond/lib/Daml/Finance/Instrument/Bond/FixedRate/Instrument";
+import { Instrument as FloatingRateBondT } from "@daml.js/daml-finance-instrument-bond/lib/Daml/Finance/Instrument/Bond/FloatingRate/Instrument";
+import { Instrument as InflationLinkedBondT } from "@daml.js/daml-finance-instrument-bond/lib/Daml/Finance/Instrument/Bond/InflationLinked/Instrument";
+import { Instrument as ZeroCouponBondT } from "@daml.js/daml-finance-instrument-bond/lib/Daml/Finance/Instrument/Bond/ZeroCoupon/Instrument";
+import { Instrument as EquityT } from "@daml.js/daml-finance-instrument-equity/lib/Daml/Finance/Instrument/Equity/Instrument";
+import { Instrument as GenericT } from "@daml.js/daml-finance-instrument-generic/lib/Daml/Finance/Instrument/Generic/Instrument";
+import { Instrument as CreditDefaultSwapT } from "@daml.js/daml-finance-instrument-swap/lib/Daml/Finance/Instrument/Swap/CreditDefault/Instrument";
+import { Instrument as CurrencySwapT } from "@daml.js/daml-finance-instrument-swap/lib/Daml/Finance/Instrument/Swap/Currency/Instrument";
+import { Instrument as ForeignExchangeSwapT } from "@daml.js/daml-finance-instrument-swap/lib/Daml/Finance/Instrument/Swap/ForeignExchange/Instrument";
+import { Instrument as InterestRateSwapT } from "@daml.js/daml-finance-instrument-swap/lib/Daml/Finance/Instrument/Swap/InterestRate/Instrument";
+import { Instrument as TokenT } from "@daml.js/daml-finance-instrument-token/lib/Daml/Finance/Instrument/Token/Instrument";
 import { Lifecycle } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Rule/Lifecycle";
 import { Claim } from "@daml.js/daml-finance-interface-claims/lib/Daml/Finance/Interface/Claims/Claim";
 import { Id, InstrumentKey } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Common";
@@ -20,19 +34,39 @@ import { key } from "../util";
 import { Disclosure } from "@daml.js/daml-finance-interface-util/lib/Daml/Finance/Interface/Util/Disclosure";
 
 type InstrumentState = {
-  loading : boolean
-  groups : InstrumentGroup[]
-  latests : InstrumentAggregate[]
-  tokens : InstrumentAggregate[]
-  getByCid : (cid : string) => InstrumentAggregate
+  loading               : boolean
+  groups                : InstrumentGroup[]
+  latests               : InstrumentAggregate[]
+  tokens                : InstrumentAggregate[]
+  equities              : InstrumentAggregate[]
+  generics              : InstrumentAggregate[]
+  fixedRateBonds        : InstrumentAggregate[]
+  floatingRateBonds     : InstrumentAggregate[]
+  inflationLinkedBonds  : InstrumentAggregate[]
+  zeroCouponBonds       : InstrumentAggregate[]
+  creditDefaultSwaps    : InstrumentAggregate[]
+  currencySwaps         : InstrumentAggregate[]
+  foreignExchangeSwaps  : InstrumentAggregate[]
+  interestRateSwaps     : InstrumentAggregate[]
+  getByCid              : (cid : string) => InstrumentAggregate
 };
 
 export type InstrumentAggregate = CreateEvent<Base> & {
-  key : InstrumentKey
-  lifecycle : CreateEvent<Lifecycle> | undefined
-  claims : CreateEvent<Claim> | undefined
-  equity : CreateEvent<EquityI> | undefined
-  disclosure : CreateEvent<Disclosure> | undefined
+  key                 : InstrumentKey
+  lifecycle           : CreateEvent<Lifecycle> | undefined
+  claim               : CreateEvent<Claim> | undefined
+  token               : CreateEvent<Token> | undefined
+  equity              : CreateEvent<Equity> | undefined
+  generic             : CreateEvent<Generic> | undefined
+  fixedRateBond       : CreateEvent<FixedRateBond> | undefined
+  floatingRateBond    : CreateEvent<FloatingRateBond> | undefined
+  inflationLinkedBond : CreateEvent<InflationLinkedBond> | undefined
+  zeroCouponBond      : CreateEvent<ZeroCouponBond> | undefined
+  creditDefaultSwap   : CreateEvent<CreditDefaultSwap> | undefined
+  currencySwap        : CreateEvent<CurrencySwap> | undefined
+  foreignExchangeSwap : CreateEvent<ForeignExchangeSwap> | undefined
+  interestRateSwap    : CreateEvent<InterestRateSwap> | undefined
+  disclosure          : CreateEvent<Disclosure> | undefined
 }
 
 type InstrumentGroup = {
@@ -50,6 +84,16 @@ const empty = {
   groups: [],
   latests: [],
   tokens: [],
+  equities: [],
+  generics: [],
+  fixedRateBonds: [],
+  floatingRateBonds: [],
+  inflationLinkedBonds: [],
+  zeroCouponBonds: [],
+  creditDefaultSwaps: [],
+  currencySwaps: [],
+  foreignExchangeSwaps: [],
+  interestRateSwaps: [],
   getByCid: (cid : string) => { throw new Error("Not implemented"); },
 };
 
@@ -57,21 +101,34 @@ const InstrumentContext = React.createContext<InstrumentState>(empty);
 
 export const InstrumentProvider : React.FC = ({ children }) => {
 
-  useQuery(Base);
-  useQuery(Token);
-  useQuery(Equity);
-  useQuery(Generic);
-  useQuery(FixedRateBond);
-  useQuery(FloatingRateBond);
-  useQuery(InflationLinkedBond);
-  useQuery(ZeroCouponBond);
+  useQuery(TokenT);
+  useQuery(EquityT);
+  useQuery(GenericT);
+  useQuery(FixedRateBondT);
+  useQuery(FloatingRateBondT);
+  useQuery(InflationLinkedBondT);
+  useQuery(ZeroCouponBondT);
+  useQuery(CreditDefaultSwapT);
+  useQuery(CurrencySwapT);
+  useQuery(ForeignExchangeSwapT);
+  useQuery(InterestRateSwapT);
 
-  const { contracts: instruments, loading: l1 } = useStreamQueries(Base);
-  const { contracts: lifecycles, loading: l2 } = useStreamQueries(Lifecycle);
-  const { contracts: claims, loading: l3 } = useStreamQueries(Claim);
-  const { contracts: equities, loading: l4 } = useStreamQueries(EquityI);
-  const { contracts: disclosures, loading: l5 } = useStreamQueries(Disclosure);
-  const loading = l1 || l2 || l3 || l4 || l5;
+  const { loading: l1,  contracts: instruments }          = useStreamQueries(Base);
+  const { loading: l2,  contracts: lifecycles }           = useStreamQueries(Lifecycle);
+  const { loading: l3,  contracts: claims }               = useStreamQueries(Claim);
+  const { loading: l4,  contracts: tokens }               = useStreamQueries(Token);
+  const { loading: l5,  contracts: equities }             = useStreamQueries(Equity);
+  const { loading: l6,  contracts: generics }             = useStreamQueries(Generic);
+  const { loading: l7,  contracts: fixedRateBonds }       = useStreamQueries(FixedRateBond);
+  const { loading: l8,  contracts: floatingRateBonds }    = useStreamQueries(FloatingRateBond);
+  const { loading: l9,  contracts: inflationLinkedBonds } = useStreamQueries(InflationLinkedBond);
+  const { loading: l10,  contracts: zeroCouponBonds }      = useStreamQueries(ZeroCouponBond);
+  const { loading: l11, contracts: creditDefaultSwaps }   = useStreamQueries(CreditDefaultSwap);
+  const { loading: l12, contracts: currencySwaps }        = useStreamQueries(CurrencySwap);
+  const { loading: l13, contracts: foreignExchangeSwaps } = useStreamQueries(ForeignExchangeSwap);
+  const { loading: l14, contracts: interestRateSwaps }    = useStreamQueries(InterestRateSwap);
+  const { loading: l15, contracts: disclosures }          = useStreamQueries(Disclosure);
+  const loading = l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8 || l9 || l10 || l11 || l12 || l13 || l14 || l15;
 
   if (loading) {
     return (
@@ -80,19 +137,39 @@ export const InstrumentProvider : React.FC = ({ children }) => {
       </InstrumentContext.Provider>
     );
   } else {
-    const aggregatesByCid : Map<string, InstrumentAggregate> = new Map();
-    const lifecycleByCid : Map<string, CreateEvent<Lifecycle>> = new Map(lifecycles.map(c => [c.contractId, c]));
-    const hasClaimsByCid : Map<string, CreateEvent<Claim>> = new Map(claims.map(c => [c.contractId, c]));
-    const equitiesByCid : Map<string, CreateEvent<EquityI>> = new Map(equities.map(c => [c.contractId, c]));
-    const disclosuresByCid : Map<string, CreateEvent<Disclosure>> = new Map(disclosures.map(c => [c.contractId, c]));
+    const aggregatesByCid           : Map<string, InstrumentAggregate>              = new Map();
+    const lifecycleByCid            : Map<string, CreateEvent<Lifecycle>>           = new Map(lifecycles.map(c => [c.contractId, c]));
+    const claimsByCid               : Map<string, CreateEvent<Claim>>               = new Map(claims.map(c => [c.contractId, c]));
+    const tokensByCid               : Map<string, CreateEvent<Token>>               = new Map(tokens.map(c => [c.contractId, c]));
+    const equitiesByCid             : Map<string, CreateEvent<Equity>>              = new Map(equities.map(c => [c.contractId, c]));
+    const genericsByCid             : Map<string, CreateEvent<Generic>>             = new Map(generics.map(c => [c.contractId, c]));
+    const fixedRateBondsByCid       : Map<string, CreateEvent<FixedRateBond>>       = new Map(fixedRateBonds.map(c => [c.contractId, c]));
+    const floatingRateBondsByCid    : Map<string, CreateEvent<FloatingRateBond>>    = new Map(floatingRateBonds.map(c => [c.contractId, c]));
+    const inflationLinkedBondsByCid : Map<string, CreateEvent<InflationLinkedBond>> = new Map(inflationLinkedBonds.map(c => [c.contractId, c]));
+    const zeroCouponBondsByCid      : Map<string, CreateEvent<ZeroCouponBond>>      = new Map(zeroCouponBonds.map(c => [c.contractId, c]));
+    const creditDefaultSwapsByCid   : Map<string, CreateEvent<CreditDefaultSwap>>   = new Map(creditDefaultSwaps.map(c => [c.contractId, c]));
+    const currencySwapsByCid        : Map<string, CreateEvent<CurrencySwap>>        = new Map(currencySwaps.map(c => [c.contractId, c]));
+    const foreignExchangeSwapsByCid : Map<string, CreateEvent<ForeignExchangeSwap>> = new Map(foreignExchangeSwaps.map(c => [c.contractId, c]));
+    const interestRateSwapsByCid    : Map<string, CreateEvent<InterestRateSwap>>    = new Map(interestRateSwaps.map(c => [c.contractId, c]));
+    const disclosuresByCid          : Map<string, CreateEvent<Disclosure>>          = new Map(disclosures.map(c => [c.contractId, c]));
     const groupMap : Map<string, InstrumentGroup> = new Map();
     instruments.forEach(c => {
       const aggregate = {
         ...c,
         key: key(c),
         lifecycle: lifecycleByCid.get(c.contractId),
-        claims: hasClaimsByCid.get(c.contractId),
+        claim: claimsByCid.get(c.contractId),
+        token: tokensByCid.get(c.contractId),
         equity: equitiesByCid.get(c.contractId),
+        generic: genericsByCid.get(c.contractId),
+        fixedRateBond: fixedRateBondsByCid.get(c.contractId),
+        floatingRateBond: floatingRateBondsByCid.get(c.contractId),
+        inflationLinkedBond: inflationLinkedBondsByCid.get(c.contractId),
+        zeroCouponBond: zeroCouponBondsByCid.get(c.contractId),
+        creditDefaultSwap: creditDefaultSwapsByCid.get(c.contractId),
+        currencySwap: currencySwapsByCid.get(c.contractId),
+        foreignExchangeSwap: foreignExchangeSwapsByCid.get(c.contractId),
+        interestRateSwap: interestRateSwapsByCid.get(c.contractId),
         disclosure: disclosuresByCid.get(c.contractId)
       };
       const groupKey = c.payload.id.unpack;
@@ -111,12 +188,21 @@ export const InstrumentProvider : React.FC = ({ children }) => {
     // TODO: This comes closes to being able to select base instruments (ie. tokens).
     const groups = Array.from(groupMap.values())
     const latests = groups.map(g => g.latest);
-    const tokens = latests.filter(a => !a.claims && !a.lifecycle && !a.equity);
     const value = {
       loading,
       groups,
       latests,
-      tokens,
+      tokens: latests.filter(a => !!a.token),
+      equities: latests.filter(a => !!a.equity),
+      generics: latests.filter(a => !!a.generic),
+      fixedRateBonds: latests.filter(a => !!a.fixedRateBond),
+      floatingRateBonds: latests.filter(a => !!a.floatingRateBond),
+      inflationLinkedBonds: latests.filter(a => !!a.inflationLinkedBond),
+      zeroCouponBonds: latests.filter(a => !!a.zeroCouponBond),
+      creditDefaultSwaps: latests.filter(a => !!a.creditDefaultSwap),
+      currencySwaps: latests.filter(a => !!a.currencySwap),
+      foreignExchangeSwaps: latests.filter(a => !!a.foreignExchangeSwap),
+      interestRateSwaps: latests.filter(a => !!a.interestRateSwap),
       getByCid,
     };
 

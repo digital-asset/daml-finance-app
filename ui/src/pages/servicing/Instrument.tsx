@@ -49,7 +49,7 @@ export const Instrument : React.FC = () => {
   const party = useParty();
   const ledger = useLedger();
   const { loading: l1, lifecycle } = useServices();
-  const { loading: l2, tokens, getByCid } = useInstruments();
+  const { loading: l2, tokens, equities, getByCid } = useInstruments();
   const { loading: l3, contracts: observables } = useStreamQueries(Observable);
   const { loading: l4, contracts: events } = useStreamQueries(Event);
   const { loading: l5, contracts: clocks } = useStreamQueries(Clock);
@@ -59,9 +59,9 @@ export const Instrument : React.FC = () => {
 
   useEffect(() => {
     const setClaims = async () => {
-      if (loading || !lifecycle || !instrument.claims) return;
+      if (loading || !lifecycle || !instrument.claim) return;
       const observableCids = observables.map(c => c.contractId);
-      const [res, ] = await ledger.exercise(Lifecycle.GetCurrentClaims, lifecycle[0].contractId, { instrumentCid: instrument.claims.contractId, observableCids })
+      const [res, ] = await ledger.exercise(Lifecycle.GetCurrentClaims, lifecycle[0].contractId, { instrumentCid: instrument.claim.contractId, observableCids })
       const claims = res.length > 1 ? and(res.map(r => r.claim)) : res[0].claim;
       setNode1(claimToNode(claims));
     };
@@ -81,7 +81,7 @@ export const Instrument : React.FC = () => {
 
   const previewLifecycle = async () => {
     const observableCids = observables.map(c => c.contractId);
-    const [ res, ] = await ledger.exercise(Lifecycle.PreviewLifecycle, lifecycle[0].contractId, { today: clocks[0].payload.clockTime, observableCids, instrumentCid: instrument.claims!.contractId });
+    const [ res, ] = await ledger.exercise(Lifecycle.PreviewLifecycle, lifecycle[0].contractId, { today: clocks[0].payload.clockTime, observableCids, instrumentCid: instrument.claim!.contractId });
     const claims = res._1.length > 1 ? and(res._1.map(r => r.claim)) : res._1[0].claim;
     setRemaining(claims);
     setPending(res._2);
@@ -259,7 +259,7 @@ export const Instrument : React.FC = () => {
                     <FormControl className={classes.inputField} fullWidth>
                       <InputLabel className={classes.selectLabel}>Currency</InputLabel>
                       <Select value={currency} onChange={e => setCurrency(e.target.value as string)} MenuProps={menuProps}>
-                        {tokens.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
+                        {tokens.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack} - {c.payload.description}</MenuItem>))}
                       </Select>
                     </FormControl>
                     <TextField className={classes.inputField} fullWidth label="Amount" type="number" value={amount} onChange={e => setAmount(e.target.value as string)} />
@@ -289,7 +289,7 @@ export const Instrument : React.FC = () => {
                     <FormControl className={classes.inputField} fullWidth>
                       <InputLabel className={classes.selectLabel}>Replacement Asset</InputLabel>
                       <Select value={currency} onChange={e => setCurrency(e.target.value as string)} MenuProps={menuProps}>
-                        {tokens.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
+                        {equities.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack} - {c.payload.description}</MenuItem>))}
                       </Select>
                     </FormControl>
                     <TextField className={classes.inputField} fullWidth label="Per Unit Replacement" type="number" value={amount} onChange={e => setAmount(e.target.value as string)} />

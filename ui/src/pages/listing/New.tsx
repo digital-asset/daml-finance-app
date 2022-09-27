@@ -80,7 +80,7 @@ export const New : React.FC = () => {
                   </FormControl>
                   <FormControl className={classes.inputField} fullWidth>
                     <Box className={classes.fullWidth}>
-                      <InputLabel className={classes.selectLabel}>Quoted Asset</InputLabel>
+                      <InputLabel className={classes.selectLabel}>Currency</InputLabel>
                       <Select variant="standard" fullWidth value={quotedInstrumentLabel} onChange={e => setQuotedAssetLabel(e.target.value as string)} MenuProps={menuProps}>
                         {tokens.filter(c => c.payload.id.unpack !== tradedInstrumentLabel).map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack} - {c.payload.description}</MenuItem>))}
                       </Select>

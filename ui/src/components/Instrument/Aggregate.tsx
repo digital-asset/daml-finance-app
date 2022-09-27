@@ -30,8 +30,8 @@ export const Aggregate : React.FC<AggregateProps> = ({ instrument }) => {
 
   useEffect(() => {
     const setClaims = async () => {
-      if (!l1 && !l2 && !!instrument.claims) {
-        const [res, ] = await ledger.exercise(Lifecycle.GetCurrentClaims, lifecycle[0].contractId, { instrumentCid: instrument.claims.contractId, observableCids: observables.map(c => c.contractId) })
+      if (!l1 && !l2 && !!instrument.claim) {
+        const [res, ] = await ledger.exercise(Lifecycle.GetCurrentClaims, lifecycle[0].contractId, { instrumentCid: instrument.claim.contractId, observableCids: observables.map(c => c.contractId) })
         const claims = res.length > 1 ? and(res.map(r => r.claim)) : res[0].claim;
         setNode(claimToNode(claims));
       }
@@ -40,7 +40,7 @@ export const Aggregate : React.FC<AggregateProps> = ({ instrument }) => {
   }, [lifecycle, instrument, observables, l1, l2, ledger]);
 
   if (l1 || l2) return <Spinner />
-  const detailWidth = !!instrument.claims ? 3 : 12;
+  const detailWidth = !!instrument.claim ? 3 : 12;
 
   return (
     <Grid container direction="column" spacing={2}>
@@ -91,7 +91,7 @@ export const Aggregate : React.FC<AggregateProps> = ({ instrument }) => {
               </Table>
             </Paper>}
           </Grid>
-          {!!instrument.claims &&
+          {!!instrument.claim &&
           <Grid item xs={9}>
             <Paper className={classnames(classes.fullWidth, classes.paper)}>
               <Typography variant="h5" className={classes.heading}>Claims</Typography>
