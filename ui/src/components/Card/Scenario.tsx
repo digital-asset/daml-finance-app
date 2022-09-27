@@ -28,11 +28,11 @@ export const Scenario : React.FC<ScenarioProps> = ({ label, description, image, 
 
   return (
     <Grid item xs={12} sm={6} md={width} lg={width}>
-      <Card className={classes.card}>
-        <Box border={1} borderColor="primary.main" style={{ height: "100%"}}>
+      <Card className={classes.cardTransparent}>
+        <Box border={1} borderColor="lightgrey" style={{ height: "100%" }}>
           <CardActionArea onClick={selectScenario}>
             <CardMedia className={classes.cardMediaLarge} image={image} title={label} />
-            <CardContent>
+            <CardContent >
               <Typography gutterBottom variant="h5" component="h2" className={classes.cardText}>{label}</Typography>
               <Typography variant="body2" color="textPrimary" component="p" className={classes.cardText}>{description}</Typography>
             </CardContent>

@@ -94,7 +94,7 @@ export const Effect : React.FC = () => {
                   </TableRow>}
                 </TableBody>
               </Table>
-              <Button color="primary" size="large" className={classes.actionButton} variant="outlined" disabled={filteredHoldings.length === 0 || filteredBatches.length > 0} onClick={() => claimEffect()}>Claim Effect</Button>
+              <Button color="primary" className={classes.actionButton} variant="contained" disabled={filteredHoldings.length === 0 || filteredBatches.length > 0} onClick={() => claimEffect()}>Claim Effect</Button>
             </Paper>
           </Grid>
           <Grid item xs={8}>

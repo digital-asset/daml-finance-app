@@ -6,7 +6,7 @@ import { makeStyles, createStyles } from "@mui/styles";
 export default makeStyles((theme : any) => createStyles({
   svgHover: {
     "&:hover": {
-      fill: "#bbb"
+      fill: "#666"
     }
   },
   svgNoMouse: {

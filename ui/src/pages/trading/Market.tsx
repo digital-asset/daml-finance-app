@@ -224,7 +224,7 @@ export const Market : React.FC = () => {
                       {limits.map((c, i) => (
                         <TableRow key={i+1} className={classes.tableRow}>
                           <TableCell key={0} className={classes.tableCell}>{c.payload.listingId}</TableCell>
-                          <TableCell key={1} className={classes.tableCell}>{c.payload.id}</TableCell>
+                          <TableCell key={1} className={classes.tableCell}>{c.payload.id.unpack}</TableCell>
                           <TableCell key={2} className={classes.tableCell}>Limit</TableCell>
                           <TableCell key={3} className={classes.tableCell} style={{ color: getColor(c)}}>{c.payload.side}</TableCell>
                           <TableCell key={4} className={classes.tableCell}>{getPrice(c)}</TableCell>

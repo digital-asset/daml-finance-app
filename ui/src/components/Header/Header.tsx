@@ -60,7 +60,7 @@ export const Header : React.FC<HeaderProps> = ({ app } : HeaderProps) => {
             <Typography variant="h5" className={classes.logotype}>Daml Finance</Typography>
             </Grid>
             <Grid item xs={12}>
-              <Typography variant="body1" style={{ color: "#666" }}>{app}</Typography>
+              <Typography variant="body1">{app}</Typography>
             </Grid>
           </Grid>
         </Box>
@@ -70,11 +70,11 @@ export const Header : React.FC<HeaderProps> = ({ app } : HeaderProps) => {
         <>
           <Box style={{ width: "250px" }}>
             <Grid container direction="column" alignItems="center">
-              <Grid item xs={12}><Typography variant="body2" style={{ color: "#666" }}>Today date: {new Date().toISOString().substring(0, 10)}</Typography></Grid>
-              <Grid item xs={12}><Typography variant="body2" style={{ color: "#666" }}>Lifecycle date: {new Date(clocks[0].payload.clockTime).toISOString().substring(0, 10)}</Typography></Grid>
+              <Grid item xs={12}><Typography variant="body2">Today date: {new Date().toISOString().substring(0, 10)}</Typography></Grid>
+              <Grid item xs={12}><Typography variant="body2">Lifecycle date: {new Date(clocks[0].payload.clockTime).toISOString().substring(0, 10)}</Typography></Grid>
             </Grid>
           </Box>
-          <Box border={1} borderColor={"secondary.main"} borderRadius={3} className={classes.userBox} style={{ width: "120px" }}>
+          <Box border={2} borderColor={"primary.main"} borderRadius={5} className={classes.userBox} style={{ width: "120px" }}>
             <FormControl fullWidth style={{ paddingLeft: 10, paddingRight: 10 }}>
               <Select value={getName(party)} onChange={e => changeUser(e.target.value as string)} disableUnderline MenuProps={{ anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" } }}>
                 {users.map((c, i) => (<MenuItem key={i} value={c}>{c}</MenuItem>))}

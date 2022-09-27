@@ -8,31 +8,21 @@ export default makeStyles((theme : Theme) => createStyles({
   card: {
     width: "100%",
     height: "100%"
-    // minWidth: 350,
-    // maxWidth: 350,
-    // marginTop: 20,
+  },
+  cardTransparent: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: theme.palette.background.paper
   },
   cardMedia: {
     height: 140,
-    backgroundColor: "white",
   },
   cardMediaLarge: {
     height: 200,
-    backgroundColor: "white",
-  },
-  cardContent: {
-    backgroundColor: theme.palette.primary.main,
+    opacity: theme.palette.mode === "dark" ? 0.75 : 1.0
   },
   cardText: {
     color: theme.palette.text.primary,
-  },
-  tableCellMini: {
-    verticalAlign: "center",
-    paddingTop: 2,
-    paddingBottom: 2,
-    paddingLeft: 4,
-    paddingRight: 6,
-    fontSize: "0.6rem"
   },
   tableRow: {
     height: "auto"

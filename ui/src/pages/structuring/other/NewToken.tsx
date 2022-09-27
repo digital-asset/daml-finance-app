@@ -36,7 +36,7 @@ export const NewToken : React.FC = () => {
     const arg = {
       id,
       description,
-      observers: emptyMap<string, any>().set("Public", singleton(singleton(getParty("Public")))),
+      observers: emptyMap<string, any>().set("Public", singleton(getParty("Public"))),
       validAsOf: new Date().toISOString()
     };
     if (structuringAuto.length > 0) await ledger.exercise(StructuringAuto.RequestAndCreateToken, structuringAuto[0].contractId, arg);

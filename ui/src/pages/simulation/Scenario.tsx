@@ -51,13 +51,13 @@ export const Scenario : React.FC = () => {
   const { loading: l2, latests } = useInstruments();
   const { loading: l3, contracts: observations } = useStreamQueries(Observable);
 
-  const hasClaims = latests.filter(a => !!a.claims);
+  const hasClaims = latests.filter(a => !!a.claim);
   const instrument = hasClaims.find(a => a.payload.id.unpack === instrumentId);
 
   useEffect(() => {
     const setClaims = async () => {
-      if (!l1 && !l2 && !l3 && !!instrument && !!instrument.claims && lifecycle.length > 0) {
-        const [res, ] = await ledger.exercise(Lifecycle.GetCurrentClaims, lifecycle[0].contractId, { instrumentCid: instrument.claims.contractId, observableCids: observations.map(c => c.contractId) })
+      if (!l1 && !l2 && !l3 && !!instrument && !!instrument.claim && lifecycle.length > 0) {
+        const [res, ] = await ledger.exercise(Lifecycle.GetCurrentClaims, lifecycle[0].contractId, { instrumentCid: instrument.claim.contractId, observableCids: observations.map(c => c.contractId) })
         const claims = res.length > 1 ? and(res.map(r => r.claim)) : res[0].claim;
         const [exp, ] = await ledger.exercise(Lifecycle.Expiry, lifecycle[0].contractId, { claims });
         const [und, ] = await ledger.exercise(Lifecycle.Underlying, lifecycle[0].contractId, { claims });
@@ -105,11 +105,11 @@ export const Scenario : React.FC = () => {
   if (lifecycle.length === 0) return <Message text="No lifecycle service found" />;
 
   const simulate = async () => {
-    if (!instrument || !instrument.claims) return;
+    if (!instrument || !instrument.claim) return;
     setSimulating(true);
     const prices = [];
     for (let fixing = min; fixing <= max; fixing += step) prices.push(fixing.toString());
-    const [ results, ] = await ledger.exercise(Lifecycle.SimulateLifecycle, lifecycle[0].contractId, { today: expiry, prices, instrumentCid: instrument.claims.contractId });
+    const [ results, ] = await ledger.exercise(Lifecycle.SimulateLifecycle, lifecycle[0].contractId, { today: expiry, prices, instrumentCid: instrument.claim.contractId });
     const res = prices.map((p, i) => ({ fixing: parseFloat(p), payouts: results[i].map(r => ({ amount: parseFloat(r.amount), asset: r.asset.id.unpack }))}));
     setSimulating(false);
     setResults(res);

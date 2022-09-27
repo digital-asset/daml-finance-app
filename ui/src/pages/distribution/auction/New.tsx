@@ -35,7 +35,7 @@ export const New : React.FC = () => {
   const { loading: l1, auction, auctionAuto } = useServices();
   const { loading: l2, latests, tokens } = useInstruments();
   const { loading: l3, holdings, getFungible } = useHoldings();
-  const { contracts: accounts, loading: l4 } = useStreamQueries(Reference);
+  const { loading: l4, contracts: accounts } = useStreamQueries(Reference);
 
   if (l1 || l2 || l3 || l4) return <Spinner />;
 
@@ -45,7 +45,6 @@ export const New : React.FC = () => {
   const currency = tokens.find(c => c.payload.id.unpack === currencyLabel);
   const myHoldings = holdings.filter(c => c.payload.account.owner === party);
   const myHoldingLabels = myHoldings.map(c => c.payload.instrument.id.unpack).filter((v, i, a) => a.indexOf(v) === i);
-  const tokenLabels = tokens.map(c => c.payload.id.unpack);
   const canRequest = !!instrumentLabel && !!instrument && !!currencyLabel && !!currency && !!id && !!amount && !!floor;
 
   if (myServices.length === 0) return <Message text={"No auction service found for customer: " + party} />;
@@ -93,9 +92,9 @@ export const New : React.FC = () => {
                     </Select>
                   </FormControl>
                   <FormControl className={classes.inputField} fullWidth>
-                    <InputLabel className={classes.selectLabel}>Quoted Asset</InputLabel>
+                    <InputLabel className={classes.selectLabel}>Currency</InputLabel>
                     <Select fullWidth value={currencyLabel} onChange={e => setCurrencyLabel(e.target.value as string)} MenuProps={menuProps}>
-                      {tokenLabels.map(l => (<MenuItem key={l} value={l}>{l}</MenuItem>))}
+                      {tokens.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack} - {c.payload.description}</MenuItem>))}
                     </Select>
                   </FormControl>
                   <TextField className={classes.inputField} fullWidth label="Quantity" type="number" value={amount} onChange={e => setAmount(e.target.value as string)} />

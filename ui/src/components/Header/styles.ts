@@ -1,9 +1,10 @@
 // Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import { Theme } from "@mui/material";
 import { makeStyles, createStyles } from "@mui/styles";
 
-export default makeStyles((theme : any) => createStyles({
+export default makeStyles((theme : Theme) => createStyles({
   logotype: {
     color: theme.palette.text.primary,
     marginLeft: theme.spacing(2.5),
@@ -22,7 +23,8 @@ export default makeStyles((theme : any) => createStyles({
       easing: theme.transitions.easing.sharp,
       duration: theme.transitions.duration.leavingScreen,
     }),
-    backgroundColor: "white"
+    backgroundColor: theme.palette.background.paper,
+    color: theme.palette.text.primary
   },
   menuButton: {
     marginRight: 36,
@@ -34,7 +36,7 @@ export default makeStyles((theme : any) => createStyles({
   toolbar: {
     paddingLeft: theme.spacing(2),
     paddingRight: theme.spacing(2),
-    backgroundColor: "white"
+    backgroundColor: theme.palette.background.paper
   },
   hide: {
     display: "none",
@@ -118,8 +120,7 @@ export default makeStyles((theme : any) => createStyles({
     // margin: theme.spacing(2),
   },
   userBox: {
-    color: "white",
-    backgroundColor: "lightgrey",
+    backgroundColor: theme.palette.background.paper,
   },
   inputField: {
     marginTop: 10,
