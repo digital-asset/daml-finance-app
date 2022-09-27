@@ -42,7 +42,7 @@ export const NewGeneric : React.FC = () => {
     if (!node || node.tag === "Claim") return;
     const claims = nodeToClaim(node);
     const epoch = new Date(1970, 1, 1).toISOString();
-    const observers = emptyMap<string, any>().set("Public", singleton(singleton(getParty("Public"))));
+    const observers = emptyMap<string, any>().set("Public", singleton(getParty("Public")));
     const arg = {
       id,
       description: id,

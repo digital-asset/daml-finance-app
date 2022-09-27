@@ -54,7 +54,7 @@ export const NewInflationLinkedBond : React.FC = () => {
     if (!ccy) throw new Error("Couldn't find currency " + currency);
     const couponPeriod = couponFrequency === "Annual" ? PeriodEnum.Y : PeriodEnum.M;
     const couponPeriodMultiplier = couponFrequency === "Annual" ? "1" : (couponFrequency === "Semi-annual" ? "6" : "3");
-    const arg  = {
+    const arg = {
       id,
       description: id,
       inflationIndexId,
@@ -70,7 +70,7 @@ export const NewInflationLinkedBond : React.FC = () => {
       couponPeriod,
       couponPeriodMultiplier,
       currency: ccy.key,
-      observers: emptyMap<string, any>().set("Public", singleton(singleton(getParty("Public")))),
+      observers: emptyMap<string, any>().set("Public", singleton(getParty("Public"))),
       lastEventTimestamp: new Date().toISOString()
     };
     if (structuringAuto.length > 0) await ledger.exercise(StructuringAuto.RequestAndCreateInflationLinkedBond, structuringAuto[0].contractId, arg);

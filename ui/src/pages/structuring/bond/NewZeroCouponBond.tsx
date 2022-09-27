@@ -46,7 +46,7 @@ export const NewZeroCouponBond : React.FC = () => {
       issueDate: parseDate(issueDate),
       maturityDate: parseDate(maturityDate),
       currency: ccy.key,
-      observers: emptyMap<string, any>().set("Public", singleton(singleton(getParty("Public")))),
+      observers: emptyMap<string, any>().set("Public", singleton(getParty("Public"))),
       lastEventTimestamp: new Date().toISOString()
     };
     if (structuringAuto.length > 0) await ledger.exercise(StructuringAuto.RequestAndCreateZeroCouponBond, structuringAuto[0].contractId, arg);
