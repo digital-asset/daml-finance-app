@@ -74,7 +74,7 @@ export const New : React.FC = () => {
                     <Box className={classes.fullWidth}>
                       <InputLabel className={classes.selectLabel}>Traded Asset</InputLabel>
                       <Select variant="standard" fullWidth value={tradedInstrumentLabel} onChange={e => setTradedAssetLabel(e.target.value as string)} MenuProps={menuProps}>
-                        {tradableInstruments.filter(c => c.payload.id.unpack !== quotedInstrumentLabel).map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
+                        {tradableInstruments.filter(c => c.payload.id.unpack !== quotedInstrumentLabel).map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack} - {c.payload.description}</MenuItem>))}
                       </Select>
                     </Box>
                   </FormControl>
@@ -82,7 +82,7 @@ export const New : React.FC = () => {
                     <Box className={classes.fullWidth}>
                       <InputLabel className={classes.selectLabel}>Quoted Asset</InputLabel>
                       <Select variant="standard" fullWidth value={quotedInstrumentLabel} onChange={e => setQuotedAssetLabel(e.target.value as string)} MenuProps={menuProps}>
-                        {tokens.filter(c => c.payload.id.unpack !== tradedInstrumentLabel).map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
+                        {tokens.filter(c => c.payload.id.unpack !== tradedInstrumentLabel).map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack} - {c.payload.description}</MenuItem>))}
                       </Select>
                     </Box>
                   </FormControl>
