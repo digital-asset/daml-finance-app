@@ -41,7 +41,7 @@ sandbox-options:
 script-options:
   - --output-file=ui/src/parties.json
 json-api-options:
-  - --address=0.0.0.0
+  - --config=json-api.conf
 codegen:
   js:
     output-directory: ui/daml.js

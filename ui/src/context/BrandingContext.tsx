@@ -76,11 +76,13 @@ const dark : Branding = {
   }
 };
 
-const BrandingContext = React.createContext<Branding>(light);
+const themes = { light, dark };
+
+const BrandingContext = React.createContext<Branding>(themes.light);
 
 export const BrandingProvider : React.FC = ({ children }) => {
   return (
-    <BrandingContext.Provider value={dark}>
+    <BrandingContext.Provider value={themes.light}>
         {children}
     </BrandingContext.Provider>
   );

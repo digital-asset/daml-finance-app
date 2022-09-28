@@ -2,13 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React, { useMemo, useState } from "react";
-import ReactFlow, { Background, Node } from "react-flow-renderer";
+import ReactFlow, { Node } from "react-flow-renderer";
 import { IconButton, Typography } from "@mui/material";
 import useStyles from "./styles";
 import { Box } from "@mui/system";
 import { useNetwork } from "../../hooks/Network";
 import { Spinner } from "../../components/Spinner/Spinner";
-import damlLogin from "../../images/daml-logo-mark-light.svg";
 import { loginUser, useUserDispatch } from "../../context/UserContext";
 import { useNavigate } from "react-router-dom";
 import { FloatingEdge } from "../../components/Network/FloatingEdge";
