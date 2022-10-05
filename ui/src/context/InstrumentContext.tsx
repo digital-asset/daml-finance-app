@@ -3,7 +3,7 @@
 
 import React from "react";
 import { CreateEvent } from "@daml/ledger";
-import { useQuery, useStreamQueries } from "@daml/react";
+import { useStreamQueries } from "@daml/react";
 import { Instrument as Base } from "@daml.js/daml-finance-interface-instrument-base/lib/Daml/Finance/Interface/Instrument/Base/Instrument";
 import { Instrument as FixedRateBond } from "@daml.js/daml-finance-interface-instrument-bond/lib/Daml/Finance/Interface/Instrument/Bond/FixedRate/Instrument";
 import { Instrument as FloatingRateBond } from "@daml.js/daml-finance-interface-instrument-bond/lib/Daml/Finance/Interface/Instrument/Bond/FloatingRate/Instrument";
@@ -16,17 +16,6 @@ import { Instrument as CurrencySwap } from "@daml.js/daml-finance-interface-inst
 import { Instrument as ForeignExchangeSwap } from "@daml.js/daml-finance-interface-instrument-swap/lib/Daml/Finance/Interface/Instrument/Swap/ForeignExchange/Instrument";
 import { Instrument as InterestRateSwap } from "@daml.js/daml-finance-interface-instrument-swap/lib/Daml/Finance/Interface/Instrument/Swap/InterestRate/Instrument";
 import { Instrument as Token } from "@daml.js/daml-finance-interface-instrument-token/lib/Daml/Finance/Interface/Instrument/Token/Instrument";
-import { Instrument as FixedRateBondT } from "@daml.js/daml-finance-instrument-bond/lib/Daml/Finance/Instrument/Bond/FixedRate/Instrument";
-import { Instrument as FloatingRateBondT } from "@daml.js/daml-finance-instrument-bond/lib/Daml/Finance/Instrument/Bond/FloatingRate/Instrument";
-import { Instrument as InflationLinkedBondT } from "@daml.js/daml-finance-instrument-bond/lib/Daml/Finance/Instrument/Bond/InflationLinked/Instrument";
-import { Instrument as ZeroCouponBondT } from "@daml.js/daml-finance-instrument-bond/lib/Daml/Finance/Instrument/Bond/ZeroCoupon/Instrument";
-import { Instrument as EquityT } from "@daml.js/daml-finance-instrument-equity/lib/Daml/Finance/Instrument/Equity/Instrument";
-import { Instrument as GenericT } from "@daml.js/daml-finance-instrument-generic/lib/Daml/Finance/Instrument/Generic/Instrument";
-import { Instrument as CreditDefaultSwapT } from "@daml.js/daml-finance-instrument-swap/lib/Daml/Finance/Instrument/Swap/CreditDefault/Instrument";
-import { Instrument as CurrencySwapT } from "@daml.js/daml-finance-instrument-swap/lib/Daml/Finance/Instrument/Swap/Currency/Instrument";
-import { Instrument as ForeignExchangeSwapT } from "@daml.js/daml-finance-instrument-swap/lib/Daml/Finance/Instrument/Swap/ForeignExchange/Instrument";
-import { Instrument as InterestRateSwapT } from "@daml.js/daml-finance-instrument-swap/lib/Daml/Finance/Instrument/Swap/InterestRate/Instrument";
-import { Instrument as TokenT } from "@daml.js/daml-finance-instrument-token/lib/Daml/Finance/Instrument/Token/Instrument";
 import { Lifecycle } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Rule/Lifecycle";
 import { Claim } from "@daml.js/daml-finance-interface-claims/lib/Daml/Finance/Interface/Claims/Claim";
 import { Id, InstrumentKey } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Common";
@@ -100,18 +89,6 @@ const empty = {
 const InstrumentContext = React.createContext<InstrumentState>(empty);
 
 export const InstrumentProvider : React.FC = ({ children }) => {
-
-  useQuery(TokenT);
-  useQuery(EquityT);
-  useQuery(GenericT);
-  useQuery(FixedRateBondT);
-  useQuery(FloatingRateBondT);
-  useQuery(InflationLinkedBondT);
-  useQuery(ZeroCouponBondT);
-  useQuery(CreditDefaultSwapT);
-  useQuery(CurrencySwapT);
-  useQuery(ForeignExchangeSwapT);
-  useQuery(InterestRateSwapT);
 
   const { loading: l1,  contracts: instruments }          = useStreamQueries(Base);
   const { loading: l2,  contracts: lifecycles }           = useStreamQueries(Lifecycle);
