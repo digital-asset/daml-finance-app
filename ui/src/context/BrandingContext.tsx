@@ -3,11 +3,24 @@
 
 import React from "react";
 import { ThemeOptions } from "@mui/material";
-import damlLogoLight from "../images/daml-logo-mark-light.svg";
-// import damlLogoDark from "../images/daml-logo-mark-dark.svg";
-import daLogoLight from "../images/digital-asset-logo-light.svg";
-import daLogoDark from "../images/digital-asset-logo-dark.svg";
+import damlLogoLight from "../images/daml-logo-light.svg";
+import damlLogoDark from "../images/daml-logo-dark.svg";
 import backgroundImage from "../images/background.png";
+
+declare module '@mui/material/styles' {
+  interface Theme {
+    colors: {
+      header: string;
+      headerText: string;
+    };
+  }
+  interface ThemeOptions {
+    colors?: {
+      header?: string;
+      headerText: string;
+    };
+  }
+}
 
 type Branding = {
   background : JSX.Element
@@ -21,22 +34,26 @@ type Branding = {
 const light : Branding = {
   background: <></>,
   loginLogo: <img alt="" src={damlLogoLight} style={{ position: "absolute", top: "30%", left: "50%", WebkitTransform: "translate(-50%, -50%)", transform: "translate(-50%, -50%)", display: "inline-block", zIndex: 0 }} />,
-  headerLogo: <img alt="" src={daLogoLight} height="28px" style={{ position: "absolute", top: 20, marginLeft: 5 }} />,
+  headerLogo: <img alt="" src={damlLogoLight} height="28px" style={{ position: "absolute", top: 20, marginLeft: 5 }} />,
   loginX: "50%",
   loginY: "80%",
   options: {
+    colors: {
+      header: "#FFFFFF",
+      headerText: "#22252A"
+    },
     palette: {
       mode: "light",
       primary: { main: "#4f80f7" }, // #00345f #4e7df9 #5c86df
       secondary: { main: "#002856" }, // #3a478f
       background: {
-        default: "#f5f5f5",
-        paper: "#fff"
+        default: "#FAFAFA",
+        paper: "#F1F2F4"
       }
     },
     typography: {
       allVariants: {
-        fontFamily: "'Roboto', sans-serif;",
+        fontFamily: "'Lato', sans-serif;",
     }
     },
     components: {
@@ -57,20 +74,25 @@ const light : Branding = {
 const dark : Branding = {
   ...light,
   background: <img alt="" src={backgroundImage} style={{ position: "absolute", objectFit: "fill", top: "50%", left: "50%", width: "100%", height: "100%", minHeight: "100%", WebkitTransform: "translate(-50%, -50%)", transform: "translate(-50%, -50%)", display: "inline-block", zIndex: 0 }} />,
-  loginLogo: <img alt="" src={damlLogoLight} style={{ position: "absolute", top: "12%", left: "50%", WebkitTransform: "translate(-50%, 0%)", transform: "translate(-50%, 0%)", display: "inline-block", zIndex: 0 }} />,
-  headerLogo: <img alt="" src={daLogoDark} height="28px" style={{ position: "absolute", top: 20, marginLeft: 5 }} />,
+  loginLogo: <img alt="" src={damlLogoDark} style={{ position: "absolute", top: "12%", left: "50%", WebkitTransform: "translate(-50%, 0%)", transform: "translate(-50%, 0%)", display: "inline-block", zIndex: 0 }} />,
+  headerLogo: <img alt="" src={damlLogoDark} height="26px" style={{ position: "absolute", top: 21, marginLeft: 29 }} />,
   options: {
     ...light.options,
+    colors: {
+      header: "#29384C",
+      headerText: "#A7F6FF"
+    },
     palette: {
       mode: "dark",
-      primary: { main: "#4f80f7" }, // #a6f6ff #00345f #002856 #6575f1
+      primary: { main: "#A7F6FF" }, // #a6f6ff #00345f #002856 #6575f1
       secondary: { main: "#002856" }, // #6575f1
       background: {
-        paper: "#1e1e1e"
+        default: "#232F40",
+        paper: "#364963"
       },
       text: {
-        primary: "#ccc",
-        // secondary: "#adadad"
+        primary: "#FFFFFF",
+        secondary: "#22252A"
       },
     }
   }
@@ -82,7 +104,7 @@ const BrandingContext = React.createContext<Branding>(themes.light);
 
 export const BrandingProvider : React.FC = ({ children }) => {
   return (
-    <BrandingContext.Provider value={themes.light}>
+    <BrandingContext.Provider value={themes.dark}>
         {children}
     </BrandingContext.Provider>
   );

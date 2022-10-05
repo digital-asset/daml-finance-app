@@ -3,12 +3,12 @@
 
 import React from "react";
 import { PlayArrow } from "@mui/icons-material";
-import { RouteEntry } from "../components/Sidebar/RouteEntry";
 import { App } from "./App";
 import { Overview } from "../pages/network/Overview";
 
 export const Network : React.FC = () => {
-  const entries : RouteEntry[] =
-  [ { label: "Overview", path: "overview", element: <Overview />, icon: <PlayArrow/>, children: [] } ]
-  return <App title="Network Portal" entries={entries} />;
+  const entries = [
+    { label: "Overview", path: "overview", element: <Overview />, icon: <PlayArrow/>, children: [] }
+  ];
+  return <App app="Network" entries={entries} paths={[]} />;
 }

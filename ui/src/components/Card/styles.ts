@@ -19,10 +19,28 @@ export default makeStyles((theme : Theme) => createStyles({
   },
   cardMediaLarge: {
     height: 200,
-    opacity: theme.palette.mode === "dark" ? 0.75 : 1.0
+  },
+  cardMediaLargeOverlay: {
+    height: 200,
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    width: "100%",
+  },
+  cardMediaText: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    width: "100%",
+    padding: 15,
+  },
+  cardTitle: {
+    color: theme.palette.primary.main,
+    fontSize: 14
   },
   cardText: {
     color: theme.palette.text.primary,
+    fontSize: 12
   },
   tableRow: {
     height: "auto"

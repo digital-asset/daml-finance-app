@@ -21,4 +21,19 @@ export default makeStyles((theme : any) => createStyles({
   fakeToolbar: {
     ...theme.mixins.toolbar,
   },
+  bg: {
+    marginTop: 110,
+    paddingLeft: theme.spacing(20),
+    paddingRight: theme.spacing(20),
+  },
+  title: {
+    color: theme.palette.primary.main,
+    fontSize: 40,
+    fontWeight: 700
+  },
+  subtext: {
+    fontSize: 20,
+    paddingTop: 10,
+    paddingBottom: 30
+  }
 }));

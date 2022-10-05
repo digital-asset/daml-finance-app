@@ -7,25 +7,22 @@ import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import IconButton from "@mui/material/IconButton";
 import Typography from "@mui/material/Typography";
-import Grid from "@mui/material/Grid";
 import Box from "@mui/material/Box";
-import { FormControl, MenuItem, Select } from "@mui/material";
+import { Button, Icon, Select } from "@mui/material";
 import ExitToApp from "@mui/icons-material/ExitToApp";
 import Apps from "@mui/icons-material/Apps";
-import { useParty, useStreamQueries } from "@daml/react";
+import { useParty } from "@daml/react";
 import useStyles from "./styles";
 import { useUserDispatch, signOut, loginUser } from "../../context/UserContext";
 import { useBranding } from "../../context/BrandingContext";
-import { Spinner } from "../Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
 import { useScenario } from "../../context/ScenarioContext";
-import { Clock } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Clock";
+import { ActionSelect } from "../Form/ActionSelect";
+import Home from "../../images/home.svg";
+import Logout from "../../images/logout.svg";
 
-interface HeaderProps {
-  app : string
-}
 
-export const Header : React.FC<HeaderProps> = ({ app } : HeaderProps) => {
+export const Header : React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
   const userDispatch = useUserDispatch();
@@ -35,9 +32,7 @@ export const Header : React.FC<HeaderProps> = ({ app } : HeaderProps) => {
   const scenario = useScenario();
   const [, setError] = useState(false);
 
-  const { contracts: clocks, loading: l1 } = useStreamQueries(Clock);
-
-  const exit = () => {
+  const logout = () => {
     signOut(userDispatch);
     if (scenario.selected.useNetworkLogin) navigate("/login/network");
     else navigate("/login/form");
@@ -49,45 +44,20 @@ export const Header : React.FC<HeaderProps> = ({ app } : HeaderProps) => {
     await loginUser(userDispatch, user, party, token, navigate, setError);
   };
 
+  const homeIcon = <Icon className={classes.headerIcon}><img src={Home}/></Icon>;
+  const logoutIcon = <Icon className={classes.headerIcon}><img src={Logout}/></Icon>;
   return (
     <AppBar position="fixed" className={classes.appBar} elevation={1}>
       <Toolbar className={classes.toolbar}>
         {branding.headerLogo}
+        <Typography variant="h5" className={classes.logotype}>Finance</Typography>
         <div className={classes.grow} />
-        <Box alignContent="center">
-          <Grid container direction="column" alignItems="center">
-            <Grid item xs={12}>
-            <Typography variant="h5" className={classes.logotype}>Daml Finance</Typography>
-            </Grid>
-            <Grid item xs={12}>
-              <Typography variant="body1">{app}</Typography>
-            </Grid>
-          </Grid>
+        <Box className={classes.userBox}>
+          <Typography variant="body1" display="inline">User: </Typography>
+          <ActionSelect value={getName(party)} setValue={changeUser} values={users} />
         </Box>
-        <div className={classes.grow} />
-        {(l1 || clocks.length === 0) && <Spinner size={30} marginTop={0} />}
-        {!l1 && clocks.length > 0 &&
-        <>
-          <Box style={{ width: "250px" }}>
-            <Grid container direction="column" alignItems="center">
-              <Grid item xs={12}><Typography variant="body2">Today date: {new Date().toISOString().substring(0, 10)}</Typography></Grid>
-              <Grid item xs={12}><Typography variant="body2">Lifecycle date: {new Date(clocks[0].payload.clockTime).toISOString().substring(0, 10)}</Typography></Grid>
-            </Grid>
-          </Box>
-          <Box border={2} borderColor={"primary.main"} borderRadius={5} className={classes.userBox} style={{ width: "120px" }}>
-            <FormControl fullWidth style={{ paddingLeft: 10, paddingRight: 10 }}>
-              <Select value={getName(party)} onChange={e => changeUser(e.target.value as string)} disableUnderline MenuProps={{ anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" } }}>
-                {users.map((c, i) => (<MenuItem key={i} value={c}>{c}</MenuItem>))}
-              </Select>
-            </FormControl>
-          </Box>
-        </>}
-        <IconButton className={classes.headerMenuButton} color="inherit" onClick={() => navigate("/app")}>
-          <Apps classes={{ root: classes.headerIcon }} />
-        </IconButton>
-        <IconButton className={classes.headerMenuButton} color="inherit" onClick={exit}>
-          <ExitToApp classes={{ root: classes.headerIcon }} />
-        </IconButton>
+        <Button className={classes.headerButton} size="large" variant="text" startIcon={homeIcon} onClick={() => navigate("/app")}>Home</Button>
+        <Button className={classes.headerButton} size="large" variant="text" startIcon={logoutIcon} onClick={logout}>Log out</Button>
       </Toolbar>
     </AppBar>
   );

@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardActionArea, CardContent, CardMedia, Grid, Typography } from "@mui/material";
 import { Box } from "@mui/system";
 import useStyles from "./styles";
+import gradient from "../../images/gradient.png";
 
 type AppProps = {
   label : string
@@ -21,13 +22,14 @@ export const App : React.FC<AppProps> = ({ label, description, image, path }) =>
   return (
     <Grid item xs={12} sm={6} md={4} lg={4}>
       <Card className={classes.card}>
-        <Box border={1} borderColor="darkgrey" style={{ height: "100%"}}>
+        <Box style={{ height: "100%"}}>
           <CardActionArea onClick={() => navigate(path)}>
-            <CardMedia className={classes.cardMedia} image={image} title={label} />
-            <CardContent>
-              <Typography gutterBottom variant="h5" component="h2" className={classes.cardText}>{label}</Typography>
-              <Typography variant="body2" color="textPrimary" component="p" className={classes.cardText}>{description}</Typography>
-            </CardContent>
+            <CardMedia className={classes.cardMediaLarge} image={image} title={label} />
+            <CardMedia className={classes.cardMediaLargeOverlay} image={gradient} title={label} />
+            <Box className={classes.cardMediaText}>
+              <Typography className={classes.cardTitle}>{label}</Typography>
+              <Typography className={classes.cardText}>{description}</Typography>
+            </Box>
           </CardActionArea>
         </Box>
       </Card>

@@ -5,17 +5,6 @@ import { Theme } from "@mui/material";
 import { makeStyles, createStyles } from "@mui/styles";
 
 export default makeStyles((theme : Theme) => createStyles({
-  logotype: {
-    color: theme.palette.text.primary,
-    marginLeft: theme.spacing(2.5),
-    marginRight: theme.spacing(2.5),
-    fontWeight: 500,
-    fontSize: 24,
-    whiteSpace: "nowrap",
-    [theme.breakpoints.down("xs")]: {
-      display: "none",
-    },
-  },
   appBar: {
     width: "100vw",
     zIndex: theme.zIndex.drawer + 1,
@@ -23,8 +12,26 @@ export default makeStyles((theme : Theme) => createStyles({
       easing: theme.transitions.easing.sharp,
       duration: theme.transitions.duration.leavingScreen,
     }),
-    backgroundColor: theme.palette.background.paper,
     color: theme.palette.text.primary
+  },
+  toolbar: {
+    paddingLeft: 0,
+    paddingRight: 0,
+    minHeight: 68,
+    backgroundColor: theme.colors.header
+  },
+  logotype: {
+    color: theme.palette.primary.main,
+    marginTop: 8,
+    marginLeft: 142,
+    fontWeight: 500,
+    fontSize: 16,
+  },
+  userBox: {
+    height: 68,
+    width: 220,
+    padding: 22,
+    backgroundColor: theme.palette.background.paper,
   },
   menuButton: {
     marginRight: 36,
@@ -32,11 +39,6 @@ export default makeStyles((theme : Theme) => createStyles({
   menuButtonHidden: {
     marginRight: 36,
     display: 'none',
-  },
-  toolbar: {
-    paddingLeft: theme.spacing(2),
-    paddingRight: theme.spacing(2),
-    backgroundColor: theme.palette.background.paper
   },
   hide: {
     display: "none",
@@ -86,11 +88,11 @@ export default makeStyles((theme : Theme) => createStyles({
     padding: theme.spacing(0.5),
   },
   headerIcon: {
-    fontSize: 28,
-    color: theme.palette.text.primary,
+    height: 42
   },
-  headerIconCollapse: {
+  headerButton: {
     color: theme.palette.text.primary,
+    textTransform: "none"
   },
   profileMenu: {
     minWidth: 265,
@@ -118,9 +120,6 @@ export default makeStyles((theme : Theme) => createStyles({
     // size: 28,
     color: theme.palette.text.primary, //"rgba(255, 255, 255, 0.35)",
     // margin: theme.spacing(2),
-  },
-  userBox: {
-    backgroundColor: theme.palette.background.paper,
   },
   inputField: {
     marginTop: 10,

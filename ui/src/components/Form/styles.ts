@@ -14,4 +14,15 @@ export default makeStyles((theme : any) => createStyles({
   fullWidth: {
     width: "100%"
   },
+  actionSelect: {
+    "& .MuiSelect-select": {
+      paddingLeft: 10,
+      paddingRight: 0,
+      paddingTop: 1,
+      paddingBottom: 0,
+      width: 100
+    },
+    fontWeight: 700,
+    color: theme.palette.primary.main
+  },
 }));

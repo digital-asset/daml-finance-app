@@ -3,7 +3,6 @@
 
 import React from "react";
 import PlayArrow from "@mui/icons-material/PlayArrow";
-import { RouteEntry } from "../components/Sidebar/RouteEntry";
 import { Instruments } from "../pages/structuring/Instruments";
 import { New } from "../pages/structuring/New";
 import { App } from "./App";
@@ -17,16 +16,19 @@ import { NewZeroCouponBond } from "../pages/structuring/bond/NewZeroCouponBond";
 import { NewStock } from "../pages/structuring/equity/NewStock";
 
 export const Structuring : React.FC = () => {
-  const entries : RouteEntry[] =
-    [ { path: "instruments", element: <Instruments />, label: "Instruments", icon: <PlayArrow/> }
-    , { path: "new", element: <New />, label: "New", icon: <PlayArrow/> }
-    , { path: "new/equity/stock", element: <NewStock /> }
-    , { path: "new/bond/fixedrate", element: <NewFixedRateBond /> }
-    , { path: "new/bond/floatingrate", element: <NewFloatingRateBond /> }
-    , { path: "new/bond/inflationlinked", element: <NewInflationLinkedBond /> }
-    , { path: "new/bond/zerocoupon", element: <NewZeroCouponBond /> }
-    , { path: "new/other/token", element: <NewToken /> }
-    , { path: "new/other/generic", element: <NewGeneric /> }
-    , { path: "instruments/:key", element: <Instrument /> } ];
-  return <App title="Structuring" entries={entries} />;
+  const entries = [
+    { label: "Instruments",     path: "instruments",  element: <Instruments /> },
+    { label: "New Instrument",  path: "new",          element: <New />, action: true }
+  ];
+  const paths = [
+    { path: "new/equity/stock", element: <NewStock /> },
+    { path: "new/bond/fixedrate", element: <NewFixedRateBond /> },
+    { path: "new/bond/floatingrate", element: <NewFloatingRateBond /> },
+    { path: "new/bond/inflationlinked", element: <NewInflationLinkedBond /> },
+    { path: "new/bond/zerocoupon", element: <NewZeroCouponBond /> },
+    { path: "new/other/token", element: <NewToken /> },
+    { path: "new/other/generic", element: <NewGeneric /> },
+    { path: "instruments/:key", element: <Instrument /> }
+  ];
+  return <App app="Structuring" entries={entries} paths={paths} />;
 }

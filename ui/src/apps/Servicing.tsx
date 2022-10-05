@@ -2,8 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
-import { PlayArrow } from "@mui/icons-material";
-import { RouteEntry } from "../components/Sidebar/RouteEntry";
 import { Effects } from "../pages/servicing/Effects";
 import { Effect } from "../pages/servicing/Effect";
 import { MarketData } from "../pages/servicing/MarketData";
@@ -12,13 +10,14 @@ import { Instruments } from "../pages/servicing/Instruments";
 import { Instrument } from "../pages/servicing/Instrument";
 
 export const Servicing : React.FC = () => {
-
-  const entries : RouteEntry[] = [];
-  entries.push({ label: "Instruments", path: "instruments", element: <Instruments />, icon: <PlayArrow/>, children: [] });
-  entries.push({ label: "Effects", path: "effects", element: <Effects />, icon: <PlayArrow/>, children: [] });
-  entries.push({ label: "Market Data", path: "marketdata", element: <MarketData />, icon: <PlayArrow/>, children: [] });
-  entries.push({ path: "instruments/:contractId", element: <Instrument />, icon: <PlayArrow/>, children: [] });
-  entries.push({ path: "effects/:contractId", element: <Effect />, icon: <PlayArrow/>, children: [] });
-
-  return <App title="Lifecycle Management" entries={entries} />;
+  const entries = [
+    { label: "Instruments", path: "instruments", element: <Instruments /> },
+    { label: "Effects", path: "effects", element: <Effects /> },
+    { label: "Market Data", path: "marketdata", element: <MarketData /> },
+  ];
+  const paths = [
+    { path: "instruments/:contractId", element: <Instrument /> },
+    { path: "effects/:contractId", element: <Effect /> }
+  ];
+  return <App app="Servicing" entries={entries} paths={paths} />;
 }
