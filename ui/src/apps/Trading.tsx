@@ -14,7 +14,7 @@ export const Trading : React.FC = () => {
   const { contracts: listings, loading: l1 } = useStreamQueries(Listing);
   if (l1) return <Spinner />;
   const listingEntries = listings.map(c => ({ label: c.payload.id, path: "markets/" + c.contractId, element: <Market /> }));
-  const entries = [ { label: "Markets", path: "markets", element: <Markets /> } ].concat(listingEntries);
+  const entries = [ { label: "Markets", path: "markets", element: <Markets /> } ];//.concat(listingEntries);
   const paths = [ { path: "markets/:contractId", element: <Market /> } ];
   return <App app="Trading" entries={entries} paths={paths} />;
 }

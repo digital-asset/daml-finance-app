@@ -12,12 +12,18 @@ declare module '@mui/material/styles' {
     colors: {
       header: string;
       headerText: string;
+      claims1: string;
+      claims2: string;
+      claims3: string;
     };
   }
   interface ThemeOptions {
     colors?: {
       header?: string;
-      headerText: string;
+      headerText?: string;
+      claims1?: string;
+      claims2?: string;
+      claims3?: string;
     };
   }
 }
@@ -40,7 +46,10 @@ const light : Branding = {
   options: {
     colors: {
       header: "#FFFFFF",
-      headerText: "#22252A"
+      headerText: "#22252A",
+      claims1: "",
+      claims2: "",
+      claims3: ""
     },
     palette: {
       mode: "light",
@@ -80,7 +89,10 @@ const dark : Branding = {
     ...light.options,
     colors: {
       header: "#29384C",
-      headerText: "#A7F6FF"
+      headerText: "#A7F6FF",
+      claims1: "",
+      claims2: "",
+      claims3: ""
     },
     palette: {
       mode: "dark",

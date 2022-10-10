@@ -8,7 +8,7 @@ import { useTheme } from "@mui/material";
 import { claimMenu, createAsset, createDate, createDecimal, createObservable, inequalityConstructors, inequalityTags, MenuEntry, observationConstructors, observationTags, updateNode } from "./util";
 import useStyles from "./styles";
 import { InstrumentKey } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Common";
-import "./styles.css";
+import "./styles-dark.css";
 
 export type ClaimsTreeBuilderProps = {
   node? : ClaimTreeNode
@@ -118,7 +118,7 @@ export const ClaimsTreeBuilder : React.FC<ClaimsTreeBuilderProps> = ({ node, set
     const placehoder = d.tag === "Claim";
     const text = (d.text || d.tag);
     const textWidth = Math.max(25, text.length * 12);
-    const fill = placehoder ? theme.palette.background.paper : theme.palette.secondary.main;
+    const fill = placehoder ? theme.palette.background.paper : theme.colors.claims1;
     const stroke = theme.palette.secondary.light;
     const textColor = placehoder ? theme.palette.text.primary : "white";
     const onClick = readonly ? toggleNode : () => setShow(show === d.id ? "" : d.id || "");
@@ -136,7 +136,7 @@ export const ClaimsTreeBuilder : React.FC<ClaimsTreeBuilderProps> = ({ node, set
     const placehoder = d.tag === "Observation";
     const text = (d.text || d.tag);
     const textWidth = Math.max(25, text.length * 12);
-    const fill = placehoder ? theme.palette.background.paper : theme.palette.primary.main;
+    const fill = placehoder ? theme.palette.background.paper : theme.colors.claims2;
     const stroke = theme.palette.primary.light;
     const textColor = placehoder ? theme.palette.text.primary : "white";
     const onClick = readonly ? toggleNode : () => setShow(show === d.id ? "" : d.id);
@@ -153,7 +153,7 @@ export const ClaimsTreeBuilder : React.FC<ClaimsTreeBuilderProps> = ({ node, set
     const placehoder = d.tag === "Inequality";
     const text = (d.text || d.tag);
     const textWidth = Math.max(25, text.length * 12);
-    const fill = placehoder ? theme.palette.background.paper : theme.palette.primary.main;
+    const fill = placehoder ? theme.palette.background.paper : theme.colors.claims2;
     const stroke = theme.palette.primary.light;
     const textColor = placehoder ? theme.palette.text.primary : "white";
     const onClick = readonly ? toggleNode : () => setShow(show === d.id ? "" : d.id || "");
