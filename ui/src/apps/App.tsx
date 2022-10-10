@@ -25,8 +25,8 @@ export const App : React.FC<AppProps> = ({ app, entries, paths } : AppProps) => 
         <div className={classes.content}>
           <div className={classes.fakeToolbar} />
           <Routes>
-            {entries.map(e => <Route key={e.path} path={e.path} element={e.element} />)}
             {paths.map(p => <Route key={p.path} path={p.path} element={p.element} />)}
+            {entries.map(e => <Route key={e.path} path={e.path} element={e.element} />)}
           </Routes>
           <Outlet />
         </div>
