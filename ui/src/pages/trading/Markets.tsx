@@ -17,7 +17,7 @@ export const Markets : React.FC = () => {
   const navigate = useNavigate();
   const { getName } = useParties();
 
-  const { contracts: listings, loading: l1 } = useStreamQueries(Listing);
+  const { loading: l1, contracts: listings } = useStreamQueries(Listing);
   if (l1) return <Spinner />;
 
   return (

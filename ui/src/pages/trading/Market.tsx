@@ -8,7 +8,7 @@ import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Typography, Grid, Table, TableBody, TableCell, TableRow, TextField, Button, Paper, ToggleButtonGroup, ToggleButton } from "@mui/material";
 import { useParams } from "react-router-dom";
 import useStyles from "../styles";
-import { Listing as ListingContract } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Model";
+import { Listing } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Model";
 import { Order, Side } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Trading/Model";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Trading/Service";
 import { Service as AutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Trading/Auto/Service";
@@ -66,17 +66,16 @@ export const Market : React.FC = () => {
 
   const { loading: l1, trading, tradingAuto } = useServices();
   const { loading: l2, holdings, getFungible } = useHoldings();
-
-  const { contracts: listings, loading: l3 } = useStreamQueries(ListingContract);
-  const { contracts: accounts, loading: l4 } = useStreamQueries(Reference);
-  const { contracts: orders, loading: l5 } = useStreamQueries(Order);
+  const { loading: l3, contracts: listings } = useStreamQueries(Listing);
+  const { loading: l4, contracts: accounts } = useStreamQueries(Reference);
+  const { loading: l5, contracts: orders } = useStreamQueries(Order);
   const { contractId } = useParams<any>();
 
-  if (l1 || l2 || l3 || l4 || l5) return <Spinner />;
+  if (l1 || l2 || l3 || l4 || l5 || !contractId) return <Spinner />;
 
   const myServices = trading.filter(s => s.payload.customer === party);
   const myAutoServices = tradingAuto.filter(s => s.payload.customer === party);
-  const listing = listings.find(c => c.contractId === contractId!);
+  const listing = listings.find(c => c.contractId === contractId);
 
   if (myServices.length === 0) return <Message text="No trading service found" />;
   if (!listing) return <Message text="Listing not found" />;

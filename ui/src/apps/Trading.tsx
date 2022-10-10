@@ -3,7 +3,6 @@
 
 import React from "react";
 import { PlayArrow } from "@mui/icons-material";
-import { Entry } from "../components/Sidebar/Route";
 import { Market } from "../pages/trading/Market";
 import { Markets } from "../pages/trading/Markets";
 import { useStreamQueries } from "@daml/react";
