@@ -134,7 +134,7 @@ export const Offering : React.FC = () => {
                       {isProvider && <>
                       <TableRow key={5} className={classes.tableRow}>
                         <TableCell key={0} className={classes.tableCell}><b>Issuer Account</b></TableCell>
-                        <TableCell key={1} className={classes.tableCell}>{offering.payload.issuerAccount.id}</TableCell>
+                        <TableCell key={1} className={classes.tableCell}>{offering.payload.issuerAccount.id.unpack}</TableCell>
                       </TableRow>
                       <TableRow key={6} className={classes.tableRow}>
                         <TableCell key={0} className={classes.tableCell}><b>Subscribed %</b></TableCell>

@@ -3,6 +3,7 @@
 
 module Daml.Finance.App.Distribution.Subscription.Util where
 
+import DA.Foldable (forA_)
 import DA.Functor (void)
 import DA.Optional (optionalToList)
 import DA.Set (singleton)
@@ -14,7 +15,7 @@ import Daml.Finance.Interface.Settlement.Factory (Factory, Instruct(..))
 import Daml.Finance.Interface.Settlement.Instruction (Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Batch (Settle(..))
 import Daml.Finance.Interface.Settlement.Types (Allocation(Pledge), Approval(TakeDelivery), Step(..))
-import Daml.Finance.App.Distribution.Subscription.Model (AllocateInstruction(..), ApproveInstruction(..), Offering, Subscription)
+import Daml.Finance.App.Distribution.Subscription.Model (AllocateInstruction(..), ApproveInstruction(..), Offering, Subscription, UnlockHolding(..))
 import Daml.Finance.Interface.Types.Common (Id(..))
 
 settleSubscription : Party -> ContractId Factory -> Offering -> (Decimal, Optional (ContractId Fungible.I)) -> (ContractId Subscription, Subscription) -> Update (Decimal, Optional (ContractId Fungible.I))
@@ -47,7 +48,7 @@ settleSubscription actor settlementFactoryCid offering (remainingQuantity, issue
     paymentCid <- exercise subscriptionCid AllocateInstruction with instructionCid = paymentCid; transferableCid = toInterfaceContractId paymentHoldingCid
     exercise paymentCid Approve with approval = TakeDelivery offering.issuerAccount
     transferredCids <- exercise batchCid Settle with actors = singleton actor
-    -- forA_ transferredCids $ \cid -> exercise subscriptionCid UnlockHolding with lockableCid = toInterfaceContractId cid
+    forA_ transferredCids $ \cid -> exercise subscriptionCid UnlockHolding with lockableCid = toInterfaceContractId cid
 
     -- Process remainders
     let
