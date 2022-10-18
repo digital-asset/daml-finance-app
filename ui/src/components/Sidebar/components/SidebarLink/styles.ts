@@ -6,8 +6,9 @@ import { makeStyles, createStyles } from "@mui/styles";
 export default makeStyles((theme : any) => createStyles({
   linkButton: {
     width: "100%",
-    padding: 15,
+    padding: 10,
     marginLeft: 30,
+    marginRight: 30,
     borderRadius: 30,
     textTransform: "none"
   },
@@ -17,6 +18,7 @@ export default makeStyles((theme : any) => createStyles({
     color: theme.palette.text.secondary,
     padding: 5,
     marginLeft: 30,
+    marginRight: 30,
     borderRadius: 30,
     textTransform: "none"
   },

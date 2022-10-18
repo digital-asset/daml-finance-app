@@ -22,6 +22,9 @@ export const Sidebar : React.FC<SidebarProps> = ({ app, entries } : SidebarProps
   const navigate = useNavigate();
   const scenario = useScenario();
 
+  const links = entries.filter(e => !e.action);
+  const actions = entries.filter(e => !!e.action);
+
   return (
     <Drawer variant="permanent" className={classes.drawer} classes={{ paper: classes.drawer }} open={true}>
       <div className={classes.toolbar} />
@@ -30,9 +33,9 @@ export const Sidebar : React.FC<SidebarProps> = ({ app, entries } : SidebarProps
           <ActionSelect value={app} setValue={v => navigate("/app/" + v.toLowerCase())} values={scenario.selected.apps.map(a => a.name)} />
         </Button>
         <Divider style={{ marginBottom: 20 }} />
-        {entries.map(e =>
-          <SidebarLink key={e.label} label={e.label} path={e.path} action={e.action} />
-        )}
+        {links.map(e => <SidebarLink key={e.label} label={e.label} path={e.path} action={e.action} /> )}
+        {!!actions && <Divider style={{ marginTop: 20, marginBottom: 10 }} /> }
+        {actions.map(e => <SidebarLink key={e.label} label={e.label} path={e.path} action={e.action} /> )}
       </List>
     </Drawer>
   );

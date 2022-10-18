@@ -3,8 +3,8 @@
   "version": "0.1.5",
   "private": true,
   "dependencies": {
-    "@daml.js/daml-finance-app": "file:daml.js/daml-finance-app-0.1.5",
     "@daml.js/contingent-claims": "file:daml.js/717fb8b9bf56f806b9f48212481608d8239faf90c023fb4df5f4960ef1bc0bfb",
+    "@daml.js/daml-finance-app": "file:daml.js/daml-finance-app-0.1.5",
     "@daml.js/daml-finance-interface-claims": "file:daml.js/f2f29dcb345ac64031dcf0c5eba474899b27cf2334dd21e7cb246be350072e4b",
     "@daml.js/daml-finance-interface-data": "file:daml.js/8c0760bb7d7542ff32700f6faecbcb132258b192662d3b378248087e1f79bbe3",
     "@daml.js/daml-finance-interface-holding": "file:daml.js/4ad76bc137d2a40a27af1631f7f4db4710e7b961619d2ab737acd8f471a4d822",
@@ -27,6 +27,7 @@
     "@mui/lab": "^5.0.0-alpha.53",
     "@mui/material": "^5.0.6",
     "@mui/styles": "^5.0.2",
+    "@mui/x-date-pickers": "^5.0.4",
     "buffer": "^6.0.3",
     "classnames": "^2.3.1",
     "crypto-browserify": "^3.12.0",
@@ -74,10 +75,10 @@
     "@types/react": "^17.0.2",
     "@types/react-dom": "^17.0.2",
     "@types/uuid": "^8.3.1",
+    "nth-check": ">=2.0.1",
     "react-app-rewired": "^2.2.1",
     "react-scripts": "^5.0.1",
-    "typescript": "^4.4.4",
-    "nth-check": ">=2.0.1"
+    "typescript": "^4.4.4"
   },
   "browser": {
     "crypto": false

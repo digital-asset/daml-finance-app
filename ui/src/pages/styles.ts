@@ -112,4 +112,8 @@ export default makeStyles((theme : any) => createStyles({
   acc: {
     backgroundColor: theme.palette.secondary.main
   },
+  timeline: {
+    marginTop: 10,
+    marginBottom: 30
+  }
 }));

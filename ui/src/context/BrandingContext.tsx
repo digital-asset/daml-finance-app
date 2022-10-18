@@ -97,7 +97,7 @@ const dark : Branding = {
     palette: {
       mode: "dark",
       primary: { main: "#A7F6FF" }, // #a6f6ff #00345f #002856 #6575f1
-      secondary: { main: "#002856" }, // #6575f1
+      secondary: { main: "#577FF1" }, // #002856 #6575f1
       background: {
         default: "#232F40",
         paper: "#364963"
