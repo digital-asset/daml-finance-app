@@ -66,9 +66,9 @@ run  = do
   createClockAndEvent all today (singleton public)
 
   -- Instruments
-  usd   <- originate         centralBank centralBank pub todayTime "USD" "United States Dollar"
-  tsla  <- originate         registry    registry    pub todayTime "TSLA" "Tesla, Inc. Common Stock"
-  deal1 <- originateGeneric  registry      lender    pub todayTime "DEAL1" "Loan of TSLA @ 0.2%" $ loan today (addDays today 28) tsla 0.002 usd [addDays today 7, addDays today 14, addDays today 21, addDays today 28]
+  usd   <- originate        centralBank centralBank pub todayTime "USD" "United States Dollar"
+  tsla  <- originateEquity  registry    registry    pub todayTime "TSLA" "Tesla, Inc. Common Stock"
+  deal1 <- originateGeneric registry    lender      pub todayTime "DEAL1" "Loan of TSLA @ 0.2%" $ loan today (addDays today 28) tsla 0.002 usd [addDays today 7, addDays today 14, addDays today 21, addDays today 28]
 
   -- Data
   createAccountDirectory lender   [(usd, lenderCashAccount), (tsla, lenderSecAccount)] $ singleton public

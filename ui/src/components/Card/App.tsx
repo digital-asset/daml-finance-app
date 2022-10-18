@@ -3,7 +3,7 @@
 
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, CardActionArea, CardContent, CardMedia, Grid, Typography } from "@mui/material";
+import { Card, CardActionArea, CardMedia, Grid, Typography } from "@mui/material";
 import { Box } from "@mui/system";
 import useStyles from "./styles";
 import gradient from "../../images/gradient.png";

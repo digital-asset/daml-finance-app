@@ -3,7 +3,6 @@
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { v4 as uuidv4 } from "uuid";
 import classnames from "classnames";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Typography, Grid, Paper, Select, MenuItem, TextField, Button, MenuProps, FormControl, InputLabel, Box } from "@mui/material";
@@ -23,6 +22,7 @@ export const New : React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
 
+  const [ id, setId ] = useState("");
   const [ offeredInstLabel, setOfferedInstLabel ] = useState("");
   const [ priceInstLabel, setPriceInstLabel ] = useState("");
   const [ amount, setAmount ] = useState("");
@@ -63,7 +63,7 @@ export const New : React.FC = () => {
       if (!b2bReceivableAccount || !issuerReceivableAccount) return;
       const b2bDeliverableCid = await getFungible(b2b, amount, offeredInst.key);
       const issuerDeliverableCid = await getFungible(party, notional, priceInst.key);
-      const offeringId = uuidv4();
+      const offeringId = id;
       const backToBack : BackToBack = {
         party: b2b,
         offeringId,
@@ -83,7 +83,7 @@ export const New : React.FC = () => {
       await ledger.exercise(Service.CreateOffering, myServices[0].contractId, arg);
     } else {
       const arg : CreateOffering = {
-        offeringId: uuidv4(),
+        offeringId: id,
         asset: { amount: amount, unit: offeredInst.key },
         price: { amount: price, unit: priceInst.key },
         customerHoldingCid: holdingCid,
@@ -108,6 +108,7 @@ export const New : React.FC = () => {
               <Grid item xs={12}>
                 <Paper className={classnames(classes.fullWidth, classes.paper)}>
                   <Typography variant="h5" className={classes.heading}>Details</Typography>
+                  <TextField variant="standard" className={classes.inputField} fullWidth label="Offering Id" type="text" value={id} onChange={e => setId(e.target.value as string)} />
                   <FormControl className={classes.inputField} fullWidth>
                     <InputLabel className={classes.selectLabel}>Offered Asset</InputLabel>
                     <Select fullWidth value={offeredInstLabel} onChange={e => setOfferedInstLabel(e.target.value as string)} MenuProps={menuProps}>

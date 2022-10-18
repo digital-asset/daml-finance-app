@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
-import { Select, MenuItem, MenuProps, FormControl, Icon, Typography } from "@mui/material";
+import { Select, MenuItem, MenuProps, FormControl, Icon } from "@mui/material";
 import useStyles from "./styles";
 import Swap from "../../images/swap.svg";
 
@@ -14,7 +14,7 @@ export type ActionSelectProps = {
 
 export const ActionSelect : React.FC<ActionSelectProps> = ({ value, setValue, values }) => {
   const classes = useStyles();
-  const icon = (props : any) => <Icon {...props}><img src={Swap}/></Icon>;
+  const icon = (props : any) => <Icon {...props}><img alt="" src={Swap}/></Icon>;
   const menuProps : Partial<MenuProps> = { anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" } };
   return (
     <FormControl>

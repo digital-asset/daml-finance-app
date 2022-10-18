@@ -5,12 +5,9 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
-import IconButton from "@mui/material/IconButton";
 import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
-import { Button, Icon, Select } from "@mui/material";
-import ExitToApp from "@mui/icons-material/ExitToApp";
-import Apps from "@mui/icons-material/Apps";
+import { Button, Icon } from "@mui/material";
 import { useParty } from "@daml/react";
 import useStyles from "./styles";
 import { useUserDispatch, signOut, loginUser } from "../../context/UserContext";
@@ -44,8 +41,8 @@ export const Header : React.FC = () => {
     await loginUser(userDispatch, user, party, token, navigate, setError);
   };
 
-  const homeIcon = <Icon className={classes.headerIcon}><img src={Home}/></Icon>;
-  const logoutIcon = <Icon className={classes.headerIcon}><img src={Logout}/></Icon>;
+  const homeIcon = <Icon className={classes.headerIcon}><img alt="" src={Home}/></Icon>;
+  const logoutIcon = <Icon className={classes.headerIcon}><img alt="" src={Logout}/></Icon>;
   return (
     <AppBar position="fixed" className={classes.appBar} elevation={1}>
       <Toolbar className={classes.toolbar}>

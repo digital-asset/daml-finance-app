@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
-import PlayArrow from "@mui/icons-material/PlayArrow";
 import { Instruments } from "../pages/structuring/Instruments";
 import { New } from "../pages/structuring/New";
 import { App } from "./App";

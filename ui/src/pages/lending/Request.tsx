@@ -33,14 +33,14 @@ export const Request : React.FC = () => {
   const party = useParty();
   const ledger = useLedger();
   const { loading: l1, lending } = useServices();
-  const { loading: l2, tokens } = useInstruments();
+  const { loading: l2, equities, tokens } = useInstruments();
   const { loading: l3, getFungible } = useHoldings();
   const { loading: l4, contracts: requests } = useStreamQueries(BorrowOfferRequest);
   const { loading: l5, contracts: accounts } = useStreamQueries(Reference);
 
   const { contractId } = useParams<any>();
   const request = requests.find(b => b.contractId === contractId);
-  const borrowedInstrument = tokens.find(c => c.payload.id.unpack === request?.payload.borrowed.unit.id.unpack);
+  const borrowedInstrument = equities.find(c => c.payload.id.unpack === request?.payload.borrowed.unit.id.unpack);
   const interestInstrument = tokens.find(c => c.payload.id.unpack === interestInstrumentLabel);
   const collateralInstrument = tokens.find(c => c.payload.id.unpack === collateralInstrumentLabel);
 

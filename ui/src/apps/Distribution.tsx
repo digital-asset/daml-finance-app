@@ -2,14 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
-import { PlayArrow } from "@mui/icons-material";
 import { Entry } from "../components/Sidebar/Route";
 import { Auctions as BiddingAuctions } from "../pages/distribution/bidding/Auctions";
 import { Auctions } from "../pages/distribution/auction/Auctions";
 import { Auction } from "../pages/distribution/auction/Auction";
 import { New as NewAuction} from "../pages/distribution/auction/New";
 import { New as NewSubscription} from "../pages/distribution/subscription/New";
-import { useParty, useStreamQueries } from "@daml/react";
+import { useParty } from "@daml/react";
 import { Requests } from "../pages/distribution/auction/Requests";
 import { Bidding } from "../pages/distribution/auction/Bidding";
 import { App } from "./App";

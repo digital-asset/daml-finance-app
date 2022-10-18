@@ -22,7 +22,6 @@ export const New : React.FC = () => {
   const navigate = useNavigate();
 
   const [ id, setId ] = useState("");
-  const [ description, setDescription ] = useState("");
   const [ instrumentLabel, setInstrumentLabel ] = useState("");
   const [ isB2B, setIsB2B ] = useState(false);
   const [ quantity, setQuantity ] = useState("");
@@ -51,7 +50,7 @@ export const New : React.FC = () => {
       if (!aggregate || !customerAccount || !providerAccount) return;
       const arg = {
         id: { unpack : id },
-        description,
+        description: id,
         quantity: { amount: quantity, unit: aggregate.key },
         customerAccount: customerAccount.key,
         providerAccount: providerAccount.key
@@ -67,7 +66,7 @@ export const New : React.FC = () => {
       if (!aggregate || !account) return;
       const arg = {
         id: { unpack : id },
-        description,
+        description: id,
         quantity: { amount: quantity, unit: aggregate.key },
         account: account.key,
       };
@@ -91,7 +90,6 @@ export const New : React.FC = () => {
                 <Paper className={classnames(classes.fullWidth, classes.paper)}>
                   <Typography variant="h5" className={classes.heading}>Details</Typography>
                   <TextField variant="standard" className={classes.inputField} fullWidth label="Id" type="text" value={id} onChange={e => setId(e.target.value as string)} />
-                  <TextField variant="standard" className={classes.inputField} fullWidth label="Description" type="text" value={description} onChange={e => setDescription(e.target.value as string)} />
                   <FormControl className={classes.inputField} fullWidth>
                     <InputLabel className={classes.selectLabel}>Asset</InputLabel>
                     <Select fullWidth value={instrumentLabel} onChange={e => setInstrumentLabel(e.target.value as string)} MenuProps={menuProps}>

@@ -3,7 +3,6 @@
 
 import React from "react";
 import { PlayArrow } from "@mui/icons-material";
-import { Entry } from "../components/Sidebar/Route";
 import { Scenario } from "../pages/simulation/Scenario";
 import { App } from "./App";
 
