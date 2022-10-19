@@ -3,19 +3,43 @@
 
 @echo off
 
-:: Target Daml Finance version
-set version=0.1.3
-
 :: Create .lib directory if it doesn't exist
 if not exist ".\.lib\" mkdir .\.lib
 
-if not exist ".lib/daml-finance-holding-%version%.dar" ( curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Holding/%version%/daml-finance-holding-%version%.dar" -o .lib/daml-finance-holding-%version%.dar )
-if not exist ".lib/daml-finance-instrument-base-%version%.dar" ( curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Instrument.Base/%version%/daml-finance-instrument-base-%version%.dar" -o .lib/daml-finance-instrument-base-%version%.dar )
-if not exist ".lib/daml-finance-interface-lifecycle-%version%.dar" ( curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Interface.Lifecycle/%version%/daml-finance-interface-lifecycle-%version%.dar" -o .lib/daml-finance-interface-lifecycle-%version%.dar )
-if not exist ".lib/daml-finance-interface-holding-%version%.dar" ( curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Interface.Holding/%version%/daml-finance-interface-holding-%version%.dar" -o .lib/daml-finance-interface-holding-%version%.dar )
-if not exist ".lib/daml-finance-interface-instrument-base-%version%.dar" ( curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Interface.Instrument.Base/%version%/daml-finance-interface-instrument-base-%version%.dar" -o .lib/daml-finance-interface-instrument-base-%version%.dar )
-if not exist ".lib/daml-finance-interface-settlement-%version%.dar" ( curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Interface.Settlement/%version%/daml-finance-interface-settlement-%version%.dar" -o .lib/daml-finance-interface-settlement-%version%.dar )
-if not exist ".lib/daml-finance-interface-types-%version%.dar" ( curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Interface.Types/%version%/daml-finance-interface-types-%version%.dar" -o .lib/daml-finance-interface-types-%version%.dar )
-if not exist ".lib/daml-finance-lifecycle-%version%.dar" ( curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Lifecycle/%version%/daml-finance-lifecycle-%version%.dar" -o .lib/daml-finance-lifecycle-%version%.dar )
-if not exist ".lib/daml-finance-refdata-%version%.dar" ( curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.RefData/%version%/daml-finance-refdata-%version%.dar" -o .lib/daml-finance-refdata-%version%.dar )
-if not exist ".lib/daml-finance-settlement-%version%.dar" ( curl -Lf# "https://github.com/digital-asset/daml-finance/releases/download/Daml.Finance.Settlement/%version%/daml-finance-settlement-%version%.dar" -o .lib/daml-finance-settlement-%version%.dar )
+set cc_version="3.0.0.20220721.1"
+if not exist ".lib/contingent-claims-%cc_version%.dar" ( curl -Lf# "https://github.com/digital-asset/contingent-claims/releases/download/v%cc_version%/contingent-claims-%cc_version%.dar" -o .lib/contingent-claims-%cc_version%.dar )
+
+call :get_dependency daml-finance-data                          Daml.Finance.Data                         0.1.4
+call :get_dependency daml-finance-holding                       Daml.Finance.Holding                      0.1.4
+call :get_dependency daml-finance-instrument-bond               Daml.Finance.Instrument.Bond              0.1.5
+call :get_dependency daml-finance-instrument-equity             Daml.Finance.Instrument.Equity            0.1.5
+call :get_dependency daml-finance-instrument-generic            Daml.Finance.Instrument.Generic           0.1.5
+call :get_dependency daml-finance-instrument-swap               Daml.Finance.Instrument.Swap              0.1.5
+call :get_dependency daml-finance-instrument-token              Daml.Finance.Instrument.Token             0.1.4
+call :get_dependency daml-finance-interface-claims              Daml.Finance.Interface.Claims             0.1.4
+call :get_dependency daml-finance-interface-data                Daml.Finance.Interface.Data               0.1.4
+call :get_dependency daml-finance-interface-holding             Daml.Finance.Interface.Holding            0.1.4
+call :get_dependency daml-finance-interface-instrument-base     Daml.Finance.Interface.Instrument.Base    0.1.4
+call :get_dependency daml-finance-interface-instrument-bond     Daml.Finance.Interface.Instrument.Bond    0.1.4
+call :get_dependency daml-finance-interface-instrument-equity   Daml.Finance.Interface.Instrument.Equity  0.1.5
+call :get_dependency daml-finance-interface-instrument-generic  Daml.Finance.Interface.Instrument.Generic 0.1.5
+call :get_dependency daml-finance-interface-instrument-swap     Daml.Finance.Interface.Instrument.Swap    0.1.4
+call :get_dependency daml-finance-interface-instrument-token    Daml.Finance.Interface.Instrument.Token   0.1.4
+call :get_dependency daml-finance-interface-lifecycle           Daml.Finance.Interface.Lifecycle          0.1.5
+call :get_dependency daml-finance-interface-settlement          Daml.Finance.Interface.Settlement         0.1.5
+call :get_dependency daml-finance-interface-types               Daml.Finance.Interface.Types              0.1.4
+call :get_dependency daml-finance-interface-util                Daml.Finance.Interface.Util               0.1.4
+call :get_dependency daml-finance-lifecycle                     Daml.Finance.Lifecycle                    0.1.5
+call :get_dependency daml-finance-settlement                    Daml.Finance.Settlement                   0.1.5
+call :get_dependency daml-finance-util                          Daml.Finance.Util                         0.1.4
+exit /b 0
+
+:get_dependency
+  set package_name=%~1
+  set module_name=%~2
+  set version=%~3
+  set url="https://github.com/digital-asset/daml-finance/releases/download/%module_name%/%version%/%package_name%-%version%.dar"
+  echo Getting dependency %package_name% v%version%
+  if not exist ".lib/%package_name%-%version%.dar" (curl -Lf# %url% -o .lib/%package_name%-%version%.dar)
+  exit /b 0
+
