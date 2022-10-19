@@ -17,7 +17,7 @@ daml start
 ```
 If on Windows, run the following:
 ```
-./script/get-dependencies.sh
+./script/get-dependencies.bat
 daml start
 ```
 
