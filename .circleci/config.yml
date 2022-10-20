@@ -86,7 +86,7 @@ commands:
                 fi
                 echo -e "Successfully released package '${PACKAGE}' with tag '${TAG}'.\n"
               else
-                echo -e "Tag '${TAG}' already exists for package '${PACKAGE}'; Ignoring...\n"
+                echo -e "Tag '${TAG}' already exists for package '${PACKAGE}'; Ignoring.\n"
               fi
             done
       - run:
@@ -108,7 +108,7 @@ commands:
                 gh release create ${TAG} ${TAR}* --target ${CIRCLE_BRANCH} --prerelease --notes "Development snapshot of the UI. Use at your own risk."
               fi
             else
-              echo -e "Tag '${TAG}' already exists; Ignoring..."
+              echo -e "Tag '${TAG}' already exists; Ignoring."
             fi
 
 jobs:
