@@ -59,57 +59,73 @@ commands:
     steps:
       - run:
           name: Import Digital Asset GPG key
-          command: echo ${gpg_code_signing} | base64 -d | gpg --import --quiet
+          command: |
+            nix-shell \
+              --pure \
+              --keep gpg_code_signing \
+              --run 'echo ${gpg_code_signing} | base64 -d | gpg --import --quiet'
   run_release:
     description: "GitHub Release"
     steps:
       - run:
           name: "Run GitHub Release - Daml"
           command: |
-            PACKAGES=(`ls package/main/daml/*/daml.yaml`)
+            nix-shell \
+              --pure \
+              --keep GITHUB_TOKEN \
+              --keep CIRCLE_BRANCH \
+              --run bash bash \<<'EOF'
+                  PACKAGES=(`ls package/main/daml/*/daml.yaml`)
 
-            for package in ${PACKAGES[@]}; do
-              PACKAGE=`echo ${package} | cut -f4 -d "/"`
-              VERSION=`yq e '.version' ${package}`
-              TAG="${PACKAGE}/${VERSION}"
-              echo "Processing package '${PACKAGE}' with tag '${TAG}'..."
+                  for package in ${PACKAGES[@]}; do
+                    PACKAGE=`echo ${package} | cut -f4 -d "/"`
+                    VERSION=`yq e '.version' ${package}`
+                    TAG="${PACKAGE}/${VERSION}"
+                    echo "Processing package '${PACKAGE}' with tag '${TAG}'..."
 
-              if [[ `git tag -l ${TAG} | wc -l` -eq 0 ]]; then
-                DAR_PREFIX=`yq e '.name' ${package}`
-                DAR="${DAR_PREFIX}-${VERSION}.dar"
-                gpg --armor --detach-sign .dars/${DAR}
+                    if [[ `git tag -l ${TAG} | wc -l` -eq 0 ]]; then
+                      DAR_PREFIX=`yq e '.name' ${package}`
+                      DAR="${DAR_PREFIX}-${VERSION}.dar"
+                      gpg --armor --detach-sign .dars/${DAR}
 
-                if [[ `echo $VERSION | grep ".99." | wc -l` -eq 0 ]] ; then
-                  gh release create ${TAG} .dars/${DAR}* --target ${CIRCLE_BRANCH} --notes "See release notes (insert link here) for further details."
-                else
-                  gh release create ${TAG} .dars/${DAR}* --target ${CIRCLE_BRANCH} --prerelease --notes "Development snapshot of package '${PACKAGE}'. Use at your own risk."
-                fi
-                echo -e "Successfully released package '${PACKAGE}' with tag '${TAG}'.\n"
-              else
-                echo -e "Tag '${TAG}' already exists for package '${PACKAGE}'; Ignoring.\n"
-              fi
-            done
+                      if [[ `echo $VERSION | grep ".99." | wc -l` -eq 0 ]] ; then
+                        gh release create ${TAG} .dars/${DAR}* --target ${CIRCLE_BRANCH} --notes "See release notes (insert link here) for further details."
+                      else
+                        gh release create ${TAG} .dars/${DAR}* --target ${CIRCLE_BRANCH} --prerelease --notes "Development snapshot of package '${PACKAGE}'. Use at your own risk."
+                      fi
+                      echo -e "Successfully released package '${PACKAGE}' with tag '${TAG}'.\n"
+                    else
+                      echo -e "Tag '${TAG}' already exists for package '${PACKAGE}'; Ignoring.\n"
+                    fi
+                  done
+                EOF
       - run:
           name: "Run GitHub Release - UI"
           command: |
-            NAME=`yq e '.name' ui/package.json`
-            VERSION=`yq e '.version' ui/package.json`
-            TAG="${NAME}/${VERSION}"
-            TAR="${NAME}-${VERSION}"
-            echo "Processing UI with tag '${TAG}'..."
+            nix-shell \
+              --pure \
+              --keep GITHUB_TOKEN \
+              --keep CIRCLE_BRANCH \
+              --run bash bash \<<'EOF'
+                  NAME=`yq e '.name' ui/package.json`
+                  VERSION=`yq e '.version' ui/package.json`
+                  TAG="${NAME}/${VERSION}"
+                  TAR="${NAME}-${VERSION}"
+                  echo "Processing UI with tag '${TAG}'..."
 
-            if [[ `git tag -l ${TAG} | wc -l` -eq 0 ]]; then
-              tar czvf ${TAR} -C ui/build .
-              gpg --armor --detach-sign ${TAR}
+                  if [[ `git tag -l ${TAG} | wc -l` -eq 0 ]]; then
+                    tar czvf ${TAR} -C ui/build .
+                    gpg --armor --detach-sign ${TAR}
 
-              if [[ `echo $VERSION | grep ".99." | wc -l` -eq 0 ]] ; then
-                gh release create ${TAG} ${TAR}* --target ${CIRCLE_BRANCH} --notes "See release notes (insert link here) for further details."
-              else
-                gh release create ${TAG} ${TAR}* --target ${CIRCLE_BRANCH} --prerelease --notes "Development snapshot of the UI. Use at your own risk."
-              fi
-            else
-              echo -e "Tag '${TAG}' already exists; Ignoring."
-            fi
+                    if [[ `echo $VERSION | grep ".99." | wc -l` -eq 0 ]] ; then
+                      gh release create ${TAG} ${TAR}* --target ${CIRCLE_BRANCH} --notes "See release notes (insert link here) for further details."
+                    else
+                      gh release create ${TAG} ${TAR}* --target ${CIRCLE_BRANCH} --prerelease --notes "Development snapshot of the UI. Use at your own risk."
+                    fi
+                  else
+                    echo -e "Tag '${TAG}' already exists; Ignoring."
+                  fi
+                EOF
 
 jobs:
   build:

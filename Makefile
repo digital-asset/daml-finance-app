@@ -25,7 +25,6 @@ clean:
 .PHONY: test
 test: build
 	daml test
-	cd $(SCRIPTS_DIR) && ./test.sh
 
 .PHONY: headers-check
 headers-check:
@@ -35,28 +34,28 @@ headers-check:
 headers-update:
 	./$(SCRIPTS_DIR)/dade-copyright-headers.py update
 
-###################################
-# CI															#
-#		- utilises nix dependencies   #
-#		- avoids unnecessary rebuilds #
-###################################
+##################################
+# CI                             #
+#  - utilises nix dependencies   #
+#  - avoids unnecessary rebuilds #
+##################################
 
 .PHONY: ci-build
 ci-build:
 	@nix-shell \
-		--pure   \
+		--pure \
 		--run 'make build'
 
 .PHONY: ci-test
 ci-test:
 	@nix-shell \
-		--pure   \
-		--run 'daml test && cd $(SCRIPTS_DIR) && ./test.sh'
+		--pure \
+		--run 'daml test'
 
 .PHONY: ci-headers-check
 ci-headers-check:
 	@nix-shell \
-		--pure   \
+		--pure \
 		--run './scripts/dade-copyright-headers.py check'
 
 .PHONY: ci-local
