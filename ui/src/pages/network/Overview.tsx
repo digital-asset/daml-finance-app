@@ -1,3 +1,6 @@
+// Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 import React, { useMemo } from "react";
 import ReactFlow, { Background } from "react-flow-renderer";
 import { FloatingEdge } from "../../components/Network/FloatingEdge";
@@ -32,3 +35,4 @@ export const Overview : React.FC = () => {
     </ReactFlow>
   );
 };
+

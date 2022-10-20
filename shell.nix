@@ -24,6 +24,7 @@ pkgs.mkShell {
     git
     jq
     nodejs
+    python39
     yq-go
   ];
 }
