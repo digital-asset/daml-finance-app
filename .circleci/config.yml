@@ -1,0 +1,178 @@
+#
+# Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+version: 2.1
+
+executors:
+  daml-finance-app-executor:
+    docker:
+      - image: cimg/base:2022.10
+
+commands:
+  setup_nix:
+    description: Set up Nix
+    steps:
+      - run:
+          name: Generate cache key
+          command: |
+            set -euo pipefail
+
+            git log -n1 --format=%H nix shell.nix > /tmp/nix-cache-key
+            sudo mkdir /nix
+            sudo chown circleci /nix
+            >> $BASH_ENV echo 'export USER=circleci'
+      - restore_cache:
+          keys:
+          - nix-{{ checksum "/tmp/nix-cache-key" }}
+      - run:
+          name: Setup Nix
+          command: |
+            set -euo pipefail
+
+            if [ -f ~/.config/nix/nix.conf ]; then
+                echo '. /home/circleci/.nix-profile/etc/profile.d/nix.sh' >> "$BASH_ENV"
+                exit 0
+            fi
+
+            # Disabling sandbox because:
+            # 1. It doesn't work on CircleCI (sethostname is not allowed)
+            # 2. We don't plan to build anything, so the risk is fairly low
+            mkdir -p ~/.config/nix
+            echo 'sandbox = false' >> ~/.config/nix/nix.conf
+
+            sh <(curl -fsSL https://nixos.org/nix/install) --no-daemon
+            . /home/circleci/.nix-profile/etc/profile.d/nix.sh
+            nix-shell shell.nix --run 'echo "Done loading all packages."'
+            echo '. /home/circleci/.nix-profile/etc/profile.d/nix.sh' >> "$BASH_ENV"
+      - save_cache:
+          key: nix-{{ checksum "/tmp/nix-cache-key" }}
+          paths:
+          - /nix
+          - /home/circleci/.nix-profile
+          - /home/circleci/.nix-channels
+          - /home/circleci/.nix-defexpr
+          - /home/circleci/.config/nix
+  import_gpg_key:
+    description: "Setup GPG for signing artifacts as part of a release"
+    steps:
+      - run:
+          name: Import Digital Asset GPG key
+          command: echo ${gpg_code_signing} | base64 -d | gpg --import --quiet
+  run_release:
+    description: "GitHub Release"
+    steps:
+      - run:
+          name: "Run GitHub Release - Daml"
+          command: |
+            PACKAGES=(`ls package/main/daml/*/daml.yaml`)
+
+            for package in ${PACKAGES[@]}; do
+              PACKAGE=`echo ${package} | cut -f4 -d "/"`
+              VERSION=`yq e '.version' ${package}`
+              TAG="${PACKAGE}/${VERSION}"
+              echo "Processing package '${PACKAGE}' with tag '${TAG}'..."
+
+              if [[ `git tag -l ${TAG} | wc -l` -eq 0 ]]; then
+                DAR_PREFIX=`yq e '.name' ${package}`
+                DAR="${DAR_PREFIX}-${VERSION}.dar"
+                gpg --armor --detach-sign .dars/${DAR}
+
+                if [[ `echo $VERSION | grep ".99." | wc -l` -eq 0 ]] ; then
+                  gh release create ${TAG} .dars/${DAR}* --target ${CIRCLE_BRANCH} --notes "See release notes (insert link here) for further details."
+                else
+                  gh release create ${TAG} .dars/${DAR}* --target ${CIRCLE_BRANCH} --prerelease --notes "Development snapshot of package '${PACKAGE}'. Use at your own risk."
+                fi
+                echo -e "Successfully released package '${PACKAGE}' with tag '${TAG}'.\n"
+              else
+                echo -e "Tag '${TAG}' already exists for package '${PACKAGE}'; Ignoring...\n"
+              fi
+            done
+      - run:
+          name: "Run GitHub Release - UI"
+          command: |
+            NAME=`yq e '.name' ui/package.json`
+            VERSION=`yq e '.version' ui/package.json`
+            TAG="${NAME}/${VERSION}"
+            TAR="${NAME}-${VERSION}"
+            echo "Processing UI with tag '${TAG}'..."
+
+            if [[ `git tag -l ${TAG} | wc -l` -eq 0 ]]; then
+              tar czvf ${TAR} -C ui/build .
+              gpg --armor --detach-sign ${TAR}
+
+              if [[ `echo $VERSION | grep ".99." | wc -l` -eq 0 ]] ; then
+                gh release create ${TAG} ${TAR}* --target ${CIRCLE_BRANCH} --notes "See release notes (insert link here) for further details."
+              else
+                gh release create ${TAG} ${TAR}* --target ${CIRCLE_BRANCH} --prerelease --notes "Development snapshot of the UI. Use at your own risk."
+              fi
+            else
+              echo -e "Tag '${TAG}' already exists; Ignoring..."
+            fi
+
+jobs:
+  build:
+    executor: daml-finance-app-executor
+    steps:
+      - checkout
+      - setup_nix
+      - run:
+          name: Validate Copyright headers
+          command:
+            make ci-headers-check
+      - run:
+          name: Build source and packages
+          command:
+            make ci-build
+      - run:
+          name: Execute tests
+          command:
+            make ci-test
+      - save_cache:
+          paths:
+            - .dars
+            - ui/build
+          key: daml-finance-app-{{ .Revision }}
+
+  release:
+    executor: daml-finance-app-executor
+    steps:
+      - checkout
+      - setup_nix
+      - import_gpg_key
+      - restore_cache:
+          keys:
+            - daml-finance-app-{{ .Revision }}
+      - run_release
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - build:
+          filters:
+            branches:
+              ignore:
+                - /^(R|r)elease.*$/
+  release:
+    jobs:
+      - build:
+          filters:
+            branches:
+              only:
+                - /^(R|r)elease.*$/
+      - hold:
+          type: approval
+          requires:
+            - build
+      - release:
+          context:
+            - github-fin-eng-context
+            - npn-publish
+          requires:
+            - hold
+          filters:
+            branches:
+              only:
+                - /^(R|r)elease.*$/
