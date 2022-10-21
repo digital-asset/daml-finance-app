@@ -81,7 +81,7 @@ commands:
               --pure \
               --keep GITHUB_TOKEN \
               --keep CIRCLE_BRANCH \
-              --run bash bash \<<'EOF'
+              --run bash \<<'EOF'
                   set -euo pipefail
 
                   PACKAGES=(`ls package/main/daml/*/daml.yaml`)
@@ -117,7 +117,7 @@ commands:
               --pure \
               --keep GITHUB_TOKEN \
               --keep CIRCLE_BRANCH \
-              --run bash bash \<<'EOF'
+              --run bash \<<'EOF'
                   set -euo pipefail
 
                   NAME=`yq e '.name' ui/package.json`
