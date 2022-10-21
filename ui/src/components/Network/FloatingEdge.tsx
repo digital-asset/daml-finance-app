@@ -1,3 +1,6 @@
+// Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 import { useCallback } from "react";
 import { useStore, getBezierPath, EdgeProps, EdgeText, getBezierEdgeCenter } from "react-flow-renderer";
 import { getEdgeParams } from "./util";
@@ -48,3 +51,4 @@ export const FloatingEdge = ({
     </>
   );
 };
+
