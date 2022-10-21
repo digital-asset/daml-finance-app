@@ -71,6 +71,9 @@ commands:
   run_release:
     description: "GitHub Release"
     steps:
+      - restore_cache:
+          keys:
+            - daml-finance-app-{{ .Revision }}
       - run:
           name: "Run GitHub Release - Daml"
           command: |
@@ -166,9 +169,6 @@ jobs:
       - checkout
       - setup_nix
       - import_gpg_key
-      - restore_cache:
-          keys:
-            - daml-finance-app-{{ .Revision }}
       - run_release
 
 workflows:
