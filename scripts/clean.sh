@@ -9,3 +9,8 @@ root_dir=$(cd ${script_dir}; cd ..; pwd -P)
 # Clean
 daml clean --project-root ${root_dir}/package/main/daml/Daml.Finance.App
 daml clean --project-root ${root_dir}/package/main/daml/Daml.Finance.Setup
+
+# Remove generated party file
+if [[ -a ${root_dir}/ui/src/parties.json ]]; then
+  rm ${root_dir}/ui/src/parties.json
+fi

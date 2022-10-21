@@ -22,6 +22,7 @@ pkgs.mkShell {
     curl
     gh
     git
+    gnupg
     jq
     nodejs
     python39
