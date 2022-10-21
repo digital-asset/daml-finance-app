@@ -6,7 +6,7 @@ build: install
 	daml build
 	daml codegen js
 	./$(SCRIPTS_DIR)/build.sh
-	cd $(UI) && npm run build
+	# cd $(UI) && npm run build
 
 .PHONY: install
 install:
@@ -36,7 +36,7 @@ headers-update:
 
 ##################################
 # CI                             #
-#  - utilises nix dependencies   #
+#  - utilises nix                #
 #  - avoids unnecessary rebuilds #
 ##################################
 
