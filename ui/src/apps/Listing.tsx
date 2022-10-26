@@ -11,6 +11,6 @@ export const Listing : React.FC = () => {
   const entries =
     [ { label: "Listings", path: "listings", element: <Listings /> }
     , { label: "Requests", path: "requests", element: <Requests /> }
-    , { label: "New", path: "new", element: <New /> } ];
+    , { label: "New Listing", path: "new", element: <New />, action: true } ];
   return <App app="Listing" entries={entries} paths={[]} />;
 }

@@ -14,6 +14,6 @@ type TextInputProps = {
 export const TextInput : React.FC<TextInputProps> = ({ label, value, setValue }) => {
   const classes = useStyles();
   return (
-    <TextField className={classes.inputField} fullWidth label={label} type="text" value={value} onChange={e => setValue(e.target.value as string)} />
+    <TextField InputLabelProps={{ className: classes.inputFieldLabel }} className={classes.inputField} fullWidth label={label} type="text" value={value} onChange={e => setValue(e.target.value as string)} />
   );
 };

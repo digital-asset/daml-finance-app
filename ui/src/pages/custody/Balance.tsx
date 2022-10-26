@@ -2,12 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
-import { Table, TableBody, TableCell, TableRow, TableHead, Grid, Paper, Typography } from "@mui/material";
 import { useParty } from "@daml/react";
-import useStyles from "../styles";
-import { fmt, shorten } from "../../util";
+import { fmt } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useHoldings } from "../../context/HoldingContext";
+import { Alignment, HorizontalTable } from "../../components/Table/HorizontalTable";
 
 type BalanceEntry = {
   // providers : string[]
@@ -20,7 +19,6 @@ type BalanceEntry = {
 }
 
 export const Balance : React.FC = () => {
-  const classes = useStyles();
   const party = useParty();
 
   const { loading: l1, holdings } = useHoldings();
@@ -40,8 +38,6 @@ export const Balance : React.FC = () => {
       entry.net += qty;
     } else {
       entries.push({
-        // providers: values(a.payload.custodian),
-        // owners: values(a.payload.owner),
         instrument: a.payload.instrument.id.unpack,
         version: a.payload.instrument.version,
         assets: qty,
@@ -59,8 +55,6 @@ export const Balance : React.FC = () => {
       entry.net -= qty;
     } else {
       entries.push({
-        // providers: values(a.payload.custodian),
-        // owners: values(a.payload.owner),
         instrument: a.payload.instrument.id.unpack,
         version: a.payload.instrument.version,
         assets: 0,
@@ -70,37 +64,19 @@ export const Balance : React.FC = () => {
     }
   }
 
+  const createRow = (e : BalanceEntry) : any[] => {
+    return [
+      e.instrument,
+      e.version,
+      fmt(e.assets, 0),
+      fmt(e.liabilities, 0),
+      fmt(e.net, 0)
+    ];
+  }
+  const headers = ["Instrument", "Version", "Assets", "Liabilities", "Net"]
+  const values : any[] = entries.map(createRow);
+  const alignment : Alignment[] = ["left", "left", "right", "right", "right"];
   return (
-    <Grid container direction="column">
-      <Grid container direction="row">
-        <Grid item xs={12}>
-          <Paper className={classes.paper}>
-            <Grid container direction="row" justifyContent="center" className={classes.paperHeading}><Typography variant="h2">Balance</Typography></Grid>
-            <Table size="small">
-              <TableHead>
-                <TableRow className={classes.tableRow}>
-                  <TableCell key={0} className={classes.tableCell}><b>Instrument</b></TableCell>
-                  <TableCell key={1} className={classes.tableCell}><b>Version</b></TableCell>
-                  <TableCell key={2} className={classes.tableCell} align="right"><b>Assets</b></TableCell>
-                  <TableCell key={3} className={classes.tableCell} align="right"><b>Liabilities</b></TableCell>
-                  <TableCell key={4} className={classes.tableCell} align="right"><b>Net</b></TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {entries.map((c, i) => (
-                  <TableRow key={i} className={classes.tableRow}>
-                    <TableCell key={0} className={classes.tableCell}>{c.instrument}</TableCell>
-                    <TableCell key={1} className={classes.tableCell}>{shorten(c.version)}</TableCell>
-                    <TableCell key={2} className={classes.tableCell} align="right">{fmt(c.assets)}</TableCell>
-                    <TableCell key={3} className={classes.tableCell} align="right">{fmt(c.liabilities)}</TableCell>
-                    <TableCell key={4} className={classes.tableCell} align="right">{fmt(c.net)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Paper>
-        </Grid>
-      </Grid>
-    </Grid>
+    <HorizontalTable title="Balance" variant={"h3"} headers={headers} values={values} alignment={alignment} />
   );
 };

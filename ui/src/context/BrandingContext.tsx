@@ -12,18 +12,12 @@ declare module '@mui/material/styles' {
     colors: {
       header: string;
       headerText: string;
-      claims1: string;
-      claims2: string;
-      claims3: string;
     };
   }
   interface ThemeOptions {
     colors?: {
       header?: string;
       headerText?: string;
-      claims1?: string;
-      claims2?: string;
-      claims3?: string;
     };
   }
 }
@@ -47,9 +41,6 @@ const light : Branding = {
     colors: {
       header: "#FFFFFF",
       headerText: "#22252A",
-      claims1: "",
-      claims2: "",
-      claims3: ""
     },
     palette: {
       mode: "light",
@@ -75,6 +66,13 @@ const light : Branding = {
         defaultProps: {
           variant: "standard",
         },
+      },
+      MuiStepLabel: {
+        styleOverrides: {
+          labelContainer: {
+            color: "#9e9e9e",
+          },
+        },
       }
     },
   },
@@ -90,9 +88,6 @@ const dark : Branding = {
     colors: {
       header: "#29384C",
       headerText: "#A7F6FF",
-      claims1: "",
-      claims2: "",
-      claims3: ""
     },
     palette: {
       mode: "dark",

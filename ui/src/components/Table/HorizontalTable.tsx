@@ -2,18 +2,21 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
-import { Grid, Paper, Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
+import { Grid, Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
 import useStyles from "./styles";
 import { Variant } from "@mui/material/styles/createTypography";
 
-type SheetProps = {
+export type Alignment = "inherit" | "left" | "center" | "right" | "justify";
+
+type HorizontalTableProps = {
   title : string
   variant : Variant
   headers : string[]
   values : any[][]
+  alignment? : Alignment[]
 }
 
-export const Sheet : React.FC<SheetProps> = ({ title, variant, headers, values }) => {
+export const HorizontalTable : React.FC<HorizontalTableProps> = ({ title, variant, headers, values, alignment }) => {
   const classes = useStyles();
 
   return (
@@ -23,13 +26,14 @@ export const Sheet : React.FC<SheetProps> = ({ title, variant, headers, values }
         <Table size="small">
           <TableHead>
             <TableRow className={classes.tableRowHeader}>
-              {headers.map((h, i) => <TableCell key={i} className={classes.tableCell}><b>{h}</b></TableCell>)}
+              {headers.map((h, i) => <TableCell key={i} className={classes.tableCell} align={!!alignment ? alignment[i] : "left"}><b>{h}</b></TableCell>)}
             </TableRow>
           </TableHead>
           <TableBody className={classes.tableBody}>
-            {values.map((row, i) => (
+            {values.length === 0 && <TableCell key={0} className={classes.tableCell} align={"center"} colSpan={headers.length}>No data provided.</TableCell>}
+            {values.length > 0 && values.map((row, i) => (
               <TableRow key={i} className={classes.tableRow}>
-                {row.map((v, j) => <TableCell key={j} className={classes.tableCell}>{v}</TableCell>)}
+                {row.map((v, j) => <TableCell key={j} className={classes.tableCell} align={!!alignment ? alignment[j] : "left"}>{v}</TableCell>)}
               </TableRow>
             ))}
           </TableBody>

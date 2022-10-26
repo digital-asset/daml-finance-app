@@ -58,7 +58,7 @@ export type InstrumentAggregate = CreateEvent<Base> & {
   disclosure          : CreateEvent<Disclosure> | undefined
 }
 
-type InstrumentGroup = {
+export type InstrumentGroup = {
   key : string
   depository : string
   issuer : string

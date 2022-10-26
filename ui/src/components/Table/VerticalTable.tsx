@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
-import { Grid, Paper, Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
+import { Grid, Table, TableBody, TableCell, TableRow, Typography } from "@mui/material";
 import useStyles from "./styles";
 import { Variant } from "@mui/material/styles/createTypography";
 
@@ -21,15 +21,11 @@ export const VerticalTable : React.FC<VerticalTableProps> = ({ title, variant, h
       <Grid item xs={12}>
         <Typography variant={variant} className={classes.tableHeader}>{title}</Typography>
         <Table size="small">
-          <TableHead>
-            <TableRow className={classes.tableRowHeader}>
-              {headers.map((h, i) => <TableCell key={i} className={classes.tableCell}><b>{h}</b></TableCell>)}
-            </TableRow>
-          </TableHead>
           <TableBody className={classes.tableBody}>
-            {values.map((row, i) => (
+            {headers.map((h, i) => (
               <TableRow key={i} className={classes.tableRow}>
-                {row.map((v, j) => <TableCell key={j} className={classes.tableCell}>{v}</TableCell>)}
+                <TableCell key={0} className={classes.tableCell}>{h}</TableCell>
+                <TableCell key={1} className={classes.tableCell}>{values[i]}</TableCell>
               </TableRow>
             ))}
           </TableBody>

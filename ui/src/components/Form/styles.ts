@@ -1,13 +1,18 @@
 // Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import { Theme } from "@mui/material";
 import { makeStyles, createStyles } from "@mui/styles";
 
-export default makeStyles((theme : any) => createStyles({
+export default makeStyles((theme : Theme) => createStyles({
   inputField: {
     marginTop: 10,
   },
+  inputFieldLabel: {
+    color: theme.palette.grey[500]
+  },
   selectLabel: {
+    color: theme.palette.grey[500],
     marginLeft: -14,
     marginTop: 4
   },

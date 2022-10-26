@@ -118,9 +118,9 @@ export const ClaimsTreeBuilder : React.FC<ClaimsTreeBuilderProps> = ({ node, set
     const placehoder = d.tag === "Claim";
     const text = (d.text || d.tag);
     const textWidth = Math.max(25, text.length * 12);
-    const fill = placehoder ? theme.palette.background.paper : theme.colors.claims1;
-    const stroke = theme.palette.secondary.light;
-    const textColor = placehoder ? theme.palette.text.primary : "white";
+    const fill = placehoder ? theme.palette.background.paper : theme.palette.primary.main;
+    const stroke = theme.palette.primary.dark;
+    const textColor = placehoder ? theme.palette.text.primary : theme.palette.text.secondary;
     const onClick = readonly ? toggleNode : () => setShow(show === d.id ? "" : d.id || "");
     return (
       <g>
@@ -136,9 +136,9 @@ export const ClaimsTreeBuilder : React.FC<ClaimsTreeBuilderProps> = ({ node, set
     const placehoder = d.tag === "Observation";
     const text = (d.text || d.tag);
     const textWidth = Math.max(25, text.length * 12);
-    const fill = placehoder ? theme.palette.background.paper : theme.colors.claims2;
-    const stroke = theme.palette.primary.light;
-    const textColor = placehoder ? theme.palette.text.primary : "white";
+    const fill = placehoder ? theme.palette.background.paper : theme.palette.secondary.main;
+    const stroke = theme.palette.secondary.light;
+    const textColor = placehoder ? theme.palette.text.primary : theme.palette.text.secondary;
     const onClick = readonly ? toggleNode : () => setShow(show === d.id ? "" : d.id);
     return (
       <g>
@@ -153,9 +153,9 @@ export const ClaimsTreeBuilder : React.FC<ClaimsTreeBuilderProps> = ({ node, set
     const placehoder = d.tag === "Inequality";
     const text = (d.text || d.tag);
     const textWidth = Math.max(25, text.length * 12);
-    const fill = placehoder ? theme.palette.background.paper : theme.colors.claims2;
-    const stroke = theme.palette.primary.light;
-    const textColor = placehoder ? theme.palette.text.primary : "white";
+    const fill = placehoder ? theme.palette.background.paper : theme.palette.secondary.main;
+    const stroke = theme.palette.secondary.light;
+    const textColor = placehoder ? theme.palette.text.primary : theme.palette.text.secondary;
     const onClick = readonly ? toggleNode : () => setShow(show === d.id ? "" : d.id || "");
     return (
       <g>
@@ -172,7 +172,7 @@ export const ClaimsTreeBuilder : React.FC<ClaimsTreeBuilderProps> = ({ node, set
     const textWidth = Math.max(25, text.length * 12);
     const fill = placehoder ? theme.palette.background.paper : theme.palette.grey[600];
     const stroke = theme.palette.grey[400];
-    const textColor = placehoder ? theme.palette.text.primary : "white";
+    const textColor = placehoder ? theme.palette.text.primary : theme.palette.text.secondary;
     const onClick = readonly ? toggleNode : () => setShow(show === d.id ? "" : d.id || "");
     return (
       <g>

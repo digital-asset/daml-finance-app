@@ -36,4 +36,20 @@ export default makeStyles((theme : Theme) => createStyles({
     paddingBottom: 2,
     fontSize: "0.7rem"
   },
+  actionBox: {
+    backgroundColor: theme.palette.background.paper,
+    padding: 10,
+    borderRadius: 5
+  },
+  actionButton: {
+    marginLeft: 15,
+    marginBottom: 4,
+    paddingLeft: 10,
+    paddingRight: 10,
+    paddingTop: 0,
+    paddingBottom: 0
+  },
+  selectBox: {
+    color: theme.palette.text.primary
+  }
 }));

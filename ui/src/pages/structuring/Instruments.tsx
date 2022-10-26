@@ -4,8 +4,8 @@
 import React from "react";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
-import { useInstruments } from "../../context/InstrumentContext";
-import { Sheet } from "../../components/Table/HorizontalTable";
+import { InstrumentGroup, useInstruments } from "../../context/InstrumentContext";
+import { HorizontalTable } from "../../components/Table/HorizontalTable";
 import { DetailButton } from "../../components/DetailButton/DetailButton";
 
 export const Instruments : React.FC = () => {
@@ -13,9 +13,20 @@ export const Instruments : React.FC = () => {
   const { loading: l1, groups } = useInstruments();
   if (l1) return <Spinner />;
 
+  const createRow = (c : InstrumentGroup) : any[] => {
+    return [
+      getName(c.depository),
+      getName(c.issuer),
+      c.id.unpack,
+      c.description,
+      c.versions.length,
+      c.latest.payload.validAsOf,
+      <DetailButton path={c.key} />
+    ];
+  }
   const headers = ["Depository", "Issuer", "Id", "Description", "Versions", "Latest", "Details"]
-  const values : any[] = groups.map((c, i) => [getName(c.depository), getName(c.issuer), c.id.unpack, c.description, c.versions.length, c.latest.payload.validAsOf, <DetailButton path={c.key} />]);
+  const values : any[] = groups.map(createRow);
   return (
-    <Sheet title="Instruments" variant={"h3"} headers={headers} values={values} />
+    <HorizontalTable title="Instruments" variant={"h3"} headers={headers} values={values} />
   );
 };

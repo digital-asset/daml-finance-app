@@ -11,7 +11,7 @@ import { Grid, Paper, Typography, Table, TableRow, TableCell, TableBody, TextFie
 import { useParams } from "react-router-dom";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Bidding/Service";
 import { Service as AutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Bidding/Auto/Service";
-import { getBidAllocation, getBidStatus } from "../Utils";
+import { getBidAllocation } from "../Utils";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { fmt } from "../../../util";
 import { Reference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
@@ -132,7 +132,7 @@ export const Bidding : React.FC = () => {
                         </TableRow>
                         <TableRow key={1} className={classes.tableRow}>
                           <TableCell key={0} className={classnames(classes.tableCell, classes.width50)}><b>Status</b></TableCell>
-                          <TableCell key={1} className={classnames(classes.tableCell, classes.width50)}>{getBidStatus(bid.payload.status)}</TableCell>
+                          <TableCell key={1} className={classnames(classes.tableCell, classes.width50)}>{bid.payload.status}</TableCell>
                         </TableRow>
                         {getBidAllocation(bid.payload) &&
                           <TableRow key={1} className={classes.tableRow}>

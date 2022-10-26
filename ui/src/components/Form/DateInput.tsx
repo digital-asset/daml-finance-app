@@ -3,7 +3,7 @@
 
 import React from "react";
 import { TextField, TextFieldProps } from "@mui/material";
-import { DatePicker } from "@mui/lab";
+import { DatePicker } from "@mui/x-date-pickers";
 import useStyles from "./styles";
 
 type DateInputProps = {
@@ -15,6 +15,6 @@ type DateInputProps = {
 export const DateInput : React.FC<DateInputProps> = ({ label, value, setValue }) => {
   const classes = useStyles();
   return (
-    <DatePicker className={classes.inputField} inputFormat="yyyy-MM-dd" label={label} value={value} onChange={setValue} renderInput={(props : TextFieldProps) => <TextField {...props} fullWidth />} />
+    <DatePicker className={classes.inputField} inputFormat="yyyy-MM-dd" label={label} value={value} onChange={setValue} renderInput={(props : TextFieldProps) => <TextField {...props} InputLabelProps={{ className: classes.inputFieldLabel }} fullWidth />} />
   );
 };

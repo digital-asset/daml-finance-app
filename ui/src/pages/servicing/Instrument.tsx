@@ -229,14 +229,14 @@ export const Instrument : React.FC = () => {
               <Grid item xs={12}>
                 <Paper className={classnames(classes.fullWidth, classes.paper)}>
                   <Typography variant="h5" className={classes.heading}>Current State</Typography>
-                  <ClaimsTreeBuilder node={node1} setNode={setNode1} assets={[]} height="40vh"/>
+                  <ClaimsTreeBuilder node={node1} setNode={setNode1} assets={[]} height="20vh"/>
                 </Paper>
               </Grid>}
               {!!remaining &&
               <Grid item xs={12}>
                 <Paper className={classnames(classes.fullWidth, classes.paper)}>
                   <Typography variant="h5" className={classes.heading}>Next State</Typography>
-                  <ClaimsTreeBuilder node={node2} setNode={setNode2} assets={[]} height="40vh"/>
+                  <ClaimsTreeBuilder node={node2} setNode={setNode2} assets={[]} height="20vh"/>
                 </Paper>
               </Grid>}
               {!!instrument.equity &&

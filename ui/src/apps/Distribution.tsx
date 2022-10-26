@@ -7,14 +7,14 @@ import { Auctions as BiddingAuctions } from "../pages/distribution/bidding/Aucti
 import { Auctions } from "../pages/distribution/auction/Auctions";
 import { Auction } from "../pages/distribution/auction/Auction";
 import { New as NewAuction} from "../pages/distribution/auction/New";
-import { New as NewSubscription} from "../pages/distribution/subscription/New";
+import { New as NewSubscription} from "../pages/distribution/offering/New";
 import { useParty } from "@daml/react";
 import { Requests } from "../pages/distribution/auction/Requests";
 import { Bidding } from "../pages/distribution/auction/Bidding";
 import { App } from "./App";
 import { Spinner } from "../components/Spinner/Spinner";
-import { Offerings } from "../pages/distribution/subscription/Offerings";
-import { Offering } from "../pages/distribution/subscription/Offering";
+import { Offerings } from "../pages/distribution/offering/Offerings";
+import { Offering } from "../pages/distribution/offering/Offering";
 import { useServices } from "../context/ServiceContext";
 
 export const Distribution : React.FC = () => {

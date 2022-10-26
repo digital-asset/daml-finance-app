@@ -4,7 +4,7 @@
 import React from "react";
 import { Effects } from "../pages/servicing/Effects";
 import { Effect } from "../pages/servicing/Effect";
-import { MarketData } from "../pages/servicing/MarketData";
+import { Observables } from "../pages/servicing/Observables";
 import { App } from "./App";
 import { Instruments } from "../pages/servicing/Instruments";
 import { Instrument } from "../pages/servicing/Instrument";
@@ -13,7 +13,7 @@ export const Servicing : React.FC = () => {
   const entries = [
     { label: "Instruments", path: "instruments", element: <Instruments /> },
     { label: "Effects", path: "effects", element: <Effects /> },
-    { label: "Market Data", path: "marketdata", element: <MarketData /> },
+    { label: "Observables", path: "observables", element: <Observables /> },
   ];
   const paths = [
     { path: "instruments/:contractId", element: <Instrument /> },
