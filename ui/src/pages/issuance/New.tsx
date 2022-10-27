@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import classnames from "classnames";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
-import { Typography, Grid, Paper, Select, MenuItem, TextField, Button, MenuProps, FormControl, InputLabel, Checkbox, FormGroup, FormControlLabel } from "@mui/material";
+import { Typography, Grid, Paper, Button, Checkbox, FormGroup, FormControlLabel } from "@mui/material";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { Reference as AccountReference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
@@ -15,7 +15,6 @@ import { Service as BackToBack } from "@daml.js/daml-finance-app/lib/Daml/Financ
 import { Service as IssuanceAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Auto/Service";
 import { Service as Issuance } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Service";
 import { Message } from "../../components/Message/Message";
-import { Aggregate } from "../../components/Instrument/Aggregate";
 import { TextInput } from "../../components/Form/TextInput";
 import { SelectInput, toValues } from "../../components/Form/SelectInput";
 

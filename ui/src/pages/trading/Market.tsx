@@ -23,7 +23,7 @@ import { Message } from "../../components/Message/Message";
 import { useHoldings } from "../../context/HoldingContext";
 
 export const Market : React.FC = () => {
-  const classes = useStyles();
+  const cls = useStyles();
 
   const [ isBuy, setIsBuy ] = useState(true);
   const [ isLimit, setIsLimit ] = useState(true);
@@ -134,90 +134,90 @@ export const Market : React.FC = () => {
   return (
     <Grid container direction="column" spacing={2}>
       <Grid item xs={12}>
-        <Typography variant="h3" className={classnames(classes.defaultHeading, classes.centered)}>{listing.payload.id}</Typography>
+        <Typography variant="h3" className={classnames(cls.defaultHeading, cls.centered)}>{listing.payload.id}</Typography>
       </Grid>
       <Grid item xs={12}>
         <Grid container spacing={4}>
           <Grid item xs={8}>
-            <Paper className={classnames(classes.fullWidth, classes.paper)}>
-              <Typography variant="h5" className={classes.heading}>Orderbook</Typography>
+            <Paper className={classnames(cls.fullWidth, cls.paper)}>
+              <Typography variant="h5" className={cls.heading}>Orderbook</Typography>
               <Table size="small">
                 <TableBody>
-                  <TableRow key={0} className={classes.tableRow}>
-                    <TableCell key={0} className={classes.tableCell}></TableCell>
-                    <TableCell key={1} className={classes.tableCell}></TableCell>
-                    <TableCell key={2} className={classes.tableCell}><b>Price</b></TableCell>
-                    <TableCell key={3} className={classes.tableCell}><b>Sell Quantity</b></TableCell>
-                    <TableCell key={4} className={classes.tableCell}><b>Sell Volume ({listing.payload.quotedInstrument.id.unpack})</b></TableCell>
+                  <TableRow key={0} className={cls.tableRow}>
+                    <TableCell key={0} className={cls.tableCell}></TableCell>
+                    <TableCell key={1} className={cls.tableCell}></TableCell>
+                    <TableCell key={2} className={cls.tableCell}><b>Price</b></TableCell>
+                    <TableCell key={3} className={cls.tableCell}><b>Sell Quantity</b></TableCell>
+                    <TableCell key={4} className={cls.tableCell}><b>Sell Volume ({listing.payload.quotedInstrument.id.unpack})</b></TableCell>
                   </TableRow>
                   {asks.map((c, i) => (
-                    <TableRow key={i+2} className={classes.tableRow}>
-                      <TableCell key={0} className={classes.tableCell}></TableCell>
-                      <TableCell key={1} className={classes.tableCell}></TableCell>
-                      <TableCell key={2} className={classes.tableCell} style={{ color: "red"}}>{getPrice(c)}</TableCell>
-                      <TableCell key={3} className={classes.tableCell}>{getQuantity(c)}</TableCell>
-                      <TableCell key={4} className={classes.tableCell}>{getVolume(c)}</TableCell>
+                    <TableRow key={i+2} className={cls.tableRow}>
+                      <TableCell key={0} className={cls.tableCell}></TableCell>
+                      <TableCell key={1} className={cls.tableCell}></TableCell>
+                      <TableCell key={2} className={cls.tableCell} style={{ color: "red"}}>{getPrice(c)}</TableCell>
+                      <TableCell key={3} className={cls.tableCell}>{getQuantity(c)}</TableCell>
+                      <TableCell key={4} className={cls.tableCell}>{getVolume(c)}</TableCell>
                     </TableRow>
                   ))}
                   {bids.map((c, i) => (
-                    <TableRow key={asks.length+2} className={classes.tableRow}>
-                      <TableCell key={0} className={classes.tableCell}>{getVolume(c)}</TableCell>
-                      <TableCell key={1} className={classes.tableCell}>{getQuantity(c)}</TableCell>
-                      <TableCell key={2} className={classes.tableCell} style={{ color: "green"}}>{getPrice(c)}</TableCell>
-                      <TableCell key={3} className={classes.tableCell}></TableCell>
-                      <TableCell key={4} className={classes.tableCell}></TableCell>
+                    <TableRow key={asks.length+2} className={cls.tableRow}>
+                      <TableCell key={0} className={cls.tableCell}>{getVolume(c)}</TableCell>
+                      <TableCell key={1} className={cls.tableCell}>{getQuantity(c)}</TableCell>
+                      <TableCell key={2} className={cls.tableCell} style={{ color: "green"}}>{getPrice(c)}</TableCell>
+                      <TableCell key={3} className={cls.tableCell}></TableCell>
+                      <TableCell key={4} className={cls.tableCell}></TableCell>
                     </TableRow>
                   ))}
-                  <TableRow key={1} className={classes.tableRow}>
-                    <TableCell key={0} className={classes.tableCell}><b>Buy Volume ({listing.payload.quotedInstrument.id.unpack})</b></TableCell>
-                    <TableCell key={1} className={classes.tableCell}><b>Buy Quantity</b></TableCell>
-                    <TableCell key={2} className={classes.tableCell}><b>Price</b></TableCell>
-                    <TableCell key={3} className={classes.tableCell}></TableCell>
-                    <TableCell key={4} className={classes.tableCell}></TableCell>
+                  <TableRow key={1} className={cls.tableRow}>
+                    <TableCell key={0} className={cls.tableCell}><b>Buy Volume ({listing.payload.quotedInstrument.id.unpack})</b></TableCell>
+                    <TableCell key={1} className={cls.tableCell}><b>Buy Quantity</b></TableCell>
+                    <TableCell key={2} className={cls.tableCell}><b>Price</b></TableCell>
+                    <TableCell key={3} className={cls.tableCell}></TableCell>
+                    <TableCell key={4} className={cls.tableCell}></TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
             </Paper>
           </Grid>
           <Grid item xs={4}>
-            <ToggleButtonGroup className={classnames(classes.inputField, classes.fullWidth)} value={isBuy} exclusive onChange={(_, v) => { if (v !== null) setIsBuy(v); }}>
-              <ToggleButton className={classes.fullWidth} color="success" value={true}>Buy</ToggleButton>
-              <ToggleButton className={classes.fullWidth} color="error" value={false}>Sell</ToggleButton>
+            <ToggleButtonGroup className={classnames(cls.inputField, cls.fullWidth)} value={isBuy} exclusive onChange={(_, v) => { if (v !== null) setIsBuy(v); }}>
+              <ToggleButton className={cls.fullWidth} color="success" value={true}>Buy</ToggleButton>
+              <ToggleButton className={cls.fullWidth} color="error" value={false}>Sell</ToggleButton>
             </ToggleButtonGroup>
-            <ToggleButtonGroup className={classnames(classes.fullWidth, classes.buttonMargin)} value={isLimit} exclusive disabled onChange={(_, v) => { if (v !== null) setIsLimit(v); }}>
-              <ToggleButton className={classes.fullWidth} value={true}>Limit</ToggleButton>
-              <ToggleButton className={classes.fullWidth} value={false}>Market</ToggleButton>
+            <ToggleButtonGroup className={classnames(cls.fullWidth, cls.buttonMargin)} value={isLimit} exclusive disabled onChange={(_, v) => { if (v !== null) setIsLimit(v); }}>
+              <ToggleButton className={cls.fullWidth} value={true}>Limit</ToggleButton>
+              <ToggleButton className={cls.fullWidth} value={false}>Market</ToggleButton>
             </ToggleButtonGroup>
-            <TextField className={classes.inputField} InputLabelProps={{ className: classes.inputFieldLabel }} fullWidth label="Available" type="text" value={availableQuantity} disabled/>
-            <TextField className={classes.inputField} InputLabelProps={{ className: classes.inputFieldLabel }} fullWidth label="Price" type="number" value={isLimit ? price : "Market"} disabled={!isLimit} onChange={e => handlePriceChange(parseFloat(e.target.value))}/>
-            <TextField className={classes.inputField} InputLabelProps={{ className: classes.inputFieldLabel }} fullWidth label="Quantity" type="number" value={amount} onChange={e => handleQuantityChange(parseFloat(e.target.value))}/>
+            <TextField className={cls.inputField} InputLabelProps={{ className: cls.inputFieldLabel }} fullWidth label="Available" type="text" value={availableQuantity} disabled/>
+            <TextField className={cls.inputField} InputLabelProps={{ className: cls.inputFieldLabel }} fullWidth label="Price" type="number" value={isLimit ? price : "Market"} disabled={!isLimit} onChange={e => handlePriceChange(parseFloat(e.target.value))}/>
+            <TextField className={cls.inputField} InputLabelProps={{ className: cls.inputFieldLabel }} fullWidth label="Quantity" type="number" value={amount} onChange={e => handleQuantityChange(parseFloat(e.target.value))}/>
             <Percentage step={5} valueLabelFormat={v => v + "%"} value={percentage} valueLabelDisplay="auto" onChange={(_, v) => handlePercentageChange(v as number)} />
-            <TextField className={classes.inputField} InputLabelProps={{ className: classes.inputFieldLabel }} fullWidth label="Total" type="number" value={total} onChange={e => handleTotalChange(parseFloat(e.target.value))}/>
-            <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!price || !amount} onClick={requestCreateOrder}>{isBuy ? "Buy" : "Sell"} {listing.payload.tradedInstrument.id.unpack}</Button>
+            <TextField className={cls.inputField} InputLabelProps={{ className: cls.inputFieldLabel }} fullWidth label="Total" type="number" value={total} onChange={e => handleTotalChange(parseFloat(e.target.value))}/>
+            <Button className={classnames(cls.fullWidth, cls.buttonMargin)} size="large" variant="contained" color="primary" disabled={!price || !amount} onClick={requestCreateOrder}>{isBuy ? "Buy" : "Sell"} {listing.payload.tradedInstrument.id.unpack}</Button>
           </Grid>
           <Grid item xs={8}>
-            <Paper className={classnames(classes.fullWidth, classes.paper)}>
-              <Typography variant="h5" className={classes.heading}>Orders</Typography>
+            <Paper className={classnames(cls.fullWidth, cls.paper)}>
+              <Typography variant="h5" className={cls.heading}>Orders</Typography>
                 <Table size="small">
                     <TableBody>
-                      <TableRow key={0} className={classes.tableRow}>
-                        <TableCell key={0} className={classes.tableCell}><b>Symbol</b></TableCell>
-                        <TableCell key={1} className={classes.tableCell}><b>Order Id</b></TableCell>
-                        <TableCell key={2} className={classes.tableCell}><b>Type</b></TableCell>
-                        <TableCell key={3} className={classes.tableCell}><b>Side</b></TableCell>
-                        <TableCell key={4} className={classes.tableCell}><b>Price</b></TableCell>
-                        <TableCell key={5} className={classes.tableCell}><b>Quantity</b></TableCell>
-                        <TableCell key={6} className={classes.tableCell}><b>Volume</b></TableCell>
+                      <TableRow key={0} className={cls.tableRow}>
+                        <TableCell key={0} className={cls.tableCell}><b>Symbol</b></TableCell>
+                        <TableCell key={1} className={cls.tableCell}><b>Order Id</b></TableCell>
+                        <TableCell key={2} className={cls.tableCell}><b>Type</b></TableCell>
+                        <TableCell key={3} className={cls.tableCell}><b>Side</b></TableCell>
+                        <TableCell key={4} className={cls.tableCell}><b>Price</b></TableCell>
+                        <TableCell key={5} className={cls.tableCell}><b>Quantity</b></TableCell>
+                        <TableCell key={6} className={cls.tableCell}><b>Volume</b></TableCell>
                       </TableRow>
                       {myOrders.map((c, i) => (
-                        <TableRow key={i+1} className={classes.tableRow}>
-                          <TableCell key={0} className={classes.tableCell}>{c.payload.listingId}</TableCell>
-                          <TableCell key={1} className={classes.tableCell}>{c.payload.id.unpack}</TableCell>
-                          <TableCell key={2} className={classes.tableCell}>Limit</TableCell>
-                          <TableCell key={3} className={classes.tableCell} style={{ color: getColor(c)}}>{c.payload.side}</TableCell>
-                          <TableCell key={4} className={classes.tableCell}>{getPrice(c)}</TableCell>
-                          <TableCell key={5} className={classes.tableCell}>{getQuantity(c)}</TableCell>
-                          <TableCell key={6} className={classes.tableCell}>{getVolume(c)}</TableCell>
+                        <TableRow key={i+1} className={cls.tableRow}>
+                          <TableCell key={0} className={cls.tableCell}>{c.payload.listingId}</TableCell>
+                          <TableCell key={1} className={cls.tableCell}>{c.payload.id.unpack}</TableCell>
+                          <TableCell key={2} className={cls.tableCell}>Limit</TableCell>
+                          <TableCell key={3} className={cls.tableCell} style={{ color: getColor(c)}}>{c.payload.side}</TableCell>
+                          <TableCell key={4} className={cls.tableCell}>{getPrice(c)}</TableCell>
+                          <TableCell key={5} className={cls.tableCell}>{getQuantity(c)}</TableCell>
+                          <TableCell key={6} className={cls.tableCell}>{getVolume(c)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -225,8 +225,8 @@ export const Market : React.FC = () => {
             </Paper>
           </Grid>
           <Grid item xs={4}>
-            <Paper className={classnames(classes.fullWidth, classes.paper)}>
-              <Typography variant="h5" className={classes.heading}>Trades</Typography>
+            <Paper className={classnames(cls.fullWidth, cls.paper)}>
+              <Typography variant="h5" className={cls.heading}>Trades</Typography>
             </Paper>
           </Grid>
         </Grid>
