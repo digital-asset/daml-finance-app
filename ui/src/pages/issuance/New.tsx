@@ -16,15 +16,17 @@ import { Service as IssuanceAuto } from "@daml.js/daml-finance-app/lib/Daml/Fina
 import { Service as Issuance } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Service";
 import { Message } from "../../components/Message/Message";
 import { Aggregate } from "../../components/Instrument/Aggregate";
+import { TextInput } from "../../components/Form/TextInput";
+import { SelectInput, toValues } from "../../components/Form/SelectInput";
 
 export const New : React.FC = () => {
-  const classes = useStyles();
+  const cls = useStyles();
   const navigate = useNavigate();
 
   const [ id, setId ] = useState("");
   const [ instrumentLabel, setInstrumentLabel ] = useState("");
   const [ isB2B, setIsB2B ] = useState(false);
-  const [ quantity, setQuantity ] = useState("");
+  const [ amount, setAmount ] = useState("");
 
   const ledger = useLedger();
   const party = useParty();
@@ -40,7 +42,8 @@ export const New : React.FC = () => {
 
   const myB2BServices = backToBack.filter(s => s.payload.customer === party);
   const hasB2B = myB2BServices.length > 0;
-  const canRequest = !!instrumentLabel && !!aggregate && !!quantity;
+  const canRequest = !!instrumentLabel && !!aggregate && !!amount;
+  const hasAuto = issuanceAuto.length > 0;
 
   const requestIssuance = async () => {
     // TODO: Accounts should be selectable
@@ -51,14 +54,13 @@ export const New : React.FC = () => {
       const arg = {
         id: { unpack : id },
         description: id,
-        quantity: { amount: quantity, unit: aggregate.key },
+        quantity: { amount: amount, unit: aggregate.key },
         customerAccount: customerAccount.key,
         providerAccount: providerAccount.key
       };
       await ledger.exercise(BackToBack.CreateIssuance, myB2BServices[0].contractId, arg);
       navigate("/app/issuance/issuances");
     } else {
-      const hasAuto = issuanceAuto.length > 0;
       const myAutoSvc = issuanceAuto.filter(s => s.payload.customer === party)[0];
       const mySvc = issuance.filter(s => s.payload.customer === party)[0];
       const custodian = hasAuto ? myAutoSvc.payload.provider : mySvc.payload.provider;
@@ -67,7 +69,7 @@ export const New : React.FC = () => {
       const arg = {
         id: { unpack : id },
         description: id,
-        quantity: { amount: quantity, unit: aggregate.key },
+        quantity: { amount: amount, unit: aggregate.key },
         account: account.key,
       };
       if (hasAuto) await ledger.exercise(IssuanceAuto.RequestAndCreateIssuance, myAutoSvc.contractId, arg);
@@ -76,39 +78,24 @@ export const New : React.FC = () => {
     }
   }
 
-  const menuProps : Partial<MenuProps> = { anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" } };
   return (
     <Grid container direction="column" spacing={2}>
       <Grid item xs={12}>
-        <Typography variant="h3" className={classes.heading}>New Issuance</Typography>
+        <Typography variant="h2" className={classnames(cls.defaultHeading, cls.centered)}>New Issuance</Typography>
       </Grid>
       <Grid item xs={12}>
-        <Grid container spacing={4}>
+        <Grid container direction="row" spacing={4}>
+          <Grid item xs={4} />
           <Grid item xs={4}>
-            <Grid container direction="column" spacing={2}>
-              <Grid item xs={12}>
-                <Paper className={classnames(classes.fullWidth, classes.paper)}>
-                  <Typography variant="h5" className={classes.heading}>Details</Typography>
-                  <TextField variant="standard" className={classes.inputField} fullWidth label="Id" type="text" value={id} onChange={e => setId(e.target.value as string)} />
-                  <FormControl className={classes.inputField} fullWidth>
-                    <InputLabel className={classes.selectLabel}>Asset</InputLabel>
-                    <Select fullWidth value={instrumentLabel} onChange={e => setInstrumentLabel(e.target.value as string)} MenuProps={menuProps}>
-                      {aggregates.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
-                    </Select>
-                  </FormControl>
-                  <TextField className={classes.inputField} fullWidth label="Quantity" type="number" value={quantity} onChange={e => setQuantity(e.target.value as string)} />
-                  {hasB2B &&
-                    <FormGroup>
-                      <FormControlLabel control={<Checkbox checked={isB2B} onChange={e => setIsB2B(e.target.checked)}/>} label="Issue back-to-back" />
-                    </FormGroup>}
-                  <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={requestIssuance}>Request Issuance</Button>
-                </Paper>
-              </Grid>
-            </Grid>
+            <Paper className={classnames(cls.fullWidth, cls.paper)}>
+              <TextInput    label="Id"          value={id}              setValue={setId} />
+              <SelectInput  label="Instrument"  value={instrumentLabel} setValue={setInstrumentLabel} values={toValues(aggregates)} />
+              <TextInput    label="Amount"      value={amount}          setValue={setAmount} />
+              {hasB2B && <FormGroup><FormControlLabel control={<Checkbox checked={isB2B} onChange={e => setIsB2B(e.target.checked)}/>} label="Issue back-to-back" /></FormGroup>}
+              <Button className={classnames(cls.fullWidth, cls.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={requestIssuance}>{hasAuto ? "Issue" : "Request Issuance"}</Button>
+            </Paper>
           </Grid>
-          <Grid item xs={8}>
-            {!!aggregate && <Aggregate instrument={aggregate} />}
-          </Grid>
+          <Grid item xs={4} />
         </Grid>
       </Grid>
     </Grid>

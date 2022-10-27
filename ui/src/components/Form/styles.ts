@@ -9,10 +9,10 @@ export default makeStyles((theme : Theme) => createStyles({
     marginTop: 10,
   },
   inputFieldLabel: {
-    color: theme.palette.grey[500]
+    color: theme.palette.grey[400]
   },
   selectLabel: {
-    color: theme.palette.grey[500],
+    color: theme.palette.grey[400],
     marginLeft: -14,
     marginTop: 4
   },

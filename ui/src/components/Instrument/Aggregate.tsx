@@ -4,8 +4,8 @@
 import React, { useEffect, useState } from "react";
 import classnames from "classnames";
 import { useLedger,  useStreamQueries } from "@daml/react";
-import { Typography, Grid, Paper, Table, TableBody, TableRow, TableCell } from "@mui/material";
-import useStyles from "../../pages/styles";
+import { Typography, Grid, Paper } from "@mui/material";
+import useStyles from "./styles";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
 import { and, claimToNode } from "../../components/Claims/util";
 import { InstrumentAggregate } from "../../context/InstrumentContext";
@@ -15,6 +15,7 @@ import { shorten } from "../../util";
 import { Spinner } from "../Spinner/Spinner";
 import { useServices } from "../../context/ServiceContext";
 import { Observable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/Observable";
+import { VerticalTable } from "../Table/VerticalTable";
 
 type AggregateProps = {
   instrument : InstrumentAggregate
@@ -40,61 +41,28 @@ export const Aggregate : React.FC<AggregateProps> = ({ instrument }) => {
   }, [lifecycle, instrument, observables, l1, l2, ledger]);
 
   if (l1 || l2) return <Spinner />
-  const detailWidth = !!instrument.claim ? 3 : 12;
+
+  const headers = ["Depository", "Issuer", "Id", "Description", "Version", "ValidAsOf"].concat(!!instrument.lifecycle ? ["Lifecycler"] : []);
+  const values : any[] = [
+    getName(instrument.payload.depository),
+    getName(instrument.payload.issuer),
+    instrument.payload.id.unpack,
+    instrument.payload.description,
+    shorten(instrument.payload.version),
+    instrument.payload.validAsOf
+  ].concat(!!instrument.lifecycle ? [getName(instrument.lifecycle.payload.lifecycler)] : []);
 
   return (
     <Grid container direction="column" spacing={2}>
       <Grid item xs={12}>
         <Grid container spacing={4}>
-          <Grid item xs={detailWidth}>
-            <Paper className={classnames(classes.fullWidth, classes.paper)}>
-              <Typography variant="h5" className={classes.heading}>Instrument</Typography>
-              <Table size="small">
-                <TableBody>
-                  <TableRow key={0} className={classes.tableRow}>
-                    <TableCell key={0} className={classes.tableCell}><b>Depository</b></TableCell>
-                    <TableCell key={1} className={classes.tableCell}>{getName(instrument.payload.depository)}</TableCell>
-                  </TableRow>
-                  <TableRow key={1} className={classes.tableRow}>
-                    <TableCell key={0} className={classes.tableCell}><b>Issuer</b></TableCell>
-                    <TableCell key={1} className={classes.tableCell}>{getName(instrument.payload.issuer)}</TableCell>
-                  </TableRow>
-                  <TableRow key={2} className={classes.tableRow}>
-                    <TableCell key={0} className={classes.tableCell}><b>Id</b></TableCell>
-                    <TableCell key={1} className={classes.tableCell}>{instrument.payload.id.unpack}</TableCell>
-                  </TableRow>
-                  <TableRow key={3} className={classes.tableRow}>
-                    <TableCell key={0} className={classes.tableCell}><b>Description</b></TableCell>
-                    <TableCell key={1} className={classes.tableCell}>{instrument.payload.description}</TableCell>
-                  </TableRow>
-                  <TableRow key={4} className={classes.tableRow}>
-                    <TableCell key={0} className={classes.tableCell}><b>Version</b></TableCell>
-                    <TableCell key={1} className={classes.tableCell}>{shorten(instrument.payload.version)}</TableCell>
-                  </TableRow>
-                  <TableRow key={5} className={classes.tableRow}>
-                    <TableCell key={0} className={classes.tableCell}><b>ValidAsOf</b></TableCell>
-                    <TableCell key={1} className={classes.tableCell}>{instrument.payload.validAsOf}</TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </Paper>
-            {!!instrument.lifecycle &&
-            <Paper className={classnames(classes.fullWidth, classes.paper)}>
-              <Typography variant="h5" className={classes.heading}>Lifecycle</Typography>
-              <Table size="small">
-                <TableBody>
-                  <TableRow key={0} className={classes.tableRow}>
-                    <TableCell key={0} className={classes.tableCell}><b>Lifecycler</b></TableCell>
-                    <TableCell key={1} className={classes.tableCell}>{getName(instrument.lifecycle.payload.lifecycler)}</TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </Paper>}
+          <Grid item xs={3}>
+            <VerticalTable title="Instrument" variant={"h5"} headers={headers} values={values} />
           </Grid>
           {!!instrument.claim &&
           <Grid item xs={9}>
+            <Typography variant="h5" className={classes.tableHeader}>Claims</Typography>
             <Paper className={classnames(classes.fullWidth, classes.paper)}>
-              <Typography variant="h5" className={classes.heading}>Claims</Typography>
               <ClaimsTreeBuilder node={node} setNode={setNode} assets={[]} height="50vh" />
             </Paper>
           </Grid>}

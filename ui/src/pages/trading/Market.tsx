@@ -83,6 +83,7 @@ export const Market : React.FC = () => {
   const limits = orders.filter(c => c.payload.listingId === listing.payload.id && parseFloat(c.payload.quantity.amount) !== 0);
   const bids = limits.filter(c => c.payload.side === Side.Buy).sort((a, b) => parseFloat(b.payload.price.amount) - parseFloat(a.payload.price.amount));
   const asks = limits.filter(c => c.payload.side === Side.Sell).sort((a, b) => parseFloat(b.payload.price.amount) - parseFloat(a.payload.price.amount));
+  const myOrders = limits.filter(c => c.payload.customer === party);
 
   const available = holdings.filter(c => !c.lockable || !c.lockable.payload.lock);
   const tradedHoldings = available.filter(c => keyEquals(c.payload.instrument, listing.payload.tradedInstrument));
@@ -133,79 +134,67 @@ export const Market : React.FC = () => {
   return (
     <Grid container direction="column" spacing={2}>
       <Grid item xs={12}>
-        <Typography variant="h3" className={classes.heading}>{listing.payload.id}</Typography>
+        <Typography variant="h3" className={classnames(classes.defaultHeading, classes.centered)}>{listing.payload.id}</Typography>
       </Grid>
       <Grid item xs={12}>
         <Grid container spacing={4}>
           <Grid item xs={8}>
-            <Grid container direction="column" spacing={2}>
-              <Grid item xs={12}>
-                <Paper className={classnames(classes.fullWidth, classes.paper)}>
-                  <Typography variant="h5" className={classes.heading}>Orderbook</Typography>
-                  <Table size="small">
-                    <TableBody>
-                      <TableRow key={0} className={classes.tableRow}>
-                        <TableCell key={0} className={classes.tableCell}></TableCell>
-                        <TableCell key={1} className={classes.tableCell}></TableCell>
-                        <TableCell key={2} className={classes.tableCell}><b>Price</b></TableCell>
-                        <TableCell key={3} className={classes.tableCell}><b>Sell Quantity</b></TableCell>
-                        <TableCell key={4} className={classes.tableCell}><b>Sell Volume ({listing.payload.quotedInstrument.id.unpack})</b></TableCell>
-                      </TableRow>
-                      {asks.map((c, i) => (
-                        <TableRow key={i+2} className={classes.tableRow}>
-                          <TableCell key={0} className={classes.tableCell}></TableCell>
-                          <TableCell key={1} className={classes.tableCell}></TableCell>
-                          <TableCell key={2} className={classes.tableCell} style={{ color: "red"}}>{getPrice(c)}</TableCell>
-                          <TableCell key={3} className={classes.tableCell}>{getQuantity(c)}</TableCell>
-                          <TableCell key={4} className={classes.tableCell}>{getVolume(c)}</TableCell>
-                        </TableRow>
-                      ))}
-                      {bids.map((c, i) => (
-                        <TableRow key={asks.length+2} className={classes.tableRow}>
-                          <TableCell key={0} className={classes.tableCell}>{getVolume(c)}</TableCell>
-                          <TableCell key={1} className={classes.tableCell}>{getQuantity(c)}</TableCell>
-                          <TableCell key={2} className={classes.tableCell} style={{ color: "green"}}>{getPrice(c)}</TableCell>
-                          <TableCell key={3} className={classes.tableCell}></TableCell>
-                          <TableCell key={4} className={classes.tableCell}></TableCell>
-                        </TableRow>
-                      ))}
-                      <TableRow key={1} className={classes.tableRow}>
-                        <TableCell key={0} className={classes.tableCell}><b>Buy Volume ({listing.payload.quotedInstrument.id.unpack})</b></TableCell>
-                        <TableCell key={1} className={classes.tableCell}><b>Buy Quantity</b></TableCell>
-                        <TableCell key={2} className={classes.tableCell}><b>Price</b></TableCell>
-                        <TableCell key={3} className={classes.tableCell}></TableCell>
-                        <TableCell key={4} className={classes.tableCell}></TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </Paper>
-              </Grid>
-            </Grid>
+            <Paper className={classnames(classes.fullWidth, classes.paper)}>
+              <Typography variant="h5" className={classes.heading}>Orderbook</Typography>
+              <Table size="small">
+                <TableBody>
+                  <TableRow key={0} className={classes.tableRow}>
+                    <TableCell key={0} className={classes.tableCell}></TableCell>
+                    <TableCell key={1} className={classes.tableCell}></TableCell>
+                    <TableCell key={2} className={classes.tableCell}><b>Price</b></TableCell>
+                    <TableCell key={3} className={classes.tableCell}><b>Sell Quantity</b></TableCell>
+                    <TableCell key={4} className={classes.tableCell}><b>Sell Volume ({listing.payload.quotedInstrument.id.unpack})</b></TableCell>
+                  </TableRow>
+                  {asks.map((c, i) => (
+                    <TableRow key={i+2} className={classes.tableRow}>
+                      <TableCell key={0} className={classes.tableCell}></TableCell>
+                      <TableCell key={1} className={classes.tableCell}></TableCell>
+                      <TableCell key={2} className={classes.tableCell} style={{ color: "red"}}>{getPrice(c)}</TableCell>
+                      <TableCell key={3} className={classes.tableCell}>{getQuantity(c)}</TableCell>
+                      <TableCell key={4} className={classes.tableCell}>{getVolume(c)}</TableCell>
+                    </TableRow>
+                  ))}
+                  {bids.map((c, i) => (
+                    <TableRow key={asks.length+2} className={classes.tableRow}>
+                      <TableCell key={0} className={classes.tableCell}>{getVolume(c)}</TableCell>
+                      <TableCell key={1} className={classes.tableCell}>{getQuantity(c)}</TableCell>
+                      <TableCell key={2} className={classes.tableCell} style={{ color: "green"}}>{getPrice(c)}</TableCell>
+                      <TableCell key={3} className={classes.tableCell}></TableCell>
+                      <TableCell key={4} className={classes.tableCell}></TableCell>
+                    </TableRow>
+                  ))}
+                  <TableRow key={1} className={classes.tableRow}>
+                    <TableCell key={0} className={classes.tableCell}><b>Buy Volume ({listing.payload.quotedInstrument.id.unpack})</b></TableCell>
+                    <TableCell key={1} className={classes.tableCell}><b>Buy Quantity</b></TableCell>
+                    <TableCell key={2} className={classes.tableCell}><b>Price</b></TableCell>
+                    <TableCell key={3} className={classes.tableCell}></TableCell>
+                    <TableCell key={4} className={classes.tableCell}></TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </Paper>
           </Grid>
           <Grid item xs={4}>
-            <Grid container direction="column" spacing={2}>
-              <Grid item xs={12}>
-                <ToggleButtonGroup className={classnames(classes.inputField, classes.fullWidth)} value={isBuy} exclusive onChange={(_, v) => { if (v !== null) setIsBuy(v); }}>
-                  <ToggleButton className={classes.fullWidth} color="primary" value={true}>Buy</ToggleButton>
-                  <ToggleButton className={classes.fullWidth} color="secondary" value={false}>Sell</ToggleButton>
-                </ToggleButtonGroup>
-                <ToggleButtonGroup className={classnames(classes.fullWidth, classes.buttonMargin)} value={isLimit} exclusive disabled onChange={(_, v) => { if (v !== null) setIsLimit(v); }}>
-                  <ToggleButton className={classes.fullWidth} value={true}>Limit</ToggleButton>
-                  <ToggleButton className={classes.fullWidth} value={false}>Market</ToggleButton>
-                </ToggleButtonGroup>
-                <TextField className={classes.inputField} fullWidth label="Available" type="text" value={availableQuantity} disabled/>
-                <TextField className={classes.inputField} fullWidth label="Price" type="number" value={isLimit ? price : "Market"} disabled={!isLimit} onChange={e => handlePriceChange(parseFloat(e.target.value))}/>
-                <TextField className={classes.inputField} fullWidth label="Quantity" type="number" value={amount} onChange={e => handleQuantityChange(parseFloat(e.target.value))}/>
-                <Percentage step={5} valueLabelFormat={v => v + "%"} value={percentage} valueLabelDisplay="auto" onChange={(_, v) => handlePercentageChange(v as number)} />
-                <TextField className={classes.inputField} fullWidth label="Total" type="number" value={total} onChange={e => handleTotalChange(parseFloat(e.target.value))}/>
-                <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!price || !amount} onClick={requestCreateOrder}>{isBuy ? "Buy" : "Sell"} {listing.payload.tradedInstrument.id.unpack}</Button>
-              </Grid>
-            </Grid>
+            <ToggleButtonGroup className={classnames(classes.inputField, classes.fullWidth)} value={isBuy} exclusive onChange={(_, v) => { if (v !== null) setIsBuy(v); }}>
+              <ToggleButton className={classes.fullWidth} color="success" value={true}>Buy</ToggleButton>
+              <ToggleButton className={classes.fullWidth} color="error" value={false}>Sell</ToggleButton>
+            </ToggleButtonGroup>
+            <ToggleButtonGroup className={classnames(classes.fullWidth, classes.buttonMargin)} value={isLimit} exclusive disabled onChange={(_, v) => { if (v !== null) setIsLimit(v); }}>
+              <ToggleButton className={classes.fullWidth} value={true}>Limit</ToggleButton>
+              <ToggleButton className={classes.fullWidth} value={false}>Market</ToggleButton>
+            </ToggleButtonGroup>
+            <TextField className={classes.inputField} InputLabelProps={{ className: classes.inputFieldLabel }} fullWidth label="Available" type="text" value={availableQuantity} disabled/>
+            <TextField className={classes.inputField} InputLabelProps={{ className: classes.inputFieldLabel }} fullWidth label="Price" type="number" value={isLimit ? price : "Market"} disabled={!isLimit} onChange={e => handlePriceChange(parseFloat(e.target.value))}/>
+            <TextField className={classes.inputField} InputLabelProps={{ className: classes.inputFieldLabel }} fullWidth label="Quantity" type="number" value={amount} onChange={e => handleQuantityChange(parseFloat(e.target.value))}/>
+            <Percentage step={5} valueLabelFormat={v => v + "%"} value={percentage} valueLabelDisplay="auto" onChange={(_, v) => handlePercentageChange(v as number)} />
+            <TextField className={classes.inputField} InputLabelProps={{ className: classes.inputFieldLabel }} fullWidth label="Total" type="number" value={total} onChange={e => handleTotalChange(parseFloat(e.target.value))}/>
+            <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!price || !amount} onClick={requestCreateOrder}>{isBuy ? "Buy" : "Sell"} {listing.payload.tradedInstrument.id.unpack}</Button>
           </Grid>
-        </Grid>
-      </Grid>
-      <Grid item xs={12}>
-        <Grid container spacing={4}>
           <Grid item xs={8}>
             <Paper className={classnames(classes.fullWidth, classes.paper)}>
               <Typography variant="h5" className={classes.heading}>Orders</Typography>
@@ -220,7 +209,7 @@ export const Market : React.FC = () => {
                         <TableCell key={5} className={classes.tableCell}><b>Quantity</b></TableCell>
                         <TableCell key={6} className={classes.tableCell}><b>Volume</b></TableCell>
                       </TableRow>
-                      {limits.map((c, i) => (
+                      {myOrders.map((c, i) => (
                         <TableRow key={i+1} className={classes.tableRow}>
                           <TableCell key={0} className={classes.tableCell}>{c.payload.listingId}</TableCell>
                           <TableCell key={1} className={classes.tableCell}>{c.payload.id.unpack}</TableCell>

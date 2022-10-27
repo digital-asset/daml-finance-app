@@ -24,7 +24,7 @@ export const VerticalTable : React.FC<VerticalTableProps> = ({ title, variant, h
           <TableBody className={classes.tableBody}>
             {headers.map((h, i) => (
               <TableRow key={i} className={classes.tableRow}>
-                <TableCell key={0} className={classes.tableCell}>{h}</TableCell>
+                <TableCell key={0} className={classes.tableCell}><b>{h}</b></TableCell>
                 <TableCell key={1} className={classes.tableCell}>{values[i]}</TableCell>
               </TableRow>
             ))}

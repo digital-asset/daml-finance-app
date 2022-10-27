@@ -22,7 +22,7 @@ export default makeStyles((theme : any) => createStyles({
     ...theme.mixins.toolbar,
   },
   bg: {
-    marginTop: 110,
+    marginTop: 90,
     paddingLeft: theme.spacing(20),
     paddingRight: theme.spacing(20),
   },
@@ -34,6 +34,6 @@ export default makeStyles((theme : any) => createStyles({
   subtext: {
     fontSize: 20,
     paddingTop: 10,
-    paddingBottom: 30
+    paddingBottom: 20
   }
 }));

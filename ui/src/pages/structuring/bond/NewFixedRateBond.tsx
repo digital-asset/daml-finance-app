@@ -26,7 +26,7 @@ import { ToggleInput } from "../../../components/Form/ToggleInput";
 import { SelectInput, toValues } from "../../../components/Form/SelectInput";
 
 export const NewFixedRateBond : React.FC = () => {
-  const classes = useStyles();
+  const cls = useStyles();
   const navigate = useNavigate();
 
   const [ id, setId ] = useState("");
@@ -81,30 +81,27 @@ export const NewFixedRateBond : React.FC = () => {
   return (
     <Grid container direction="column" spacing={2}>
       <Grid item xs={12}>
-        <Typography variant="h3" className={classes.heading}>New Fixed Rate Bond</Typography>
+        <Typography variant="h2" className={classnames(cls.defaultHeading, cls.centered)}>New Fixed Rate Bond</Typography>
       </Grid>
       <Grid item xs={12}>
-        <Grid container spacing={4}>
-          <Grid item xs={3}>
-            <Grid container direction="column" spacing={2}>
-              <Grid item xs={12}>
-                <Paper className={classnames(classes.fullWidth, classes.paper)}>
-                  <Typography variant="h5" className={classes.heading}>Parameters</Typography>
-                  <TextInput    label="Id"                      value={id}                    setValue={setId} />
-                  <TextInput    label="Coupon (per annum)"      value={couponRate}            setValue={setCouponRate} />
-                  <SelectInput  label="Currency"                value={currency}              setValue={setCurrency}              values={toValues(tokens)} />
-                  <DateInput    label="Issue Date"              value={issueDate}             setValue={setIssueDate} />
-                  <DateInput    label="First Coupon Date"       value={firstCouponDate}       setValue={setFirstCouponDate} />
-                  <DateInput    label="Maturity Date"           value={maturityDate}          setValue={setMaturityDate} />
-                  <ToggleInput  label="Coupon Frequency"        value={couponFrequency}       setValue={setCouponFrequency}       values={couponFrequencies} />
-                  <SelectInput  label="Day Count Convention"    value={dayCountConvention}    setValue={setDayCountConvention}    values={dayCountConventions} />
-                  <SelectInput  label="Business Day Adjustment" value={businessDayConvention} setValue={setBusinessDayConvention} values={businessDayConventions} />
-                  <SelectInput  label="Holiday Calendar"        value={holidayCalendar}       setValue={setHolidayCalendar}       values={holidayCalendars} />
-                  <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={createFixedRateBond}>Create Instrument</Button>
-                </Paper>
-              </Grid>
-            </Grid>
+        <Grid container direction="row" spacing={4}>
+          <Grid item xs={4} />
+          <Grid item xs={4}>
+            <Paper className={classnames(cls.fullWidth, cls.paper)}>
+              <TextInput    label="Id"                      value={id}                    setValue={setId} />
+              <TextInput    label="Coupon (per annum)"      value={couponRate}            setValue={setCouponRate} />
+              <SelectInput  label="Currency"                value={currency}              setValue={setCurrency}              values={toValues(tokens)} />
+              <DateInput    label="Issue Date"              value={issueDate}             setValue={setIssueDate} />
+              <DateInput    label="First Coupon Date"       value={firstCouponDate}       setValue={setFirstCouponDate} />
+              <DateInput    label="Maturity Date"           value={maturityDate}          setValue={setMaturityDate} />
+              <ToggleInput  label="Coupon Frequency"        value={couponFrequency}       setValue={setCouponFrequency}       values={couponFrequencies} />
+              <SelectInput  label="Day Count Convention"    value={dayCountConvention}    setValue={setDayCountConvention}    values={dayCountConventions} />
+              <SelectInput  label="Business Day Adjustment" value={businessDayConvention} setValue={setBusinessDayConvention} values={businessDayConventions} />
+              <SelectInput  label="Holiday Calendar"        value={holidayCalendar}       setValue={setHolidayCalendar}       values={holidayCalendars} />
+              <Button className={classnames(cls.fullWidth, cls.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={createFixedRateBond}>Create Instrument</Button>
+            </Paper>
           </Grid>
+          <Grid item xs={4} />
         </Grid>
       </Grid>
     </Grid>

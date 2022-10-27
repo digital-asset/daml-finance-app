@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
-import classnames from "classnames";
-import { Typography, Grid, Stepper, Step, StepButton, Paper } from "@mui/material";
+import { Typography, Grid, Stepper, Step, StepButton } from "@mui/material";
 import { useParams } from "react-router-dom";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";

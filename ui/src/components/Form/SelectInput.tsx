@@ -24,7 +24,7 @@ export const toValues = (instruments : InstrumentAggregate[]) : SelectInputValue
 
 export const SelectInput : React.FC<SelectInputProps> = ({ label, value, setValue, values }) => {
   const classes = useStyles();
-  const menuProps : Partial<MenuProps> = { anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" } };
+  const menuProps : Partial<MenuProps> = { anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" }, sx: { borderRadius: 0 } };
   return (
     <FormControl className={classes.inputField} fullWidth>
       <InputLabel className={classes.selectLabel}>{label}</InputLabel>
