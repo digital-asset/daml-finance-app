@@ -2,12 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
-import { useParty, useQuery, useStreamQueries } from "@daml/react";
+import { useParty, useStreamQueries } from "@daml/react";
 import { AccountKey, InstrumentKey } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Common";
 import { Reference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
 import { AccountDirectory } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Data/AccountDirectory";
-import { Account } from "@daml.js/daml-finance-holding/lib/Daml/Finance/Holding/Account";
-import { Instruction } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Instruction";
 
 export type AccountState = {
   loading : boolean
@@ -24,9 +22,6 @@ const empty = {
 const AccountContext = React.createContext<AccountState>(empty);
 
 export const AccountProvider : React.FC = ({ children }) => {
-
-  useQuery(Account);
-  useQuery(Instruction);
 
   const party = useParty();
   const { loading: l1, contracts: refs } =  useStreamQueries(Reference);

@@ -2,66 +2,35 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
-import { useNavigate } from "react-router-dom";
-import { Table, TableBody, TableCell, TableRow, TableHead, Grid, Paper, Typography } from "@mui/material";
-import { IconButton } from "@mui/material";
-import { KeyboardArrowRight } from "@mui/icons-material";
 import { useStreamQueries } from "@daml/react";
-import useStyles from "../styles";
 import { Issuance } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Model";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
 import { fmt } from "../../util";
+import { Alignment, HorizontalTable } from "../../components/Table/HorizontalTable";
+import { DetailButton } from "../../components/DetailButton/DetailButton";
+import { CreateEvent } from "@daml/ledger";
 
 export const Issuances : React.FC = () => {
-  const classes = useStyles();
-  const navigate = useNavigate();
   const { getName } = useParties();
-
-  const { contracts: issuances, loading: l1 } = useStreamQueries(Issuance);
+  const { loading: l1, contracts: issuances } = useStreamQueries(Issuance);
   if (l1) return <Spinner />;
 
+  const createRow = (c : CreateEvent<Issuance>) : any[] => {
+    return [
+      getName(c.payload.provider),
+      getName(c.payload.customer),
+      c.payload.id.unpack,
+      c.payload.description,
+      fmt(c.payload.quantity.amount, 0),
+      c.payload.quantity.unit.id.unpack,
+      <DetailButton path={"/app/issuance/issuances/" + c.contractId} />
+    ];
+  }
+  const headers = ["Custodian", "Issuer", "Id", "Description", "Amount", "Instrument", "Details"]
+  const values : any[] = issuances.map(createRow);
+  const alignment : Alignment[] = ["left", "left", "left", "left", "right", "left", "left"];
   return (
-    <>
-      <Grid container direction="column">
-        <Grid container direction="row">
-          <Grid item xs={12}>
-            <Paper className={classes.paper}>
-              <Grid container direction="row" justifyContent="center" className={classes.paperHeading}><Typography variant="h2">Issuances</Typography></Grid>
-              <Table size="small">
-                <TableHead>
-                  <TableRow className={classes.tableRow}>
-                    <TableCell key={1} className={classes.tableCell}><b>Custodian</b></TableCell>
-                    <TableCell key={2} className={classes.tableCell}><b>Issuer</b></TableCell>
-                    <TableCell key={3} className={classes.tableCell}><b>Id</b></TableCell>
-                    <TableCell key={4} className={classes.tableCell}><b>Description</b></TableCell>
-                    <TableCell key={5} className={classes.tableCell} align="right"><b>Amount</b></TableCell>
-                    <TableCell key={6} className={classes.tableCell}><b>Instrument</b></TableCell>
-                    <TableCell key={7} className={classes.tableCell}><b>Details</b></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {issuances.map((c, i) => (
-                    <TableRow key={i} className={classes.tableRow}>
-                      <TableCell key={1} className={classes.tableCell}>{getName(c.payload.provider)}</TableCell>
-                      <TableCell key={2} className={classes.tableCell}>{getName(c.payload.customer)}</TableCell>
-                      <TableCell key={3} className={classes.tableCell}>{c.payload.id.unpack}</TableCell>
-                      <TableCell key={4} className={classes.tableCell}>{c.payload.description}</TableCell>
-                      <TableCell key={5} className={classes.tableCell} align="right">{fmt(c.payload.quantity.amount, 0)}</TableCell>
-                      <TableCell key={6} className={classes.tableCell}>{c.payload.quantity.unit.id.unpack}</TableCell>
-                      <TableCell key={7} className={classes.tableCell}>
-                        <IconButton color="primary" size="small" component="span" onClick={() => navigate("/app/issuance/issuances/" + c.contractId)}>
-                          <KeyboardArrowRight fontSize="small"/>
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Paper>
-          </Grid>
-        </Grid>
-      </Grid>
-    </>
+    <HorizontalTable title="Issuances" variant={"h3"} headers={headers} values={values} alignment={alignment} />
   );
 };

@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
-import { Grid, Theme } from "@mui/material";
-import { makeStyles, createStyles } from "@mui/styles";
+import { Grid, Typography } from "@mui/material";
 import { Header } from "../components/Header/Header";
 import { useScenario } from "../context/ScenarioContext";
+import useStyles from "./styles";
 
 export const Overview : React.FC = () => {
   const classes = useStyles();
@@ -13,23 +13,16 @@ export const Overview : React.FC = () => {
 
   return (
     <>
-      <Header app="Portal" />
+      <Header/>
       <Grid container direction="column" className={classes.bg}>
         <Grid item xs={12}>
+          <Typography variant="h1" className={classes.title}>Welcome to the Daml Finance Portal</Typography>
+          <Typography variant="h3" className={classes.subtext}>There are {scenario.selected.apps.length} services available to you.</Typography>
           <Grid container direction="row" spacing={4}>
-            {scenario.selected.apps}
+            {scenario.selected.apps.map(a => a.elem)}
           </Grid>
         </Grid>
       </Grid>
     </>
   );
 }
-
-const useStyles = makeStyles((theme : Theme) => createStyles({
-  bg: {
-    backgroundColor: theme.palette.background.default,
-    marginTop: 85,
-    paddingLeft: 20,
-    paddingRight: 20,
-  },
-}));

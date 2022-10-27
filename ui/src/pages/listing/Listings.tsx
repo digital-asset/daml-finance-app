@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
-import { Table, TableBody, TableCell, TableRow, TableHead, Button, Grid, Paper, Typography } from "@mui/material";
+import { Button } from "@mui/material";
 import { CreateEvent } from "@daml/ledger";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
@@ -12,14 +12,13 @@ import { Listing } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
 import { useServices } from "../../context/ServiceContext";
+import { HorizontalTable } from "../../components/Table/HorizontalTable";
 
 export const Listings : React.FC = () => {
   const classes = useStyles();
-
   const party = useParty();
   const ledger = useLedger();
   const { getName } = useParties();
-
   const { loading: l1, listing, listingAuto } = useServices();
   const { loading: l2, contracts: listings } = useStreamQueries(Listing);
   if (l1 || l2) return <Spinner />;
@@ -27,7 +26,7 @@ export const Listings : React.FC = () => {
   const myServices = listing.filter(s => s.payload.customer === party);
   const myAutoServices = listingAuto.filter(s => s.payload.customer === party);
 
-  const requestDeleteDelisting = async (c : CreateEvent<Listing>) => {
+  const requestDelisting = async (c : CreateEvent<Listing>) => {
     if (myServices.length === 0) throw new Error("No listing service found");
     if (myAutoServices.length > 0) {
       await ledger.exercise(AutoService.RequestAndDeleteListing, myAutoServices[0].contractId, { listingCid: c.contractId });
@@ -36,41 +35,19 @@ export const Listings : React.FC = () => {
     }
   }
 
+  const createRow = (c : CreateEvent<Listing>) : any[] => {
+    return [
+      getName(c.payload.provider),
+      getName(c.payload.customer),
+      c.payload.id,
+      c.payload.tradedInstrument.id.unpack,
+      c.payload.quotedInstrument.id.unpack,
+      <Button color="primary" size="small" className={classes.choiceButton} variant="contained" disabled={party !== c.payload.customer} onClick={() => requestDelisting(c)}>Delist</Button>
+    ];
+  }
+  const headers = ["Exchange", "Issuer", "Id", "Traded Asset", "Quoted Asset", "Action"]
+  const values : any[] = listings.map(createRow);
   return (
-    <Grid container direction="column">
-      <Grid container direction="row">
-        <Grid item xs={12}>
-          <Paper className={classes.paper}>
-            <Grid container direction="row" justifyContent="center" className={classes.paperHeading}><Typography variant="h2">Listings</Typography></Grid>
-            <Table size="small">
-              <TableHead>
-                <TableRow className={classes.tableRow}>
-                  <TableCell key={0} className={classes.tableCell}><b>Provider</b></TableCell>
-                  <TableCell key={1} className={classes.tableCell}><b>Client</b></TableCell>
-                  <TableCell key={2} className={classes.tableCell}><b>Id</b></TableCell>
-                  <TableCell key={4} className={classes.tableCell}><b>Traded Asset</b></TableCell>
-                  <TableCell key={6} className={classes.tableCell}><b>Quoted Asset</b></TableCell>
-                  <TableCell key={8} className={classes.tableCell}><b>Action</b></TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {listings.map((c, i) => (
-                  <TableRow key={i} className={classes.tableRow}>
-                    <TableCell key={0} className={classes.tableCell}>{getName(c.payload.provider)}</TableCell>
-                    <TableCell key={1} className={classes.tableCell}>{getName(c.payload.customer)}</TableCell>
-                    <TableCell key={2} className={classes.tableCell}>{c.payload.id}</TableCell>
-                    <TableCell key={4} className={classes.tableCell}>{c.payload.tradedInstrument.id.unpack}</TableCell>
-                    <TableCell key={6} className={classes.tableCell}>{c.payload.quotedInstrument.id.unpack}</TableCell>
-                    <TableCell key={8} className={classes.tableCell}>
-                      {party === c.payload.customer && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => requestDeleteDelisting(c)}>Delist</Button>}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Paper>
-        </Grid>
-      </Grid>
-    </Grid>
+    <HorizontalTable title="Listings" variant={"h3"} headers={headers} values={values} />
   );
 };

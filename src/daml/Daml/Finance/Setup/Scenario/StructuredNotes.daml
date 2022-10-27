@@ -106,15 +106,15 @@ run  = do
   let securities = [tsla, fwd, opt, bnd, rc, brc, bwn1, bwn2]
 
   -- Distribution
-  issuerCashCid1  <- coerceContractId <$> deposit operator centralBank issuer public (Instrument.qty 4_417_698.0 usd) issuerCashAccount
-  inv1CashCid1    <- coerceContractId <$> deposit operator centralBank inv1   public (Instrument.qty 1_472_566.0 usd) inv1CashAccount
-  inv2CashCid1    <- coerceContractId <$> deposit operator centralBank inv2   public (Instrument.qty 1_472_566.0 usd) inv2CashAccount
-  inv3CashCid1    <- coerceContractId <$> deposit operator centralBank inv3   public (Instrument.qty 1_472_566.0 usd) inv3CashAccount
+  -- issuerCashCid1  <- coerceContractId <$> deposit operator centralBank issuer public (Instrument.qty 4_417_698.0 usd) issuerCashAccount
+  -- inv1CashCid1    <- coerceContractId <$> deposit operator centralBank inv1   public (Instrument.qty 1_472_566.0 usd) inv1CashAccount
+  -- inv2CashCid1    <- coerceContractId <$> deposit operator centralBank inv2   public (Instrument.qty 1_472_566.0 usd) inv2CashAccount
+  -- inv3CashCid1    <- coerceContractId <$> deposit operator centralBank inv3   public (Instrument.qty 1_472_566.0 usd) inv3CashAccount
 
-  issuerCashCid2  <- coerceContractId <$> deposit operator centralBank issuer public (Instrument.qty 7_082_999.0 usd) issuerCashAccount
-  inv1CashCid2    <- coerceContractId <$> deposit operator centralBank inv1   public (Instrument.qty 1_000_000.0 usd) inv1CashAccount
-  inv2CashCid2    <- coerceContractId <$> deposit operator centralBank inv2   public (Instrument.qty 1_000_000.0 usd) inv2CashAccount
-  inv3CashCid2    <- coerceContractId <$> deposit operator centralBank inv3   public (Instrument.qty 1_000_000.0 usd) inv3CashAccount
+  issuerCashCid2  <- coerceContractId <$> deposit operator centralBank issuer public (Instrument.qty 5_000_000.0 usd) issuerCashAccount
+  inv1CashCid2    <- coerceContractId <$> deposit operator centralBank inv1   public (Instrument.qty 950_000.0 usd) inv1CashAccount
+  inv2CashCid2    <- coerceContractId <$> deposit operator centralBank inv2   public (Instrument.qty 950_000.0 usd) inv2CashAccount
+  inv3CashCid2    <- coerceContractId <$> deposit operator centralBank inv3   public (Instrument.qty 950_000.0 usd) inv3CashAccount
 
   -- Data
   createObservation issuer tslaO  [(todayTime, 580.0)]  pub
@@ -174,8 +174,10 @@ run  = do
   -- subscription (Instrument.qty 3_000_000.0 rc) (Instrument.qty 1.0 usd) issuerCashCid1 rcIssuerHoldingCid rcRiskTakerHoldingCid inv1CashCid1 inv2CashCid1 inv3CashCid1
   -- (_, brcIssuerHoldingCid, brcRiskTakerHoldingCid) <- issuance $ Instrument.qty 3_000_000.0 brc
   -- subscription (Instrument.qty 3_000_000.0 brc) (Instrument.qty 1.0 usd) issuerCashCid2 brcIssuerHoldingCid brcRiskTakerHoldingCid inv1CashCid2 inv2CashCid2 inv3CashCid2
-  (_, bwn2IssuerHoldingCid, bwn2RiskTakerHoldingCid) <- issuance $ Instrument.qty 44_000.0 bwn2
-  subscription (Instrument.qty 44_000.0 bwn2) (Instrument.qty 147.2566 usd) issuerCashCid1 bwn2IssuerHoldingCid bwn2RiskTakerHoldingCid inv1CashCid1 inv2CashCid1 inv3CashCid1
+  -- (_, bwn1IssuerHoldingCid, bwn1RiskTakerHoldingCid) <- issuance $ Instrument.qty 50_000.0 bwn1
+  -- subscription (Instrument.qty 50_000.0 bwn1) (Instrument.qty 95.00 usd) issuerCashCid2 bwn1IssuerHoldingCid bwn1RiskTakerHoldingCid inv1CashCid2 inv2CashCid2 inv3CashCid2
+  -- (_, bwn2IssuerHoldingCid, bwn2RiskTakerHoldingCid) <- issuance $ Instrument.qty 44_000.0 bwn2
+  -- subscription (Instrument.qty 44_000.0 bwn2) (Instrument.qty 147.2566 usd) issuerCashCid1 bwn2IssuerHoldingCid bwn2RiskTakerHoldingCid inv1CashCid1 inv2CashCid1 inv3CashCid1
 
   pure parties
 

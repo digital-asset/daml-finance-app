@@ -2,8 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
-import { PlayArrow } from "@mui/icons-material";
-import { RouteEntry } from "../components/Sidebar/RouteEntry";
 import { New } from "../pages/issuance/New";
 import { Requests } from "../pages/issuance/Requests";
 import { Issuances } from "../pages/issuance/Issuances";
@@ -11,10 +9,14 @@ import { Issuance as IssuanceDetail } from "../pages/issuance/Issuance";
 import { App } from "./App";
 
 export const Issuance : React.FC = () => {
-  const entries : RouteEntry[] = [
-    { path: "issuances", element: <Issuances />, label: "Issuances", icon: <PlayArrow/>, children: [] },
-    { path: "requests", element: <Requests />, label: "Requests", icon: <PlayArrow/>, children: [] },
-    { path: "new", element: <New />, label: "New", icon: <PlayArrow/>, children: [] },
-    { path: "issuances/:contractId", element: <IssuanceDetail /> } ];
-  return <App title="Issuance Portal" entries={entries} />;
+  const entries = [
+    { label: "Issuances",     path: "issuances",  element: <Issuances /> },
+    { label: "Requests",      path: "requests",   element: <Requests /> },
+    { label: "New Issuance",  path: "new",        element: <New />, action: true }
+  ];
+  const paths = [
+    { path: "issuances/:contractId", element: <IssuanceDetail /> }
+  ];
+
+  return <App app="Issuance" entries={entries} paths={paths} />;
 }

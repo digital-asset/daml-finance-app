@@ -20,4 +20,4 @@ demo = do
   p4 <- NaturalGas.run
   p5 <- SecuritiesLending.run
   p6 <- StructuredNotes.run
-  pure $ p1 <> p2 <> p3 <> p4 <> p5
+  pure $ p1 <> p2 <> p3 <> p4 <> p5 <> p6

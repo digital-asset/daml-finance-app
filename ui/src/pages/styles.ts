@@ -40,6 +40,9 @@ export default makeStyles((theme : any) => createStyles({
   inputField: {
     marginTop: 10,
   },
+  inputFieldLabel: {
+    color: theme.palette.grey[400]
+  },
   selectLabel: {
     marginLeft: -14,
     marginTop: 4
@@ -86,6 +89,14 @@ export default makeStyles((theme : any) => createStyles({
     paddingTop: 20,
     paddingBottom: 20,
   },
+  defaultHeading: {
+    color: theme.palette.primary.main,
+    marginTop: 15,
+    marginBottom: 15
+  },
+  centered: {
+    textAlign: "center"
+  },
   dot: {
     padding: 0,
     borderColor: "#009900",
@@ -112,4 +123,8 @@ export default makeStyles((theme : any) => createStyles({
   acc: {
     backgroundColor: theme.palette.secondary.main
   },
+  timeline: {
+    marginTop: 10,
+    marginBottom: 30
+  }
 }));

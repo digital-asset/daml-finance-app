@@ -4,7 +4,7 @@
 import React from "react";
 import classnames from "classnames";
 import { v4 as uuidv4 } from "uuid";
-import { useParty, useLedger, useStreamQueries, useQuery } from "@daml/react";
+import { useParty, useLedger, useStreamQueries } from "@daml/react";
 import { Typography, Grid, Table, TableBody, TableCell, TableRow, Paper, Button, TableHead } from "@mui/material";
 import { useParams } from "react-router-dom";
 import useStyles from "../styles";
@@ -17,15 +17,10 @@ import { Message } from "../../components/Message/Message";
 import { Claim } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Rule/Claim";
 import { useServices } from "../../context/ServiceContext";
 import { HoldingAggregate, useHoldings } from "../../context/HoldingContext";
-import { Batch as BatchT } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Batch";
-import { Instruction as InstructionT } from "@daml.js/daml-finance-settlement/lib/Daml/Finance/Settlement/Instruction";
 import { Batch } from "@daml.js/daml-finance-interface-settlement/lib/Daml/Finance/Interface/Settlement/Batch";
 
 export const Effect : React.FC = () => {
   const classes = useStyles();
-
-  useQuery(BatchT);
-  useQuery(InstructionT);
 
   const { getName, getNames } = useParties();
   const ledger = useLedger();

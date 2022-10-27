@@ -3,8 +3,8 @@
 
 import React from "react";
 import { HashRouter, Route, Routes, Navigate } from "react-router-dom";
-import LocalizationProvider from "@mui/lab/LocalizationProvider";
-import AdapterDateFns from "@mui/lab/AdapterDateFns";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider"
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns"
 import DamlLedger from "@daml/react";
 import { useBranding } from "./context/BrandingContext";
 import { useUserState } from "./context/UserContext";

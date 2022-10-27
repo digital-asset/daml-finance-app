@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState } from "react";
 import classnames from "classnames";
-import { useLedger, useParty, useQuery, useStreamQueries } from "@daml/react";
+import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Typography, Grid, Table, TableBody, TableCell, TableRow, Paper, Button, TableHead, Accordion, AccordionSummary, AccordionDetails, TextField, FormControl, InputLabel, Select, MenuItem, TextFieldProps, MenuProps } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
 import useStyles from "../styles";
@@ -18,9 +18,6 @@ import { Message } from "../../components/Message/Message";
 import { Observable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/Observable";
 import { Event } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Event";
 import { Clock } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Clock";
-import { Effect as EffectT } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/Effect";
-import { Event as Distribution } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/Event/Distribution";
-import { Event as Replacement } from "@daml.js/daml-finance-lifecycle/lib/Daml/Finance/Lifecycle/Event/Replacement";
 import { parseDate, shorten } from "../../util";
 import { Pending } from "@daml.js/daml-finance-interface-claims/lib/Daml/Finance/Interface/Claims/Types";
 import { ExpandMore } from "@mui/icons-material";
@@ -40,10 +37,6 @@ export const Instrument : React.FC = () => {
   const [ effectiveDate, setEffectiveDate ] = useState<Date | null>(null);
   const [ currency, setCurrency ] = useState("");
   const [ amount, setAmount ] = useState("");
-
-  useQuery(Replacement);
-  useQuery(Distribution);
-  useQuery(EffectT);
 
   const { getName } = useParties();
   const party = useParty();
@@ -236,14 +229,14 @@ export const Instrument : React.FC = () => {
               <Grid item xs={12}>
                 <Paper className={classnames(classes.fullWidth, classes.paper)}>
                   <Typography variant="h5" className={classes.heading}>Current State</Typography>
-                  <ClaimsTreeBuilder node={node1} setNode={setNode1} assets={[]} height="40vh"/>
+                  <ClaimsTreeBuilder node={node1} setNode={setNode1} assets={[]} height="20vh"/>
                 </Paper>
               </Grid>}
               {!!remaining &&
               <Grid item xs={12}>
                 <Paper className={classnames(classes.fullWidth, classes.paper)}>
                   <Typography variant="h5" className={classes.heading}>Next State</Typography>
-                  <ClaimsTreeBuilder node={node2} setNode={setNode2} assets={[]} height="40vh"/>
+                  <ClaimsTreeBuilder node={node2} setNode={setNode2} assets={[]} height="20vh"/>
                 </Paper>
               </Grid>}
               {!!instrument.equity &&

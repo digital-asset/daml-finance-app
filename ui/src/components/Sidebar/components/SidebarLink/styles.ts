@@ -4,63 +4,33 @@
 import { makeStyles, createStyles } from "@mui/styles";
 
 export default makeStyles((theme : any) => createStyles({
-  linkRoot: {},
-  link: {
-    textDecoration: "none",
-    "&:hover, &:focus": {
-      backgroundColor: theme.palette.background.light,
-    },
+  linkButton: {
+    width: "100%",
+    padding: 10,
+    marginLeft: 30,
+    marginRight: 30,
+    borderRadius: 30,
+    textTransform: "none"
   },
-  linkActive: {
-    backgroundColor: theme.palette.background.light,
+  actionButton: {
+    width: "100%",
+    backgroundColor: theme.palette.primary.main,
+    color: theme.palette.text.secondary,
+    padding: 5,
+    marginLeft: 30,
+    marginRight: 30,
+    borderRadius: 30,
+    textTransform: "none"
   },
-  linkNested: {
-    paddingLeft: 0,
-    "&:hover, &:focus": {
-      backgroundColor: "#FFFFFF",
-    },
+  listItem: {
+    paddingTop: 2,
+    paddingBottom: 2,
+    height: 58
   },
   linkIcon: {
-    marginRight: theme.spacing(1),
-    color: theme.palette.text.primary, // + "99",
-    transition: theme.transitions.create("color"),
-    width: 24,
-    display: "flex",
-    justifyContent: "center",
+    height: 32
   },
-  linkIconActive: {
-    color: theme.palette.primary.main,
-  },
-  linkText: {
-    padding: 0,
-    color: theme.palette.text.primary, // + "CC",
-    transition: theme.transitions.create(["opacity", "color"]),
-    fontSize: 16,
-  },
-  linkTextNested: {
-    padding: 0,
-    color: theme.palette.secondary.main, // + "CC",
-    transition: theme.transitions.create(["opacity", "color"]),
-    fontSize: 12,
-  },
-  linkTextActive: {
-    color: theme.palette.primary.main,
-  },
-  linkTextHidden: {
-    opacity: 0,
-  },
-  nestedList: {
-    paddingLeft: theme.spacing(2) + 30,
-  },
-  sectionTitle: {
-    marginLeft: theme.spacing(4.5),
-    marginTop: theme.spacing(2),
-    marginBottom: theme.spacing(2),
-  },
-  divider: {
-    marginTop: theme.spacing(2),
-    marginBottom: theme.spacing(4),
-    height: 1,
-    backgroundColor: "#D8D8D880",
+  linkActive: {
+    border: "1px solid"
   },
 }));

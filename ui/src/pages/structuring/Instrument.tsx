@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
-import classnames from "classnames";
-import { Typography, Grid, Stepper, Step, StepButton, Paper } from "@mui/material";
+import { Typography, Grid, Stepper, Step, StepButton } from "@mui/material";
 import { useParams } from "react-router-dom";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
@@ -26,17 +25,15 @@ export const Instrument : React.FC = () => {
     <Grid container direction="column" spacing={2}>
       <Grid item xs={12}>
         <Typography variant="h4" className={classes.heading}>{group.description}</Typography>
-        <Paper className={classnames(classes.fullWidth, classes.paper)}>
-          <Stepper nonLinear alternativeLabel activeStep={activeStep}>
-            {group.versions.map((inst, i) => (
-              <Step key={inst.contractId} completed={false}>
-                <StepButton icon={i.toString()} color="inherit" onClick={() => setActiveStep(i)}>
-                  {inst.payload.validAsOf.substring(0, 10)}
-                </StepButton>
-              </Step>
-            ))}
-          </Stepper>
-        </Paper>
+        <Stepper nonLinear alternativeLabel activeStep={activeStep} className={classes.timeline}>
+          {group.versions.map((inst, i) => (
+            <Step key={inst.contractId} completed={false}>
+              <StepButton icon={i.toString()} color="inherit" onClick={() => setActiveStep(i)}>
+                {inst.payload.validAsOf.substring(0, 10)}
+              </StepButton>
+            </Step>
+          ))}
+        </Stepper>
       </Grid>
       <Aggregate instrument={group.versions[activeStep]} />
     </Grid>

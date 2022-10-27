@@ -2,13 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
-import { Table, TableBody, TableCell, TableRow, TableHead, Grid, Paper, Typography } from "@mui/material";
 import { useParty } from "@daml/react";
-import useStyles from "../styles";
 import { fmt } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
 import { useHoldings } from "../../context/HoldingContext";
+import { Alignment, HorizontalTable } from "../../components/Table/HorizontalTable";
 
 export type HoldingsProps = {
   showAssets : boolean
@@ -25,10 +24,8 @@ type PositionEntry = {
 }
 
 export const Holdings : React.FC<HoldingsProps> = ({ showAssets }) => {
-  const classes = useStyles();
   const party = useParty();
   const { getName } = useParties();
-
   const { loading: l1, holdings } = useHoldings();
   if (l1) return <Spinner />;
 
@@ -57,43 +54,21 @@ export const Holdings : React.FC<HoldingsProps> = ({ showAssets }) => {
     }
   }
 
+  const createRow = (e : PositionEntry) : any[] => {
+    return [
+      getName(e.custodian),
+      getName(e.owner),
+      e.instrument,
+      e.version,
+      fmt(e.position, 0),
+      fmt(e.locked, 0),
+      fmt(e.available, 0)
+    ];
+  }
+  const headers = ["Custodian", "Owner", "Instrument", "Version", "Position", "Locked", "Available"]
+  const values : any[] = entries.map(createRow);
+  const alignment : Alignment[] = ["left", "left", "left", "left", "right", "right", "right"];
   return (
-    <>
-      <Grid container direction="column">
-        <Grid container direction="row">
-          <Grid item xs={12}>
-            <Paper className={classes.paper}>
-              <Grid container direction="row" justifyContent="center" className={classes.paperHeading}><Typography variant="h2">{showAssets ? "Assets" : "Liabilities"}</Typography></Grid>
-              <Table size="small">
-                <TableHead>
-                  <TableRow className={classes.tableRow}>
-                    <TableCell key={0} className={classes.tableCell}><b>Custodian</b></TableCell>
-                    <TableCell key={1} className={classes.tableCell}><b>Owner</b></TableCell>
-                    <TableCell key={2} className={classes.tableCell}><b>Instrument</b></TableCell>
-                    <TableCell key={3} className={classes.tableCell}><b>Version</b></TableCell>
-                    <TableCell key={4} className={classes.tableCell} align="right"><b>Position</b></TableCell>
-                    <TableCell key={5} className={classes.tableCell} align="right"><b>Locked</b></TableCell>
-                    <TableCell key={6} className={classes.tableCell} align="right"><b>Available</b></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {entries.map((c, i) => (
-                    <TableRow key={i} className={classes.tableRow}>
-                      <TableCell key={0} className={classes.tableCell}>{getName(c.custodian)}</TableCell>
-                      <TableCell key={1} className={classes.tableCell}>{getName(c.owner)}</TableCell>
-                      <TableCell key={2} className={classes.tableCell}>{c.instrument}</TableCell>
-                      <TableCell key={3} className={classes.tableCell}>{c.version}</TableCell>
-                      <TableCell key={4} className={classes.tableCell} align="right">{fmt(c.position)}</TableCell>
-                      <TableCell key={5} className={classes.tableCell} align="right">{fmt(c.locked)}</TableCell>
-                      <TableCell key={6} className={classes.tableCell} align="right">{fmt(c.available)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Paper>
-          </Grid>
-        </Grid>
-      </Grid>
-    </>
+    <HorizontalTable title={showAssets ? "Assets" : "Liabilities"} variant={"h3"} headers={headers} values={values} alignment={alignment} />
   );
 };

@@ -4,25 +4,38 @@
 import React from "react";
 import Drawer from "@mui/material/Drawer";
 import List from "@mui/material/List";
-import SidebarLink from "./components/SidebarLink/SidebarLink";
-import { RouteEntry } from "./RouteEntry";
+import { SidebarLink } from "./components/SidebarLink/SidebarLink";
+import { Entry } from "./Route";
 import useStyles from "./styles";
+import { Button, Divider } from "@mui/material";
+import { ActionSelect } from "../Form/ActionSelect";
+import { useScenario } from "../../context/ScenarioContext";
+import { useNavigate } from "react-router-dom";
 
 type SidebarProps = {
-  entries : RouteEntry[]
+  app : string
+  entries : Entry[]
 }
 
-export const Sidebar : React.FC<SidebarProps> = ({ entries } : SidebarProps) => {
+export const Sidebar : React.FC<SidebarProps> = ({ app, entries } : SidebarProps) => {
   const classes = useStyles();
+  const navigate = useNavigate();
+  const scenario = useScenario();
+
+  const links = entries.filter(e => !e.action);
+  const actions = entries.filter(e => !!e.action);
 
   return (
     <Drawer variant="permanent" className={classes.drawer} classes={{ paper: classes.drawer }} open={true}>
       <div className={classes.toolbar} />
       <List>
-        {entries.map(e =>
-          <SidebarLink key={e.label} level={0} {...e} />
-            // {!!e.divider && <Divider />}
-        )}
+        <Button variant="outlined" disableRipple className={classes.actionButton}>
+          <ActionSelect value={app} setValue={v => navigate("/app/" + v.toLowerCase())} values={scenario.selected.apps.map(a => a.name)} />
+        </Button>
+        <Divider style={{ marginBottom: 20 }} />
+        {links.map(e => <SidebarLink key={e.label} label={e.label} path={e.path} action={e.action} /> )}
+        {!!actions && <Divider style={{ marginTop: 20, marginBottom: 10 }} /> }
+        {actions.map(e => <SidebarLink key={e.label} label={e.label} path={e.path} action={e.action} /> )}
       </List>
     </Drawer>
   );

@@ -2,90 +2,59 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
-import { useNavigate } from "react-router-dom";
-import { v4 as uuidv4 } from "uuid";
-import { Table, TableBody, TableCell, TableRow, TableHead, Grid, Paper, Typography, IconButton, Button } from "@mui/material";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
-import useStyles from "../styles";
-import KeyboardArrowRight from "@mui/icons-material/KeyboardArrowRight";
-import { keyEquals, shorten } from "../../util";
+import { dedup, keyEquals, shorten } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { CreateEvent } from "@daml/ledger";
 import { useParties } from "../../context/PartiesContext";
 import { Effect } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Effect";
 import { Claim } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Rule/Claim";
 import { Base } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Base";
+import { SelectionTable } from "../../components/Table/SelectionTable";
+import { DetailButton } from "../../components/DetailButton/DetailButton";
 
 export const Effects : React.FC = () => {
-  const classes = useStyles();
   const party = useParty();
   const ledger = useLedger();
-  const navigate = useNavigate();
   const { getNames } = useParties();
-
-  const { contracts: effects, loading: l1 } = useStreamQueries(Effect);
-  const { contracts: holdings, loading: l2 } = useStreamQueries(Base);
-  const { contracts: claimRules, loading: l3 } = useStreamQueries(Claim);
+  const { loading: l1, contracts: effects } = useStreamQueries(Effect);
+  const { loading: l2, contracts: holdings } = useStreamQueries(Base);
+  const { loading: l3, contracts: claimRules } = useStreamQueries(Claim);
 
   if (l1 || l2 || l3) return <Spinner />;
 
-  const claimAll = async () => {
-    const claimEffect = async (effect : CreateEvent<Effect>) => {
-      const holdingCids = holdings.filter(c => keyEquals(c.payload.instrument, effect.payload.targetInstrument)).map(c => c.contractId);
-      const arg = {
-        claimer: party,
-        holdingCids,
-        effectCid: effect.contractId,
-        batchId: { unpack: uuidv4() }
-      }
-      await ledger.exercise(Claim.ClaimEffect, claimRules[0].contractId, arg);
+  const claimEffect = async (effect : any) => {
+    const filtered = holdings.filter(c => keyEquals(c.payload.instrument, effect.payload.targetInstrument));
+    const holdingCids = filtered.map(c => c.contractId);
+    const custodians = dedup(filtered.map(c => c.payload.account.custodian));
+    const owners = dedup(filtered.map(c => c.payload.account.owner));
+    if (custodians.length > 1 || owners.length > 1) throw new Error("Cannot claim holdings on multiple custodians or owners.");
+    const claimRule = claimRules.find(c => c.payload.providers.map.has(custodians[0]) && c.payload.providers.map.has(owners[0]));
+    if (!claimRule) throw new Error("Couldn't find claim rule for custodian [" + custodians[0] + "] and owner [" + owners[0] + "].");
+    const arg = {
+      claimer: party,
+      holdingCids,
+      effectCid: effect.contractId,
+      batchId: { unpack: "SETTLE-"  + effect.payload.targetInstrument.id.unpack + "-" + effect.payload.id.unpack }
     };
-    await Promise.all(effects.map(claimEffect));
-    navigate("/app/settlement/batches");
+    await ledger.exercise(Claim.ClaimEffect, claimRule.contractId, arg);
   };
 
+  const createRow = (c : CreateEvent<Effect>) : any[] => {
+    return [
+      getNames(c.payload.provider),
+      c.payload.id.unpack,
+      c.payload.description,
+      c.payload.targetInstrument.id.unpack + " (v" + shorten(c.payload.targetInstrument.version) + ")",
+      !!c.payload.producedInstrument ? c.payload.targetInstrument.id.unpack + " (v" + shorten(c.payload.producedInstrument.version) + ")" : "",
+      holdings.filter(h => keyEquals(c.payload.targetInstrument, h.payload.instrument)).length,
+      <DetailButton path={c.contractId} />
+    ];
+  }
+  const headers = ["Providers", "Id", "Description", "Target", "Produced", "Positions", "Details"];
+  const values : any[] = effects.map(createRow);
+  const callbackValues = effects.map(c => c as any);
   return (
-    <Grid container direction="column">
-      <Grid container direction="row">
-        <Grid item xs={12}>
-          <Paper className={classes.paper}>
-            <Grid container direction="row" justifyContent="center" className={classes.paperHeading}><Typography variant="h2">Effects</Typography></Grid>
-            <Table size="small">
-              <TableHead>
-                <TableRow className={classes.tableRow}>
-                  <TableCell key={0} className={classes.tableCell}><b>Providers</b></TableCell>
-                  <TableCell key={1} className={classes.tableCell}><b>Id</b></TableCell>
-                  <TableCell key={2} className={classes.tableCell}><b>Description</b></TableCell>
-                  <TableCell key={3} className={classes.tableCell}><b>Target</b></TableCell>
-                  <TableCell key={4} className={classes.tableCell}><b>Produced</b></TableCell>
-                  <TableCell key={5} className={classes.tableCell}><b>Positions</b></TableCell>
-                  <TableCell key={6} className={classes.tableCell}><b>Detail</b></TableCell>
-                  <TableCell key={7} className={classes.tableCell}>
-                    <Button className={classes.choiceButton} size="large" variant="contained" color="primary" disabled={false} onClick={claimAll}>Claim All</Button>
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {effects.map((c, i) => (
-                  <TableRow key={i} className={classes.tableRow}>
-                    <TableCell key={0} className={classes.tableCell}>{getNames(c.payload.provider)}</TableCell>
-                    <TableCell key={1} className={classes.tableCell}>{c.payload.id.unpack}</TableCell>
-                    <TableCell key={2} className={classes.tableCell}>{c.payload.description}</TableCell>
-                    <TableCell key={3} className={classes.tableCell}>{c.payload.targetInstrument.id.unpack} (v{shorten(c.payload.targetInstrument.version)})</TableCell>
-                    <TableCell key={4} className={classes.tableCell}>{c.payload.producedInstrument && c.payload.targetInstrument.id.unpack + " (v" + shorten(c.payload.producedInstrument.version) + ")"}</TableCell>
-                    <TableCell key={5} className={classes.tableCell}>{holdings.filter(h => keyEquals(c.payload.targetInstrument, h.payload.instrument)).length}</TableCell>
-                    <TableCell key={6} className={classes.tableCell}>
-                      <IconButton color="primary" size="small" component="span" onClick={() => navigate("/app/servicing/effects/" + c.contractId)}>
-                        <KeyboardArrowRight fontSize="small"/>
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Paper>
-        </Grid>
-      </Grid>
-    </Grid>
+    <SelectionTable title="Effects" variant={"h3"} headers={headers} values={values} action="Claim" onExecute={claimEffect} callbackValues={callbackValues} />
   );
 };

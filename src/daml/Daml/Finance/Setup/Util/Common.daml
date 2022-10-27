@@ -42,15 +42,15 @@ getHolding party quantity = do
     pure $ toInterfaceContractId holdingCid
 
 -- | Utility for exercising interface by key (submitMulti composed with exerciseInterfaceByKey helper)
-submitExerciseInterfaceByKeyCmdHelper : forall t1 t2 t c1 k c2 b. (
-    Template t1, Choice t1 c1 (ContractId t), HasKey t1 k, HasLookupByKey t1 k, HasFetchByKey t1 k, HasMaintainer t1 k, HasToAnyContractKey t1 k, HasFromAnyContractKey t1 k,
-    HasTemplateTypeRep t2, HasToAnyTemplate t2, HasFromAnyTemplate t2, HasToAnyChoice t2 c2 b, HasFromAnyChoice t2 c2 b, HasExercise t2 c2 b
-  ) => [Party] -> [Party] -> k -> c1 -> c2 -> Script b
+submitExerciseInterfaceByKeyCmdHelper : forall t1 t2 t c1 k c2 b .
+    Template t1 => Choice t1 c1 (ContractId t) => HasKey t1 k => HasLookupByKey t1 k => HasFetchByKey t1 k => HasMaintainer t1 k => HasToAnyContractKey t1 k => HasFromAnyContractKey t1 k =>
+    HasTemplateTypeRep t2 => HasToAnyTemplate t2 => HasFromAnyTemplate t2 => HasToAnyChoice t2 c2 b => HasFromAnyChoice t2 c2 b => HasExercise t2 c2 b
+    => [Party] -> [Party] -> k -> c1 -> c2 -> Script b
 submitExerciseInterfaceByKeyCmdHelper actAs readAs k arg1 arg2 = do
   cid : ContractId t <- submitMulti actAs readAs do exerciseByKeyCmd @t1 k arg1
   let cid' : ContractId t2 = coerceContractId cid
   submitMulti actAs readAs do exerciseCmd cid' arg2
 
 -- | Utility for exercising an interface by key.
-submitExerciseInterfaceByKeyCmd : forall t2 c2 b. (HasTemplateTypeRep t2, HasToAnyTemplate t2, HasFromAnyTemplate t2, HasFromAnyChoice t2 c2 b, HasToAnyChoice t2 c2 b, HasExercise t2 c2 b) => [Party] -> [Party] -> Instrument.K -> c2 -> Script b
+submitExerciseInterfaceByKeyCmd : forall t2 c2 b . HasTemplateTypeRep t2 => HasToAnyTemplate t2 => HasFromAnyTemplate t2 => HasFromAnyChoice t2 c2 b => HasToAnyChoice t2 c2 b => HasExercise t2 c2 b => [Party] -> [Party] -> Instrument.K -> c2 -> Script b
 submitExerciseInterfaceByKeyCmd actAs readAs k arg = submitExerciseInterfaceByKeyCmdHelper @Instrument.R @t2 actAs readAs k (Instrument.GetCid with viewer = head actAs) arg
