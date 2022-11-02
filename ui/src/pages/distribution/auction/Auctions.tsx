@@ -25,7 +25,7 @@ export const Auctions : React.FC = () => {
       getName(c.payload.customer),
       fmt(c.payload.quantity.amount) + " " + c.payload.quantity.unit.id.unpack,
       fmt(c.payload.floor, 4) + " " + c.payload.currency.id.unpack,
-      c.payload.status,
+      c.payload.status.tag,
       <DetailButton path={path} />
     ];
   };

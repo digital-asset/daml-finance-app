@@ -132,7 +132,7 @@ export const Bidding : React.FC = () => {
                         </TableRow>
                         <TableRow key={1} className={classes.tableRow}>
                           <TableCell key={0} className={classnames(classes.tableCell, classes.width50)}><b>Status</b></TableCell>
-                          <TableCell key={1} className={classnames(classes.tableCell, classes.width50)}>{bid.payload.status}</TableCell>
+                          <TableCell key={1} className={classnames(classes.tableCell, classes.width50)}>{bid.payload.status.tag}</TableCell>
                         </TableRow>
                         {getBidAllocation(bid.payload) &&
                           <TableRow key={1} className={classes.tableRow}>
