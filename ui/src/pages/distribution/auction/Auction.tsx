@@ -106,7 +106,7 @@ export const Auction: React.FC = () => {
                           <TableCell key={2} className={classes.tableCell}>{fmt(c.payload.details.price.amount, 4)}</TableCell>
                           <TableCell key={3} className={classes.tableCell}>{fmt(100.0 * parseFloat(c.payload.details.quantity.amount) / parseFloat(auction.payload.quantity.amount), 2)}%</TableCell>
                           <TableCell key={4} className={classes.tableCell}>{c.payload.details.time}</TableCell>
-                          <TableCell key={5} className={classes.tableCell}>{c.payload.status}</TableCell>
+                          <TableCell key={5} className={classes.tableCell}>{c.payload.status.tag}</TableCell>
                           <TableCell key={6} className={classes.tableCell}>{getBidAllocation(c.payload)}</TableCell>
                         </TableRow>
                       ))}
@@ -149,7 +149,7 @@ export const Auction: React.FC = () => {
                       </TableRow>
                       <TableRow key={6} className={classes.tableRow}>
                         <TableCell key={0} className={classes.tableCell}><b>Status</b></TableCell>
-                        <TableCell key={1} className={classes.tableCell}>{auction.payload.status}</TableCell>
+                        <TableCell key={1} className={classes.tableCell}>{auction.payload.status.tag}</TableCell>
                       </TableRow>
                       {getFinalPrice(auction.payload.status)
                         ?
