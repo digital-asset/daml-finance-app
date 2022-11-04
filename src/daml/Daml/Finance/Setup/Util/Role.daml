@@ -31,3 +31,10 @@ createDistributorRole operator distributor = do
   roleCid     <- submit distributor do exerciseCmd offerCid Distributor.Accept
   submit distributor do createCmd Factory with provider = distributor; observers = empty
   pure roleCid
+
+-- createLeadArrangerRole : Party -> Party -> Script (ContractId Distributor.Role)
+-- createLeadArrangerRole operator leadArranger = do
+--   offerCid    <- submit operator    do exerciseByKeyCmd @Operator.Role operator Operator.OfferDistributorRole with provider = distributor
+--   roleCid     <- submit distributor do exerciseCmd offerCid Distributor.Accept
+--   submit distributor do createCmd Factory with provider = distributor; observers = empty
+--   pure roleCid

@@ -22,10 +22,10 @@ import Daml.Script
 
 run : Script [PartyInfo]
 run  = do
-  let scenario = "Default"
-  parties <- allocateParties scenario ["Operator", "Public", "CentralBank", "Registry", "Exchange", "Agent", "Issuer", "Investor1", "Investor2", "Investor3"]
+  let scenario = "Syndicated Loans"
+  parties <- allocateParties scenario ["Operator", "Public", "CentralBank", "Registry", "Exchange", "Agent", "Issuer", "Investor1", "Investor2", "Investor3", "borrower", "leadArranger", "syndicateLender1", "syndicateLender2", "syndicateLender3", "syndicateLender4", "syndicateLender5", "syndicateLender6"]
   let
-    all@[operator, public, centralBank, registry, exchange, agent, issuer, inv1, inv2, inv3] = map (.id) parties
+    all@[operator, public, centralBank, registry, exchange, agent, issuer, inv1, inv2, inv3, borrower, leadArranger, syndicateLender1, syndicateLender2, syndicateLender3, syndicateLender4, syndicateLender5, syndicateLender6] = map (.id) parties
     pub = fromList [("Public", singleton public)]
 
   -- Factories
@@ -34,18 +34,26 @@ run  = do
   settlementFactoryCid <- toInterfaceContractId <$> submit operator do createCmd Settlement.Factory with provider = operator; observers = singleton public
 
   -- Roles
-  -- bank, borrower, leadArranger, syndicateLenders
+  -- , borrower, leadArranger, syndicateLenders
   createOperatorRole    operator
   createCustodianRole   operator centralBank
   createCustodianRole   operator registry
   createExchangeRole    operator exchange
   createDistributorRole operator agent
+  -- createLeadArrangerRole    operator leadArranger
 
   -- Services
   createCustodyService          operator centralBank issuer settlementFactoryCid accountFactoryCid holdingFactoryCid
   createCustodyService          operator centralBank inv1   settlementFactoryCid accountFactoryCid holdingFactoryCid
   createCustodyService          operator centralBank inv2   settlementFactoryCid accountFactoryCid holdingFactoryCid
   createCustodyService          operator centralBank inv3   settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank borrower   settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank syndicateLender1   settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank syndicateLender2   settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank syndicateLender3   settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank syndicateLender4   settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank syndicateLender5   settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank syndicateLender6   settlementFactoryCid accountFactoryCid holdingFactoryCid
   createCustodyService          operator registry    issuer settlementFactoryCid accountFactoryCid holdingFactoryCid
   createCustodyService          operator registry    inv1   settlementFactoryCid accountFactoryCid holdingFactoryCid
   createCustodyService          operator registry    inv2   settlementFactoryCid accountFactoryCid holdingFactoryCid
@@ -79,6 +87,7 @@ run  = do
   inv1CashAccount   <- createAccount operator centralBank  inv1   public  (Id "Investor1@CentralBank")  "Investor1@CentralBank" empty
   inv2CashAccount   <- createAccount operator centralBank  inv2   public  (Id "Investor2@CentralBank")  "Investor2@CentralBank" empty
   inv3CashAccount   <- createAccount operator centralBank  inv3   public  (Id "Investor3@CentralBank")  "Investor3@CentralBank" empty
+  borrowerCashAccount   <- createAccount operator centralBank  borrower   public  (Id "Borrower@CentralBank")  "Borrower@CentralBank" empty
   issuerSecAccount  <- createAccount operator registry     issuer public  (Id "Issuer@Registry")        "Issuer@Registry"       empty
   inv1SecAccount    <- createAccount operator registry     inv1   public  (Id "Investor1@Registry")     "Investor1@Registry"    empty
   inv2SecAccount    <- createAccount operator registry     inv2   public  (Id "Investor2@Registry")     "Investor2@Registry"    empty
@@ -103,6 +112,7 @@ run  = do
 
   -- Instruments
   usd     <- originate         centralBank centralBank pub yday "USD"     "United States Dollar"
+  loanToken     <- originateEquity         registry leadArranger  pub yday "USD"     "United States Dollar" -- this will need to be originateGeneric and a cashflow
   tsla    <- originateEquity   registry    issuer      pub yday "TSLA"    "Tesla, Inc. Common Stock"
   nflx    <- originateEquity   registry    issuer      pub yday "NFLX"    "Netflix, Inc. Common Stock"
   fwd     <- originateGeneric  registry    issuer      pub yday "FWD1"    "Forward on TSLA"                 $ futureDvp tsla 20.0 usd 10_000.0 today
@@ -114,47 +124,48 @@ run  = do
   let securities = [tsla, nflx, fwd, bnd, swp, bswp, opt, opt2 ]
 
   -- Distribution
-  inv1CashCid <- coerceContractId <$> deposit operator centralBank inv1 public (Instrument.qty 1_000_000.0 usd) inv1CashAccount
-  inv2CashCid <- coerceContractId <$> deposit operator centralBank inv2 public (Instrument.qty 1_000_000.0 usd) inv2CashAccount
-  inv3CashCid <- coerceContractId <$> deposit operator centralBank inv3 public (Instrument.qty 1_000_000.0 usd) inv3CashAccount
+  -- inv1CashCid <- coerceContractId <$> deposit operator centralBank inv1 public (Instrument.qty 1_000_000.0 usd) inv1CashAccount
+  -- inv2CashCid <- coerceContractId <$> deposit operator centralBank inv2 public (Instrument.qty 1_000_000.0 usd) inv2CashAccount
+  -- inv3CashCid <- coerceContractId <$> deposit operator centralBank inv3 public (Instrument.qty 1_000_000.0 usd) inv3CashAccount
+  borrowerCashCid <- coerceContractId <$> deposit operator centralBank borrower public (Instrument.qty 1_000_000.0 usd) borrowerCashAccount
 
-  (_, ad1) <- issue operator registry issuer public (Instrument.qty 1.0 fwd)           issuerSecAccount
-  (_, ad2) <- issue operator registry issuer public (Instrument.qty 1_000_000.0 bnd)   issuerSecAccount
-  (_, ad3) <- issue operator registry issuer public (Instrument.qty 10_000_000.0 swp)  issuerSecAccount
-  (_, ad4) <- issue operator registry issuer public (Instrument.qty 10_000_000.0 bswp) issuerSecAccount
+  -- (_, ad1) <- issue operator registry issuer public (Instrument.qty 1.0 fwd)           issuerSecAccount
+  -- (_, ad2) <- issue operator registry issuer public (Instrument.qty 1_000_000.0 bnd)   issuerSecAccount
+  -- (_, ad3) <- issue operator registry issuer public (Instrument.qty 10_000_000.0 swp)  issuerSecAccount
+  -- (_, ad4) <- issue operator registry issuer public (Instrument.qty 10_000_000.0 bswp) issuerSecAccount
 
   -- Data
-  createObservation issuer libor3M [(todayTime, 0.0018825)] pub
-  createObservation issuer libor6M [(todayTime, 0.0022363)] pub
-  createCalendar issuer "FED" [Saturday, Sunday] [] pub
-  createAccountDirectory issuer ([(usd, issuerCashAccount)] <> map (\s -> (s, issuerSecAccount)) securities)  $ singleton public
-  createAccountDirectory inv1   ([(usd, inv1CashAccount)] <> map (\s -> (s, inv1SecAccount)) securities)      $ singleton public
-  createAccountDirectory inv2   ([(usd, inv2CashAccount)] <> map (\s -> (s, inv2SecAccount)) securities)      $ singleton public
-  createAccountDirectory inv3   ([(usd, inv3CashAccount)] <> map (\s -> (s, inv3SecAccount)) securities)      $ singleton public
+  -- createObservation issuer libor3M [(todayTime, 0.0018825)] pub
+  -- createObservation issuer libor6M [(todayTime, 0.0022363)] pub
+  -- createCalendar issuer "FED" [Saturday, Sunday] [] pub
+  -- createAccountDirectory issuer ([(usd, issuerCashAccount)] <> map (\s -> (s, issuerSecAccount)) securities)  $ singleton public
+  -- createAccountDirectory inv1   ([(usd, inv1CashAccount)] <> map (\s -> (s, inv1SecAccount)) securities)      $ singleton public
+  -- createAccountDirectory inv2   ([(usd, inv2CashAccount)] <> map (\s -> (s, inv2SecAccount)) securities)      $ singleton public
+  -- createAccountDirectory inv3   ([(usd, inv3CashAccount)] <> map (\s -> (s, inv3SecAccount)) securities)      $ singleton public
 
-  -- Workflows
-  let
-    doAuction = do
-      let quantity = Instrument.qty 1_000_000.0 bnd
-      auctionCid        <- createAuction operator agent issuer public "AUCTION1" quantity usd 0.95 (coerceContractId ad2) issuerCashAccount
-      inv1CollateralCid <- coerceContractId <$> getHolding inv1 (Instrument.qty 500_000.0 usd)
-      inv2CollateralCid <- coerceContractId <$> getHolding inv2 (Instrument.qty 392_000.0 usd)
-      inv3CollateralCid <- coerceContractId <$> getHolding inv3 (Instrument.qty 297_000.0 usd)
-      inv1BidCid        <- createAuctionBid operator agent inv1 public auctionCid 500_000.0 1.0  inv1CollateralCid inv1SecAccount
-      inv2BidCid        <- createAuctionBid operator agent inv2 public auctionCid 400_000.0 0.98 inv2CollateralCid inv2SecAccount
-      inv3BidCid        <- createAuctionBid operator agent inv3 public auctionCid 300_000.0 0.99 inv3CollateralCid inv3SecAccount
-      processAuction operator agent issuer public auctionCid [inv1BidCid, inv2BidCid, inv3BidCid]
+  -- -- Workflows
+  -- let
+  --   doAuction = do
+  --     let quantity = Instrument.qty 1_000_000.0 bnd
+  --     auctionCid        <- createAuction operator agent issuer public "AUCTION1" quantity usd 0.95 (coerceContractId ad2) issuerCashAccount
+  --     inv1CollateralCid <- coerceContractId <$> getHolding inv1 (Instrument.qty 500_000.0 usd)
+  --     inv2CollateralCid <- coerceContractId <$> getHolding inv2 (Instrument.qty 392_000.0 usd)
+  --     inv3CollateralCid <- coerceContractId <$> getHolding inv3 (Instrument.qty 297_000.0 usd)
+  --     inv1BidCid        <- createAuctionBid operator agent inv1 public auctionCid 500_000.0 1.0  inv1CollateralCid inv1SecAccount
+  --     inv2BidCid        <- createAuctionBid operator agent inv2 public auctionCid 400_000.0 0.98 inv2CollateralCid inv2SecAccount
+  --     inv3BidCid        <- createAuctionBid operator agent inv3 public auctionCid 300_000.0 0.99 inv3CollateralCid inv3SecAccount
+  --     processAuction operator agent issuer public auctionCid [inv1BidCid, inv2BidCid, inv3BidCid]
 
-    doTrade = do
-      list operator exchange issuer "SWAP/USD" swp usd $ singleton public
-      createAskOrder operator exchange issuer public (Id "1") (Instrument.qty 250_000.0 swp) (Instrument.qty 1.00 usd) $ singleton public
-      createAskOrder operator exchange issuer public (Id "2") (Instrument.qty 250_000.0 swp) (Instrument.qty 1.00 usd) $ singleton public
-      createBidOrder operator exchange inv1  public (Id "3") (Instrument.qty 400_000.0 swp) (Instrument.qty 1.00 usd) $ singleton public
-      -- createAskOrder operator exchange issuer public "1" (Instrument.qty 250_000.0 swp) (Instrument.qty 0.80 usd) $ singleton public
-      -- createAskOrder operator exchange issuer public "2" (Instrument.qty 250_000.0 swp) (Instrument.qty 0.90 usd) $ singleton public
-      -- createBidOrder operator exchange inv1  public "3" (Instrument.qty 500_000.0 swp) (Instrument.qty 0.90 usd) $ singleton public
+  --   doTrade = do
+  --     list operator exchange issuer "SWAP/USD" swp usd $ singleton public
+  --     createAskOrder operator exchange issuer public (Id "1") (Instrument.qty 250_000.0 swp) (Instrument.qty 1.00 usd) $ singleton public
+  --     createAskOrder operator exchange issuer public (Id "2") (Instrument.qty 250_000.0 swp) (Instrument.qty 1.00 usd) $ singleton public
+  --     createBidOrder operator exchange inv1  public (Id "3") (Instrument.qty 400_000.0 swp) (Instrument.qty 1.00 usd) $ singleton public
+  --     -- createAskOrder operator exchange issuer public "1" (Instrument.qty 250_000.0 swp) (Instrument.qty 0.80 usd) $ singleton public
+  --     -- createAskOrder operator exchange issuer public "2" (Instrument.qty 250_000.0 swp) (Instrument.qty 0.90 usd) $ singleton public
+  --     -- createBidOrder operator exchange inv1  public "3" (Instrument.qty 500_000.0 swp) (Instrument.qty 0.90 usd) $ singleton public
 
-  --doAuction
-  --doTrade
+  -- --doAuction
+  -- --doTrade
 
   pure parties
