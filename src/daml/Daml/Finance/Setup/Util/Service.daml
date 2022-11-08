@@ -19,6 +19,7 @@ import Daml.Finance.App.Distribution.Auction.Auto.Service qualified as AuctionAu
 import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (Accept(..), Service)
 import Daml.Finance.App.Distribution.Bidding.Auto.Service qualified as BiddingAuto (Accept(..), Service)
 import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Accept(..), Service)
+import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (Accept(..), Service)
 import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Accept(..), Service)
 import Daml.Finance.App.Role.Custodian qualified as Custodian
 import Daml.Finance.App.Role.Distributor qualified as Distributor
@@ -142,3 +143,8 @@ createSettlementService : Party -> Party -> Party -> Script (ContractId Settleme
 createSettlementService operator custodian customer = do
   offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferSettlementService with customer
   submit customer do exerciseCmd offerCid Settlement.Accept
+
+createInvestmentService : Party -> Party -> Party -> Script (ContractId Investment.Service)
+createInvestmentService operator provider customer = do
+  offerCid <- submit provider do exerciseByKeyCmd @Distributor.Role (operator, provider) Distributor.OfferInvestmentService with customer
+  submit customer do exerciseCmd offerCid Investment.Accept

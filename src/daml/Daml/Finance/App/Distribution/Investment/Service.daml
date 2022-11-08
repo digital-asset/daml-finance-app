@@ -1,0 +1,96 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Distribution.Investment.Service where
+
+import DA.Set (fromList, singleton)
+import Daml.Finance.App.Distribution.Investment.Model (GetFund(..), Fund, InvestmentRequest(..))
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
+import Daml.Finance.Interface.Holding.Lockable qualified as Lockable (Acquire(..), I, LockType(..))
+import Daml.Finance.Interface.Holding.Util (getAmount, getInstrument)
+import Daml.Finance.Interface.Types.Common (Id)
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
+
+template Service
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, customer) : (Party, Party, Party)
+    maintainer key._1
+
+    nonconsuming choice RequestInvestment : ContractId InvestmentRequest
+      with
+        requestId : Id
+        fundCid : ContractId Fund
+        cashCid : ContractId Fungible.I
+      controller customer
+      do
+        -- Disclose holding
+        cash <- fetch cashCid
+        cashCid : ContractId Fungible.I <- coerceContractId <$> exercise (coerceContractId cashCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (show requestId, singleton provider)
+
+        -- Lock holding
+        cashCid <- coerceContractId <$> exercise (coerceContractId cashCid : ContractId Lockable.I) Lockable.Acquire with newLocker = fromList [ provider ]; context = show requestId; lockType = Lockable.Semaphore
+
+        fund <- exercise fundCid GetFund with actor = customer
+        let quantity = Instrument.qty (getAmount cash) (getInstrument cash) 
+        create InvestmentRequest with operator; provider; customer; manager = fund.manager; requestId; quantity; fundId = fund.id; cashCid
+
+    choice Terminate : ()
+      with
+        actor : Party
+      controller actor
+      do
+        assert $ actor == operator || actor == provider || actor == customer
+        pure ()
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider
+    observer customer
+
+    choice Accept : ContractId Service
+      controller customer
+      do
+        create Service with ..
+
+    choice Decline : ()
+      controller customer
+      do
+        return ()
+
+    choice Withdraw : ()
+      controller provider
+      do pure ()
+
+template Request
+  with
+    provider : Party
+    customer : Party
+  where
+    signatory customer
+    observer provider
+
+    choice Cancel : ()
+      controller customer
+      do pure ()
+
+    choice Reject : ()
+      controller provider
+      do pure ()
+
+    choice Approve : ContractId Service
+      with
+        operator : Party
+      controller operator, provider
+      do
+        create Service with ..

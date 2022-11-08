@@ -1,0 +1,92 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.Setup.Scenario.FundTokenization where
+
+import DA.Date (Month(..), date)
+import DA.Map (empty, fromList)
+import DA.Set (singleton)
+import DA.Time (time)
+import Daml.Finance.App.Distribution.Investment.Model (Fund(..))
+import Daml.Finance.Holding.Account qualified as Account (Factory(..))
+import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
+import Daml.Finance.Interface.Types.Common (Id(..))
+import Daml.Finance.Settlement.Factory qualified as Settlement (Factory(..))
+import Daml.Finance.Setup.Util.Common
+import Daml.Finance.Setup.Util.Role
+import Daml.Finance.Setup.Util.Service
+import Daml.Finance.Setup.Util.Workflow
+import Daml.Script
+
+run : Script [PartyInfo]
+run = do
+  let scenario = "Fund Tokenization"
+  parties <- allocateParties scenario ["Operator", "Public", "CashProvider", "AssetManager", "PortfolioManager", "Custodian", "Investor1", "Investor2", "Investor3"]
+  let
+    all@[operator, public, cashProvider, am, pm, custodian, inv1, inv2, inv3] = map (.id) parties
+    pub = fromList [("Public", singleton public)]
+
+  -- Factories
+  accountFactoryCid    <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
+  holdingFactoryCid    <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
+  settlementFactoryCid <- toInterfaceContractId <$> submit operator do createCmd Settlement.Factory with provider = operator; observers = singleton public
+
+  -- Roles
+  createOperatorRole operator
+  createCustodianRole operator cashProvider
+  createCustodianRole operator custodian
+  createCustodianRole operator am
+  createDistributorRole operator am
+
+  -- Services
+  createCustodyService          operator cashProvider am        settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator cashProvider custodian settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator am           inv1      settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator am           inv2      settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator am           inv3      settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator custodian    am        settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator custodian    pm        settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createIssuanceService         operator custodian    pm
+  createIssuanceAutoService     operator custodian    pm
+  createStructuringService      operator custodian    pm
+  createStructuringAutoService  operator custodian    pm
+  createInvestmentService       operator am           inv1
+  createInvestmentService       operator am           inv2
+  createInvestmentService       operator am           inv3
+
+  -- Accounts
+  amCashAccount         <- createAccount operator cashProvider  am        public (Id "AssetManager@CashProvider/Cash")        "AssetManager@CashProvider/Cash"        empty
+  custodianCashAccount  <- createAccount operator cashProvider  custodian public (Id "Custodian@CashProvider/Cash")           "Custodian@CashProvider/Cash"           empty
+  inv1CashAccount       <- createAccount operator am            inv1      public (Id "Investor1@AssetManager/Cash")           "Investor1@AssetManager/Cash"           empty
+  inv2CashAccount       <- createAccount operator am            inv2      public (Id "Investor2@AssetManager/Cash")           "Investor2@AssetManager/Cash"           empty
+  inv3CashAccount       <- createAccount operator am            inv3      public (Id "Investor3@AssetManager/Cash")           "Investor3@AssetManager/Cash"           empty
+  amSecAccount          <- createAccount operator custodian     am        public (Id "AssetManager@Custodian/Securties")      "AssetManager@Custodian/Securties"      empty
+  pmSecAccount          <- createAccount operator custodian     pm        public (Id "PortfolioManager@Custodian/Securities") "PortfolioManager@Custodian/Securities" empty
+  inv1SecAccount        <- createAccount operator am            inv1      public (Id "Investor1@AssetManager/Securities")     "Investor1@AssetManager/Securities"     empty
+  inv2SecAccount        <- createAccount operator am            inv2      public (Id "Investor2@AssetManager/Securities")     "Investor2@AssetManager/Securities"     empty
+  inv3SecAccount        <- createAccount operator am            inv3      public (Id "Investor3@AssetManager/Securities")     "Investor3@AssetManager/Securities"     empty
+
+  -- Time
+  let
+    tt d = time d 12 0 0
+    epoch = tt $ date 1970 Jan 1
+
+  -- Instruments
+  usd   <- originate                    cashProvider  cashProvider  pub epoch "USD"   "United States Dollar"
+  fund1 <- originate                    custodian     pm            pub epoch "FUND1" "FUND1 Units"
+  fund2 <- originate                    custodian     pm            pub epoch "FUND2" "FUND2 Units"
+  fund3 <- originate                    custodian     pm            pub epoch "FUND3" "FUND3 Units"
+
+  -- Holdings
+  deposit operator cashProvider am    public (Instrument.qty 10_000_000.0 usd) amCashAccount
+  deposit operator am           inv1  public (Instrument.qty  6_000_000.0 usd) inv1CashAccount
+  deposit operator am           inv2  public (Instrument.qty  3_000_000.0 usd) inv2CashAccount
+  deposit operator am           inv3  public (Instrument.qty  1_000_000.0 usd) inv3CashAccount
+
+  -- Data
+  submitMulti [operator, custodian, pm] [] do createCmd Fund with operator; custodian; manager = pm; public; id = Id "FUND1"; description = "Fund 1"; instrument = fund1; currency = usd
+  submitMulti [operator, custodian, pm] [] do createCmd Fund with operator; custodian; manager = pm; public; id = Id "FUND2"; description = "Fund 2"; instrument = fund2; currency = usd
+  submitMulti [operator, custodian, pm] [] do createCmd Fund with operator; custodian; manager = pm; public; id = Id "FUND3"; description = "Fund 3"; instrument = fund3; currency = usd
+
+  pure parties

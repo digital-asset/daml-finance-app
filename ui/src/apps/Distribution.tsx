@@ -11,23 +11,28 @@ import { New as NewSubscription} from "../pages/distribution/offering/New";
 import { useParty } from "@daml/react";
 import { Requests } from "../pages/distribution/auction/Requests";
 import { Bidding } from "../pages/distribution/auction/Bidding";
-import { App } from "./App";
+import { Requests as InvestmentRequests} from "../pages/distribution/investment/Requests";
+import { New as NewInvestment} from "../pages/distribution/investment/New";
 import { Spinner } from "../components/Spinner/Spinner";
 import { Offerings } from "../pages/distribution/offering/Offerings";
 import { Offering } from "../pages/distribution/offering/Offering";
 import { useServices } from "../context/ServiceContext";
+import { App } from "./App";
 
 export const Distribution : React.FC = () => {
   const party = useParty();
-  const { loading: l1, auction, subscription } = useServices();
+  const { loading: l1, auction, investment, subscription } = useServices();
   if (l1) return <Spinner />;
 
   const providerAuctionService = auction.find(c => c.payload.provider === party);
   const customerAuctionService = auction.find(c => c.payload.customer === party);
   const providerSubscriptionService = subscription.find(c => c.payload.provider === party);
   const customerSubscriptionService = subscription.find(c => c.payload.customer === party);
+  const providerInvestmentService = investment.find(c => c.payload.provider === party);
+  const customerInvestmentService = investment.find(c => c.payload.customer === party);
   const isAgent = !!providerAuctionService || !!providerSubscriptionService;
   const isIssuer = !!customerAuctionService || !!customerSubscriptionService;
+  const isInvestor = !!customerInvestmentService;
 
   const entries : Entry[] = [];
   if (isIssuer) {
@@ -40,10 +45,14 @@ export const Distribution : React.FC = () => {
     entries.push({ label: "Auctions", path: "auctions", element: <Auctions /> });
     entries.push({ label: "Offerings", path: "offerings", element: <Offerings /> });
     entries.push({ label: "Requests", path: "requests", element: <Requests /> });
+  } else if (isInvestor) {
+    entries.push({ label: "Investment Requests", path: "investmentrequests", element: <InvestmentRequests /> });
+    entries.push({ label: "New Investment", path: "new/investment", element: <NewInvestment />, action: true });
   } else {
     entries.push({ label: "Auctions", path: "auctions", element: <BiddingAuctions /> });
     entries.push({ label: "Offerings", path: "offerings", element: <Offerings /> });
   }
+
   const paths = [
     { path: "auctions/:contractId", element: <Auction /> },
     { path: "auction/:contractId", element: <Bidding /> },

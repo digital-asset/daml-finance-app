@@ -7,6 +7,7 @@ import Daml.Finance.App.Distribution.Auction.Auto.Service qualified as AuctionAu
 import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Distribution.Bidding.Auto.Service qualified as BiddingAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Approve(..), Offer(..), Request, Service, Terminate(..))
 
 template Role
@@ -124,6 +125,27 @@ template Role
       controller provider
       do
         exerciseByKey @Subscription.Service (operator, provider, customer) Subscription.Terminate with actor = provider
+
+    nonconsuming choice OfferInvestmentService : ContractId Investment.Offer
+      with
+        customer : Party
+      controller provider
+      do
+        create Investment.Offer with ..
+
+    nonconsuming choice ApproveInvestmentServiceRequest : ContractId Investment.Service
+      with
+        investmentServiceRequestCid : ContractId Investment.Request
+      controller provider
+      do
+        exercise investmentServiceRequestCid Investment.Approve with ..
+
+    nonconsuming choice TerminateInvestmentService : ()
+      with
+        customer : Party
+      controller provider
+      do
+        exerciseByKey @Investment.Service (operator, provider, customer) Investment.Terminate with actor = provider
 
     choice Terminate : ()
       with
