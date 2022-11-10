@@ -7,6 +7,7 @@ import DA.List (dedup)
 import DA.Map qualified as M (lookup)
 import DA.Optional (fromSome)
 import DA.Set (singleton)
+import DA.Time (time)
 import Daml.Finance.App.Data.AccountDirectory (AccountDirectory)
 import Daml.Finance.App.Distribution.Fund.Model qualified as Fund (ApproveInstruction(..), GetFund(..), IssueUnits(..), PooledInvestmentRequest(..), Remove(..), T)
 import Daml.Finance.App.Distribution.Investment.Model (AllocateInstruction(..), ApproveInstruction(..), Delete(..), InvestmentRequest(..))
@@ -20,9 +21,7 @@ import Daml.Finance.Interface.Settlement.Factory qualified as Settlement (Factor
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Types (Allocation(..), Approval(..), Step(..))
 import Daml.Finance.Interface.Types.Common (Id)
-import Daml.Finance.Interface.Types.Date.Classes (toUTCTime)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
-import Daml.Finance.Lifecycle.Types (Unit(..))
 
 type S = Service
 
@@ -76,7 +75,7 @@ template Service
         fund <- fetch fundCid
 
         -- Calculate nr of units to issue
-        nav <- exercise navObservableCid Observable.Observe with actors = singleton customer; t = toUTCTime $ Unit pir.asOfDate
+        nav <- exercise navObservableCid Observable.Observe with actors = singleton customer; t = time pir.asOfDate 0 0 0
         let
           unitValue = nav / fund.totalUnits
           nrUnits = pir.quantity.amount / unitValue
