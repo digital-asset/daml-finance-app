@@ -25,7 +25,6 @@ export default makeStyles((theme : Theme) => createStyles({
       paddingRight: 0,
       paddingTop: 1,
       paddingBottom: 0,
-      width: 100
     },
     fontWeight: 700,
     color: theme.palette.primary.main

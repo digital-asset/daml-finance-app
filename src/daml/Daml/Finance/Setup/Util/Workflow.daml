@@ -10,10 +10,14 @@ import DA.Set (fromList, singleton)
 import DA.Text (parseInt)
 import Daml.Finance.App.Custody.Service qualified as Custody (Deposit(..), OpenAccount(..), RequestDeposit(..), RequestOpenAccount(..), Service)
 import Daml.Finance.App.Data.AccountDirectory (AccountDirectory(..))
-import Daml.Finance.App.Distribution.Bidding.Model qualified as Bidding (Bid)
-import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (CreateBid(..), RequestCreateBid(..), S)
 import Daml.Finance.App.Distribution.Auction.Model qualified as Auction (T)
 import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (CreateAuction(..), ProcessAuction(..), RequestCreateAuction(..), S)
+import Daml.Finance.App.Distribution.Bidding.Model qualified as Bidding (Bid)
+import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (CreateBid(..), RequestCreateBid(..), S)
+import Daml.Finance.App.Distribution.Fund.Model qualified as Fund (PooledInvestmentRequest, T)
+import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (FulfillPooledInvestmentRequest(..), PoolInvestmentRequests(..), S)
+import Daml.Finance.App.Distribution.Investment.Model qualified as Investment (InvestmentRequest)
+import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (RequestInvestment(..), S)
 import Daml.Finance.App.Issuance.Model qualified as Issuance (T)
 import Daml.Finance.App.Issuance.Service qualified as Issuance (CreateIssuance(..), RequestCreateIssuance(..), Service)
 import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Service, DeclareDividend(..), DeclareStockSplit(..), DeclareReplacement(..))
@@ -32,7 +36,7 @@ import Daml.Finance.Instrument.Bond.ZeroCoupon.Instrument qualified as ZeroCoupo
 import Daml.Finance.Instrument.Generic.Instrument qualified as Generic (Instrument(..))
 import Daml.Finance.Instrument.Swap.CreditDefault.Instrument qualified as CreditDefaultSwap (Instrument(..))
 import Daml.Finance.Interface.Claims.Types (C)
-import Daml.Finance.Interface.Data.Observable qualified as Data (Observable)
+import Daml.Finance.Interface.Data.Observable qualified as Observable (I)
 import Daml.Finance.Interface.Holding.Account qualified as Account (K, R)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
@@ -43,6 +47,7 @@ import Daml.Finance.Interface.Lifecycle.Event qualified as Event (I)
 import Daml.Finance.Interface.Lifecycle.Effect qualified as Effect (I)
 import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Claim (ClaimEffect(..), ClaimResult(..))
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (I)
+import Daml.Finance.Interface.Settlement.Factory qualified as SettlementFactory (I)
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (I, Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Types qualified as Settlement (Allocation, Approval)
 import Daml.Finance.Interface.Types.Common (Id(..), Parties, PartiesMap)
@@ -111,7 +116,7 @@ createClockAndEvent providers today observers = do
   eventCid <- toInterfaceContractId <$> submitMulti providers [] do createCmd DateClock.Event with providers = fromList providers; id; description; date; observers
   pure (clockCid, eventCid)
 
-createObservation : Party -> Text -> [(Time, Decimal)] -> M.Map Text Parties -> Script (ContractId Data.Observable)
+createObservation : Party -> Text -> [(Time, Decimal)] -> M.Map Text Parties -> Script (ContractId Observable.I)
 createObservation provider id observations observers = do
   toInterfaceContractId <$> submit provider do createCmd Data.Observation with provider; id = Id id; observations = M.fromList observations; observers
 
@@ -296,3 +301,15 @@ allocateAndApprove operator settler instructionCid allocation approval = do
   Some i <- queryContractId @Instruction.T settler $ coerceContractId instructionCid
   instructionCid <- fst <$> submit i.step.sender do exerciseCmd instructionCid Instruction.Allocate with allocation
   submit i.step.receiver do exerciseCmd instructionCid Instruction.Approve with approval
+
+createInvestmentRequest : Party -> Party -> Party -> Party -> Text -> Date -> ContractId Fund.T -> ContractId Transferable.I -> Script (ContractId Investment.InvestmentRequest)
+createInvestmentRequest operator provider customer public id asOfDate fundCid cashCid =
+  submitMulti [customer] [public] do exerciseByKeyCmd @Investment.S (operator, provider, customer) Investment.RequestInvestment with requestId = Id id; asOfDate; fundCid; cashCid
+
+poolInvestmentRequests : Party -> Party -> Party -> Party -> Text -> Date -> ContractId Fund.T -> ContractId Transferable.I -> [ContractId Investment.InvestmentRequest] -> Script (ContractId Fund.PooledInvestmentRequest)
+poolInvestmentRequests operator provider customer public id asOfDate fundCid cashCid investmentRequestCids =
+  submitMulti [customer] [public] do exerciseByKeyCmd @Fund.S (operator, provider, customer) Fund.PoolInvestmentRequests with requestId = Id id; asOfDate; fundCid; cashCid; investmentRequestCids
+
+fulfillPooledInvestmentRequest : Party -> Party -> Party -> Party -> ContractId Fund.T -> ContractId Fund.PooledInvestmentRequest -> ContractId Observable.I -> ContractId SettlementFactory.I -> Script [ContractId Transferable.I]
+fulfillPooledInvestmentRequest operator provider customer public fundCid pooledInvestmentRequestCid navObservableCid settlementFactoryCid =
+  submitMulti [provider] [public] do exerciseByKeyCmd @Fund.S (operator, provider, customer) Fund.FulfillPooledInvestmentRequest with fundCid; pooledInvestmentRequestCid; navObservableCid; settlementFactoryCid

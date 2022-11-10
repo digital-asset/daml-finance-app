@@ -15,7 +15,7 @@ type SelectionTableProps = {
   values : any[][]
   alignment? : Alignment[]
   action : string
-  onExecute : (value : any) => Promise<void>
+  onExecute : (values : any[]) => Promise<void>
   callbackValues : any[]
 }
 
@@ -41,7 +41,8 @@ export const SelectionTable : React.FC<SelectionTableProps> = ({ title, variant,
   };
 
   const onExecuteAll = async () => {
-    await Promise.all(selected.map(i => onExecute(callbackValues[i])));
+    const filtered = callbackValues.filter((_, i) => selected.includes(i));
+    await onExecute(filtered);
     setSelected([]);
   };
 

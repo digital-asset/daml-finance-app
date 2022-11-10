@@ -11,6 +11,7 @@ import { Service as AuctionAutoService } from "@daml.js/daml-finance-app/lib/Dam
 import { Service as BiddingService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Bidding/Service"
 import { Service as BiddingAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Bidding/Auto/Service"
 import { Service as SubscriptionService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Service"
+import { Service as FundService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Fund/Service"
 import { Service as InvestmentService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Investment/Service"
 import { Service as IssuanceService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Service"
 import { Service as IssuanceAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Auto/Service"
@@ -25,26 +26,27 @@ import { Service as TradingService } from "@daml.js/daml-finance-app/lib/Daml/Fi
 import { Service as TradingAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Trading/Auto/Service"
 
 export type ServicesState = {
-  loading : boolean
-  backToBack : readonly CreateEvent<BackToBackService, BackToBackService.Key>[]
-  custody : readonly CreateEvent<CustodyService, CustodyService.Key>[]
-  auctionAuto : readonly CreateEvent<AuctionAutoService, AuctionAutoService.Key>[]
-  auction : readonly CreateEvent<AuctionService, AuctionService.Key>[]
-  biddingAuto : readonly CreateEvent<BiddingAutoService, BiddingAutoService.Key>[]
-  bidding : readonly CreateEvent<BiddingService, BiddingService.Key>[]
-  investment  :readonly  CreateEvent<InvestmentService, InvestmentService.Key>[]
-  issuanceAuto  :readonly  CreateEvent<IssuanceAutoService, IssuanceAutoService.Key>[]
-  issuance  :readonly  CreateEvent<IssuanceService, IssuanceService.Key>[]
-  lending : readonly CreateEvent<LendingService, LendingService.Key>[]
-  lifecycle : readonly CreateEvent<LifecycleService, LifecycleService.Key>[]
-  listingAuto : readonly CreateEvent<ListingAutoService, ListingAutoService.Key>[]
-  listing : readonly CreateEvent<ListingService, ListingService.Key>[]
-  settlement : readonly CreateEvent<SettlementService, SettlementService.Key>[]
+  loading         : boolean
+  backToBack      : readonly CreateEvent<BackToBackService, BackToBackService.Key>[]
+  custody         : readonly CreateEvent<CustodyService, CustodyService.Key>[]
+  auctionAuto     : readonly CreateEvent<AuctionAutoService, AuctionAutoService.Key>[]
+  auction         : readonly CreateEvent<AuctionService, AuctionService.Key>[]
+  biddingAuto     : readonly CreateEvent<BiddingAutoService, BiddingAutoService.Key>[]
+  bidding         : readonly CreateEvent<BiddingService, BiddingService.Key>[]
+  fund            : readonly CreateEvent<InvestmentService, InvestmentService.Key>[]
+  investment      : readonly CreateEvent<InvestmentService, InvestmentService.Key>[]
+  issuanceAuto    : readonly CreateEvent<IssuanceAutoService, IssuanceAutoService.Key>[]
+  issuance        : readonly CreateEvent<IssuanceService, IssuanceService.Key>[]
+  lending         : readonly CreateEvent<LendingService, LendingService.Key>[]
+  lifecycle       : readonly CreateEvent<LifecycleService, LifecycleService.Key>[]
+  listingAuto     : readonly CreateEvent<ListingAutoService, ListingAutoService.Key>[]
+  listing         : readonly CreateEvent<ListingService, ListingService.Key>[]
+  settlement      : readonly CreateEvent<SettlementService, SettlementService.Key>[]
   structuringAuto : readonly CreateEvent<StructuringAutoService, StructuringAutoService.Key>[]
-  structuring : readonly CreateEvent<StructuringService, StructuringService.Key>[]
-  subscription  :readonly  CreateEvent<SubscriptionService, SubscriptionService.Key>[]
-  tradingAuto : readonly CreateEvent<TradingAutoService, TradingAutoService.Key>[]
-  trading : readonly CreateEvent<TradingService, TradingService.Key>[]
+  structuring     : readonly CreateEvent<StructuringService, StructuringService.Key>[]
+  subscription    : readonly CreateEvent<SubscriptionService, SubscriptionService.Key>[]
+  tradingAuto     : readonly CreateEvent<TradingAutoService, TradingAutoService.Key>[]
+  trading         : readonly CreateEvent<TradingService, TradingService.Key>[]
 };
 
 const empty = {
@@ -55,6 +57,7 @@ const empty = {
   auction: [],
   biddingAuto: [],
   bidding: [],
+  fund: [],
   investment: [],
   issuanceAuto: [],
   issuance: [],
@@ -80,20 +83,21 @@ export const ServicesProvider : React.FC = ({ children }) => {
   const { loading: l4,  contracts: auction }          = useStreamQueries(AuctionService);
   const { loading: l5,  contracts: biddingAuto }      = useStreamQueries(BiddingAutoService);
   const { loading: l6,  contracts: bidding }          = useStreamQueries(BiddingService);
-  const { loading: l7,  contracts: investment }       = useStreamQueries(InvestmentService);
-  const { loading: l8,  contracts: issuanceAuto }     = useStreamQueries(IssuanceAutoService);
-  const { loading: l9,  contracts: issuance }         = useStreamQueries(IssuanceService);
-  const { loading: l10,  contracts: lending }          = useStreamQueries(LendingService);
-  const { loading: l11, contracts: lifecycle }        = useStreamQueries(LifecycleService);
-  const { loading: l12, contracts: listingAuto }      = useStreamQueries(ListingAutoService);
-  const { loading: l13, contracts: listing }          = useStreamQueries(ListingService);
-  const { loading: l14, contracts: settlement }       = useStreamQueries(SettlementService);
-  const { loading: l15, contracts: structuringAuto }  = useStreamQueries(StructuringAutoService);
-  const { loading: l16, contracts: structuring }      = useStreamQueries(StructuringService);
-  const { loading: l17, contracts: subscription }     = useStreamQueries(SubscriptionService);
-  const { loading: l18, contracts: tradingAuto }      = useStreamQueries(TradingAutoService);
-  const { loading: l19, contracts: trading }          = useStreamQueries(TradingService);
-  const loading = l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8 || l9 || l10 || l11 || l12 || l13 || l14 || l15 || l16 || l17 || l18 || l19;
+  const { loading: l7,  contracts: fund }             = useStreamQueries(FundService);
+  const { loading: l8,  contracts: investment }       = useStreamQueries(InvestmentService);
+  const { loading: l9,  contracts: issuanceAuto }     = useStreamQueries(IssuanceAutoService);
+  const { loading: l10, contracts: issuance }         = useStreamQueries(IssuanceService);
+  const { loading: l11, contracts: lending }          = useStreamQueries(LendingService);
+  const { loading: l12, contracts: lifecycle }        = useStreamQueries(LifecycleService);
+  const { loading: l13, contracts: listingAuto }      = useStreamQueries(ListingAutoService);
+  const { loading: l14, contracts: listing }          = useStreamQueries(ListingService);
+  const { loading: l15, contracts: settlement }       = useStreamQueries(SettlementService);
+  const { loading: l16, contracts: structuringAuto }  = useStreamQueries(StructuringAutoService);
+  const { loading: l17, contracts: structuring }      = useStreamQueries(StructuringService);
+  const { loading: l18, contracts: subscription }     = useStreamQueries(SubscriptionService);
+  const { loading: l19, contracts: tradingAuto }      = useStreamQueries(TradingAutoService);
+  const { loading: l20, contracts: trading }          = useStreamQueries(TradingService);
+  const loading = l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8 || l9 || l10 || l11 || l12 || l13 || l14 || l15 || l16 || l17 || l18 || l19 || l20;
 
   const value = {
     loading,
@@ -103,6 +107,7 @@ export const ServicesProvider : React.FC = ({ children }) => {
     auction,
     biddingAuto,
     bidding,
+    fund,
     investment,
     issuanceAuto,
     issuance,

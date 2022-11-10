@@ -166,13 +166,13 @@ export const scenarios : Scenario[] = [
     positions: new Map([
       [ "Operator",         { x:    0, y:   0 } ],
       [ "Public",           { x:    0, y:   0 } ],
-      [ "CashProvider",     { x:  200, y:   0 } ],
-      [ "AssetManager",     { x:  200, y: 300 } ],
+      [ "CashProvider",     { x:  300, y:   0 } ],
+      [ "AssetManager",     { x:  300, y: 300 } ],
       [ "PortfolioManager", { x:    0, y: 300 } ],
       [ "Custodian",        { x:    0, y: 150 } ],
       [ "Investor1",        { x:    0, y: 450 } ],
-      [ "Investor2",        { x:  200, y: 525 } ],
-      [ "Investor3",        { x:  400, y: 450 } ]
+      [ "Investor2",        { x:  300, y: 525 } ],
+      [ "Investor3",        { x:  600, y: 450 } ]
     ]),
     useNetworkLogin: true
   }

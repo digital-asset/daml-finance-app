@@ -5,41 +5,39 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import classnames from "classnames";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
-import { Typography, Grid, Paper, Select, MenuItem, TextField, Button, MenuProps, FormControl, InputLabel } from "@mui/material";
+import { Typography, Grid, Paper, Button } from "@mui/material";
 import useStyles from "../../styles";
 import { Spinner } from "../../../components/Spinner/Spinner";
-import { Reference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
-import { createSet } from "../../../util";
-import { useParties } from "../../../context/PartiesContext";
-import { useInstruments } from "../../../context/InstrumentContext";
 import { useServices } from "../../../context/ServiceContext";
 import { Service as Investment } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Investment/Service";
 import { Message } from "../../../components/Message/Message";
 import { useHoldings } from "../../../context/HoldingContext";
-import { Fund } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Investment/Model";
 import { TextInput } from "../../../components/Form/TextInput";
 import { SelectInput } from "../../../components/Form/SelectInput";
+import { Fund } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Fund/Model";
+import { ContractId } from "@daml/types";
+import { Transferable } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Transferable";
+import { useParties } from "../../../context/PartiesContext";
 
 export const New : React.FC = () => {
   const cls = useStyles();
   const navigate = useNavigate();
 
-  const [ requestId, setRequestId ] = useState("");
   const [ fundId, setFundId ] = useState("");
   const [ amount, setAmount ] = useState("");
 
   const ledger = useLedger();
   const party = useParty();
-  const { loading: l1, investment } = useServices();
-  const { loading: l2, tokens } = useInstruments();
-  const { loading: l3, getFungible } = useHoldings();
-  const { loading: l4, contracts: funds } = useStreamQueries(Fund);
+  const { getName } = useParties();
 
-  if (l1 || l2 || l3 || l4) return <Spinner />;
+  const { loading: l1, investment } = useServices();
+  const { loading: l2, getFungible } = useHoldings();
+  const { loading: l3, contracts: funds } = useStreamQueries(Fund);
+  if (l1 || l2 || l3) return <Spinner />;
 
   const myServices = investment.filter(s => s.payload.customer === party);
   const fund = funds.find(c => c.payload.id.unpack === fundId);
-  const canRequest = !!requestId && !!fundId && !!amount;
+  const canRequest = !!fundId && !!amount;
   const amountLabel = "Amount (" + (!!fund ? fund.payload.currency.id.unpack : "CCY") + ")";
   const fundValues = funds.map(c => ({ value: c.payload.id.unpack, display: c.payload.id.unpack + " - " + c.payload.description }));
   if (myServices.length === 0) return <Message text={"No investment service found for customer: " + party} />;
@@ -47,12 +45,13 @@ export const New : React.FC = () => {
   const requestInvestment = async () => {
     if (!fund) return;
     const cashCid = await getFungible(party, amount, fund.payload.currency);
-    // const receivableAccount = accounts.find(c => c.payload.accountView.custodian === currency.payload.depository && c.payload.accountView.owner === party)?.key;
-    // if (!receivableAccount) return;
+    const today = new Date().toISOString().substring(0, 10);
+    const requestId = "REQ/" + fund.payload.id.unpack + "/" + getName(party) + "/" + today;
     const arg = {
       requestId: { unpack: requestId },
+      asOfDate: today,
       fundCid: fund.contractId,
-      cashCid
+      cashCid: cashCid as string as ContractId<Transferable>
     };
     await ledger.exercise(Investment.RequestInvestment, myServices[0].contractId, arg);
     navigate("/app/distribution/investmentrequests");
@@ -68,7 +67,6 @@ export const New : React.FC = () => {
           <Grid item xs={4} />
           <Grid item xs={4}>
             <Paper className={classnames(cls.fullWidth, cls.paper)}>
-              <TextInput    label="RequestId"   value={requestId} setValue={setRequestId} />
               <SelectInput  label="Fund"        value={fundId}    setValue={setFundId}  values={fundValues} />
               <TextInput    label={amountLabel} value={amount}    setValue={setAmount} />
               <Button className={classnames(cls.fullWidth, cls.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={requestInvestment}>Request Investment</Button>
