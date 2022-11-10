@@ -88,5 +88,9 @@ run = do
   submitMulti [operator, custodian, pm] [] do createCmd Fund with operator; custodian; manager = pm; public; id = Id "FUND1"; description = "Fund 1"; instrument = fund1; currency = usd
   submitMulti [operator, custodian, pm] [] do createCmd Fund with operator; custodian; manager = pm; public; id = Id "FUND2"; description = "Fund 2"; instrument = fund2; currency = usd
   submitMulti [operator, custodian, pm] [] do createCmd Fund with operator; custodian; manager = pm; public; id = Id "FUND3"; description = "Fund 3"; instrument = fund3; currency = usd
+  createAccountDirectory custodian  [(usd, custodianCashAccount)] $ singleton public
+  -- createAccountDirectory inv1       ([(usd, inv1CashAccount)] <> map (\s -> (s, inv1SecAccount)) securities)            $ singleton public
+  -- createAccountDirectory inv2       ([(usd, inv2CashAccount)] <> map (\s -> (s, inv2SecAccount)) securities)            $ singleton public
+  -- createAccountDirectory inv3       ([(usd, inv3CashAccount)] <> map (\s -> (s, inv3SecAccount)) securities)            $ singleton public
 
   pure parties

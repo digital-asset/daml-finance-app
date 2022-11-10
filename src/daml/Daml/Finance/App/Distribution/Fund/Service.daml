@@ -1,17 +1,17 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module Daml.Finance.App.Distribution.Investment.Service where
+module Daml.Finance.App.Distribution.Fund.Service where
 
-import DA.Set (fromList, singleton)
-import Daml.Finance.App.Distribution.Fund.Model (GetFund(..), Fund)
+import DA.Set (singleton)
+import Daml.Finance.App.Distribution.Fund.Model (Fund)
 import Daml.Finance.App.Distribution.Investment.Model (InvestmentRequest(..))
+import Daml.Finance.App.Issuance.Service qualified as Issuance (CreateIssuance(..), RequestCreateIssuance(..), Service)
+import Daml.Finance.Interface.Data.Observable qualified as Observable (I, Observe(..))
+import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I, Transfer(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
-import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Holding.Lockable qualified as Lockable (Acquire(..), I, LockType(..))
-import Daml.Finance.Interface.Holding.Util (getAmount, getInstrument)
-import Daml.Finance.Interface.Types.Common (Id)
-import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
+import Daml.Finance.Interface.Types.Date.Classes (toUTCTime)
+import Daml.Finance.Lifecycle.Types (Unit(..))
 
 template Service
   with
@@ -24,24 +24,26 @@ template Service
     key (operator, provider, customer) : (Party, Party, Party)
     maintainer key._1
 
-    nonconsuming choice RequestInvestment : ContractId InvestmentRequest
+    nonconsuming choice FulfillInvestmentRequest : ContractId InvestmentRequest
       with
-        requestId : Id
-        asOfDate : Date
-        fundCid : ContractId Fund
-        cashCid : ContractId Fungible.I
+        investmentRequestCid : ContractId InvestmentRequest
+        navObservableCid : ContractId Observable.I
       controller customer
       do
-        -- Disclose holding
-        cash <- fetch cashCid
-        cashCid : ContractId Fungible.I <- coerceContractId <$> exercise (coerceContractId cashCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (show requestId, singleton provider)
+        -- Transfer cash to custodian
+        ir <- fetch investmentRequestCid
+        (fundCid, fund) <- fetchByKey @Fund (operator, provider, ir.fundId)
+        cashCid <- exercise (toInterfaceContractId ir.cashCid : ContractId Transferable.I) Transferable.Transfer with newOwnerAccount = fund.custodianCashAccount
 
-        -- Lock holding
-        cashCid <- coerceContractId <$> exercise (coerceContractId cashCid : ContractId Lockable.I) Lockable.Acquire with newLocker = fromList [ provider ]; context = show requestId; lockType = Lockable.Semaphore
+        -- Get unit value
+        nav <- exercise navObservableCid Observable.Observe with actors = singleton customer; t = toUTCTime $ Unit ir.asOfDate
+        let
+          unitValue = nav / fund.totalUnits
+          nrUnits = ir.quantity.amount / unitValue
+          fundQty = Instrument.qty nrUnits fund.instrument
+        issuanceRequestCid <- exerciseByKey @Issuance.Service (operator, provider, customer) Issuance.RequestCreateIssuance with id = ir.requestId; quantity = fundQty; account..
 
-        fund <- exercise fundCid GetFund with actor = customer
-        let quantity = Instrument.qty (getAmount cash) (getInstrument cash) 
-        create InvestmentRequest with operator; provider; customer; manager = fund.manager; requestId; asOfDate; quantity; fundId = fund.id; cashCid
+        fail ""
 
     choice Terminate : ()
       with

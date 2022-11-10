@@ -1,0 +1,34 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Distribution.Fund.Model where
+
+import Daml.Finance.Interface.Holding.Account qualified as Account (K)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K)
+import Daml.Finance.Interface.Types.Common (Id)
+
+template Fund
+  with
+    operator : Party
+    custodian : Party
+    manager : Party
+    public : Party
+    id : Id
+    description : Text
+    instrument : Instrument.K
+    currency : Instrument.K
+    custodianCashAccount : Account.K
+    totalUnits : Decimal
+  where
+    signatory operator, custodian, manager
+    observer public
+
+    key (operator, custodian, id) : (Party, Party, Id)
+    maintainer key._1
+
+    choice GetFund : Fund
+      with
+        actor : Party
+      controller actor
+      do
+        pure this

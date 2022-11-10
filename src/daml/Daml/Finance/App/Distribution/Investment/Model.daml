@@ -3,33 +3,9 @@
 
 module Daml.Finance.App.Distribution.Investment.Model where
 
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K, Q)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
 import Daml.Finance.Interface.Types.Common (Id)
-
-template Fund
-  with
-    operator : Party
-    custodian : Party
-    manager : Party
-    public : Party
-    id : Id
-    description : Text
-    instrument : Instrument.K
-    currency : Instrument.K
-  where
-    signatory operator, custodian, manager
-    observer public
-
-    key (custodian, id) : (Party, Id)
-    maintainer key._1
-
-    choice GetFund : Fund
-      with
-        actor : Party
-      controller actor
-      do
-        pure this
 
 template InvestmentRequest
   with
@@ -38,6 +14,7 @@ template InvestmentRequest
     customer : Party
     manager : Party
     requestId : Id
+    asOfDate : Date
     quantity : Instrument.Q
     fundId : Id
     cashCid : ContractId Transferable.I
