@@ -19,7 +19,6 @@ export const Observables : React.FC = () => {
   const { loading: l1, contracts: observables } = useStreamQueries(Observable);
 
   useEffect(() => {
-    console.log("asdf");
     if (l1) return;
     const today = new Date();
     today.setUTCHours(12, 0, 0, 0);
