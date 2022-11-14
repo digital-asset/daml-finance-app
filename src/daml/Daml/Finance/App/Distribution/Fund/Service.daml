@@ -3,6 +3,7 @@
 
 module Daml.Finance.App.Distribution.Fund.Service where
 
+import DA.Foldable (mapA_)
 import DA.List (dedup)
 import DA.Map qualified as M (lookup)
 import DA.Optional (fromSome)
@@ -114,10 +115,10 @@ template Service
           processFund (irCid, iCid) = do
             (iCid, _) <- exercise iCid Instruction.Allocate with allocation = CreditReceiver
             exercise irCid ApproveInstruction with instructionCid = iCid
-        mapA processCash reqInstCash
-        mapA processFund reqInstFund
+        mapA_ processCash reqInstCash
+        mapA_ processFund reqInstFund
 
-        mapA (\cid -> exercise cid Delete) pir.investmentRequestCids
+        mapA_ (\cid -> exercise cid Delete) pir.investmentRequestCids
         exercise pooledInvestmentRequestCid Fund.Remove
         exercise batchCid Batch.Settle with actors = singleton provider
 
