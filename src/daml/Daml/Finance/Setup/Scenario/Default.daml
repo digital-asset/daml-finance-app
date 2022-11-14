@@ -108,8 +108,8 @@ run  = do
   bnd     <- originateGeneric  registry    issuer      pub yday "BOND1"   "Bond 5Y @ 4.875%"                $ bond usd 1.0 0.04875 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
   swp     <- originateGeneric  registry    issuer      pub yday "SWAP1"   "Swap LIBOR-6M vs 0.25%"          $ interestRateSwap libor6M 0.0025 usd $ unrollDates todayYear (todayYear + 2) [todayMonth] todayDay
   bswp    <- originateGeneric  registry    issuer      pub yday "BSWAP1"  "Basis Swap LIBOR-6M vs 3M+0.15%" $ basisSwap libor3M libor6M 0.0015 usd $ unrollDates todayYear (todayYear + 2) [todayMonth] todayDay
-  opt     <- originateGeneric  registry    issuer      pub yday "OPT1"    "Put on TSLA @ 500.0"             $ callOptionPhysical tsla 20.0 usd 10_000.0 (date (todayYear + 1) todayMonth todayDay)
-  opt2    <- originateGeneric  registry    issuer      pub yday "OPT2"    "Call on TSLA @ 700.0"            $ callOptionCashAuto tslaObs usd 700.0 (date (todayYear + 1) todayMonth todayDay)
+  opt     <- originateGeneric  registry    issuer      pub yday "OPT1"    "Call on TSLA @ 500.0 (physical)" $ callOptionPhysical tsla 20.0 usd 10_000.0 (date (todayYear + 1) todayMonth todayDay)
+  opt2    <- originateGeneric  registry    issuer      pub yday "OPT2"    "Call on TSLA @ 700.0 (cash)"     $ callOptionCash tslaObs usd 700.0 (date (todayYear + 1) todayMonth todayDay)
   let securities = [tsla, nflx, fwd, bnd, swp, bswp, opt, opt2 ]
 
   -- Distribution
