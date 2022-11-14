@@ -3,12 +3,11 @@
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Typography, Grid, Paper, Select, MenuItem, TextField, Button, MenuProps, FormControl, InputLabel, ToggleButtonGroup, ToggleButton, TextFieldProps } from "@mui/material";
+import { Typography, Grid, Paper, Button } from "@mui/material";
 import classnames from "classnames";
 import { useLedger, useParty } from "@daml/react";
 import useStyles from "../../styles";
 import { parseDate, singleton } from "../../../util";
-import { DatePicker } from "@mui/lab";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { Message } from "../../../components/Message/Message";
 import { PeriodEnum } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Date/RollConvention";
@@ -20,9 +19,14 @@ import { useInstruments } from "../../../context/InstrumentContext";
 import { useServices } from "../../../context/ServiceContext";
 import { Service as Structuring } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Service";
 import { Service as StructuringAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service";
+import { TextInput } from "../../../components/Form/TextInput";
+import { SelectInput, toValues } from "../../../components/Form/SelectInput";
+import { DateInput } from "../../../components/Form/DateInput";
+import { ToggleInput } from "../../../components/Form/ToggleInput";
+import { businessDayConventions, couponFrequencies, dayCountConventions, holidayCalendars, referenceRates } from "./util";
 
 export const NewFloatingRateBond : React.FC = () => {
-  const classes = useStyles();
+  const cls = useStyles();
   const navigate = useNavigate();
 
   const [ id, setId ] = useState("");
@@ -76,77 +80,28 @@ export const NewFloatingRateBond : React.FC = () => {
     navigate("/app/structuring/instruments");
   };
 
-  const menuProps : Partial<MenuProps> = { anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" } };
   return (
     <Grid container direction="column" spacing={2}>
       <Grid item xs={12}>
-        <Typography variant="h3" className={classes.heading}>New Floating Rate Bond</Typography>
+        <Typography variant="h3" className={cls.heading}>New Floating Rate Bond</Typography>
       </Grid>
       <Grid item xs={12}>
         <Grid container spacing={4}>
           <Grid item xs={4} />
           <Grid item xs={4}>
-            <Paper className={classnames(classes.fullWidth, classes.paper)}>
-              <TextField className={classes.inputField} fullWidth label="Id" type="text" value={id} onChange={e => setId(e.target.value as string)} />
-              <FormControl className={classes.inputField} fullWidth>
-                <InputLabel className={classes.selectLabel}>Reference Rate Id</InputLabel>
-                <Select value={referenceRateId} onChange={e => setReferenceRateId(e.target.value as string)} MenuProps={menuProps}>
-                  <MenuItem key={0} value={"USD/LIBOR/1M"}>{"USD/LIBOR/1M"}</MenuItem>
-                  <MenuItem key={1} value={"USD/LIBOR/3M"}>{"USD/LIBOR/3M"}</MenuItem>
-                  <MenuItem key={2} value={"USD/LIBOR/6M"}>{"USD/LIBOR/6M"}</MenuItem>
-                  <MenuItem key={3} value={"EUR/EURIBOR/1M"}>{"EUR/EURIBOR/1M"}</MenuItem>
-                  <MenuItem key={4} value={"EUR/EURIBOR/3M"}>{"EUR/EURIBOR/3M"}</MenuItem>
-                  <MenuItem key={5} value={"EUR/EURIBOR/6M"}>{"EUR/EURIBOR/6M"}</MenuItem>
-                </Select>
-              </FormControl>
-              <TextField className={classes.inputField} fullWidth label="Coupon Spread (per period)" type="number" value={couponSpread} onChange={e => setCouponSpread(e.target.value as string)} />
-              <FormControl className={classes.inputField} fullWidth>
-                <InputLabel className={classes.selectLabel}>Currency</InputLabel>
-                <Select value={currency} onChange={e => setCurrency(e.target.value as string)} MenuProps={menuProps}>
-                  {tokens.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
-                </Select>
-              </FormControl>
-              <DatePicker className={classes.inputField} inputFormat="yyyy-MM-dd" label="Issue Date" value={issueDate} onChange={setIssueDate} renderInput={(props : TextFieldProps) => <TextField {...props} fullWidth />} />
-              <DatePicker className={classes.inputField} inputFormat="yyyy-MM-dd" label="First Coupon Date" value={firstCouponDate} onChange={setFirstCouponDate} renderInput={(props : TextFieldProps) => <TextField {...props} fullWidth />} />
-              <DatePicker className={classes.inputField} inputFormat="yyyy-MM-dd" label="Maturity Date" value={maturityDate} onChange={setMaturityDate} renderInput={(props : TextFieldProps) => <TextField {...props} fullWidth />} />
-              <ToggleButtonGroup className={classnames(classes.inputField, classes.fullWidth)} value={couponFrequency} exclusive onChange={(_, v) => { if (v !== null) setCouponFrequency(v); }}>
-                <ToggleButton className={classes.fullWidth} value={"Annual"}>Annual</ToggleButton>
-                <ToggleButton className={classes.fullWidth} value={"Semi-annual"}>Semi-annual</ToggleButton>
-                <ToggleButton className={classes.fullWidth} value={"Quarterly"}>Quarterly</ToggleButton>
-              </ToggleButtonGroup>
-              <FormControl className={classes.inputField} fullWidth>
-                <InputLabel className={classes.selectLabel}>Day Count Convention</InputLabel>
-                <Select value={dayCountConvention} onChange={e => setDayCountConvention(e.target.value as string)} MenuProps={menuProps}>
-                  <MenuItem key={0} value={"Act360"}>{"Act/360"}</MenuItem>
-                  <MenuItem key={1} value={"Act365Fixed"}>{"Act/365 (Fixed)"}</MenuItem>
-                  <MenuItem key={2} value={"Act365L"}>{"Act/365 (L)"}</MenuItem>
-                  <MenuItem key={3} value={"ActActAFB"}>{"Act/Act (AFB)"}</MenuItem>
-                  <MenuItem key={4} value={"ActActISDA"}>{"Act/Act (ISDA)"}</MenuItem>
-                  <MenuItem key={5} value={"ActActICMA"}>{"Act/Act (ICMA)"}</MenuItem>
-                  <MenuItem key={6} value={"Basis1"}>{"Basis 1/1"}</MenuItem>
-                  <MenuItem key={7} value={"Basis30360"}>{"Basis 30/360"}</MenuItem>
-                  <MenuItem key={8} value={"Basis30360ICMA"}>{"Basis 30/360 (ICMA)"}</MenuItem>
-                  <MenuItem key={9} value={"Basis30E360"}>{"Basis 30E/360"}</MenuItem>
-                  <MenuItem key={10} value={"Basis30E3360"}>{"Basis 30E3/360"}</MenuItem>
-                </Select>
-              </FormControl>
-              <FormControl className={classes.inputField} fullWidth>
-                <InputLabel className={classes.selectLabel}>Business Day Adjustment</InputLabel>
-                <Select value={businessDayConvention} onChange={e => setBusinessDayConvention(e.target.value as string)} MenuProps={menuProps}>
-                  <MenuItem key={0} value={"Following"}>{"Following"}</MenuItem>
-                  <MenuItem key={1} value={"ModifiedFollowing"}>{"Modified Following"}</MenuItem>
-                  <MenuItem key={2} value={"Preceding"}>{"Preceding"}</MenuItem>
-                  <MenuItem key={3} value={"ModifiedPreceding"}>{"Modified Preceding"}</MenuItem>
-                  <MenuItem key={4} value={"NoAdjustment"}>{"None"}</MenuItem>
-                </Select>
-              </FormControl>
-              <FormControl className={classes.inputField} fullWidth>
-                <InputLabel className={classes.selectLabel}>Holiday Calendar</InputLabel>
-                <Select value={holidayCalendar} onChange={e => setHolidayCalendar(e.target.value as string)} MenuProps={menuProps}>
-                  <MenuItem key={0} value={"FED"}>{"FED"}</MenuItem>
-                </Select>
-              </FormControl>
-              <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={createFixedRateBond}>Create Instrument</Button>
+            <Paper className={classnames(cls.fullWidth, cls.paper)}>
+              <TextInput    label="Id"                          value={id}                    setValue={setId} />
+              <SelectInput  label="Currency"                    value={currency}              setValue={setCurrency}              values={toValues(tokens)} />
+              <SelectInput  label="Reference Rate"              value={referenceRateId}       setValue={setReferenceRateId}       values={referenceRates} />
+              <TextInput    label="Coupon Spread (per period)"  value={couponSpread}          setValue={setCouponSpread} />
+              <DateInput    label="Issue Date"                  value={issueDate}             setValue={setIssueDate} />
+              <DateInput    label="First Coupon Date"           value={firstCouponDate}       setValue={setFirstCouponDate} />
+              <DateInput    label="Maturity Date"               value={maturityDate}          setValue={setMaturityDate} />
+              <ToggleInput  label="Coupon Frequency"            value={couponFrequency}       setValue={setCouponFrequency}       values={couponFrequencies} />
+              <SelectInput  label="Day Count Convention"        value={dayCountConvention}    setValue={setDayCountConvention}    values={dayCountConventions} />
+              <SelectInput  label="Business Day Adjustment"     value={businessDayConvention} setValue={setBusinessDayConvention} values={businessDayConventions} />
+              <SelectInput  label="Holiday Calendar"            value={holidayCalendar}       setValue={setHolidayCalendar}       values={holidayCalendars} />
+              <Button className={classnames(cls.fullWidth, cls.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={createFixedRateBond}>Create Instrument</Button>
             </Paper>
           </Grid>
           <Grid item xs={4} />

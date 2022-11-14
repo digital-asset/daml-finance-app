@@ -95,7 +95,6 @@ export const Scenario : React.FC = () => {
   //     if (services.length === 0 || underlyings.length === 0 || !asset) return;
   //     const claims = mapToText(asset.payload.claims);
   //     const [ { _2: formulaText }, ] = await ledger.exercise(Service.PreviewPricing, services[0].contractId, { ccy: "USD", claims })
-  //     console.log(formulaText);
   //     setMath(formulaText);
   //   }
   //   getFormula();

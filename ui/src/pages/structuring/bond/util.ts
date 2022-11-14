@@ -34,3 +34,14 @@ export const businessDayConventions : SelectInputValue[] = [
 export const holidayCalendars : SelectInputValue[] = [
   { value: "FED", display: "Fedwire Holidays" },
 ];
+
+export const referenceRates : SelectInputValue[] = [
+  { value: "USD/LIBOR/1M", display: "USD Libor 1M" },
+  { value: "USD/LIBOR/3M", display: "USD Libor 3M" },
+  { value: "USD/LIBOR/6M", display: "USD Libor 6M" },
+  { value: "USD/LIBOR/12M", display: "USD Libor 12M" },
+  { value: "EUR/EURIBOR/1M", display: "EUR Euribor 1M" },
+  { value: "EUR/EURIBOR/3M", display: "EUR Euribor 3M" },
+  { value: "EUR/EURIBOR/6M", display: "EUR Euribor 6M" },
+  { value: "EUR/EURIBOR/12M", display: "EUR Euribor 12M" },
+];

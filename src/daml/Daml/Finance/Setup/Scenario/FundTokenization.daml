@@ -1,0 +1,116 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.Setup.Scenario.FundTokenization where
+
+import DA.Date (Month(..), date, toDateUTC)
+import DA.Map (empty, fromList)
+import DA.Set (singleton)
+import DA.Time (time)
+import Daml.Finance.App.Distribution.Fund.Model (Fund(..))
+import Daml.Finance.Holding.Account qualified as Account (Factory(..))
+import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
+import Daml.Finance.Interface.Types.Common (Id(..))
+import Daml.Finance.Settlement.Factory qualified as Settlement (Factory(..))
+import Daml.Finance.Setup.Util.Common
+import Daml.Finance.Setup.Util.Role
+import Daml.Finance.Setup.Util.Service
+import Daml.Finance.Setup.Util.Workflow
+import Daml.Script
+
+run : Script [PartyInfo]
+run = do
+  let scenario = "Fund Tokenization"
+  parties <- allocateParties scenario ["Operator", "Public", "CashProvider", "AssetManager", "PortfolioManager", "Custodian", "Investor1", "Investor2", "Investor3"]
+  let
+    all@[operator, public, cashProvider, am, pm, custodian, inv1, inv2, inv3] = map (.id) parties
+    pub = fromList [("Public", singleton public)]
+
+  -- Factories
+  accountFactoryCid    <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
+  holdingFactoryCid    <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
+  settlementFactoryCid <- toInterfaceContractId <$> submit operator do createCmd Settlement.Factory with provider = operator; observers = singleton public
+
+  -- Roles
+  createOperatorRole operator
+  createCustodianRole operator cashProvider
+  createCustodianRole operator custodian
+  createCustodianRole operator am
+  createDistributorRole operator pm
+  createDistributorRole operator am
+
+  -- Services
+  createCustodyService          operator cashProvider am        settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator cashProvider custodian settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator am           inv1      settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator am           inv2      settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator am           inv3      settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator custodian    am        settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator custodian    pm        settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createIssuanceService         operator custodian    pm
+  createIssuanceAutoService     operator custodian    pm
+  createStructuringService      operator custodian    pm
+  createStructuringAutoService  operator custodian    pm
+  createInvestmentService       operator am           inv1
+  createInvestmentService       operator am           inv2
+  createInvestmentService       operator am           inv3
+  createFundService             operator pm           am
+
+  -- Accounts
+  amCashAccount         <- createAccount operator cashProvider  am        public (Id "AssetManager@CashProvider/Cash")        "AssetManager@CashProvider/Cash"        $ fromList [("PM", singleton pm)]
+  custodianCashAccount  <- createAccount operator cashProvider  custodian public (Id "Custodian@CashProvider/Cash")           "Custodian@CashProvider/Cash"           $ fromList [("PM", singleton pm)]
+  inv1CashAccount       <- createAccount operator am            inv1      public (Id "Investor1@AssetManager/Cash")           "Investor1@AssetManager/Cash"           $ fromList [("PM", singleton pm)]
+  inv2CashAccount       <- createAccount operator am            inv2      public (Id "Investor2@AssetManager/Cash")           "Investor2@AssetManager/Cash"           $ fromList [("PM", singleton pm)]
+  inv3CashAccount       <- createAccount operator am            inv3      public (Id "Investor3@AssetManager/Cash")           "Investor3@AssetManager/Cash"           $ fromList [("PM", singleton pm)]
+  amSecAccount          <- createAccount operator custodian     am        public (Id "AssetManager@Custodian/Securties")      "AssetManager@Custodian/Securties"      $ fromList [("PM", singleton pm)]
+  pmSecAccount          <- createAccount operator custodian     pm        public (Id "PortfolioManager@Custodian/Securities") "PortfolioManager@Custodian/Securities" empty
+  inv1SecAccount        <- createAccount operator am            inv1      public (Id "Investor1@AssetManager/Securities")     "Investor1@AssetManager/Securities"     $ fromList [("PM", singleton pm)]
+  inv2SecAccount        <- createAccount operator am            inv2      public (Id "Investor2@AssetManager/Securities")     "Investor2@AssetManager/Securities"     $ fromList [("PM", singleton pm)]
+  inv3SecAccount        <- createAccount operator am            inv3      public (Id "Investor3@AssetManager/Securities")     "Investor3@AssetManager/Securities"     $ fromList [("PM", singleton pm)]
+
+  -- Time
+  t <- getTime
+  let
+    today = toDateUTC t
+    todayTime = time today 12 0 0
+    tt d = time d 12 0 0
+    epoch = tt $ date 1970 Jan 1
+
+  -- Instruments
+  usd   <- originate                    cashProvider  cashProvider  pub epoch "USD"   "United States Dollar"
+  fund1 <- originate                    custodian     pm            pub epoch "FUND1" "FUND1 Units"
+  fund2 <- originate                    custodian     pm            pub epoch "FUND2" "FUND2 Units"
+  fund3 <- originate                    custodian     pm            pub epoch "FUND3" "FUND3 Units"
+
+  -- Holdings
+  amCashCid   <- deposit operator cashProvider am    public (Instrument.qty 10_000_000.0 usd) amCashAccount
+  inv1CashCid <- deposit operator am           inv1  public (Instrument.qty  6_000_000.0 usd) inv1CashAccount
+  inv2CashCid <- deposit operator am           inv2  public (Instrument.qty  3_000_000.0 usd) inv2CashAccount
+  inv3CashCid <- deposit operator am           inv3  public (Instrument.qty  1_000_000.0 usd) inv3CashAccount
+
+  -- Data
+  fund1Cid <- submitMulti [operator, custodian, pm] [] do createCmd Fund with operator; custodian; manager = pm; id = Id "FUND1"; description = "Fund 1"; instrument = fund1; currency = usd; custodianCashAccount; managerFundAccount = pmSecAccount; totalUnits =  1_000_000.0; observers = singleton public
+  fund2Cid <- submitMulti [operator, custodian, pm] [] do createCmd Fund with operator; custodian; manager = pm; id = Id "FUND2"; description = "Fund 2"; instrument = fund2; currency = usd; custodianCashAccount; managerFundAccount = pmSecAccount; totalUnits =  5_000_000.0; observers = singleton public
+  fund3Cid <- submitMulti [operator, custodian, pm] [] do createCmd Fund with operator; custodian; manager = pm; id = Id "FUND3"; description = "Fund 3"; instrument = fund3; currency = usd; custodianCashAccount; managerFundAccount = pmSecAccount; totalUnits = 15_000_000.0; observers = singleton public
+  navFund1Cid <- createObservation pm "NAV_FUND1_USD" [ (todayTime,  1_000_000.0) ] pub
+  navFund2Cid <- createObservation pm "NAV_FUND2_USD" [ (todayTime,  5_000_000.0) ] pub
+  navFund3Cid <- createObservation pm "NAV_FUND3_USD" [ (todayTime, 15_000_000.0) ] pub
+
+  createAccountDirectory custodian  [(usd, custodianCashAccount)] $ singleton public
+  createAccountDirectory am         [(usd, amCashAccount), (fund1, amSecAccount), (fund2, amSecAccount), (fund3, amSecAccount)] $ singleton public
+  createAccountDirectory inv1       [(usd, inv1CashAccount), (fund1, inv1SecAccount), (fund2, inv1SecAccount), (fund3, inv1SecAccount)] $ singleton public
+  createAccountDirectory inv2       [(usd, inv2CashAccount), (fund1, inv2SecAccount), (fund2, inv2SecAccount), (fund3, inv2SecAccount)] $ singleton public
+  createAccountDirectory inv3       [(usd, inv3CashAccount), (fund1, inv3SecAccount), (fund2, inv3SecAccount), (fund3, inv3SecAccount)] $ singleton public
+
+  -- Workflows
+  let
+    doDistribution = do
+      ir1Cid <- createInvestmentRequest operator am inv1 public "REQ-FUND1-INV1" today fund1Cid (coerceContractId inv1CashCid)
+      ir2Cid <- createInvestmentRequest operator am inv2 public "REQ-FUND1-INV2" today fund1Cid (coerceContractId inv2CashCid)
+      ir3Cid <- createInvestmentRequest operator am inv3 public "REQ-FUND1-INV3" today fund1Cid (coerceContractId inv3CashCid)
+      pirCid <- poolInvestmentRequests operator pm am public "REQ-FUND1-POOLED" today fund1Cid (coerceContractId amCashCid) [ir1Cid, ir2Cid, ir3Cid]
+      fulfillPooledInvestmentRequest operator pm am public fund1Cid pirCid navFund1Cid settlementFactoryCid
+  -- doDistribution
+
+  pure parties

@@ -29,7 +29,7 @@ export default makeStyles((theme : Theme) => createStyles({
   },
   userBox: {
     height: 68,
-    width: 220,
+    width: 260,
     padding: 22,
     backgroundColor: theme.palette.background.paper,
   },

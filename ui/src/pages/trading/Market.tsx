@@ -70,7 +70,6 @@ export const Market : React.FC = () => {
   const { loading: l4, contracts: accounts } = useStreamQueries(Reference);
   const { loading: l5, contracts: orders } = useStreamQueries(Order);
   const { contractId } = useParams<any>();
-  console.log(contractId);
   if (l1 || l2 || l3 || l4 || l5 || !contractId) return <Spinner />;
 
   const myServices = trading.filter(s => s.payload.customer === party);
