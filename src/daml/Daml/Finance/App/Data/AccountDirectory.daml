@@ -19,3 +19,11 @@ template AccountDirectory
 
     key provider : Party
     maintainer key
+
+    choice Fetch : AccountDirectory
+      with
+        actor : Party
+      controller actor
+      do
+        pure this
+        

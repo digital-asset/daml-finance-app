@@ -1,0 +1,81 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Distribution.Fund.Model where
+
+import Daml.Finance.App.Distribution.Investment.Model (InvestmentRequest)
+import Daml.Finance.App.Issuance.Model qualified as Issuance (T)
+import Daml.Finance.App.Issuance.Service qualified as Issuance (CreateIssuance(..), RequestCreateIssuance(..), Service)
+import Daml.Finance.Interface.Holding.Account qualified as Account (K)
+import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K, Q)
+import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Approve(..), I)
+import Daml.Finance.Interface.Settlement.Types (Approval(TakeDelivery))
+import Daml.Finance.Interface.Types.Common (Id, Parties)
+
+type T = Fund
+
+template Fund
+  with
+    operator : Party
+    custodian : Party
+    manager : Party
+    id : Id
+    description : Text
+    instrument : Instrument.K
+    currency : Instrument.K
+    custodianCashAccount : Account.K
+    managerFundAccount : Account.K
+    totalUnits : Decimal
+    observers : Parties
+  where
+    signatory operator, custodian, manager
+    observer observers
+
+    key (operator, custodian, id) : (Party, Party, Id)
+    maintainer key._1
+
+    nonconsuming choice GetFund : Fund
+      with
+        actor : Party
+      controller actor
+      do
+        pure this
+
+    choice IssueUnits : (ContractId Issuance.T, ContractId Transferable.I, ContractId Fund)
+      with
+        requestId : Id
+        quantity : Instrument.Q
+      controller manager
+      do
+        createIssuanceRequestCid <- exerciseByKey @Issuance.Service (operator, custodian, manager) Issuance.RequestCreateIssuance with id = requestId; description = "Issuance for request " <> show requestId; quantity; account = managerFundAccount
+        (iss, holdingCid) <- exerciseByKey @Issuance.Service (operator, custodian, manager) Issuance.CreateIssuance with createIssuanceRequestCid
+        newCid <- create this with totalUnits = totalUnits + quantity.amount
+        pure (iss, coerceContractId holdingCid, newCid)
+
+    nonconsuming choice ApproveInstruction : ContractId Instruction.I
+      with
+        instructionCid : ContractId Instruction.I
+      controller manager
+      do
+        exercise instructionCid Instruction.Approve with approval = TakeDelivery custodianCashAccount
+
+
+template PooledInvestmentRequest
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    requestId : Id
+    asOfDate : Date
+    fundId : Id
+    quantity : Instrument.Q
+    cashCid : ContractId Transferable.I
+    investmentRequestCids : [ContractId InvestmentRequest]
+    customerFundAccount : Account.K
+  where
+    signatory operator, provider, customer
+
+    choice Remove : ()
+      controller provider
+      do pure ()
