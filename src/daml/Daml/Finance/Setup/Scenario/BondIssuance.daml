@@ -91,7 +91,7 @@ run = do
   bond1 <- originateZeroCouponBond      registry    issuer                "BOND1" "Zero Coupon Bond 5Y"                       pub (tt $ date 2022 tm td) (date 2022 tm td) (date 2027 Sep td) usd
   bond2 <- originateFixedRateBond       registry    issuer                "BOND2" "Fixed Rate Bond 5Y @ 1.1%"                 pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.011 M 12 usd
   bond3 <- originateFloatingRateBond    registry    issuer                "BOND3" "Floating Rate Bond 5Y @ LIBOR-12M + 0.5%"  pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.005 M 12 usd "USD-LIBOR-12M"
-  bond4 <- originateInflationLinkedBond registry    issuer                "BOND4" "Inflation Linked Bond 5Y @ CPI + 0.5%"     pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.005 M 12 usd "CPI" 100.0
+  bond4 <- originateInflationLinkedBond registry    issuer                "BOND4" "Inflation Linked Bond 5Y @ 0.5% * (1 + CPI) "     pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.005 M 12 usd "CPI" 100.0
   let securities = [bond1, bond2, bond3, bond4]
 
   -- Data
