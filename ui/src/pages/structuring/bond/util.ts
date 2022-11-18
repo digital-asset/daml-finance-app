@@ -45,3 +45,8 @@ export const referenceRates : SelectInputValue[] = [
   { value: "EUR/EURIBOR/6M", display: "EUR Euribor 6M" },
   { value: "EUR/EURIBOR/12M", display: "EUR Euribor 12M" },
 ];
+
+export const inflationIndices : SelectInputValue[] = [
+  { value: "CPI", display: "Consumer Price Index" },
+];
+

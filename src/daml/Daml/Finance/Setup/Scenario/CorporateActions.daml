@@ -87,8 +87,9 @@ run = do
   (clockCid, eventCid) <- createClockAndEvent all today (singleton public)
 
   -- Instruments
-  usd    <- originate       centralBank centralBank pub epoch "USD"   "United States Dollar"
-  equity <- originateEquity registry    issuer      pub epoch "NewCo" "NewCo, Inc. Common Stock"
+  usd     <- originate       centralBank centralBank pub epoch "USD"    "United States Dollar"
+  equity  <- originateEquity registry    issuer      pub epoch "NewCo"  "NewCo, Inc. Common Stock"
+  equity2 <- originateEquity registry    issuer      pub epoch "Acme"   "Acme, Inc. Common Stock"
 
   -- Data
   createAccountDirectory issuer     [(usd, issuerCashAccount), (equity, issuerSecAccount)]        $ singleton public
