@@ -86,7 +86,7 @@ export const render = (el, data, h) => {
   svg.append("path")
       .datum(data)
       .attr("fill", "none")
-      .attr("stroke", "black")
+      .attr("stroke", "white")
       .attr("stroke-width", 1)
       .attr("stroke-linejoin", "round")
       .attr("stroke-linecap", "round")

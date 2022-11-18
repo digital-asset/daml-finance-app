@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import classnames from "classnames";
 import { useLedger } from "@daml/react";
-import { Typography, Grid, Paper, Select, MenuItem, TextField, Button, MenuProps, FormControl, InputLabel, TextFieldProps } from "@mui/material";
+import { Button } from "@mui/material";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useServices } from "../../context/ServiceContext";
@@ -14,10 +14,13 @@ import { useInstruments } from "../../context/InstrumentContext";
 import { Service as Lending } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lending/Service";
 import { Message } from "../../components/Message/Message";
 import { parseDate } from "../../util";
-import { DatePicker } from "@mui/lab";
+import { CenteredForm } from "../../components/CenteredForm/CenteredForm";
+import { SelectInput, toValues } from "../../components/Form/SelectInput";
+import { TextInput } from "../../components/Form/TextInput";
+import { DateInput } from "../../components/Form/DateInput";
 
 export const New : React.FC = () => {
-  const classes = useStyles();
+  const cls = useStyles();
   const navigate = useNavigate();
 
   const [ borrowedLabel, setBorrowedLabel ] = useState("");
@@ -44,34 +47,12 @@ export const New : React.FC = () => {
     navigate("/app/lending/requests");
   }
 
-  const menuProps : Partial<MenuProps> = { anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" } };
   return (
-    <Grid container direction="column" spacing={2}>
-      <Grid item xs={12}>
-        <Typography variant="h3" className={classes.heading}>New Borrow Request</Typography>
-      </Grid>
-      <Grid item xs={12}>
-        <Grid container spacing={4}>
-          <Grid item xs={4}>
-            <Grid container direction="column" spacing={2}>
-              <Grid item xs={12}>
-                <Paper className={classnames(classes.fullWidth, classes.paper)}>
-                  <Typography variant="h5" className={classes.heading}>Details</Typography>
-                  <FormControl className={classes.inputField} fullWidth>
-                    <InputLabel className={classes.selectLabel}>Borrowed Instrument</InputLabel>
-                    <Select fullWidth value={borrowedLabel} onChange={e => setBorrowedLabel(e.target.value as string)} MenuProps={menuProps}>
-                      {equities.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
-                    </Select>
-                  </FormControl>
-                  <TextField className={classes.inputField} fullWidth label="Quantity" type="number" value={amount} onChange={e => setAmount(e.target.value as string)} />
-                  <DatePicker className={classes.inputField} inputFormat="yyyy-MM-dd" label="Maturity Date" value={maturity} onChange={setMaturity} renderInput={(props : TextFieldProps) => <TextField {...props} fullWidth />} />
-                  <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={requestBorrowOffer}>Request Offer</Button>
-                </Paper>
-              </Grid>
-            </Grid>
-          </Grid>
-        </Grid>
-      </Grid>
-    </Grid>
+    <CenteredForm title= "New Borrow Request">
+      <SelectInput  label="Borrowed Instrument"     value={borrowedLabel}         setValue={setBorrowedLabel} values={toValues(equities)} />
+      <TextInput    label="Amount"                  value={amount}                setValue={setAmount} />
+      <DateInput    label="Maturity Date"           value={maturity}              setValue={setMaturity} />
+      <Button className={classnames(cls.fullWidth, cls.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={requestBorrowOffer}>Request Offer</Button>
+    </CenteredForm>
   );
 };
