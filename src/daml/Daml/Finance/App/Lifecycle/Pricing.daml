@@ -3,9 +3,9 @@
 
 module Daml.Finance.App.Lifecycle.Pricing where
 
-import ContingentClaims.Claim
-import ContingentClaims.MathML qualified as MathML
-import ContingentClaims.Math.Stochastic (fapf, simplify, riskless, gbm, Expr(..), IsIdentifier(..), Process)
+import ContingentClaims.Core.Claim
+import ContingentClaims.Valuation.MathML qualified as MathML
+import ContingentClaims.Valuation.Stochastic (fapf, simplify, riskless, gbm, Expr(..), IsIdentifier(..), Process)
 import Prelude hiding (max)
 
 disc : Text -> Process Text

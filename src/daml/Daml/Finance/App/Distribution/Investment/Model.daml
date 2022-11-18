@@ -3,7 +3,8 @@
 
 module Daml.Finance.App.Distribution.Investment.Model where
 
-import Daml.Finance.Interface.Holding.Account qualified as Account (K)
+import DA.Set (singleton)
+import Daml.Finance.Interface.Account.Account qualified as Account (K)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..), I)
@@ -31,14 +32,14 @@ template InvestmentRequest
         instructionCid : ContractId Instruction.I
       controller manager
       do
-        fst <$> exercise instructionCid Instruction.Allocate with allocation = Pledge cashCid
+        fst <$> exercise instructionCid Instruction.Allocate with actors = singleton manager; allocation = Pledge $ toInterfaceContractId cashCid
 
     nonconsuming choice ApproveInstruction : ContractId Instruction.I
       with
         instructionCid : ContractId Instruction.I
       controller manager
       do
-        exercise instructionCid Instruction.Approve with approval = TakeDelivery customerFundAccount
+        exercise instructionCid Instruction.Approve with actors = singleton manager; approval = TakeDelivery customerFundAccount
 
     choice Delete : ()
       controller manager

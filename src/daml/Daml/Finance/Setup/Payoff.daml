@@ -3,10 +3,10 @@
 
 module Daml.Finance.Setup.Payoff where
 
-import ContingentClaims.Claim (Claim, and, anytime, at, cond, give, one, or, scale, until, when, zero, (<=))
-import ContingentClaims.Internal.Claim (Claim(And))
-import ContingentClaims.Observation (Observation(Const), observe)
-import ContingentClaims.Financial (forward, fixed, floating, swap, european, bermudan)
+import ContingentClaims.Core.Claim (Claim, and, anytime, at, cond, give, one, or, scale, until, when, zero, (<=))
+import ContingentClaims.Core.Internal.Claim (Claim(And))
+import ContingentClaims.Core.Observation (Observation(Const), observe)
+import ContingentClaims.Core.Builders (forward, fixed, floating, swap, european, bermudan)
 import DA.Date (DayOfWeek(..), Month(..), addDays, date, monthDayCount, toGregorian)
 import DA.List (last)
 import DA.Time (time)

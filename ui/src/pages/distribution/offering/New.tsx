@@ -9,7 +9,7 @@ import { Typography, Grid, Paper, Select, MenuItem, TextField, Button, MenuProps
 import useStyles from "../../styles";
 import { CreateOffering, Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Service";
 import { Spinner } from "../../../components/Spinner/Spinner";
-import { Reference as AccountReference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
+import { Reference } from "@daml.js/daml-finance-interface-account/lib/Daml/Finance/Interface/Account/Account";
 import { dedup } from "../../../util";
 import { BackToBack } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Model";
 import { useServices } from "../../../context/ServiceContext";
@@ -34,7 +34,7 @@ export const New : React.FC = () => {
   const { loading: l2, latests, tokens } = useInstruments();
   const { loading: l3, holdings, getFungible } = useHoldings();
 
-  const { contracts: accounts, loading: l4 } = useStreamQueries(AccountReference);
+  const { contracts: accounts, loading: l4 } = useStreamQueries(Reference);
 
   const myServices = subscription.filter(s => s.payload.customer === party);
   const myB2BServices = backToBack.filter(s => s.payload.customer === party);

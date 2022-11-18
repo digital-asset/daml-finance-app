@@ -7,9 +7,9 @@ import DA.Foldable (forA_)
 import DA.Functor (void)
 import DA.Optional (optionalToList)
 import DA.Set (singleton)
-import Daml.Finance.Interface.Holding.Account qualified as Account (R)
+import Daml.Finance.Interface.Account.Account qualified as Account (R)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I, Release(..))
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..))
-import Daml.Finance.Interface.Holding.Lockable qualified as Lockable (I, Release(..))
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, RemoveObservers(..))
 import Daml.Finance.Interface.Settlement.Factory (Factory, Instruct(..))
 import Daml.Finance.Interface.Settlement.Instruction (Allocate(..), Approve(..))
@@ -43,10 +43,10 @@ settleSubscription actor settlementFactoryCid offering (remainingQuantity, issue
       else do (\r -> r.splitCids <> optionalToList r.rest) <$> exercise subscription.holdingCid Fungible.Split with amounts = [payedQuantity.amount]
     -- paymentHolding <- fetch paymentHoldingCid
     -- paymentAccountCid <- getAccountCid paymentHolding
-    deliveryCid <- fst <$> exercise deliveryCid Allocate with allocation = Pledge $ toInterfaceContractId allocatedHoldingCid
+    deliveryCid <- fst <$> exercise deliveryCid Allocate with actors = singleton actor; allocation = Pledge $ toInterfaceContractId allocatedHoldingCid
     exercise subscriptionCid ApproveInstruction with instructionCid = deliveryCid; receiverAccount = subscription.accountKey
     paymentCid <- exercise subscriptionCid AllocateInstruction with instructionCid = paymentCid; transferableCid = toInterfaceContractId paymentHoldingCid
-    exercise paymentCid Approve with approval = TakeDelivery offering.issuerAccount
+    exercise paymentCid Approve with actors = singleton actor; approval = TakeDelivery offering.issuerAccount
     transferredCids <- exercise batchCid Settle with actors = singleton actor
     forA_ transferredCids $ \cid -> exercise subscriptionCid UnlockHolding with lockableCid = toInterfaceContractId cid
 
@@ -58,7 +58,7 @@ settleSubscription actor settlementFactoryCid offering (remainingQuantity, issue
           hCid :: _ -> Some hCid
     case remainingInvestorHoldingCids of
       [] -> do pure ()
-      hCid :: _ -> do void $ exercise (coerceContractId hCid : ContractId Lockable.I) Lockable.Release with context = offering.offeringId
+      hCid :: _ -> do void $ exercise (coerceContractId hCid : ContractId Holding.I) Holding.Release with context = offering.offeringId
 
     -- Undisclose accounts (doesn't quite work)
     (_, accountProxy) <- fetchByKey @Account.R subscription.accountKey

@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from "react";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { Observable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/Observable";
+import { NumericObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/NumericObservable";
 import { useParties } from "../../context/PartiesContext";
 import { CreateEvent } from "@daml/ledger";
 import { HorizontalTable } from "../../components/Table/HorizontalTable";
@@ -16,14 +16,14 @@ export const Observables : React.FC = () => {
   const { getName } = useParties();
   const [ rows, setRows ] = useState<any[]>([]);
 
-  const { loading: l1, contracts: observables } = useStreamQueries(Observable);
+  const { loading: l1, contracts: observables } = useStreamQueries(NumericObservable);
 
   useEffect(() => {
     if (l1) return;
     const today = new Date();
     today.setUTCHours(12, 0, 0, 0);
-    const createRow = async (c : CreateEvent<Observable>) : Promise<any[]> => {
-      const [obs, ] = await ledger.exercise(Observable.Observe, c.contractId, { actors: singleton(party), t: today.toISOString() });
+    const createRow = async (c : CreateEvent<NumericObservable>) : Promise<any[]> => {
+      const [obs, ] = await ledger.exercise(NumericObservable.Observe, c.contractId, { actors: singleton(party), t: today.toISOString() });
       return [
         getName(c.payload.provider),
         c.payload.id.unpack,

@@ -12,7 +12,8 @@ import DA.Time (time)
 import Daml.Finance.App.Data.AccountDirectory (AccountDirectory)
 import Daml.Finance.App.Distribution.Fund.Model qualified as Fund (ApproveInstruction(..), GetFund(..), IssueUnits(..), PooledInvestmentRequest(..), Remove(..), T)
 import Daml.Finance.App.Distribution.Investment.Model (AllocateInstruction(..), ApproveInstruction(..), Delete(..), InvestmentRequest(..))
-import Daml.Finance.Interface.Data.Observable qualified as Observable (I, Observe(..))
+import Daml.Finance.Interface.Data.NumericObservable qualified as NumericObservable (I, Observe(..))
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
@@ -62,11 +63,11 @@ template Service
           customerFundAccount = fromSome $ M.lookup fund.instrument.id dir.accounts
         create Fund.PooledInvestmentRequest with operator; provider; customer; requestId; asOfDate; fundId; quantity; cashCid; investmentRequestCids; customerFundAccount
 
-    nonconsuming choice FulfillPooledInvestmentRequest : [ContractId Transferable.I]
+    nonconsuming choice FulfillPooledInvestmentRequest : [ContractId Holding.I]
       with
         pooledInvestmentRequestCid : ContractId Fund.PooledInvestmentRequest
         fundCid : ContractId Fund.T
-        navObservableCid : ContractId Observable.I
+        navObservableCid : ContractId NumericObservable.I
         settlementFactoryCid : ContractId Settlement.Factory
       controller provider
       do
@@ -74,7 +75,7 @@ template Service
         fund <- fetch fundCid
 
         -- Calculate nr of units to issue
-        nav <- exercise navObservableCid Observable.Observe with actors = singleton customer; t = time pir.asOfDate 0 0 0
+        nav <- exercise navObservableCid NumericObservable.Observe with actors = singleton customer; t = time pir.asOfDate 0 0 0
         let
           unitValue = nav / fund.totalUnits
           nrUnits = pir.quantity.amount / unitValue
@@ -98,20 +99,20 @@ template Service
           (reqInstCash, reqInstFund) = splitAt (length irs) reqInst
 
         -- Allocate and approve custodian cash instruction
-        (custodianCashInstructionCid, _) <- exercise custodianCashInstructionCid Instruction.Allocate with allocation = Pledge pir.cashCid
+        (custodianCashInstructionCid, _) <- exercise custodianCashInstructionCid Instruction.Allocate with actors = singleton provider; allocation = Pledge $ toInterfaceContractId pir.cashCid
         exercise fundCid Fund.ApproveInstruction with instructionCid = custodianCashInstructionCid
 
         -- Allocate and approve manager fund instruction
-        (managerFundInstructionCid, _) <- exercise managerFundInstructionCid Instruction.Allocate with allocation = Pledge $ coerceContractId fundUnitsCid
-        exercise managerFundInstructionCid Instruction.Approve with approval = TakeDelivery pir.customerFundAccount
+        (managerFundInstructionCid, _) <- exercise managerFundInstructionCid Instruction.Allocate with actors = singleton provider; allocation = Pledge $ coerceContractId fundUnitsCid
+        exercise managerFundInstructionCid Instruction.Approve with actors = singleton provider; approval = TakeDelivery pir.customerFundAccount
 
         -- Allocate and approve investor instructions
         let
           processCash (irCid, iCid) = do
             iCid <- exercise irCid AllocateInstruction with instructionCid = iCid
-            exercise iCid Instruction.Approve with approval = DebitSender
+            exercise iCid Instruction.Approve with actors = singleton provider; approval = DebitSender
           processFund (irCid, iCid) = do
-            (iCid, _) <- exercise iCid Instruction.Allocate with allocation = CreditReceiver
+            (iCid, _) <- exercise iCid Instruction.Allocate with actors = singleton provider; allocation = CreditReceiver
             exercise irCid ApproveInstruction with instructionCid = iCid
         mapA_ processCash reqInstCash
         mapA_ processFund reqInstFund

@@ -5,7 +5,7 @@ import React from "react";
 import { Table, TableBody, TableCell, TableRow, TableHead, Grid, Paper, Typography, Button } from "@mui/material";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
-import { fmt, shorten } from "../../util";
+import { fmt, shorten, singleton } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
 import { Batch as BatchI } from "@daml.js/daml-finance-interface-settlement/lib/Daml/Finance/Interface/Settlement/Batch";
@@ -15,9 +15,9 @@ import { Message } from "../../components/Message/Message";
 import { CreateEvent } from "@daml/ledger";
 import { useHoldings } from "../../context/HoldingContext";
 import { ContractId } from "@daml/types";
-import { Transferable } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Transferable";
 import { Allocation, Approval } from "@daml.js/daml-finance-interface-settlement/lib/Daml/Finance/Interface/Settlement/Types";
 import { useAccounts } from "../../context/AccountContext";
+import { Base as Holding } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Base";
 
 export const Batch : React.FC = () => {
   const classes = useStyles();
@@ -35,25 +35,25 @@ export const Batch : React.FC = () => {
   if (l1 || l2 || l3 || l4) return <Spinner />;
   if (!batch) return <Message text={"Batch [" + contractId + "] not found"} />;
   const filtered = instructions.filter(c => c.payload.batchId.unpack === batch.payload.id.unpack);
+  const actors = singleton(party);
 
   const allocate = async (c : CreateEvent<Instruction>) => {
     if (c.payload.approval.tag !== "TakeDelivery") throw new Error("Only TakeDelivery approvals are supported");
     const account = c.payload.approval.value;
     if (account.custodian === party) {
       const allocation : Allocation = { tag: "CreditReceiver", value: {} };
-      await ledger.exercise(Instruction.Allocate, c.contractId, { allocation });
+      await ledger.exercise(Instruction.Allocate, c.contractId, { actors, allocation });
     } else {
-      const holdingCid = await getFungible(party, c.payload.step.quantity.amount, c.payload.step.quantity.unit);
-      const allocation : Allocation = { tag: "Pledge", value: holdingCid as string as ContractId<Transferable> };
-      await ledger.exercise(Instruction.Allocate, c.contractId, { allocation });
+      const holdingCid = await getFungible(party, c.payload.routedStep.quantity.amount, c.payload.routedStep.quantity.unit);
+      const allocation : Allocation = { tag: "Pledge", value: holdingCid as string as ContractId<Holding> };
+      await ledger.exercise(Instruction.Allocate, c.contractId, { actors, allocation });
     }
   };
 
   const approve = async (c : CreateEvent<Instruction>) => {
-    const account = getAccount(c.payload.step.quantity.unit);
+    const account = getAccount(c.payload.routedStep.quantity.unit);
     const approval : Approval = { tag: "TakeDelivery", value: account };
-    const arg = { approval };
-    await ledger.exercise(Instruction.Approve, c.contractId, arg);
+    await ledger.exercise(Instruction.Approve, c.contractId, { actors, approval });
   };
 
   return (
@@ -78,17 +78,17 @@ export const Batch : React.FC = () => {
                 {filtered.map((c, i) => (
                   <TableRow key={i} className={classes.tableRow}>
                     <TableCell key={0} className={classes.tableCell}>{c.payload.id.unpack}</TableCell>
-                    <TableCell key={1} className={classes.tableCell}>{getName(c.payload.step.sender)}</TableCell>
-                    <TableCell key={2} className={classes.tableCell}>{getName(c.payload.step.receiver)}</TableCell>
-                    <TableCell key={3} className={classes.tableCell} align="right">{fmt(c.payload.step.quantity.amount)}</TableCell>
-                    <TableCell key={4} className={classes.tableCell}>{c.payload.step.quantity.unit.id.unpack} (v{shorten(c.payload.step.quantity.unit.version)})</TableCell>
+                    <TableCell key={1} className={classes.tableCell}>{getName(c.payload.routedStep.sender)}</TableCell>
+                    <TableCell key={2} className={classes.tableCell}>{getName(c.payload.routedStep.receiver)}</TableCell>
+                    <TableCell key={3} className={classes.tableCell} align="right">{fmt(c.payload.routedStep.quantity.amount)}</TableCell>
+                    <TableCell key={4} className={classes.tableCell}>{c.payload.routedStep.quantity.unit.id.unpack} (v{shorten(c.payload.routedStep.quantity.unit.version)})</TableCell>
                     <TableCell key={5} className={classes.tableCell}>
-                      {c.payload.step.sender === party && c.payload.allocation.tag === "Unallocated" && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" disabled={c.payload.approval.tag === "Unapproved"} onClick={() => allocate(c)}>Allocate</Button>}
-                      {(c.payload.step.sender !== party || c.payload.allocation.tag !== "Unallocated") && c.payload.allocation.tag}
+                      {c.payload.routedStep.sender === party && c.payload.allocation.tag === "Unallocated" && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" disabled={c.payload.approval.tag === "Unapproved"} onClick={() => allocate(c)}>Allocate</Button>}
+                      {(c.payload.routedStep.sender !== party || c.payload.allocation.tag !== "Unallocated") && c.payload.allocation.tag}
                     </TableCell>
                     <TableCell key={6} className={classes.tableCell}>
-                      {c.payload.step.receiver === party && c.payload.approval.tag === "Unapproved" && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => approve(c)}>Approve</Button>}
-                      {(c.payload.step.receiver !== party || c.payload.approval.tag !== "Unapproved") && c.payload.approval.tag}
+                      {c.payload.routedStep.receiver === party && c.payload.approval.tag === "Unapproved" && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => approve(c)}>Approve</Button>}
+                      {(c.payload.routedStep.receiver !== party || c.payload.approval.tag !== "Unapproved") && c.payload.approval.tag}
                     </TableCell>
                   </TableRow>
                 ))}

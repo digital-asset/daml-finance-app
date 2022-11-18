@@ -3,7 +3,7 @@
 
 module Daml.Finance.App.Custody.Auto.Service where
 
-import Daml.Finance.Interface.Holding.Account qualified as Account (K)
+import Daml.Finance.Interface.Account.Account qualified as Account (Controllers, K)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K, Q)
 import Daml.Finance.Interface.Types.Common (Id, PartiesMap)
@@ -24,10 +24,11 @@ template Service
       with
         id : Id
         description : Text
+        controllers : Account.Controllers
         observers : PartiesMap
       controller customer
       do
-        openAccountRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestOpenAccount with id; description; observers
+        openAccountRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestOpenAccount with id; description; controllers; observers
         exerciseByKey @S.Service (operator, provider, customer) S.OpenAccount with openAccountRequestCid
 
     nonconsuming choice RequestAndCloseAccount : ()
