@@ -10,6 +10,9 @@ dependencies:
   - daml-stdlib
 data-dependencies:
   - ../../../../.lib/contingent-claims-core-0.1.0.dar
+  - ../../../../.lib/contingent-claims-lifecycle-0.1.0.dar
+  - ../../../../.lib/contingent-claims-valuation-0.1.0.dar
+  - ../../../../.lib/daml-finance-claims-0.1.3.dar
   - ../../../../.lib/daml-finance-interface-account-0.1.2.dar
   - ../../../../.lib/daml-finance-interface-claims-0.1.7.dar
   - ../../../../.lib/daml-finance-interface-data-0.1.6.dar
