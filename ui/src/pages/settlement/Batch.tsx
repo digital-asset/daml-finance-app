@@ -38,22 +38,26 @@ export const Batch : React.FC = () => {
   const actors = singleton(party);
 
   const allocate = async (c : CreateEvent<Instruction>) => {
-    if (c.payload.approval.tag !== "TakeDelivery") throw new Error("Only TakeDelivery approvals are supported");
-    const account = c.payload.approval.value;
-    if (account.custodian === party) {
+    console.log(c.payload.routedStep.custodian);
+    if (c.payload.routedStep.custodian === party) {
       const allocation : Allocation = { tag: "CreditReceiver", value: {} };
       await ledger.exercise(Instruction.Allocate, c.contractId, { actors, allocation });
     } else {
       const holdingCid = await getFungible(party, c.payload.routedStep.quantity.amount, c.payload.routedStep.quantity.unit);
       const allocation : Allocation = { tag: "Pledge", value: holdingCid as string as ContractId<Holding> };
       await ledger.exercise(Instruction.Allocate, c.contractId, { actors, allocation });
-    }
+    };
   };
 
   const approve = async (c : CreateEvent<Instruction>) => {
-    const account = getAccount(c.payload.routedStep.quantity.unit);
-    const approval : Approval = { tag: "TakeDelivery", value: account };
-    await ledger.exercise(Instruction.Approve, c.contractId, { actors, approval });
+    if (c.payload.routedStep.custodian === party) {
+      const approval : Approval = { tag: "DebitSender", value: {} };
+      await ledger.exercise(Instruction.Approve, c.contractId, { actors, approval });
+    } else {
+      const account = getAccount(c.payload.routedStep.quantity.unit);
+      const approval : Approval = { tag: "TakeDelivery", value: account };
+      await ledger.exercise(Instruction.Approve, c.contractId, { actors, approval });
+    };
   };
 
   return (
@@ -83,11 +87,11 @@ export const Batch : React.FC = () => {
                     <TableCell key={3} className={classes.tableCell} align="right">{fmt(c.payload.routedStep.quantity.amount)}</TableCell>
                     <TableCell key={4} className={classes.tableCell}>{c.payload.routedStep.quantity.unit.id.unpack} (v{shorten(c.payload.routedStep.quantity.unit.version)})</TableCell>
                     <TableCell key={5} className={classes.tableCell}>
-                      {c.payload.routedStep.sender === party && c.payload.allocation.tag === "Unallocated" && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" disabled={c.payload.approval.tag === "Unapproved"} onClick={() => allocate(c)}>Allocate</Button>}
+                      {c.payload.routedStep.sender === party && c.payload.allocation.tag === "Unallocated" && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" disabled={c.payload.routedStep.sender !== party || c.payload.allocation.tag !== "Unallocated"} onClick={() => allocate(c)}>Allocate</Button>}
                       {(c.payload.routedStep.sender !== party || c.payload.allocation.tag !== "Unallocated") && c.payload.allocation.tag}
                     </TableCell>
                     <TableCell key={6} className={classes.tableCell}>
-                      {c.payload.routedStep.receiver === party && c.payload.approval.tag === "Unapproved" && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => approve(c)}>Approve</Button>}
+                      {c.payload.routedStep.receiver === party && c.payload.approval.tag === "Unapproved" && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" disabled={c.payload.routedStep.receiver !== party || c.payload.approval.tag !== "Unapproved"} onClick={() => approve(c)}>Approve</Button>}
                       {(c.payload.routedStep.receiver !== party || c.payload.approval.tag !== "Unapproved") && c.payload.approval.tag}
                     </TableCell>
                   </TableRow>
