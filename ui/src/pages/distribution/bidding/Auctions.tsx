@@ -82,7 +82,7 @@ export const Auctions: React.FC = () => {
                     <TableCell key={2} className={classes.tableCell}>{getName(c.payload.customer)}</TableCell>
                     <TableCell key={3} className={classes.tableCell}>{fmt(c.payload.details.quantity.amount)} {c.payload.details.quantity.unit.id.unpack}</TableCell>
                     <TableCell key={4} className={classes.tableCell}>{fmt(c.payload.details.price.amount, 4)} {c.payload.details.price.unit.id.unpack}</TableCell>
-                    <TableCell key={5} className={classes.tableCell}>{c.payload.status}</TableCell>
+                    <TableCell key={5} className={classes.tableCell}>{c.payload.status.tag}</TableCell>
                     <TableCell key={6} className={classes.tableCell}>{getBidAllocation(c.payload)}</TableCell>
                   </TableRow>
                 ))}
