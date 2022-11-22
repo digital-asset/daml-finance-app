@@ -69,7 +69,7 @@ export const Effect : React.FC = () => {
                 <TableBody>
                   <TableRow key={0} className={classes.tableRow}>
                     <TableCell key={0} className={classes.tableCellSmall}><b>Providers</b></TableCell>
-                    <TableCell key={1} className={classes.tableCellSmall}>{getNames(effect.payload.provider)}</TableCell>
+                    <TableCell key={1} className={classes.tableCellSmall}>{getNames(effect.payload.providers)}</TableCell>
                   </TableRow>
                   <TableRow key={1} className={classes.tableRow}>
                     <TableCell key={0} className={classes.tableCellSmall}><b>Id</b></TableCell>
@@ -107,7 +107,7 @@ export const Effect : React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {effect.payload.consumed.map((c, i) => (
+                  {effect.payload.otherConsumed.map((c, i) => (
                     <TableRow key={i} className={classes.tableRow}>
                       <TableCell key={0} className={classes.tableCellSmall}>Owner</TableCell>
                       <TableCell key={1} className={classes.tableCellSmall}>{"=>"}</TableCell>
@@ -117,8 +117,8 @@ export const Effect : React.FC = () => {
                       <TableCell key={5} className={classes.tableCellSmall}>{shorten(c.unit.version)}</TableCell>
                     </TableRow>
                   ))}
-                  {effect.payload.produced.map((c, i) => (
-                    <TableRow key={effect.payload.consumed.length + i} className={classes.tableRow}>
+                  {effect.payload.otherProduced.map((c, i) => (
+                    <TableRow key={effect.payload.otherConsumed.length + i} className={classes.tableRow}>
                       <TableCell key={0} className={classes.tableCellSmall}>Custodian</TableCell>
                       <TableCell key={1} className={classes.tableCellSmall}>{"=>"}</TableCell>
                       <TableCell key={2} className={classes.tableCellSmall}>Owner</TableCell>
@@ -172,7 +172,7 @@ export const Effect : React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredBatches.flatMap(b => b.payload.steps).filter(s => s.sender !== s.receiver).map((s, i) => (
+                  {filteredBatches.flatMap(b => b.payload.routedSteps).filter(s => s.sender !== s.receiver).map((s, i) => (
                     <TableRow key={i} className={classes.tableRow}>
                       <TableCell key={1} className={classes.tableCell}>{getName(s.sender)}</TableCell>
                       <TableCell key={2} className={classes.tableCell}>{getName(s.receiver)}</TableCell>

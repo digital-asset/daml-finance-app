@@ -12,7 +12,7 @@ import { BorrowOffer } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lend
 import { fmt } from "../../util";
 import { useServices } from "../../context/ServiceContext";
 import { Service as Lending } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lending/Service";
-import { Reference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
+import { Reference } from "@daml.js/daml-finance-interface-account/lib/Daml/Finance/Interface/Account/Account";
 import { CreateEvent } from "@daml/ledger";
 import { useHoldings } from "../../context/HoldingContext";
 import { ContractId } from "@daml/types";

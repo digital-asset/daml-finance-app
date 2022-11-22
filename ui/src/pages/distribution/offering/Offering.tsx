@@ -11,7 +11,7 @@ import useStyles from "../../styles";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Service";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { Offering as OfferingContract, Subscription } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Model";
-import { Reference as AccountReference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
+import { Reference } from "@daml.js/daml-finance-interface-account/lib/Daml/Finance/Interface/Account/Account";
 import { fmt } from "../../../util";
 import { Message } from "../../../components/Message/Message";
 import { useParties } from "../../../context/PartiesContext";
@@ -36,7 +36,7 @@ export const Offering : React.FC = () => {
   const { contracts: offerings, loading: l3 } = useStreamQueries(OfferingContract);
   const { contracts: allSubscriptions, loading: l4 } = useStreamQueries(Subscription);
   const { contracts: factories, loading: l5 } = useStreamQueries(Factory);
-  const { contracts: accounts, loading: l6 } = useStreamQueries(AccountReference);
+  const { contracts: accounts, loading: l6 } = useStreamQueries(Reference);
 
   const offering = offerings.find(c => c.contractId === cid);
 

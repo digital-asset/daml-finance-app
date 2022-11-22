@@ -9,7 +9,7 @@ import { Grid, Paper, Typography, Table, TableRow, TableCell, TableBody, Button 
 import { useNavigate, useParams } from "react-router-dom";
 import { Service as Lending } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lending/Service";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { Reference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
+import { Reference } from "@daml.js/daml-finance-interface-account/lib/Daml/Finance/Interface/Account/Account";
 import { Message } from "../../components/Message/Message";
 import { useParties } from "../../context/PartiesContext";
 import { useInstruments } from "../../context/InstrumentContext";

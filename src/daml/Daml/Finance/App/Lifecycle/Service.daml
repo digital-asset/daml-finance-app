@@ -3,20 +3,19 @@
 
 module Daml.Finance.App.Lifecycle.Service where
 
-import DA.Set (singleton)
-import ContingentClaims.Claim (Claim)
-import ContingentClaims.Lifecycle qualified as Lifecycle
-import ContingentClaims.Math.Stochastic (Expr)
-import ContingentClaims.Observation (Observation(..))
-import ContingentClaims.Util (expiry, fixings, payoffs)
-import Daml.Finance.Interface.Data.Observable qualified as Observable (I)
+import ContingentClaims.Core.Claim (Claim)
+import ContingentClaims.Core.Observation (Observation(..))
+import ContingentClaims.Lifecycle.Lifecycle qualified as Lifecycle
+import ContingentClaims.Lifecycle.Util (expiry, fixings, payoffs)
+import ContingentClaims.Valuation.Stochastic (Expr)
+import Daml.Finance.Claims.Util.Lifecycle qualified as Claim (lifecycle, lifecycleClaims, timeEvent)
+import Daml.Finance.Interface.Data.NumericObservable qualified as NumericObservable (I)
+import Daml.Finance.Interface.Data.TimeObservable qualified as TimeObservable (I)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I, K, Q, R)
 import Daml.Finance.Interface.Instrument.Equity.Instrument qualified as Equity (I, DeclareDividend(..), DeclareReplacement(..), DeclareStockSplit(..))
-import Daml.Finance.Interface.Claims.Claim qualified as Claim (Claim, getClaims)
+import Daml.Finance.Interface.Claims.Claim qualified as Claim (Claim, getClaims, GetClaims(..))
 import Daml.Finance.Interface.Claims.Types (C, Pending, TaggedClaim)
-import Daml.Finance.Interface.Claims.Util.Lifecycle qualified as Claim (lifecycle, lifecycleClaims, timeEvent)
 import Daml.Finance.Interface.Lifecycle.Effect qualified as Effect (I)
-import Daml.Finance.Interface.Lifecycle.Clock qualified as Clock (I)
 import Daml.Finance.Interface.Lifecycle.Event qualified as Event (I)
 import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (I, Evolve(..))
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I)
@@ -39,7 +38,7 @@ template Service
 
     nonconsuming choice DeclareDividend : [ContractId Effect.I]
       with
-        clockCid : ContractId Clock.I
+        timeObservableCid : ContractId TimeObservable.I
         equity : Instrument.K
         newVersion : Text
         id : Id
@@ -58,11 +57,11 @@ template Service
           newInstrument = InstrumentKey with depository = provider; issuer = customer; id = v.id; version = newVersion
         exerciseByKey @Structuring.Service (operator, provider, customer) Structuring.RequestAndCreateEquity with id = v.id; description = v.description; version = newVersion; validAsOf = now; observers = dv.observers
         eventCid <- exercise (coerceContractId equityRef.cid : ContractId Equity.I) Equity.DeclareDividend with id; description; effectiveDate; newInstrument; perUnitDistribution
-        snd <$> exercise distributionRuleCid Lifecycle.Evolve with ruleName = "Dividend"; settlers = singleton provider; eventCid; clockCid; observableCids = []
+        snd <$> exercise distributionRuleCid Lifecycle.Evolve with ruleName = "Dividend"; eventCid; timeObservableCid; observableCids = []
 
     nonconsuming choice DeclareReplacement : [ContractId Effect.I]
       with
-        clockCid : ContractId Clock.I
+        timeObservableCid : ContractId TimeObservable.I
         equity : Instrument.K
         id : Id
         description : Text
@@ -72,11 +71,11 @@ template Service
       do
         (_, equityRef) <- fetchByKey @Instrument.R equity
         eventCid <- exercise (coerceContractId equityRef.cid : ContractId Equity.I) Equity.DeclareReplacement with id; description; effectiveDate; perUnitReplacement
-        snd <$> exercise replacementRuleCid Lifecycle.Evolve with ruleName = "StockSplit"; settlers = singleton provider; eventCid; clockCid; observableCids = []
+        snd <$> exercise replacementRuleCid Lifecycle.Evolve with ruleName = "StockSplit"; eventCid; timeObservableCid; observableCids = []
 
     nonconsuming choice DeclareStockSplit : [ContractId Effect.I]
       with
-        clockCid : ContractId Clock.I
+        timeObservableCid : ContractId TimeObservable.I
         equity : Instrument.K
         newVersion : Text
         id : Id
@@ -95,12 +94,12 @@ template Service
           newInstrument = InstrumentKey with depository = provider; issuer = customer; id = v.id; version = newVersion
         exerciseByKey @Structuring.Service (operator, provider, customer) Structuring.RequestAndCreateEquity with id = v.id; description = v.description; version = newVersion; validAsOf = now; observers = dv.observers
         eventCid <- exercise (coerceContractId equityRef.cid : ContractId Equity.I) Equity.DeclareStockSplit with id; description; effectiveDate; newInstrument; adjustmentFactor
-        snd <$> exercise replacementRuleCid Lifecycle.Evolve with ruleName = "StockSplit"; settlers = singleton provider; eventCid; clockCid; observableCids = []
+        snd <$> exercise replacementRuleCid Lifecycle.Evolve with ruleName = "StockSplit"; eventCid; timeObservableCid; observableCids = []
 
     nonconsuming choice PreviewLifecycle : ([TaggedClaim], [Pending])
       with
         today : Time
-        observableCids : [ContractId Observable.I]
+        observableCids : [ContractId NumericObservable.I]
         instrumentCid : ContractId Claim.Claim
       controller customer
       do
@@ -116,33 +115,34 @@ template Service
       controller customer
       do
         instrument <- fetch instrumentCid
-        claims <- mconcat . map (.claim) <$> Claim.getClaims instrument
+        taggedClaims <- Claim.getClaims instrument $ Claim.GetClaims with actor = customer
         let
+          claim = mconcat $ map (.claim) taggedClaims
           simulate price = do
-            result <- Lifecycle.lifecycle (\_ t -> pure price) claims today today
+            result <- Lifecycle.lifecycle (\_ t -> pure price) claim today today
             pure result.pending
         mapA simulate prices
 
     nonconsuming choice GetCurrentClaims : [TaggedClaim]
       with
         instrumentCid : ContractId Claim.Claim
-        observableCids : [ContractId Observable.I]
+        observableCids : [ContractId NumericObservable.I]
       controller customer
       do
         hasClaims <- fetch instrumentCid
         instrument <- fetch (coerceContractId instrumentCid : ContractId Instrument.I)
-        fst <$> Claim.lifecycle observableCids hasClaims [Claim.timeEvent (view instrument).validAsOf]
+        fst <$> Claim.lifecycle customer observableCids hasClaims [Claim.timeEvent (view instrument).validAsOf]
 
     nonconsuming choice Lifecycle : (ContractId Lifecycle.I, [ContractId Effect.I])
       with
         ruleName : Text
         eventCid : ContractId Event.I
-        clockCid : ContractId Clock.I
-        observableCids : [ContractId Observable.I]
+        timeObservableCid : ContractId TimeObservable.I
+        observableCids : [ContractId NumericObservable.I]
         lifecyclableCid : ContractId Lifecycle.I
       controller customer
       do
-        exercise lifecyclableCid Lifecycle.Evolve with ruleName; settlers = singleton provider; eventCid; clockCid; observableCids
+        exercise lifecyclableCid Lifecycle.Evolve with ruleName; eventCid; timeObservableCid; observableCids
 
     nonconsuming choice Expiry : Optional Time
       with

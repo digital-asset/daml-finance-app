@@ -16,9 +16,9 @@ import { useParties } from "../../context/PartiesContext";
 import { useInstruments } from "../../context/InstrumentContext";
 import { useServices } from "../../context/ServiceContext";
 import { Message } from "../../components/Message/Message";
-import { Observable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/Observable";
+import { NumericObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/NumericObservable";
+import { TimeObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/TimeObservable";
 import { Event } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Event";
-import { Clock } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Clock";
 import { parseDate, shorten } from "../../util";
 import { Pending } from "@daml.js/daml-finance-interface-claims/lib/Daml/Finance/Interface/Claims/Types";
 import { ExpandMore } from "@mui/icons-material";
@@ -45,9 +45,9 @@ export const Instrument : React.FC = () => {
   const ledger = useLedger();
   const { loading: l1, lifecycle } = useServices();
   const { loading: l2, tokens, equities, getByCid } = useInstruments();
-  const { loading: l3, contracts: observables } = useStreamQueries(Observable);
+  const { loading: l3, contracts: numericObservables } = useStreamQueries(NumericObservable);
   const { loading: l4, contracts: events } = useStreamQueries(Event);
-  const { loading: l5, contracts: clocks } = useStreamQueries(Clock);
+  const { loading: l5, contracts: timeObservables } = useStreamQueries(TimeObservable);
   const { contractId } = useParams<any>();
   const loading = l1 || l2 || l3 || l4 || l5;
   const instrument = getByCid(contractId || "");
@@ -55,13 +55,13 @@ export const Instrument : React.FC = () => {
   useEffect(() => {
     const setClaims = async () => {
       if (loading || !lifecycle || !instrument.claim) return;
-      const observableCids = observables.map(c => c.contractId);
+      const observableCids = numericObservables.map(c => c.contractId);
       const [res, ] = await ledger.exercise(Lifecycle.GetCurrentClaims, lifecycle[0].contractId, { instrumentCid: instrument.claim.contractId, observableCids })
       const claims = res.length > 1 ? and(res.map(r => r.claim)) : res[0].claim;
       setNode1(claimToNode(claims));
     };
     setClaims();
-  }, [ledger, party, instrument, observables, lifecycle, loading]);
+  }, [ledger, party, instrument, numericObservables, lifecycle, loading]);
 
   useEffect(() => {
     if (!!remaining) setNode2(claimToNode(remaining));
@@ -75,19 +75,19 @@ export const Instrument : React.FC = () => {
   const canDeclareReplacement = !!description && !!effectiveDate && !!currency && !!amount;
 
   const previewLifecycle = async () => {
-    const observableCids = observables.map(c => c.contractId);
-    const [ res, ] = await ledger.exercise(Lifecycle.PreviewLifecycle, lifecycle[0].contractId, { today: clocks[0].payload.clockTime, observableCids, instrumentCid: instrument.claim!.contractId });
+    const observableCids = numericObservables.map(c => c.contractId);
+    const [ res, ] = await ledger.exercise(Lifecycle.PreviewLifecycle, lifecycle[0].contractId, { today: timeObservables[0].payload.time, observableCids, instrumentCid: instrument.claim!.contractId });
     const claims = res._1.length > 1 ? and(res._1.map(r => r.claim)) : res._1[0].claim;
     setRemaining(claims);
     setPending(res._2);
   };
 
   const executeLifecycle = async () => {
-    const observableCids = observables.map(c => c.contractId);
+    const observableCids = numericObservables.map(c => c.contractId);
     const arg = {
       ruleName: "Time",
       eventCid: events[0].contractId,
-      clockCid: clocks[0].contractId,
+      timeObservableCid: timeObservables[0].contractId,
       observableCids,
       lifecyclableCid: instrument.lifecycle!.contractId
     }
@@ -104,7 +104,7 @@ export const Instrument : React.FC = () => {
     const ccy = tokens.find(c => c.payload.id.unpack === currency);
     if (!lifecycle || !instrument.equity || !ccy) throw new Error("Cannot declare dividend on non-equity instrument");
     const arg = {
-      clockCid: clocks[0].contractId,
+      timeObservableCid: timeObservables[0].contractId,
       equity: instrument.key,
       newVersion: (parseInt(instrument.payload.version) + 1).toString(),
       id: { unpack: uuidv4() },
@@ -119,7 +119,7 @@ export const Instrument : React.FC = () => {
   const declareStockSplit = async () => {
     if (!lifecycle || !instrument.equity) throw new Error("Cannot declare stock split on non-equity instrument");
     const arg = {
-      clockCid: clocks[0].contractId,
+      timeObservableCid: timeObservables[0].contractId,
       equity: instrument.key,
       newVersion: (parseInt(instrument.payload.version) + 1).toString(),
       id: { unpack: uuidv4() },
@@ -135,7 +135,7 @@ export const Instrument : React.FC = () => {
     const ccy = tokens.find(c => c.payload.id.unpack === currency);
     if (!lifecycle || !instrument.equity || !ccy) throw new Error("Cannot declare replacement on non-equity instrument");
     const arg = {
-      clockCid: clocks[0].contractId,
+      timeObservableCid: timeObservables[0].contractId,
       equity: instrument.key,
       newVersion: (parseInt(instrument.payload.version) + 1).toString(),
       id: { unpack: uuidv4() },

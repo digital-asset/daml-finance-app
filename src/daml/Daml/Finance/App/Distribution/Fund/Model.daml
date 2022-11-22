@@ -3,10 +3,11 @@
 
 module Daml.Finance.App.Distribution.Fund.Model where
 
+import DA.Set (singleton)
 import Daml.Finance.App.Distribution.Investment.Model (InvestmentRequest)
 import Daml.Finance.App.Issuance.Model qualified as Issuance (T)
 import Daml.Finance.App.Issuance.Service qualified as Issuance (CreateIssuance(..), RequestCreateIssuance(..), Service)
-import Daml.Finance.Interface.Holding.Account qualified as Account (K)
+import Daml.Finance.Interface.Account.Account qualified as Account (K)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K, Q)
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Approve(..), I)
@@ -58,7 +59,7 @@ template Fund
         instructionCid : ContractId Instruction.I
       controller manager
       do
-        exercise instructionCid Instruction.Approve with approval = TakeDelivery custodianCashAccount
+        exercise instructionCid Instruction.Approve with actors = singleton manager; approval = TakeDelivery custodianCashAccount
 
 
 template PooledInvestmentRequest

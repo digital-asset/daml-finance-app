@@ -168,9 +168,9 @@ template Service
       do
         CreateTokenRequest{..} <- fetchAndArchive createTokenRequestCid
         let
-          instrumentKey = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"
+          instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"
           token = Token with ..
-        exercise factories.token Token.Create with token
+        exercise factories.token Token.Create with token; observers
 
     nonconsuming choice CreateEquity : ContractId Instrument.I
       with
@@ -199,10 +199,10 @@ template Service
       do
         CreateFixedRateBondRequest{..} <- fetchAndArchive createFixedRateBondRequestCid
         let
-          instrumentKey = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"
+          instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"
           periodicSchedule = createCouponPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
           fixedRate = FixedRate with ..
-        exercise factories.fixedRateBond FixedRateBond.Create with fixedRate
+        exercise factories.fixedRateBond FixedRateBond.Create with fixedRate; observers
 
     nonconsuming choice CreateFloatingRateBond : ContractId Instrument.I
       with
@@ -211,10 +211,10 @@ template Service
       do
         CreateFloatingRateBondRequest{..} <- fetchAndArchive createFloatingRateBondRequestCid
         let
-          instrumentKey = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"
+          instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"
           periodicSchedule = createCouponPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
           floatingRate = FloatingRate with ..
-        exercise factories.floatingRateBond FloatingRateBond.Create with floatingRate
+        exercise factories.floatingRateBond FloatingRateBond.Create with floatingRate; observers
 
     nonconsuming choice CreateInflationLinkedBond : ContractId Instrument.I
       with
@@ -223,10 +223,10 @@ template Service
       do
         CreateInflationLinkedBondRequest{..} <- fetchAndArchive createInflationLinkedBondRequestCid
         let
-          instrumentKey = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"
+          instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"
           periodicSchedule = createCouponPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
           inflationLinked = InflationLinked with ..
-        exercise factories.inflationLinkedBond InflationLinkedBond.Create with inflationLinked
+        exercise factories.inflationLinkedBond InflationLinkedBond.Create with inflationLinked; observers
 
     nonconsuming choice CreateZeroCouponBond : ContractId Instrument.I
       with
@@ -235,9 +235,9 @@ template Service
       do
         CreateZeroCouponBondRequest{..} <- fetchAndArchive createZeroCouponBondRequestCid
         let
-          instrumentKey = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"
+          instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"
           zeroCoupon = ZeroCoupon with ..
-        exercise factories.zeroCouponBond ZeroCouponBond.Create with zeroCoupon
+        exercise factories.zeroCouponBond ZeroCouponBond.Create with zeroCoupon; observers
 
     choice Terminate : ()
       with

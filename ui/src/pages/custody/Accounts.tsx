@@ -6,7 +6,7 @@ import { Grid } from "@mui/material";
 import { useParty, useStreamQueries } from "@daml/react";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
-import { Account } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
+import { Account } from "@daml.js/daml-finance-interface-account/lib/Daml/Finance/Interface/Account/Account";
 import { CreateEvent } from "@daml/ledger";
 import { HorizontalTable } from "../../components/Table/HorizontalTable";
 

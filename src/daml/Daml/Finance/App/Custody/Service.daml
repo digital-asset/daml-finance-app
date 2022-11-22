@@ -3,11 +3,11 @@
 
 module Daml.Finance.App.Custody.Service where
 
-import Daml.Finance.Interface.Holding.Account qualified as Account (Credit(..), Debit(..), K, R)
-import Daml.Finance.Interface.Holding.Factory.Account qualified as Account (F, Create(..), Remove(..))
-import Daml.Finance.Interface.Holding.Factory.Holding qualified as Holding (F)
+import Daml.Finance.Interface.Account.Account qualified as Account (Controllers, Credit(..), Debit(..), K, R)
+import Daml.Finance.Interface.Account.Factory qualified as Account (F, Create(..), Remove(..))
+import Daml.Finance.Interface.Holding.Factory qualified as Holding (F)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
-import Daml.Finance.Interface.Holding.Util (getAccount)
+import Daml.Finance.Interface.Account.Util (getAccount)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K, Q)
 import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Lifecycle (Claim)
 import Daml.Finance.Interface.Types.Common (AccountKey(..), Id, PartiesMap)
@@ -32,6 +32,7 @@ template Service
       with
         id : Id
         description : Text
+        controllers : Account.Controllers
         observers : PartiesMap
       controller customer
       do
@@ -65,9 +66,9 @@ template Service
         openAccountRequestCid : ContractId Custody.OpenAccountRequest
       controller provider
       do
-        Custody.OpenAccountRequest{id; description; observers} <- fetchAndArchive openAccountRequestCid
+        Custody.OpenAccountRequest{id; description; controllers; observers} <- fetchAndArchive openAccountRequestCid
         let account = AccountKey with custodian = provider; owner = customer; id
-        exercise accountFactoryCid Account.Create with account; description; holdingFactoryCid; observers
+        exercise accountFactoryCid Account.Create with account; description; controllers; holdingFactoryCid; observers
         pure account
 
     nonconsuming choice CloseAccount : ()

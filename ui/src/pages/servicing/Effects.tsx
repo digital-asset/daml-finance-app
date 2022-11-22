@@ -44,7 +44,7 @@ export const Effects : React.FC = () => {
   };
   const createRow = (c : CreateEvent<Effect>) : any[] => {
     return [
-      getNames(c.payload.provider),
+      getNames(c.payload.providers),
       c.payload.id.unpack,
       c.payload.description,
       c.payload.targetInstrument.id.unpack + " (v" + shorten(c.payload.targetInstrument.version) + ")",

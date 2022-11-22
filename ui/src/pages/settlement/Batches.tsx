@@ -59,7 +59,7 @@ export const Batches : React.FC = () => {
                     <TableCell key={0} className={classes.tableCell}>{c.payload.id.unpack}</TableCell>
                     <TableCell key={1} className={classes.tableCell}>{c.payload.description}</TableCell>
                     <TableCell key={2} className={classes.tableCell}>{getNames(c.payload.settlers)}</TableCell>
-                    <TableCell key={3} className={classes.tableCell}>{c.payload.steps.length}</TableCell>
+                    <TableCell key={3} className={classes.tableCell}>{c.payload.routedSteps.length}</TableCell>
                     <TableCell key={4} className={classes.tableCell}>
                       <IconButton color="primary" size="small" component="span" onClick={() => navigate(c.contractId)}>
                         <KeyboardArrowRight fontSize="small"/>

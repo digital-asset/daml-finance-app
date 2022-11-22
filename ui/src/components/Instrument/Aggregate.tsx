@@ -14,7 +14,7 @@ import { useParties } from "../../context/PartiesContext";
 import { shorten } from "../../util";
 import { Spinner } from "../Spinner/Spinner";
 import { useServices } from "../../context/ServiceContext";
-import { Observable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/Observable";
+import { NumericObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/NumericObservable";
 import { VerticalTable } from "../Table/VerticalTable";
 
 type AggregateProps = {
@@ -27,7 +27,7 @@ export const Aggregate : React.FC<AggregateProps> = ({ instrument }) => {
   const [ node, setNode ] = useState<ClaimTreeNode | undefined>();
   const ledger = useLedger();
   const { loading: l1, lifecycle } = useServices();
-  const { loading: l2, contracts: observables } = useStreamQueries(Observable);
+  const { loading: l2, contracts: observables } = useStreamQueries(NumericObservable);
 
   useEffect(() => {
     const setClaims = async () => {
