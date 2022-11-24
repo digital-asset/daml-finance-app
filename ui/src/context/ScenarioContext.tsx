@@ -57,6 +57,20 @@ const settlement   = { name: "Settlement",    path: "settlement",   elem: <App k
 
 export const scenarios : Scenario[] = [
   {
+    label: "RLN",
+    description: "Settle cash transactions through RLN",
+    apps: [ structuring, custody, servicing, settlement, network ],
+    image: structuredNotesImage,
+    positions: new Map([
+      [ "Operator",         { x:    0, y:   0 } ],
+      [ "Public",           { x:    0, y:   0 } ],
+      [ "CashProvider",     { x:    0, y:   0 } ],
+      [ "Issuer",           { x:    0, y:   0 } ],
+      [ "Investor",         { x:    0, y: 300 } ],
+    ]),
+    useNetworkLogin: true
+  },
+  {
     label: "Default",
     description: "Primary and secondary markets workflows",
     image: defaultImage,
@@ -175,7 +189,7 @@ export const scenarios : Scenario[] = [
       [ "Investor3",        { x:  600, y: 450 } ]
     ]),
     useNetworkLogin: true
-  }
+  },
 ];
 
 const ScenarioContext = React.createContext<ScenarioState>({ selected: scenarios[0], select: _ => scenarios[0] });

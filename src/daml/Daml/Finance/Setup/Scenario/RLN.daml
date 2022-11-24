@@ -1,0 +1,80 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.Setup.Scenario.RLN where
+
+import ContingentClaims.Core.Builders (unrollDates)
+import DA.Date (addDays, toDateUTC, toGregorian)
+import DA.Map (empty, fromList)
+import DA.Set (singleton)
+import DA.Time (time)
+import Daml.Finance.Account.Account qualified as Account (Factory(..))
+import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
+import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (Evolve(..), I)
+import Daml.Finance.Interface.Types.Common (Id(..))
+import Daml.Finance.Settlement.Factory qualified as Settlement (Factory(..))
+import Daml.Finance.Setup.Payoff
+import Daml.Finance.Setup.Util.Common
+import Daml.Finance.Setup.Util.Role
+import Daml.Finance.Setup.Util.Service
+import Daml.Finance.Setup.Util.Workflow
+import Daml.Script
+
+run : Script [PartyInfo]
+run  = do
+  let scenario = "RLN"
+  parties <- allocateParties scenario ["Operator", "Public", "CashProvider", "Issuer", "Investor"]
+  let
+    all@[operator, public, cashProvider, issuer, inv] = map (.id) parties
+    pub = fromList [("Public", singleton public)]
+
+  -- Factories
+  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
+  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
+  settlementFactoryCid      <- toInterfaceContractId <$> submit operator do createCmd Settlement.Factory with provider = operator; custodian = issuer; observers = singleton public
+
+  -- Roles
+  createOperatorRole    operator
+  createCustodianRole   operator issuer
+
+  -- Services
+  createCustodyService          operator issuer inv settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createIssuanceService         operator issuer    issuer
+  createIssuanceAutoService     operator issuer    issuer
+  createStructuringService      operator issuer    issuer
+  createStructuringAutoService  operator issuer    issuer
+  createLifecycleService        operator issuer    issuer public
+
+  -- Accounts
+  investorAccount <- createAccount operator issuer  inv public  (Id "Investor@Issuer")     "Investor@Issuer"    empty
+
+  -- Time
+  t <- getTime
+  let
+    today = toDateUTC t
+    todayTime = time today 12 0 0
+    yday = time (addDays today (-1)) 12 0 0
+    (todayYear, todayMonth, todayDay) = toGregorian today
+  (timeObservableCid, eventCid) <- createClockAndEvent all today (singleton public)
+
+  -- Instruments
+  usd   <- originate         cashProvider cashProvider  pub yday "USD"     "United States Dollar"
+  bond  <- originateGeneric  issuer       issuer        pub yday "BOND1"   "Bond 5Y @ 4.875%"                $ bond usd 1.0 0.04875 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
+
+  -- Distribution
+  -- TODO: Create RLN balance contracts
+
+  -- Create bond position
+  holdingCid <- deposit operator issuer inv public (Instrument.qty 1_000_000.0 bond) investorAccount
+
+  -- Workflows
+  let
+    doLifecycle = do
+      (newBondCid, effectCids) <- submitExerciseInterfaceByKeyCmd @Lifecycle.I [issuer] [public] bond Lifecycle.Evolve with ruleName = "Time"; eventCid; timeObservableCid; observableCids = []
+      -- TODO: create and invoke RLN claim rule with holdingCid and effect
+      pure ()
+
+  --doLifecycle
+
+  pure parties
