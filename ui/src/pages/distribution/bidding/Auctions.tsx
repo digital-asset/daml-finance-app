@@ -23,8 +23,6 @@ export const Auctions: React.FC = () => {
   const { contracts: bids, loading: l2 } = useStreamQueries(Bid);
   if (l1 || l2) return <Spinner />;
 
-  console.dir({auctions, bids})
-
   return (
     <Grid container direction="column">
       <Grid container direction="row">
@@ -50,14 +48,13 @@ export const Auctions: React.FC = () => {
                     <TableCell key={2} className={classes.tableCell}>{getName(c.payload.customer)}</TableCell>
                     <TableCell key={3} className={classes.tableCell}>{c.payload.quantity.unit.id.unpack}</TableCell>
                     <TableCell key={4} className={classes.tableCell}>{fmt(c.payload.quantity.amount)}</TableCell>
-
                     <TableCell key={5} className={classes.tableCell}>
                       <IconButton color="primary" size="small" component="span" onClick={() => navigate("/app/distribution/auction/" + c.contractId)}>
                         <KeyboardArrowRight fontSize="small" />
                       </IconButton>
                     </TableCell>
-                  </TableRow>)
-                }
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </Paper>
@@ -78,9 +75,7 @@ export const Auctions: React.FC = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {bids.map((c, i) => {
-                  // console.dir({bid: c})
-                  return (
+                {bids.map((c, i) => (
                   <TableRow key={i} className={classes.tableRow}>
                     <TableCell key={0} className={classes.tableCell}>{c.payload.auctionId}</TableCell>
                     <TableCell key={1} className={classes.tableCell}>{getName(c.payload.provider)}</TableCell>
@@ -90,7 +85,7 @@ export const Auctions: React.FC = () => {
                     <TableCell key={5} className={classes.tableCell}>{c.payload.status.tag}</TableCell>
                     <TableCell key={6} className={classes.tableCell}>{getBidAllocation(c.payload)}</TableCell>
                   </TableRow>
-                )})}
+                ))}
               </TableBody>
             </Table>
           </Paper>
