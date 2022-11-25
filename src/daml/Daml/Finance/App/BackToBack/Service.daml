@@ -3,17 +3,14 @@
 
 module Daml.Finance.App.BackToBack.Service where
 
-import DA.Foldable (mapA_)
 import DA.List (head)
 import DA.Optional (fromSome)
 import DA.Set (fromList, singleton)
 import Daml.Finance.App.Distribution.Subscription.Model (BackToBack, Offering(..))
 import Daml.Finance.App.Issuance.Model (Issuance(..))
-import Daml.Finance.Interface.Holding.Account qualified as Account (Credit(..), K, R)
+import Daml.Finance.Interface.Account.Account qualified as Account (Credit(..), K, R)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (Split(..), SplitResult(..))
-import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
-import Daml.Finance.Interface.Holding.Lockable qualified as Lockable (Acquire(..), I, LockType(..), Release(..))
-import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I, Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Holding.Util (getAmount)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 import Daml.Finance.Interface.Settlement.Factory qualified as Factory (I, Instruct(..))
@@ -57,11 +54,11 @@ template Service
         backToBack : BackToBack
       controller customer
       do
-        b2bDeliverableCid <- coerceContractId <$> exercise (coerceContractId backToBack.b2bDeliverableCid : ContractId Lockable.I) Lockable.Acquire with newLocker = fromList [customer]; context = backToBack.offeringId; lockType = Lockable.Semaphore
-        issuerDeliverableCid <- coerceContractId <$> exercise (coerceContractId backToBack.issuerDeliverableCid : ContractId Lockable.I) Lockable.Acquire with newLocker = fromList [provider]; context = backToBack.offeringId; lockType = Lockable.Semaphore
+        b2bDeliverableCid <- coerceContractId <$> exercise (toInterfaceContractId backToBack.b2bDeliverableCid : ContractId Holding.I) Holding.Acquire with newLockers = fromList [customer]; context = backToBack.offeringId; lockType = Holding.Semaphore
+        issuerDeliverableCid <- coerceContractId <$> exercise (toInterfaceContractId backToBack.issuerDeliverableCid : ContractId Holding.I) Holding.Acquire with newLockers = fromList [provider]; context = backToBack.offeringId; lockType = Holding.Semaphore
         pure backToBack with b2bDeliverableCid; issuerDeliverableCid
 
-    nonconsuming choice SettleOffering : [ContractId Transferable.I]
+    nonconsuming choice SettleOffering : [ContractId Holding.I]
       with
         settlementFactoryCid : ContractId Factory.I
         offeringCid : ContractId Offering
@@ -81,7 +78,7 @@ template Service
           if getAmount b2bDeliverable > totalQuantity
           then do
             Fungible.SplitResult{splitCids, rest} <- exercise b2b.b2bDeliverableCid Fungible.Split with amounts = [ totalQuantity ]
-            exercise (coerceContractId (fromSome rest) : ContractId Lockable.I) Lockable.Release with context = offering.offeringId
+            exercise (toInterfaceContractId (fromSome rest) : ContractId Holding.I) Holding.Release with context = offering.offeringId
             pure $ head splitCids
           else pure b2b.b2bDeliverableCid
         issuerDeliverable <- fetch b2b.issuerDeliverableCid
@@ -89,13 +86,12 @@ template Service
           if getAmount issuerDeliverable > totalNotional
           then head . (.splitCids) <$> exercise b2b.issuerDeliverableCid Fungible.Split with amounts = [ totalNotional ]
           else pure b2b.issuerDeliverableCid
-        deliveryCid <- fst <$> exercise deliveryCid Instruction.Allocate with allocation = Pledge $ coerceContractId b2bSizedDeliverableCid
-        deliveryCid <- exercise deliveryCid Instruction.Approve with approval = TakeDelivery b2b.issuerReceivableAccount
-        paymentCid <- fst <$> exercise paymentCid Instruction.Allocate with allocation = Pledge $ coerceContractId issuerSizedDeliverableCid
-        paymentCid <- exercise paymentCid Instruction.Approve with approval = TakeDelivery b2b.b2bReceivableAccount
+        deliveryCid <- fst <$> exercise deliveryCid Instruction.Allocate with actors = singleton customer; allocation = Pledge $ coerceContractId b2bSizedDeliverableCid
+        deliveryCid <- exercise deliveryCid Instruction.Approve with actors = singleton customer; approval = TakeDelivery b2b.issuerReceivableAccount
+        paymentCid <- fst <$> exercise paymentCid Instruction.Allocate with actors = singleton customer; allocation = Pledge $ coerceContractId issuerSizedDeliverableCid
+        paymentCid <- exercise paymentCid Instruction.Approve with actors = singleton customer; approval = TakeDelivery b2b.b2bReceivableAccount
         deliveredCids <- exercise batchCid Batch.Settle with actors = singleton customer
-        mapA_ (\cid -> coerceContractId <$> exercise (coerceContractId cid : ContractId Lockable.I) Lockable.Release with context = offering.offeringId) deliveredCids
-        pure deliveredCids
+        mapA (\cid -> exercise (toInterfaceContractId cid : ContractId Holding.I) Holding.Release with context = offering.offeringId) deliveredCids
 
     choice Terminate : ()
       with

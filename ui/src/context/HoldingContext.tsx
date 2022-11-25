@@ -6,7 +6,6 @@ import { CreateEvent } from "@daml/ledger";
 import { useLedger, useStreamQueries } from "@daml/react";
 import { keyEquals } from "../util";
 import { Base } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Base";
-import { Lockable } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Lockable";
 import { Transferable } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Transferable";
 import { Fungible } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Fungible";
 import { InstrumentKey } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Common";
@@ -19,7 +18,6 @@ type HoldingState = {
 };
 
 export type HoldingAggregate = CreateEvent<Base> & {
-  lockable : CreateEvent<Lockable> | undefined
   transferable : CreateEvent<Transferable> | undefined
   fungible : CreateEvent<Fungible> | undefined
 }
@@ -36,11 +34,10 @@ export const HoldingProvider : React.FC = ({ children }) => {
 
   const ledger = useLedger();
   const { contracts: holdings, loading: l1 } = useStreamQueries(Base);
-  const { contracts: lockables, loading: l2 } = useStreamQueries(Lockable);
-  const { contracts: transferables, loading: l3 } = useStreamQueries(Transferable);
-  const { contracts: fungibles, loading: l4 } = useStreamQueries(Fungible);
+  const { contracts: transferables, loading: l2 } = useStreamQueries(Transferable);
+  const { contracts: fungibles, loading: l3 } = useStreamQueries(Fungible);
 
-  const loading = l1 || l2 || l3 || l4;
+  const loading = l1 || l2 || l3;
 
   if (loading) {
     return (
@@ -49,14 +46,13 @@ export const HoldingProvider : React.FC = ({ children }) => {
       </HoldingContext.Provider>
     );
   } else {
-    const lockablesByCid : Map<string, CreateEvent<Lockable>> = new Map(lockables.map(c => [c.contractId, c]));
     const transferablesByCid : Map<string, CreateEvent<Transferable>> = new Map(transferables.map(c => [c.contractId, c]));
     const fungiblesByCid : Map<string, CreateEvent<Fungible>> = new Map(fungibles.map(c => [c.contractId, c]));
-    const aggregates : HoldingAggregate[] = holdings.map(c => ({ ...c, lockable: lockablesByCid.get(c.contractId), transferable: transferablesByCid.get(c.contractId), fungible: fungiblesByCid.get(c.contractId) }));
+    const aggregates : HoldingAggregate[] = holdings.map(c => ({ ...c, transferable: transferablesByCid.get(c.contractId), fungible: fungiblesByCid.get(c.contractId) }));
 
     const getFungible = async (owner : string, amount : number | string, instrument: InstrumentKey) : Promise<ContractId<Fungible>> => {
       const qty = typeof amount === "string" ? parseFloat(amount) : amount;
-      const filtered = aggregates.filter(c => c.payload.account.owner === owner && keyEquals(c.payload.instrument, instrument) && (!c.lockable || !c.lockable.payload.lock));
+      const filtered = aggregates.filter(c => c.payload.account.owner === owner && keyEquals(c.payload.instrument, instrument) && !c.payload.lock);
       if (filtered.length === 0) throw new Error("Could not find unencumbered holding on instrument [" + instrument.id.unpack + "]");
       if (!filtered[0].fungible) throw new Error("Holdings are not fungible, cannot right-size to correct amount.");
       const sum = filtered.reduce((a, b) => a + parseFloat(b.payload.amount), 0);

@@ -3,7 +3,7 @@
 
 module Daml.Finance.Setup.Scenario.StructuredNotes where
 
-import ContingentClaims.Financial (unrollDates)
+import ContingentClaims.Core.Builders (unrollDates)
 import DA.Date (Month(..), addDays, date, toDateUTC, toGregorian)
 import DA.Map (empty, fromList)
 import DA.Set (singleton)
@@ -11,11 +11,12 @@ import DA.Time (time)
 import Daml.Finance.App.BackToBack.Service qualified as BackToBack
 import Daml.Finance.App.Distribution.Subscription.Model qualified as Subscription
 import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription
-import Daml.Finance.Holding.Account qualified as Account (Factory(..))
+import Daml.Finance.Account.Account qualified as Account (Factory(..))
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
 import Daml.Finance.Interface.Types.Common (Id(..))
-import Daml.Finance.Settlement.Factory qualified as Settlement (Factory(..))
+import Daml.Finance.Settlement.Factory qualified as Settlement (FactoryWithIntermediaries(..))
+import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
 import Daml.Finance.Setup.Payoff
 import Daml.Finance.Setup.Util.Common
 import Daml.Finance.Setup.Util.Role
@@ -31,9 +32,16 @@ run  = do
     pub = fromList [("Public", singleton public)]
 
   -- Factories
-  accountFactoryCid    <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
-  holdingFactoryCid    <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
-  settlementFactoryCid <- toInterfaceContractId <$> submit operator do createCmd Settlement.Factory with provider = operator; observers = singleton public
+  let
+    assets = ["TSLA", "FWD1", "OPT1", "BOND1", "RC1", "BRC1", "BWN1", "BWN2"]
+    cashSettlementPaths = [[issuer], [riskTaker], [inv1], [inv2], [inv3]]
+    secSettlementPaths = [[issuer], [riskTaker], [inv1, issuer], [inv2, issuer], [inv3, issuer]]
+    cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = cashSettlementPaths
+    secRoute = Settlement.Hierarchy with rootCustodian = riskTaker; pathsToRootCustodian = secSettlementPaths
+    paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
+  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
+  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
+  settlementFactoryCid      <- toInterfaceContractId <$> submit operator do createCmd Settlement.FactoryWithIntermediaries with provider = operator; paths; observers = singleton public
 
   -- Roles
   createOperatorRole    operator

@@ -8,11 +8,11 @@ import DA.Optional (isNone)
 import DA.Set (insert, singleton)
 import Daml.Finance.App.Trading.Model (ApproveInstruction(..), CreateOrderRequest(..), CancelOrderRequest(..), Fill(..), FillResult(..), Order(..), Side(..))
 import Daml.Finance.App.Util (fetchAndArchive)
-import Daml.Finance.Interface.Holding.Account qualified as Account (K, exerciseInterfaceByKey)
+import Daml.Finance.Interface.Account.Account qualified as Account (K, exerciseInterfaceByKey)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Holding.Lockable qualified as Lockable (Acquire(..), I, LockType(..), Release(..))
-import Daml.Finance.Interface.Holding.Util (getAccount)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
+import Daml.Finance.Interface.Account.Util (getAccount)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, AddObservers(..), RemoveObservers(..))
 import Daml.Finance.Interface.Settlement.Factory qualified as Factory (I)
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Approve(..))
@@ -65,7 +65,7 @@ template Service
       controller provider
       do
         CreateOrderRequest{operator; provider; customer; id; timestamp; listingId; quantity; price; side; collateralCid; account; orderCids; observers} <- fetchAndArchive createOrderRequestCid
-        lockedCollateralCid : ContractId Fungible.I <- coerceContractId <$> exercise (coerceContractId collateralCid : ContractId Lockable.I) Lockable.Acquire with newLocker = (singleton provider); context = show id; lockType = Lockable.Semaphore
+        lockedCollateralCid : ContractId Fungible.I <- coerceContractId <$> exercise (toInterfaceContractId collateralCid : ContractId Holding.I) Holding.Acquire with newLockers = singleton provider; context = show id; lockType = Holding.Semaphore
         orderCid <- create Order with operator; provider; customer; id; timestamp; listingId; quantity; price; side; collateralCid = lockedCollateralCid; account; observers
         exercise self ExecuteOrder with orderCid; orderCids
 
@@ -76,7 +76,7 @@ template Service
       do
         CancelOrderRequest{orderCid} <- fetchAndArchive cancelOrderRequestCid
         order <- fetchAndArchive orderCid
-        exercise (coerceContractId order.collateralCid : ContractId Lockable.I) Lockable.Release with context = show order.id
+        exercise (toInterfaceContractId order.collateralCid : ContractId Holding.I) Holding.Release with context = show order.id
         pure ()
 
     nonconsuming choice ExecuteOrder : Optional (ContractId Order, Order)
@@ -101,11 +101,11 @@ template Service
                 FillResult{orderOpt; batchCid; instructionCid} <- exercise myCid Fill with settlementFactoryCid; other; isResting = False
                 exercise otherCid ApproveInstruction with instructionCid
                 [transferableCid] <- exercise batchCid Batch.Settle with actors = singleton provider
-                exercise (coerceContractId transferableCid : ContractId Lockable.I) Lockable.Release with context = show my.id
+                exercise (toInterfaceContractId transferableCid : ContractId Holding.I) Holding.Release with context = show my.id
                 FillResult{orderOpt = otherOpt; batchCid; instructionCid} <- exercise otherCid Fill with settlementFactoryCid; other = my; isResting = True
-                exercise instructionCid Instruction.Approve with approval = TakeDelivery my.account
+                exercise instructionCid Instruction.Approve with actors = singleton provider; approval = TakeDelivery my.account
                 [transferableCid] <- exercise batchCid Batch.Settle with actors = singleton provider
-                exercise (coerceContractId transferableCid : ContractId Lockable.I) Lockable.Release with context = show other.id
+                exercise (toInterfaceContractId transferableCid : ContractId Holding.I) Holding.Release with context = show other.id
                 when (isNone orderOpt) do
                   Account.exerciseInterfaceByKey @Disclosure.I my.account provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (show my.id, singleton provider)
                   Account.exerciseInterfaceByKey @Disclosure.I (getAccount myCollateral) provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (show my.id, singleton provider)

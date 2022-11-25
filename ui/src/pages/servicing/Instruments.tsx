@@ -8,9 +8,9 @@ import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycl
 import { useParties } from "../../context/PartiesContext";
 import { useServices } from "../../context/ServiceContext";
 import { InstrumentAggregate, useInstruments } from "../../context/InstrumentContext";
-import { Clock } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Clock";
 import { Event } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Event";
-import { Observable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/Observable";
+import { NumericObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/NumericObservable";
+import { TimeObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/TimeObservable";
 import { DetailButton } from "../../components/DetailButton/DetailButton";
 import { SelectionTable } from "../../components/Table/SelectionTable";
 import { useNavigate } from "react-router-dom";
@@ -25,9 +25,9 @@ export const Instruments : React.FC = () => {
   const svc = useServices();
   const inst = useInstruments();
 
-  const { loading: l1, contracts: observables } = useStreamQueries(Observable);
+  const { loading: l1, contracts: numericObservables } = useStreamQueries(NumericObservable);
   const { loading: l2, contracts: events } = useStreamQueries(Event);
-  const { loading: l3, contracts: clocks } = useStreamQueries(Clock);
+  const { loading: l3, contracts: timeObservables } = useStreamQueries(TimeObservable);
 
   if (l1 || l2 || l3 || svc.loading || inst.loading) return <Spinner />;
 
@@ -39,8 +39,8 @@ export const Instruments : React.FC = () => {
         ruleName: "Time",
         // TODO: Assumes the only event we have is a DateClockUpdatedEvent
         eventCid: events[0].contractId,
-        clockCid: clocks[0].contractId,
-        observableCids: observables.map(o => o.contractId),
+        timeObservableCid: timeObservables[0].contractId,
+        observableCids: numericObservables.map(o => o.contractId),
         lifecyclableCid: c
       }
       await ledger.exercise(Service.Lifecycle, svc.lifecycle[0].contractId, arg);
