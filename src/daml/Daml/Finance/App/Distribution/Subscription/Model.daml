@@ -3,7 +3,7 @@
 
 module Daml.Finance.App.Distribution.Subscription.Model where
 
-import DA.Set (singleton)
+import DA.Set (fromList, singleton)
 import Daml.Finance.Interface.Account.Account qualified as Account (K, R)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
@@ -90,7 +90,7 @@ template Subscription
         receiverAccount : Account.K
       controller provider
       do
-        exercise instructionCid Instruction.Approve with actors = singleton provider; approval = TakeDelivery receiverAccount
+        exercise instructionCid Instruction.Approve with actors = fromList [provider, investor]; approval = TakeDelivery receiverAccount
 
     nonconsuming choice AllocateInstruction : ContractId Instruction.I
       with
@@ -98,7 +98,7 @@ template Subscription
         transferableCid : ContractId Transferable.I
       controller provider
       do
-        fst <$> exercise instructionCid Instruction.Allocate with actors = singleton provider; allocation = Pledge $ toInterfaceContractId transferableCid
+        fst <$> exercise instructionCid Instruction.Allocate with actors = fromList [provider, investor]; allocation = Pledge $ toInterfaceContractId transferableCid
 
     nonconsuming choice UnlockHolding : ContractId Holding.I
       with

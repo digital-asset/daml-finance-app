@@ -182,7 +182,7 @@ const ScenarioContext = React.createContext<ScenarioState>({ selected: scenarios
 
 export const ScenarioProvider : React.FC = ({ children }) => {
   const scenarioName = localStorage.getItem("daml.scenario") || "Default";
-  const scenario = scenarios.find(s => s.label === scenarioName);
+  const scenario = scenarios.find(s => s.label === scenarioName) || scenarios.find(s => s.label === "Default");
   if (!scenario) throw new Error("Couldn't find scenario " + scenarioName);
 
   const [ selected, setSelected ] = useState(scenario);
