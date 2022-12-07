@@ -9,7 +9,6 @@ import DA.Set (singleton)
 import DA.Time (time)
 import Daml.Finance.Account.Account qualified as Account (Factory(..))
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
-import Daml.Finance.Interface.Types.Common (Id(..))
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum(..))
@@ -55,9 +54,9 @@ run = do
   createLifecycleService        operator seller       seller  public
 
   -- Accounts
-  sellerCashAccount <- createAccount operator centralBank seller  public (Id "Seller@CentralBank/Cash") "Seller@CentralBank/Cash" empty
-  buyerCashAccount  <- createAccount operator centralBank buyer   public (Id "Buyer@CentralBank/Cash")  "Buyer@CentralBank/Cash"  empty
-  buyerSecAccount   <- createAccount operator seller      buyer   public (Id "Buyer@Seller/Securties")  "Buyer@Seller/Securties"  empty
+  sellerCashAccount <- createAccount operator centralBank seller  public "Seller@CentralBank/Cash" empty
+  buyerCashAccount  <- createAccount operator centralBank buyer   public "Buyer@CentralBank/Cash"  empty
+  buyerSecAccount   <- createAccount operator seller      buyer   public "Buyer@Seller/Securties"  empty
 
   -- Time
   t <- getTime
@@ -70,7 +69,7 @@ run = do
   (clockCid, eventCid) <- createClockAndEvent all (date 2021 tm td) (singleton public)
 
   -- Instruments
-  usd   <- originate                    centralBank centralBank pub epoch "USD"   "United States Dollar"
+  usd   <- originateToken               centralBank centralBank pub epoch "USD"   "United States Dollar"
   swap1 <- originateCreditDefaultSwap   seller      seller                "CDS1"  "Credit Default Swap 5Y"  pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] seller (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.011 M 12 usd "DefaultProbability" "RecoveryRate" True
 
   pure parties

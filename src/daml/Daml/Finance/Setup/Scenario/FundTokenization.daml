@@ -65,16 +65,16 @@ run = do
   createFundService             operator pm           am
 
   -- Accounts
-  amCashAccount         <- createAccount operator cashProvider  am        public (Id "AssetManager@CashProvider/Cash")        "AssetManager@CashProvider/Cash"        $ fromList [("PM", singleton pm)]
-  custodianCashAccount  <- createAccount operator cashProvider  custodian public (Id "Custodian@CashProvider/Cash")           "Custodian@CashProvider/Cash"           $ fromList [("PM", singleton pm)]
-  inv1CashAccount       <- createAccount operator am            inv1      public (Id "Investor1@AssetManager/Cash")           "Investor1@AssetManager/Cash"           $ fromList [("PM", singleton pm)]
-  inv2CashAccount       <- createAccount operator am            inv2      public (Id "Investor2@AssetManager/Cash")           "Investor2@AssetManager/Cash"           $ fromList [("PM", singleton pm)]
-  inv3CashAccount       <- createAccount operator am            inv3      public (Id "Investor3@AssetManager/Cash")           "Investor3@AssetManager/Cash"           $ fromList [("PM", singleton pm)]
-  amSecAccount          <- createAccount operator custodian     am        public (Id "AssetManager@Custodian/Securties")      "AssetManager@Custodian/Securties"      $ fromList [("PM", singleton pm)]
-  pmSecAccount          <- createAccount operator custodian     pm        public (Id "PortfolioManager@Custodian/Securities") "PortfolioManager@Custodian/Securities" empty
-  inv1SecAccount        <- createAccount operator am            inv1      public (Id "Investor1@AssetManager/Securities")     "Investor1@AssetManager/Securities"     $ fromList [("PM", singleton pm)]
-  inv2SecAccount        <- createAccount operator am            inv2      public (Id "Investor2@AssetManager/Securities")     "Investor2@AssetManager/Securities"     $ fromList [("PM", singleton pm)]
-  inv3SecAccount        <- createAccount operator am            inv3      public (Id "Investor3@AssetManager/Securities")     "Investor3@AssetManager/Securities"     $ fromList [("PM", singleton pm)]
+  amCashAccount         <- createAccount operator cashProvider  am        public "AssetManager@CashProvider/Cash"        $ fromList [("PM", singleton pm)]
+  custodianCashAccount  <- createAccount operator cashProvider  custodian public "Custodian@CashProvider/Cash"           $ fromList [("PM", singleton pm)]
+  inv1CashAccount       <- createAccount operator am            inv1      public "Investor1@AssetManager/Cash"           $ fromList [("PM", singleton pm)]
+  inv2CashAccount       <- createAccount operator am            inv2      public "Investor2@AssetManager/Cash"           $ fromList [("PM", singleton pm)]
+  inv3CashAccount       <- createAccount operator am            inv3      public "Investor3@AssetManager/Cash"           $ fromList [("PM", singleton pm)]
+  amSecAccount          <- createAccount operator custodian     am        public "AssetManager@Custodian/Securties"      $ fromList [("PM", singleton pm)]
+  pmSecAccount          <- createAccount operator custodian     pm        public "PortfolioManager@Custodian/Securities" empty
+  inv1SecAccount        <- createAccount operator am            inv1      public "Investor1@AssetManager/Securities"     $ fromList [("PM", singleton pm)]
+  inv2SecAccount        <- createAccount operator am            inv2      public "Investor2@AssetManager/Securities"     $ fromList [("PM", singleton pm)]
+  inv3SecAccount        <- createAccount operator am            inv3      public "Investor3@AssetManager/Securities"     $ fromList [("PM", singleton pm)]
 
   -- Time
   t <- getTime
@@ -85,10 +85,10 @@ run = do
     epoch = tt $ date 1970 Jan 1
 
   -- Instruments
-  usd   <- originate                    cashProvider  cashProvider  pub epoch "USD"   "United States Dollar"
-  fund1 <- originate                    custodian     pm            pub epoch "FUND1" "FUND1 Units"
-  fund2 <- originate                    custodian     pm            pub epoch "FUND2" "FUND2 Units"
-  fund3 <- originate                    custodian     pm            pub epoch "FUND3" "FUND3 Units"
+  usd   <- originateToken                    cashProvider  cashProvider  pub epoch "USD"   "United States Dollar"
+  fund1 <- originateToken                    custodian     pm            pub epoch "FUND1" "FUND1 Units"
+  fund2 <- originateToken                    custodian     pm            pub epoch "FUND2" "FUND2 Units"
+  fund3 <- originateToken                    custodian     pm            pub epoch "FUND3" "FUND3 Units"
 
   -- Holdings
   amCashCid   <- deposit operator cashProvider am    public (Instrument.qty 10_000_000.0 usd) amCashAccount

@@ -52,9 +52,9 @@ run  = do
   createLifecycleService  operator seller       seller  public
 
   -- Accounts
-  sellerCashAccount   <- createAccount operator cashProvider  seller  public (Id "Seller@CashProvider") "Seller@CashProvider" empty
-  buyerCashAccount    <- createAccount operator cashProvider  buyer   public (Id "Buyer@CashProvider")  "Buyer@CashProvider"  empty
-  buyerSecAccount     <- createAccount operator seller        buyer   public (Id "Buyer@Seller")        "Buyer@Seller"        empty
+  sellerCashAccount   <- createAccount operator cashProvider  seller  public "Seller@CashProvider" empty
+  buyerCashAccount    <- createAccount operator cashProvider  buyer   public "Buyer@CashProvider"  empty
+  buyerSecAccount     <- createAccount operator seller        buyer   public "Buyer@Seller"        empty
 
   -- Time
   t <- getTime
@@ -67,10 +67,10 @@ run  = do
   createClockAndEvent all today (singleton public)
 
   -- Base Instruments
-  usd     <- originate cashProvider cashProvider pub todayTime "USD" "United States Dollar"
-  z4200L  <- originate seller      seller      pub todayTime "Z4200L" "Z4200L"
-  z4GEN   <- originate seller      seller      pub todayTime "Z4GEN" "Z4GEN"
-  z4300L  <- originate seller      seller      pub todayTime "Z4300L" "Z4300L"
+  usd     <- originateToken cashProvider cashProvider pub todayTime "USD" "United States Dollar"
+  z4200L  <- originateToken seller      seller      pub todayTime "Z4200L" "Z4200L"
+  z4GEN   <- originateToken seller      seller      pub todayTime "Z4GEN" "Z4GEN"
+  z4300L  <- originateToken seller      seller      pub todayTime "Z4300L" "Z4300L"
 
   -- Structured Instruments
   let

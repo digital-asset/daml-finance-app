@@ -71,17 +71,17 @@ run  = do
   createSubscriptionService       operator issuer       issuer    public
 
   -- Accounts
-  riskTakerCashAccount  <- createAccount operator centralBank  riskTaker  public (Id "RiskTaker@CentralBank") "RiskTaker@CentralBank" $ fromList [("b2b", singleton issuer)]
-  issuerCashAccount     <- createAccount operator centralBank  issuer     public (Id "Issuer@CentralBank")    "Issuer@CentralBank"    empty
-  inv1CashAccount       <- createAccount operator centralBank  inv1       public (Id "Investor1@CentralBank") "Investor1@CentralBank" empty
-  inv2CashAccount       <- createAccount operator centralBank  inv2       public (Id "Investor2@CentralBank") "Investor2@CentralBank" empty
-  inv3CashAccount       <- createAccount operator centralBank  inv3       public (Id "Investor3@CentralBank") "Investor3@CentralBank" empty
-  issuerSecAccount      <- createAccount operator riskTaker    issuer     public (Id "Issuer@RiskTaker")      "Issuer@RiskTaker"      empty
-  inv1SecAccount        <- createAccount operator issuer       inv1       public (Id "Investor1@Issuer")      "Investor1@Issuer"      empty
-  inv2SecAccount        <- createAccount operator issuer       inv2       public (Id "Investor2@Issuer")      "Investor2@Issuer"      empty
-  inv3SecAccount        <- createAccount operator issuer       inv3       public (Id "Investor3@Issuer")      "Investor3@Issuer"      empty
-  issuerOwnAccount      <- createAccount operator issuer       issuer     public (Id "Issuer@Issuer")         "Issuer@Issuer"         empty
-  riskTakerOwnAccount   <- createAccount operator riskTaker    riskTaker  public (Id "RiskTaker@RiskTaker")   "RiskTaker@RiskTaker"   $ fromList [("b2b", singleton issuer)]
+  riskTakerCashAccount  <- createAccount operator centralBank  riskTaker  public "RiskTaker@CentralBank" $ fromList [("b2b", singleton issuer)]
+  issuerCashAccount     <- createAccount operator centralBank  issuer     public "Issuer@CentralBank"    empty
+  inv1CashAccount       <- createAccount operator centralBank  inv1       public "Investor1@CentralBank" empty
+  inv2CashAccount       <- createAccount operator centralBank  inv2       public "Investor2@CentralBank" empty
+  inv3CashAccount       <- createAccount operator centralBank  inv3       public "Investor3@CentralBank" empty
+  issuerSecAccount      <- createAccount operator riskTaker    issuer     public "Issuer@RiskTaker"      empty
+  inv1SecAccount        <- createAccount operator issuer       inv1       public "Investor1@Issuer"      empty
+  inv2SecAccount        <- createAccount operator issuer       inv2       public "Investor2@Issuer"      empty
+  inv3SecAccount        <- createAccount operator issuer       inv3       public "Investor3@Issuer"      empty
+  issuerOwnAccount      <- createAccount operator issuer       issuer     public "Issuer@Issuer"         empty
+  riskTakerOwnAccount   <- createAccount operator riskTaker    riskTaker  public "RiskTaker@RiskTaker"   $ fromList [("b2b", singleton issuer)]
 
   -- Time
   t <- getTime
@@ -102,8 +102,8 @@ run  = do
     libor6M = "LIB-USD-6M"
 
   -- Instruments
-  usd     <- originate         centralBank centralBank pub todayTime "USD"    "United States Dollar"
-  tsla    <- originate         depository  issuer      pub todayTime "TSLA"   "Tesla, Inc. Common Stock"
+  usd     <- originateToken    centralBank centralBank pub todayTime "USD"    "United States Dollar"
+  tsla    <- originateToken    depository  issuer      pub todayTime "TSLA"   "Tesla, Inc. Common Stock"
   fwd     <- originateGeneric  depository  issuer      pub todayTime "FWD1"   "Forward on TSLA"                       $ futureDvp tsla 200.0 usd 100_000.0 today
   opt     <- originateGeneric  depository  issuer      pub todayTime "OPT1"   "Put Option on TSLA"                    $ putOptionCash tslaO usd 1_000.0 maturity
   bnd     <- originateGeneric  depository  issuer      pub todayTime "BOND1"  "Bond 5Y/4.875%"                        $ bond usd 1.0 0.04875 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay

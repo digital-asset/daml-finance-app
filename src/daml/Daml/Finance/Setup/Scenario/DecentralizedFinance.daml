@@ -1,0 +1,130 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.Setup.Scenario.DecentralizedFinance where
+
+import DA.Date (toDateUTC)
+import DA.Map (empty, fromList)
+import DA.Set (singleton)
+import DA.Time (time)
+import Daml.Finance.Account.Account qualified as Account (Factory(..))
+import Daml.Finance.App.Decentralized.Exchange.Service as Dex (Swap(..))
+import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
+import Daml.Finance.Interface.Instrument.Base.Instrument (qty)
+import Daml.Finance.Settlement.Factory qualified as Settlement (FactoryWithIntermediaries(..))
+import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
+import Daml.Finance.Setup.Util.Common
+import Daml.Finance.Setup.Util.Role
+import Daml.Finance.Setup.Util.Service
+import Daml.Finance.Setup.Util.Workflow
+import Daml.Script
+
+run : Script [PartyInfo]
+run  = do
+  let scenario = "Decentralized Finance"
+  parties <- allocateParties scenario ["Operator", "Public", "FED", "ECB", "SNB", "BOE", "Consortium", "Trader"]
+  let
+    all@[operator, public, fed, ecb, snb, boe, con, trd] = map (.id) parties
+    pub = fromList [("Public", singleton public)]
+
+  -- Factories
+  let
+    assets = ["USD", "EUR", "CHF", "GBP"]
+    pathsToRootCustodian = [[con], [trd]]
+    hierarchies = map (\rootCustodian -> Settlement.Hierarchy with rootCustodian; pathsToRootCustodian) [fed, ecb, snb, boe]
+    paths = fromList $ zip assets hierarchies
+  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory with provider = operator; observers = pub
+  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory with provider = operator; observers = pub
+  settlementFactoryCid      <- toInterfaceContractId <$> submit operator do createCmd Settlement.FactoryWithIntermediaries with provider = operator; paths; observers = singleton public
+
+  -- Roles
+  createOperatorRole    operator
+  createCustodianRole   operator fed
+  createCustodianRole   operator ecb
+  createCustodianRole   operator snb
+  createCustodianRole   operator boe
+  createExchangeRole    operator con
+
+  -- Services
+  createCustodyService          operator fed con settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator fed trd     settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator ecb con settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator ecb trd     settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator snb con settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator snb trd     settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator boe con settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator boe trd     settlementFactoryCid accountFactoryCid holdingFactoryCid
+
+  -- Accounts
+  conFedAccount  <- createAccount operator fed con  public "Consortium@FED" pub
+  conEcbAccount  <- createAccount operator ecb con  public "Consortium@ECB" pub
+  conSnbAccount  <- createAccount operator snb con  public "Consortium@SNB" pub
+  conBoeAccount  <- createAccount operator boe con  public "Consortium@BOE" pub
+  trdFedAccount  <- createAccount operator fed trd  public "Trader@FED"     empty
+  trdEcbAccount  <- createAccount operator ecb trd  public "Trader@ECB"     empty
+  trdSnbAccount  <- createAccount operator snb trd  public "Trader@SNB"     empty
+  trdBoeAccount  <- createAccount operator boe trd  public "Trader@BOE"     empty
+  let
+    conAccounts = [conFedAccount, conEcbAccount, conSnbAccount, conBoeAccount]
+    trdAccounts = [trdFedAccount, trdEcbAccount, trdSnbAccount, trdBoeAccount]
+
+  -- Time
+  t <- getTime
+  let
+    today = toDateUTC t
+    todayTime = time today 12 0 0
+
+  -- Instruments
+  usd     <- originateToken   fed        fed         pub todayTime "USD" "United States Dollar"
+  eur     <- originateToken   ecb        ecb         pub todayTime "EUR" "Euro"
+  chf     <- originateToken   snb        snb         pub todayTime "CHF" "Swiss Franc"
+  gbp     <- originateToken   boe        boe         pub todayTime "GBP" "British Pound"
+  eurusd  <- originateEquity  con con  pub todayTime "LPS-EURUSD" "Liqudity Pool Share for EURUSD"
+  usdchf  <- originateEquity  con con  pub todayTime "LPS-USDCHF" "Liqudity Pool Share for USDCHF"
+  usdgbp  <- originateEquity  con con  pub todayTime "LPS-USDGBP" "Liqudity Pool Share for USDGBP"
+  eurchf  <- originateEquity  con con  pub todayTime "LPS-EURCHF" "Liqudity Pool Share for EURCHF"
+  eurgbp  <- originateEquity  con con  pub todayTime "LPS-EURGBP" "Liqudity Pool Share for EURGBP"
+  gbpchf  <- originateEquity  con con  pub todayTime "LPS-GBPCHF" "Liqudity Pool Share for GBPCHF"
+  let currencies = [usd, eur, chf, gbp]
+
+  -- Distribution
+  conUsdCid1  <- coerceContractId <$> deposit operator fed con public (qty 105_000_000.0 usd) conFedAccount
+  conUsdCid2  <- coerceContractId <$> deposit operator fed con public (qty 100_000_000.0 usd) conFedAccount
+  conUsdCid3  <- coerceContractId <$> deposit operator fed con public (qty 100_000_000.0 usd) conFedAccount
+  conEurCid1  <- coerceContractId <$> deposit operator ecb con public (qty 100_000_000.0 eur) conEcbAccount
+  conEurCid2  <- coerceContractId <$> deposit operator ecb con public (qty 100_000_000.0 eur) conEcbAccount
+  conEurCid3  <- coerceContractId <$> deposit operator ecb con public (qty 100_000_000.0 eur) conEcbAccount
+  conChfCid1  <- coerceContractId <$> deposit operator snb con public (qty  95_000_000.0 chf) conSnbAccount
+  conChfCid2  <- coerceContractId <$> deposit operator snb con public (qty 100_000_000.0 chf) conSnbAccount
+  conChfCid3  <- coerceContractId <$> deposit operator snb con public (qty 115_000_000.0 chf) conSnbAccount
+  conGbpCid1  <- coerceContractId <$> deposit operator boe con public (qty  80_000_000.0 gbp) conBoeAccount
+  conGbpCid2  <- coerceContractId <$> deposit operator boe con public (qty  85_000_000.0 gbp) conBoeAccount
+  conGbpCid3  <- coerceContractId <$> deposit operator boe con public (qty 100_000_000.0 gbp) conBoeAccount
+  trdUsdCid   <- coerceContractId <$> deposit operator fed trd public (qty  10_000_000.0 usd) trdFedAccount
+  -- trdEurCid   <- coerceContractId <$> deposit operator ecb trd public (qty  10_000_000.0 eur) trdEcbAccount
+  -- trdChfCid   <- coerceContractId <$> deposit operator snb trd public (qty  10_000_000.0 chf) trdSnbAccount
+  -- trdGbpCid   <- coerceContractId <$> deposit operator boe trd public (qty  10_000_000.0 gbp) trdBoeAccount
+
+  -- Data
+  createAccountDirectory con (zip currencies conAccounts) $ singleton public
+  createAccountDirectory trd (zip currencies trdAccounts) $ singleton public
+
+  -- Workflows
+  dex1Cid <- createDecentralizedExchangeService con public "DEX-EURUSD" (qty 100_000_000.0 eurusd) (qty 100_000_000.0 eur) conEcbAccount conEurCid1 (qty 105_000_000.0 usd) conFedAccount conUsdCid1
+  dex2Cid <- createDecentralizedExchangeService con public "DEX-USDCHF" (qty 100_000_000.0 usdchf) (qty 100_000_000.0 usd) conFedAccount conUsdCid2 (qty  95_000_000.0 chf) conSnbAccount conChfCid1
+  dex3Cid <- createDecentralizedExchangeService con public "DEX-USDGBP" (qty 100_000_000.0 usdgbp) (qty 100_000_000.0 usd) conFedAccount conUsdCid3 (qty  80_000_000.0 gbp) conBoeAccount conGbpCid1
+  dex4Cid <- createDecentralizedExchangeService con public "DEX-EURCHF" (qty 100_000_000.0 eurchf) (qty 100_000_000.0 eur) conEcbAccount conEurCid2 (qty 100_000_000.0 chf) conSnbAccount conChfCid2
+  dex5Cid <- createDecentralizedExchangeService con public "DEX-EURGBP" (qty 100_000_000.0 eurgbp) (qty 100_000_000.0 eur) conEcbAccount conEurCid3 (qty  85_000_000.0 gbp) conBoeAccount conGbpCid2
+  dex6Cid <- createDecentralizedExchangeService con public "DEX-GBPCHF" (qty 100_000_000.0 gbpchf) (qty 100_000_000.0 gbp) conBoeAccount conGbpCid3 (qty 115_000_000.0 chf) conSnbAccount conChfCid3
+
+  let
+    doRoundTrip = do
+      (dex1Cid, [trdEurCid]) <- submitMulti [trd] [public] do exerciseCmd dex1Cid Swap with actor = trd; xFungibleCid = trdUsdCid; yAccount = trdEcbAccount
+      (dex4Cid, [trdChfCid]) <- submitMulti [trd] [public] do exerciseCmd dex4Cid Swap with actor = trd; xFungibleCid = coerceContractId trdEurCid; yAccount = trdSnbAccount
+      (dex6Cid, [trdGbpCid]) <- submitMulti [trd] [public] do exerciseCmd dex6Cid Swap with actor = trd; xFungibleCid = coerceContractId trdChfCid; yAccount = trdBoeAccount
+      (dex3Cid, [trdUsdCid]) <- submitMulti [trd] [public] do exerciseCmd dex3Cid Swap with actor = trd; xFungibleCid = coerceContractId trdGbpCid; yAccount = trdFedAccount
+      pure ()
+
+  -- doRoundTrip
+
+  pure parties

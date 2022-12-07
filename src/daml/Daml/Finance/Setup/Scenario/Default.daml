@@ -81,14 +81,14 @@ run  = do
   createBiddingAutoService      operator agent       inv3
 
   -- Accounts
-  issuerCashAccount <- createAccount operator centralBank  issuer public  (Id "Issuer@CentralBank")     "Issuer@CentralBank"    empty
-  inv1CashAccount   <- createAccount operator centralBank  inv1   public  (Id "Investor1@CentralBank")  "Investor1@CentralBank" empty
-  inv2CashAccount   <- createAccount operator centralBank  inv2   public  (Id "Investor2@CentralBank")  "Investor2@CentralBank" empty
-  inv3CashAccount   <- createAccount operator centralBank  inv3   public  (Id "Investor3@CentralBank")  "Investor3@CentralBank" empty
-  issuerSecAccount  <- createAccount operator registry     issuer public  (Id "Issuer@Registry")        "Issuer@Registry"       empty
-  inv1SecAccount    <- createAccount operator registry     inv1   public  (Id "Investor1@Registry")     "Investor1@Registry"    empty
-  inv2SecAccount    <- createAccount operator registry     inv2   public  (Id "Investor2@Registry")     "Investor2@Registry"    empty
-  inv3SecAccount    <- createAccount operator registry     inv3   public  (Id "Investor3@Registry")     "Investor3@Registry"    empty
+  issuerCashAccount <- createAccount operator centralBank  issuer public "Issuer@CentralBank"    empty
+  inv1CashAccount   <- createAccount operator centralBank  inv1   public "Investor1@CentralBank" empty
+  inv2CashAccount   <- createAccount operator centralBank  inv2   public "Investor2@CentralBank" empty
+  inv3CashAccount   <- createAccount operator centralBank  inv3   public "Investor3@CentralBank" empty
+  issuerSecAccount  <- createAccount operator registry     issuer public "Issuer@Registry"       empty
+  inv1SecAccount    <- createAccount operator registry     inv1   public "Investor1@Registry"    empty
+  inv2SecAccount    <- createAccount operator registry     inv2   public "Investor2@Registry"    empty
+  inv3SecAccount    <- createAccount operator registry     inv3   public "Investor3@Registry"    empty
 
   -- Time
   t <- getTime
@@ -108,7 +108,7 @@ run  = do
     tslaObs = "TSLA"
 
   -- Instruments
-  usd     <- originate         centralBank centralBank pub yday "USD"     "United States Dollar"
+  usd     <- originateToken    centralBank centralBank pub yday "USD"     "United States Dollar"
   tsla    <- originateEquity   registry    issuer      pub yday "TSLA"    "Tesla, Inc. Common Stock"
   nflx    <- originateEquity   registry    issuer      pub yday "NFLX"    "Netflix, Inc. Common Stock"
   fwd     <- originateGeneric  registry    issuer      pub yday "FWD1"    "Forward on TSLA"                 $ futureDvp tsla 20.0 usd 10_000.0 today

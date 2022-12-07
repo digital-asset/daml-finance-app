@@ -63,10 +63,10 @@ import Daml.Finance.Settlement.Instruction qualified as Instruction (T)
 import Daml.Finance.Setup.Util.Common (getHolding)
 import Daml.Script
 
-createAccount : Party -> Party -> Party -> Party -> Id -> Text -> PartiesMap -> Script Account.K
-createAccount operator custodian owner public id description observers = do
+createAccount : Party -> Party -> Party -> Party -> Text -> PartiesMap -> Script Account.K
+createAccount operator custodian owner public id observers = do
   let controllers = Account.Controllers with instructors = singleton owner; approvers = singleton owner
-  openAccountRequestCid <- submit owner do exerciseByKeyCmd @Custody.Service (operator, custodian, owner) Custody.RequestOpenAccount with id; description; controllers; observers
+  openAccountRequestCid <- submit owner do exerciseByKeyCmd @Custody.Service (operator, custodian, owner) Custody.RequestOpenAccount with id = Id id; description = id; controllers; observers
   submitMulti [custodian] [public] do exerciseByKeyCmd @Custody.Service (operator, custodian, owner) Custody.OpenAccount with openAccountRequestCid
 
 createAccountDirectory : Party -> [(Instrument.K, Account.K)] -> Parties -> Script (ContractId AccountDirectory)
@@ -127,8 +127,8 @@ createCalendar provider id weekend holidays observers = do
     calendar = HolidayCalendarData with id; weekend; holidays
   submit provider do createCmd Data.HolidayCalendar with agency = provider; entity = calendar.id; calendar; observers
 
-originate : Party -> Party -> PartiesMap -> Time -> Text -> Text -> Script Instrument.K
-originate depository issuer observers validAsOf id description = do
+originateToken : Party -> Party -> PartiesMap -> Time -> Text -> Text -> Script Instrument.K
+originateToken depository issuer observers validAsOf id description = do
   cid <- coerceContractId <$> submitMulti [depository, issuer] [] do
     createCmd Token.Instrument with depository; issuer; id = Id id; version = "0"; observers; validAsOf; description
   createReference cid depository issuer observers
