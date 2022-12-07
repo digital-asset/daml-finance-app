@@ -24,7 +24,7 @@ import DA.Set (fromList, singleton)
     applies the constant product formula x * y = k, where x and y represents
     the reserves of the two tokens X and Y, respectively. The reserves of X
     and Y tokens are provided by liquidity providers (LP) in return for share
-    tokens (representing a share of the reservers and DEX trading profits).
+    tokens (representing a share of the reserves and DEX trading profits).
 
     To be more precise:
 
