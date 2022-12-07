@@ -8,8 +8,9 @@ import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Merge(.
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I, Transfer(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q, qty)
 import Daml.Finance.Interface.Types.Common (AccountKey, Id)
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, AddObservers(..), RemoveObservers(..))
 import DA.Numeric
-import DA.Set (singleton)
+import DA.Set (fromList, singleton)
 
 {-  FlashSwap Decentralized Exchange (DEX)
 
@@ -96,9 +97,10 @@ template Service
           let (x_new, y_new, y_delta) = constantProductFormula xAsset.amount xLP.quantity.amount yLP.quantity.amount
 
           -- transfer Y to user
-          Fungible.SplitResult{splitCids = [splitCid], rest = Some yFungibleCid_new} <- exercise yLP.fungibleCid Fungible.Split with amounts = [ -y_delta ] -- forced pattern match disallows draining
-          -- splitCid <- exercise splitCid SetObservers with newObservers = S.empty -- TODO: check if necessary
-          yHoldingCid <- toInterfaceContractId @Holding.I <$> exercise (toInterfaceContractId splitCid : ContractId Transferable.I) Transferable.Transfer with actors = singleton consortium; newOwnerAccount = actorAccount
+          Fungible.SplitResult{splitCids = [yFungibleCid], rest = Some yFungibleCid_new} <- exercise yLP.fungibleCid Fungible.Split with amounts = [ -y_delta ] -- forced pattern match disallows draining
+          Some yFungibleCid <- exercise (toInterfaceContractId @Disclosure.I yFungibleCid) Disclosure.RemoveObservers with disclosers = singleton consortium; observersToRemove = (show id, singleton public)
+
+          yHoldingCid <- toInterfaceContractId @Holding.I <$> exercise (coerceContractId yFungibleCid : ContractId Transferable.I) Transferable.Transfer with actors = fromList [consortium, actor]; newOwnerAccount = actorAccount
           yHolding <- view <$> fetch yHoldingCid
 
           -- execute flashSwapAction and get X
@@ -110,8 +112,8 @@ template Service
 
           -- transfer X to dex
           xFungibleCid_new <- do
-            xFungibleCid <- coerceContractId <$> exercise (coerceContractId xFungibleCid : ContractId Transferable.I) Transferable.Transfer with actors = singleton consortium; newOwnerAccount = xLP.account
-            -- cid <- exercise cid SetObservers with newObservers = singleton public -- TODO: check if necessary
+            xFungibleCid <- exercise (coerceContractId xFungibleCid : ContractId Transferable.I) Transferable.Transfer with actors = fromList [consortium, actor]; newOwnerAccount = xLP.account
+            xFungibleCid <- coerceContractId <$> exercise (toInterfaceContractId @Disclosure.I xFungibleCid) Disclosure.AddObservers with disclosers = singleton consortium; observersToAdd = (show id, singleton public)
             exercise xLP.fungibleCid Fungible.Merge with fungibleCids = [xFungibleCid]
 
           -- update pools
@@ -199,7 +201,7 @@ template Service
           p2 = p2 with quantity.amount = p2.quantity.amount - p2Amount; fungibleCid = lp2_cid
         return (dexCid, p1HoldingCid, p2HoldingCid)
 
-    postconsuming choice FlashSwap : (ContractId Service, [ContractId Holding.I])
+    nonconsuming choice FlashSwap : (ContractId Service, [ContractId Holding.I])
       with
         actor : Party
         xAsset : Instrument.Q
@@ -216,10 +218,11 @@ template Service
         -- switch back to p1 and p2
         let (new_lp1, new_lp2) = switchIf (xAsset.unit == p2.quantity.unit) (xLP_new, yLP_new)
         -- recreate dex
+        archive self
         dexCid <- create this with p1 = new_lp1; p2 = new_lp2
         return (dexCid, sideEffectCids)
 
-    postconsuming choice Swap : (ContractId Service, [ContractId Holding.I])
+    nonconsuming choice Swap : (ContractId Service, [ContractId Holding.I])
       with
         actor : Party
         xFungibleCid : ContractId Fungible.I
