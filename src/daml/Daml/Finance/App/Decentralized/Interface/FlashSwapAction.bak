@@ -1,0 +1,57 @@
+module DeFi.Interface.FlashSwapAction where
+
+import DA.Assert ((===))
+import DA.Finance.Asset (AssetDeposit, Split(..))
+import DA.Set (Set)
+
+{- Note: Daml Interfaces is currently experimental
+   1. daml install latest --snapshots=yes
+   2. add the following to daml.yaml
+      build-options:
+       - --target=1.dev
+-}
+
+data View = View {}
+interface FlashSwapAction where
+  viewtype View
+  choiceBody: ContractId AssetDeposit -> Update (ContractId AssetDeposit, [ContractId AssetDeposit])
+  choice ExecuteAction: (ContractId AssetDeposit, [ContractId AssetDeposit])
+    with
+      choiceControllers: Set Party
+      tokenIn: AssetDeposit
+      tokenInCid: ContractId AssetDeposit
+      tokenOut: AssetDeposit
+    controller choiceControllers
+    do
+      -- pre check
+      tokenInUsedCid :: tokenInRestCid <- exercise tokenInCid Split with quantities = [ tokenIn.asset.quantity ]
+      usedTokenIn <- fetch tokenInUsedCid
+      usedTokenIn.providers === tokenIn.providers
+      usedTokenIn.owners === tokenIn.owners
+      usedTokenIn.asset === tokenIn.asset
+      usedTokenIn.lockers === tokenIn.lockers
+
+      -- body
+      -- asserting that the sole authorizers are the choice controllers
+      -- (S.fromList (signatory this) === choiceControllers)
+      (actualTokenOutCid, extraCids) <- choiceBody this tokenInUsedCid
+      -- post check
+      -- making sure that at least tokenOut is returned
+      tokenOutUsedCid :: tokenOutRestCid <- exercise actualTokenOutCid Split with quantities = [ tokenOut.asset.quantity ]
+      to <- fetch tokenOutUsedCid
+      to.providers === tokenOut.providers
+      to.owners === tokenOut.owners
+      to.asset === tokenOut.asset
+      to.lockers === tokenOut.lockers
+      return (tokenOutUsedCid, extraCids <> tokenInRestCid <> tokenOutRestCid)
+
+-- Example of a FlashSwapAction template (used for a normal DEX Swap)
+template FlashSwapPipe with
+    owners: Set Party
+    outCid: ContractId AssetDeposit
+  where
+    signatory owners
+
+    interface instance FlashSwapAction for FlashSwapPipe where
+      view = View {}
+      choiceBody = \inCid -> return (outCid, [ inCid ])

@@ -1,0 +1,268 @@
+module DeFi.FlashSwap.Dex where
+
+import DA.Finance.Asset (AssetDeposit(..), SetObservers(..), Merge(..), Split(..), Transfer(..))
+import DA.Finance.Types (Asset)
+import DA.Numeric
+import DA.Set (Set, singleton)
+import DA.Set qualified as S
+import DeFi.Interface.FlashSwapAction
+
+
+{-  FlashSwap Decentralized Exchange (DEX)
+
+    This Decentralized Exchange (DEX) lets users swap a token X for another
+    token Y (and vice versa). It encodes an automated market maker (AMM),
+    i.e., an autonomous trading mechanism that eliminate the need for
+    centralized exchanges and related market-making techniques. The AMM
+    applies the constant product formula x * y = k, where x and y represents
+    the reserves of the two tokens X and Y, respectively. The reserves of X
+    and Y tokens are provided by liquidity providers (LP) in return for share
+    tokens (representing a share of the reservers and DEX trading profits).
+
+    To be more precise:
+
+    Swap: A user swapping x_delta of tokens X will receive y_delta of tokens Y
+    such that the constant k = (x + x_delta) * (y - y_delta) is maintained.
+
+    Deposit/Withdraw: LPs can deposit/withdraw delta_x and delta_y tokens,
+    provided delta_x/x = delta_y/y. The ratio is required in order to be able
+    to compute the quantity of share tokens to be received/given (without
+    having to value x and y). Note that after a deposit/withdraw, the constant
+    product k actually changes to k' = (x + x_delta) * (y + y_delta).
+
+    FlashSwap: As opposed to a normal swap where a user hands in X to the DEX
+    in return for Y, a FlashSwap lets a user (within an atomic action) first
+    get Y, then use Y in an action defined by the user (and restriced by a
+    Daml Interface called FlashSwapAction) to return X, and finally hand in X
+    to the DEX. The action is actually wrapped in a template which implements
+    the FlashSwapAction Daml Interface (choice).
+
+    Consortium: Instead of "miners", the backer of of the DEX is a consortium
+    of parties (e.g., 5 banks). They bootstrap the DEX, but are passive
+    thereafter (they don't exercise any choices on the DEX or related tokens).
+    The consortium are backers of the share tokens (of the DEX), and serves as
+    owners to the tokens in the pools.
+
+    Users: The users of the pool (including liquidity providers) are not
+    stakeholders of the DEX, but rather have readAs rights of a publicParty
+    which is an observer of the DEX (and thus stakeholder). The users can
+    exercise flexible postconsuming Deposit/Withdraw/Swap/FlashSwap choices
+    although they are no stakeholders of the DEX (and they are neither witness
+    (W), divulgee (D), nor stakeholder (S) of tokens of other users).
+
+-}
+
+switchIf : Bool -> (b, b) -> (b, b)
+switchIf cond (x, y) = if cond then (y, x) else (x, y)
+
+data Pool = Pool
+  with
+    asset : Asset
+    providers : Set Party
+    depositCid : ContractId AssetDeposit
+  deriving (Eq, Show)
+
+template Dex
+  with
+    consortium : Set Party
+    public : Party
+    id : Text
+    s : Asset -- share
+    p1 : Pool -- pool1
+    p2 : Pool -- pool2
+  where
+    signatory consortium
+    observer public
+
+    ensure p1.asset.quantity > 0.0 && p2.asset.quantity > 0.0 && s.quantity > 0.0
+
+    let
+      -- AMM rule
+      constantProductFormula delta_x x y: (Decimal, Decimal, Decimal) =
+        let
+          k = x * y
+          x_new = x + delta_x
+          y_new = div k x_new
+          delta_y = y_new - y
+        in
+          (x_new, y_new, delta_y)
+
+      -- flash swap
+      flashSwapBy user
+                  (xAsset: Asset)
+                  (xLP: Pool)
+                  (yLP: Pool)
+                  (flashSwapActionCid: ContractId FlashSwapAction) =
+        do
+          -- AMM
+          let (x_new, y_new, y_delta) = constantProductFormula
+                                          xAsset.quantity
+                                          xLP.asset.quantity
+                                          yLP.asset.quantity
+
+          -- transfer Y to user
+          [ splitCid, yTokenCid_new ] <- exercise yLP.depositCid Split with quantities = [ -y_delta ] -- forced pattern match disallows draining
+          splitCid <- exercise splitCid SetObservers with newObservers = S.empty
+          yTokenCid <- exercise splitCid Transfer with receivers = S.singleton user
+          yToken <- fetch yTokenCid
+
+          -- execute flashSwapAction and get X
+          let xToken = AssetDeposit with
+                providers = xLP.providers
+                owners = S.singleton user
+                asset = xAsset
+                lockers = S.empty
+                observers = S.empty
+          (xTokenCid, sideEffectCids) <-
+            exercise flashSwapActionCid ExecuteAction with
+              choiceControllers = S.singleton user
+              tokenIn = yToken
+              tokenInCid = yTokenCid
+              tokenOut = xToken
+
+          -- transfer X to dex
+          xTokenCid_new <- do
+            cid <- exercise xTokenCid Transfer with receivers = consortium
+            cid <- exercise cid SetObservers with newObservers = singleton public
+            exercise xLP.depositCid Merge with depositCids = [cid]
+
+          -- update pools
+          let xLP_new = xLP with
+                asset = (xLP.asset with quantity = x_new)
+                depositCid = xTokenCid_new
+          let yLP_new = yLP with
+                asset = (yLP.asset with quantity = y_new)
+                depositCid = yTokenCid_new
+          return (xLP_new, yLP_new, sideEffectCids)
+
+    postconsuming choice Deposit : (ContractId Dex, ContractId AssetDeposit)
+      with
+        actor: Party
+        token1Cid: ContractId AssetDeposit
+        token2Cid: ContractId AssetDeposit
+      controller actor
+      do
+        t1 <- fetch token1Cid
+        t2 <- fetch token2Cid
+        assertMsg "providers matches" $ t1.providers == p1.providers && t2.providers == p2.providers
+
+        -- split off right quantity from token2Cid
+        let
+          quantity2_needed: Decimal = div
+            (p2.asset.quantity * t1.asset.quantity)
+            p1.asset.quantity
+        assertMsg "liquidty token 2 quantity is too low" $ t2.asset.quantity >= quantity2_needed
+        lt2Cid :: _ <-
+          if (t2.asset.quantity > quantity2_needed) then
+            exercise token2Cid Split with quantities = [ quantity2_needed ]
+          else
+            return [token2Cid]
+        -- add to p1
+        lp1_cid <- do
+          cid <- exercise token1Cid Transfer with receivers = consortium
+          cid <- exercise cid SetObservers with newObservers = singleton public
+          exercise p1.depositCid Merge with depositCids = [ cid ]
+        -- add to p2
+        lp2_cid <- do
+          cid <- exercise lt2Cid Transfer with receivers = consortium
+          cid <- exercise cid SetObservers with newObservers = singleton public
+          exercise p2.depositCid Merge with depositCids = [ cid ]
+        -- spawn participation tokens
+        let newLptQuantity = div
+              (s.quantity * (t1.asset.quantity + p1.asset.quantity))
+              p1.asset.quantity
+        lptCid <- create AssetDeposit with
+          providers = consortium
+          owners = S.fromList [actor]
+          asset = (s with quantity = newLptQuantity - s.quantity)
+          lockers = S.empty
+          observers = S.empty
+        -- recreate Dex
+        dexCid <- create this with
+          s = s with quantity = newLptQuantity
+          p1 = p1 with
+            asset = p1.asset with
+              quantity = p1.asset.quantity + t1.asset.quantity
+            depositCid = lp1_cid
+          p2 = p2 with
+            asset = p2.asset with
+              quantity = p2.asset.quantity + quantity2_needed
+            depositCid = lp2_cid
+        return (dexCid, lptCid)
+
+    postconsuming choice Withdraw:
+      (ContractId Dex, ContractId AssetDeposit, ContractId AssetDeposit)
+      with
+        actor : Party
+        shareCid : ContractId AssetDeposit
+      controller actor
+      do
+        share <- fetch shareCid
+        archive shareCid
+        assertMsg "liquidity share matches"
+                  (share.asset.id == s.id && share.providers == consortium)
+        -- share of liquidity pool
+        let newLptQuantity = s.quantity - share.asset.quantity
+            nWithdrawTokensFromlp1 =
+              div (share.asset.quantity * p1.asset.quantity) s.quantity
+            nWithdrawTokensFromlp2 =
+              div (share.asset.quantity * p2.asset.quantity) s.quantity
+        -- split and transfer
+        [ split1Cid, lp1_cid ] <- exercise p1.depositCid Split with quantities = [ nWithdrawTokensFromlp1 ]
+        split1Cid <- exercise split1Cid SetObservers with newObservers = S.empty
+        liquidity1Cid <- exercise split1Cid Transfer with receivers = S.singleton actor
+        -- split and transfer
+        [ split2Cid, lp2_cid ] <- exercise p2.depositCid Split with quantities = [ nWithdrawTokensFromlp2 ]
+        split2Cid <- exercise split2Cid SetObservers with newObservers = S.empty
+        liquidity2Cid <- exercise split2Cid Transfer with receivers = S.singleton actor
+        -- recreate dex (not allowing to drain)
+        dexCid <- create this with
+          s = s with quantity = newLptQuantity
+          p1 = p1 with
+            asset = (p1.asset with
+              quantity = p1.asset.quantity - nWithdrawTokensFromlp1)
+            depositCid = lp1_cid
+          p2 = p2 with
+            asset = (p2.asset with
+              quantity = p2.asset.quantity - nWithdrawTokensFromlp2)
+            depositCid = lp2_cid
+        return (dexCid, liquidity1Cid, liquidity2Cid)
+
+    postconsuming choice FlashSwap : (ContractId Dex, [ContractId AssetDeposit])
+      with
+        actor: Party
+        xAsset: Asset
+        actionCid: ContractId FlashSwapAction
+      controller actor
+      do
+        assertMsg "asset matches" (
+            xAsset.id == p1.asset.id || xAsset.id == p2.asset.id
+          )
+        -- switch to X and Y
+        let (xLP, yLP) =
+              switchIf (xAsset.id == p2.asset.id) (p1, p2)
+        -- flash swap
+        (xLP_new, yLP_new, sideEffectCids) <-
+          flashSwapBy actor xAsset xLP yLP actionCid
+        -- switch back to p1 and p2
+        let (new_lp1, new_lp2) =
+              switchIf (xAsset.id == p2.asset.id) (xLP_new, yLP_new)
+        -- recreate dex
+        dexCid <- create this with p1 = new_lp1; p2 = new_lp2
+        return (dexCid, sideEffectCids)
+
+    postconsuming choice Swap:
+      (ContractId Dex, [ContractId AssetDeposit])
+      with
+        actor: Party
+        xTokenCid: ContractId AssetDeposit
+      controller actor
+      do
+        -- making use of a FlashSwapPipe, which is a FlashSwapAction which
+        -- simply takes Y as input and returns (X,[Some(Y)]), where X is (this)
+        -- xTokenCid and Y a yTokenCid from one of the DEX liquidity pools.
+        pipeCid <- create FlashSwapPipe with owners = S.singleton actor; outCid = xTokenCid
+        dexCid <- create this
+        let actionCid: ContractId FlashSwapAction = toInterfaceContractId pipeCid
+        xToken <- fetch xTokenCid
+        exercise dexCid FlashSwap with xAsset = xToken.asset; ..

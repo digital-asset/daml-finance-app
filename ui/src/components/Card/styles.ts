@@ -45,4 +45,12 @@ export default makeStyles((theme : Theme) => createStyles({
   tableRow: {
     height: "auto"
   },
+  tableCellMini: {
+    verticalAlign: "center",
+    paddingTop: 2,
+    paddingBottom: 2,
+    paddingLeft: 4,
+    paddingRight: 6,
+    fontSize: "0.6rem"
+  },
 }));

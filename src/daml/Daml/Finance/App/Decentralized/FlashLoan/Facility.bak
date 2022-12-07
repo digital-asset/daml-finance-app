@@ -1,0 +1,33 @@
+module DeFi.FlashLoan.Facility where
+
+import DA.Finance.Asset (AssetDeposit(..))
+import DA.Finance.Types (Asset)
+import DA.Set (Set)
+import DA.Set qualified as S
+import DeFi.Interface.FlashSwapAction
+
+template Facility with
+    providers: Set Party
+    owners: Set Party
+  where
+    signatory providers
+    observer owners
+
+    nonconsuming choice LendActRepay: [ContractId AssetDeposit]
+      with
+        quantity: Decimal
+        asset: Asset
+        actionCid: ContractId FlashSwapAction
+      controller owners
+      do
+        let tokenIn = AssetDeposit with observers = S.empty, lockers = S.empty, ..
+            tokenOut = tokenIn
+        -- lend
+        tokenInCid <- create tokenIn
+        -- act (authorization of providers are not being used here)
+        (outCid, sideEffectCids) <- exercise actionCid ExecuteAction with
+          choiceControllers = owners, ..
+        -- pay back
+        archive outCid
+        -- return rest
+        return sideEffectCids

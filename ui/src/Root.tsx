@@ -19,6 +19,7 @@ import { ServicesProvider } from "./context/ServiceContext";
 import { InstrumentProvider } from "./context/InstrumentContext";
 import { HoldingProvider } from "./context/HoldingContext";
 import { AccountProvider } from "./context/AccountContext";
+import { DeFi } from "./apps/DeFi";
 
 export const Root : React.FC = () => {
 
@@ -33,6 +34,7 @@ export const Root : React.FC = () => {
               <Route path="/issuance/*" element={<Issuance />} />
               <Route path="/lending/*" element={<Lending />} />
               <Route path="/custody/*" element={<Custody />} />
+              <Route path="/defi/*" element={<DeFi />} />
               <Route path="/distribution/*" element={<Distribution />} />
               <Route path="/servicing/*" element={<Servicing />} />
               <Route path="/settlement/*" element={<Settlement />} />
