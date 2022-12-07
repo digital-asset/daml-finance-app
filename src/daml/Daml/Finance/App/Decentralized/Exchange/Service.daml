@@ -1,3 +1,6 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
 module Daml.Finance.App.Decentralized.Exchange.Service where
 
 import Daml.Finance.App.Decentralized.Exchange.Interface (ExecuteAction(..), FlashSwapAction, FlashSwapPipe(..))
@@ -239,3 +242,4 @@ template Service
           xAsset = Instrument.qty xHolding.amount xHolding.instrument
           yAccount
           actionCid = toInterfaceContractId pipeCid
+

@@ -1,3 +1,6 @@
+// Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardActionArea, CardContent, Grid, Table, TableBody, TableCell, TableRow, Typography } from "@mui/material";
@@ -56,3 +59,4 @@ export const Dex : React.FC<DexProps> = ({ service: dex }) => {
     </Grid>
   );
 };
+

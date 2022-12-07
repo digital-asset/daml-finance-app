@@ -1,3 +1,6 @@
+// Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 import React from "react";
 import { Grid, Theme } from "@mui/material";
 import { Spinner } from "../../components/Spinner/Spinner";
@@ -30,3 +33,4 @@ const useStyles = makeStyles((theme : Theme) => createStyles({
     paddingRight: 20,
   },
 }));
+

@@ -1,3 +1,6 @@
+// Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 import React, { useEffect, useState } from "react";
 import classnames from "classnames";
 import { useParams } from "react-router";
@@ -181,3 +184,4 @@ export const Exchange : React.FC = () => {
     </Grid>
   );
 };
+
