@@ -1,0 +1,72 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Interface.Custody.Auto where
+
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I)
+import Daml.Finance.App.Interface.Custody.Service qualified as Service (I, Implementation, asBase)
+import Daml.Finance.Interface.Account.Account qualified as Account (Controllers, I)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K, Q)
+import Daml.Finance.Interface.Types.Common (AccountKey, Id, PartiesMap)
+
+type I = Service
+
+type V = View
+
+data View = View {}
+  deriving (Eq, Show)
+
+interface Service where
+  viewtype V
+
+  asService : Service.I
+    -- ^ Conversion to custody `Service` interface.
+  requestAndOpenAccount : ContractId Service.I -> RequestAndOpenAccount -> Update (ContractId Account.I, AccountKey)
+    -- ^ Implementation of the `RequestOpenAccount` choice.
+  requestAndCloseAccount : ContractId Service.I -> RequestAndCloseAccount -> Update ()
+    -- ^ Implementation of the `RequestCloseAccount` choice.
+  requestAndDeposit : ContractId Service.I -> RequestAndDeposit -> Update (ContractId Holding.I)
+    -- ^ Implementation of the `RequestDeposit` choice.
+  requestAndWithdraw : ContractId Service.I -> RequestAndWithdraw -> Update ()
+    -- ^ Implementation of the `RequestAndWithdraw` choice.
+
+  nonconsuming choice RequestAndOpenAccount : (ContractId Account.I, AccountKey)
+    with
+      id : Id
+      description : Text
+      controllers : Account.Controllers
+      observers : PartiesMap
+    controller (view $ Service.asBase $ asService this).customer
+    do
+      requestAndOpenAccount this (toInterfaceContractId self) arg
+
+  nonconsuming choice RequestAndCloseAccount : ()
+    with
+      account : AccountKey
+    controller (view $ Service.asBase $ asService this).customer
+    do
+      requestAndCloseAccount this (toInterfaceContractId self) arg
+
+  nonconsuming choice RequestAndDeposit : (ContractId Holding.I)
+    with
+      quantity : Instrument.Q
+      account : AccountKey
+    controller (view $ Service.asBase $ asService this).customer
+    do
+      requestAndDeposit this (toInterfaceContractId self) arg
+
+  nonconsuming choice RequestAndWithdraw : ()
+    with
+      instrument : Instrument.K
+      holdingCid : ContractId Holding.I
+    controller (view $ Service.asBase $ asService this).customer
+    do
+      requestAndWithdraw this (toInterfaceContractId self) arg
+
+-- | Type constraint for requiring templates to implement `Service`.
+type Implementation t = (HasToInterface t Service, Service.Implementation t)
+class (Implementation t) => HasImplementation t
+instance HasImplementation Service
+instance HasToInterface Service Service.I where _toInterface = asService
+instance HasToInterface Service Base.I where _toInterface = Service.asBase . asService

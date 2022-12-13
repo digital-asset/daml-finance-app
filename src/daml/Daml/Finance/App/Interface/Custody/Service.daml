@@ -3,14 +3,14 @@
 
 module Daml.Finance.App.Interface.Custody.Service where
 
-import Daml.Finance.Interface.Account.Account qualified as Account (Controllers)
+import Daml.Finance.Interface.Account.Account qualified as Account (Controllers, I)
 import Daml.Finance.Interface.Account.Factory qualified as Account (F)
 import Daml.Finance.Interface.Holding.Factory qualified as Holding (F)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K, Q)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Lifecycle (Claim)
 import Daml.Finance.Interface.Types.Common (AccountKey, Id, PartiesMap)
-import Daml.Finance.App.Interface.Base.Service qualified as Base (I)
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Implementation)
 import Daml.Finance.App.Interface.Custody.OpenAccountRequest qualified as OpenAccountRequest (I)
 import Daml.Finance.App.Interface.Custody.CloseAccountRequest qualified as CloseAccountRequest (I)
 import Daml.Finance.App.Interface.Custody.DepositRequest qualified as DepositRequest (I)
@@ -31,16 +31,16 @@ interface Service where
   viewtype V
 
   asBase : Base.I
-    -- ^ Conversion to base `Service` interface. 
+    -- ^ Conversion to base `Service` interface.
   requestOpenAccount : RequestOpenAccount -> Update (ContractId OpenAccountRequest.I)
     -- ^ Implementation of the `RequestOpenAccount` choice.
   requestCloseAccount : RequestCloseAccount -> Update (ContractId CloseAccountRequest.I)
     -- ^ Implementation of the `RequestCloseAccount` choice.
   requestDeposit : RequestDeposit -> Update (ContractId DepositRequest.I)
     -- ^ Implementation of the `RequestDeposit` choice.
-  requestWithdrawal : RequestWithdrawal -> Update (ContractId WithdrawRequest.I)
-    -- ^ Implementation of the `RequestWithdrawal` choice.
-  openAccount : OpenAccount -> Update AccountKey
+  requestWithdraw : RequestWithdraw -> Update (ContractId WithdrawRequest.I)
+    -- ^ Implementation of the `RequestWithdraw` choice.
+  openAccount : OpenAccount -> Update (ContractId Account.I, AccountKey)
     -- ^ Implementation of the `OpenAccount` choice.
   closeAccount : CloseAccount -> Update ()
     -- ^ Implementation of the `CloseAccount` choice.
@@ -74,15 +74,14 @@ interface Service where
     do
       requestDeposit this arg
 
-  nonconsuming choice RequestWithdrawal : ContractId WithdrawRequest.I
+  nonconsuming choice RequestWithdraw : ContractId WithdrawRequest.I
     with
-      instrument : Instrument.K
       holdingCid : ContractId Holding.I
     controller (view $ asBase this).customer
     do
-      requestWithdrawal this arg
+      requestWithdraw this arg
 
-  nonconsuming choice OpenAccount : AccountKey
+  nonconsuming choice OpenAccount : (ContractId Account.I, AccountKey)
     with
       openAccountRequestCid : ContractId OpenAccountRequest.I
     controller (view $ asBase this).provider
@@ -111,6 +110,7 @@ interface Service where
       withdraw this arg
 
 -- | Type constraint for requiring templates to implement `Service`.
-type Implementation t = HasToInterface t Service
+type Implementation t = (HasToInterface t Service, Base.Implementation t)
 class (Implementation t) => HasImplementation t
 instance HasImplementation Service
+instance HasToInterface Service Base.I where _toInterface = asBase

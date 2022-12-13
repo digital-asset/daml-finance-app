@@ -8,7 +8,7 @@ import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Vi
 import Daml.Finance.App.Interface.Custody.OpenAccountRequest qualified as OpenAccountRequest (I, View(..))
 import Daml.Finance.App.Interface.Custody.CloseAccountRequest qualified as CloseAccountRequest (I, View(..))
 import Daml.Finance.App.Interface.Custody.DepositRequest qualified as DepositRequest (I, View(..))
-import Daml.Finance.App.Interface.Custody.WithdrawRequest qualified as WithdrawalRequest (I, View(..))
+import Daml.Finance.App.Interface.Custody.WithdrawRequest qualified as WithdrawRequest (I, View(..))
 import Daml.Finance.Interface.Account.Account qualified as Account (Controllers, K)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
@@ -82,7 +82,7 @@ template DepositRequest
         account
       asRemovable = toInterface @Removable.I this
 
-template WithdrawalRequest
+template WithdrawRequest
   with
     operator : Party
     provider : Party
@@ -91,11 +91,11 @@ template WithdrawalRequest
   where
     signatory operator, provider, customer
 
-    interface instance Removable.I for WithdrawalRequest where
+    interface instance Removable.I for WithdrawRequest where
       view = Removable.View with removers = fromList [operator, provider, customer]
 
-    interface instance WithdrawalRequest.I for WithdrawalRequest where
-      view = WithdrawalRequest.View with
+    interface instance WithdrawRequest.I for WithdrawRequest where
+      view = WithdrawRequest.View with
         operator
         provider
         customer

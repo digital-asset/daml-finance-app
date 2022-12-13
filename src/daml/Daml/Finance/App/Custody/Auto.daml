@@ -1,25 +1,26 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module Daml.Finance.App.Custody.Service where
+module Daml.Finance.App.Custody.Auto where
 
 import DA.Assert ((===))
 import Daml.Finance.App.Custody.Model qualified as Model
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
 import Daml.Finance.App.Interface.Common.Util (fetchAndRemove)
+import Daml.Finance.App.Interface.Custody.Auto qualified as Auto (HasImplementation, I, View(..), RequestAndCloseAccount(..), RequestAndDeposit(..), RequestAndOpenAccount(..), RequestAndWithdraw(..))
 import Daml.Finance.App.Interface.Custody.CloseAccountRequest qualified as CloseAccountRequest (View(..))
 import Daml.Finance.App.Interface.Custody.DepositRequest qualified as DepositRequest (View(..))
 import Daml.Finance.App.Interface.Custody.OpenAccountRequest qualified as OpenAccountRequest (View(..))
-import Daml.Finance.App.Interface.Custody.Service qualified as Service
 import Daml.Finance.App.Interface.Custody.WithdrawRequest qualified as WithdrawRequest (View(..))
+import Daml.Finance.App.Interface.Custody.Service qualified as Service (CloseAccount(..), Deposit(..), I, OpenAccount(..), RequestCloseAccount(..), RequestDeposit(..), RequestOpenAccount(..), RequestWithdraw(..), View(..), Withdraw(..))
 import Daml.Finance.Interface.Account.Account qualified as Account (Credit(..), Debit(..), I, exerciseInterfaceByKey)
-import Daml.Finance.Interface.Account.Factory qualified as Account (F, Create(..), Remove(..))
-import Daml.Finance.Interface.Holding.Factory qualified as Holding (F)
+import Daml.Finance.Interface.Account.Factory qualified as Account (Create(..), F, Remove(..))
 import Daml.Finance.Interface.Account.Util (getAccount)
+import Daml.Finance.Interface.Holding.Factory qualified as Holding (F)
 import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Lifecycle (Claim)
 import Daml.Finance.Interface.Types.Common (AccountKey(..))
 
-instance Service.HasImplementation Service
+instance Auto.HasImplementation Service
 
 template Service
   with
@@ -71,13 +72,21 @@ template Service
         account.owner === customer
         Account.exerciseInterfaceByKey @Account.I account provider Account.Debit with holdingCid
 
-    choice Terminate : ()
-      with
-        actor : Party
-      controller actor
-      do
-        assert $ actor == operator || actor == provider || actor == customer
-        pure ()
+    interface instance Auto.I for Service where
+      view = Auto.View
+      asService = toInterface @Service.I this
+      requestAndOpenAccount self Auto.RequestAndOpenAccount{id; description; controllers; observers} = do
+        openAccountRequestCid <- exercise self Service.RequestOpenAccount with id; description; controllers; observers
+        exercise self Service.OpenAccount with openAccountRequestCid
+      requestAndCloseAccount self Auto.RequestAndCloseAccount{account} = do
+        closeAccountRequestCid <- exercise self Service.RequestCloseAccount with account
+        exercise self Service.CloseAccount with closeAccountRequestCid
+      requestAndDeposit self Auto.RequestAndDeposit{account; quantity} = do
+        depositRequestCid <- exercise self Service.RequestDeposit with quantity; account
+        exercise self Service.Deposit with depositRequestCid
+      requestAndWithdraw self Auto.RequestAndWithdraw{holdingCid} = do
+        withdrawRequestCid <- exercise self Service.RequestWithdraw with holdingCid
+        exercise self Service.Withdraw with withdrawRequestCid
 
 template Offer
   with

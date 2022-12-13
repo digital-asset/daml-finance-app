@@ -8,7 +8,7 @@ import DA.List (head)
 import DA.Map qualified as M (Map, fromList)
 import DA.Set (fromList, singleton)
 import DA.Text (parseInt)
-import Daml.Finance.App.Custody.Service qualified as Custody (Deposit(..), OpenAccount(..), RequestDeposit(..), RequestOpenAccount(..), Service)
+import Daml.Finance.App.Custody.Service qualified as Custody (Service)
 import Daml.Finance.App.Data.AccountDirectory (AccountDirectory(..))
 import Daml.Finance.App.Distribution.Auction.Model qualified as Auction (T)
 import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (CreateAuction(..), ProcessAuction(..), RequestCreateAuction(..), S)
@@ -18,6 +18,7 @@ import Daml.Finance.App.Distribution.Fund.Model qualified as Fund (PooledInvestm
 import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (FulfillPooledInvestmentRequest(..), PoolInvestmentRequests(..), S)
 import Daml.Finance.App.Distribution.Investment.Model qualified as Investment (InvestmentRequest)
 import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (RequestInvestment(..), S)
+import Daml.Finance.App.Interface.Custody.Service qualified as Custody (Deposit(..), I, OpenAccount(..), RequestDeposit(..), RequestOpenAccount(..))
 import Daml.Finance.App.Issuance.Model qualified as Issuance (T)
 import Daml.Finance.App.Issuance.Service qualified as Issuance (CreateIssuance(..), RequestCreateIssuance(..), Service)
 import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Service, DeclareDividend(..), DeclareStockSplit(..), DeclareReplacement(..))
@@ -51,7 +52,7 @@ import Daml.Finance.Interface.Settlement.Batch qualified as Batch (I)
 import Daml.Finance.Interface.Settlement.Factory qualified as SettlementFactory (I)
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (I, Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Types qualified as Settlement (Allocation, Approval)
-import Daml.Finance.Interface.Types.Common (Id(..), Parties, PartiesMap)
+import Daml.Finance.Interface.Types.Common (AccountKey, Id(..), Parties, PartiesMap)
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayAdjustment(..), BusinessDayConventionEnum, HolidayCalendarData(..))
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum, RollConventionEnum(..))
@@ -63,11 +64,12 @@ import Daml.Finance.Settlement.Instruction qualified as Instruction (T)
 import Daml.Finance.Setup.Util.Common (getHolding)
 import Daml.Script
 
-createAccount : Party -> Party -> Party -> Party -> Text -> PartiesMap -> Script Account.K
-createAccount operator custodian owner public id observers = do
-  let controllers = Account.Controllers with instructors = singleton owner; approvers = singleton owner
-  openAccountRequestCid <- submit owner do exerciseByKeyCmd @Custody.Service (operator, custodian, owner) Custody.RequestOpenAccount with id = Id id; description = id; controllers; observers
-  submitMulti [custodian] [public] do exerciseByKeyCmd @Custody.Service (operator, custodian, owner) Custody.OpenAccount with openAccountRequestCid
+createAccount : Party -> Party -> Party -> Party -> Text -> PartiesMap -> Script AccountKey
+createAccount operator provider customer public id observers = do
+  let controllers = Account.Controllers with instructors = singleton customer; approvers = singleton customer
+  Some (custodyServiceCid, _) <- queryContractKey @Custody.Service customer (operator, provider, customer)
+  openAccountRequestCid <- submit customer do exerciseCmd (toInterfaceContractId @Custody.I custodyServiceCid) Custody.RequestOpenAccount with id = Id id; description = id; controllers; observers
+  snd <$> submitMulti [provider] [public] do exerciseCmd (toInterfaceContractId @Custody.I custodyServiceCid) Custody.OpenAccount with openAccountRequestCid
 
 createAccountDirectory : Party -> [(Instrument.K, Account.K)] -> Parties -> Script (ContractId AccountDirectory)
 createAccountDirectory provider mapping observers = do
@@ -189,8 +191,9 @@ transfer from toAccount public depositCid = do
 
 deposit : Party -> Party -> Party -> Party -> Instrument.Q -> Account.K -> Script (ContractId Holding.I)
 deposit operator provider customer public quantity account = do
-  depositRequestCid <- submit customer do exerciseByKeyCmd @Custody.Service (operator, provider, customer) Custody.RequestDeposit with quantity; account
-  submitMulti [provider] [public] do exerciseByKeyCmd @Custody.Service (operator, provider, customer) Custody.Deposit with depositRequestCid
+  Some (custodyServiceCid, _) <- queryContractKey @Custody.Service customer (operator, provider, customer)
+  depositRequestCid <- submit customer do exerciseCmd (toInterfaceContractId @Custody.I custodyServiceCid) Custody.RequestDeposit with quantity; account
+  submitMulti [provider] [public] do exerciseCmd (toInterfaceContractId @Custody.I custodyServiceCid) Custody.Deposit with depositRequestCid
 
 issue : Party -> Party -> Party -> Party -> Instrument.Q -> Account.K -> Script (ContractId Issuance.T, ContractId Holding.I)
 issue operator provider customer public quantity account = do
