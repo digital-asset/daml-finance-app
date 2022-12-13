@@ -1,0 +1,30 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Interface.Custody.OpenAccountRequest where
+
+import Daml.Finance.Interface.Account.Account qualified as Account (Controllers)
+import Daml.Finance.Interface.Types.Common (Id, PartiesMap)
+
+type I = OpenAccountRequest
+
+type V = View
+
+data View = View
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Id
+    description : Text
+    controllers : Account.Controllers
+    observers : PartiesMap
+  deriving (Eq, Show)
+
+interface OpenAccountRequest where
+  viewtype View
+
+-- | Type constraint for requiring templates to implement `CloseAccountRequest`.
+type Implementation t = HasToInterface t OpenAccountRequest
+class (Implementation t) => HasImplementation t
+instance HasImplementation OpenAccountRequest
