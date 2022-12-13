@@ -1,0 +1,28 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Interface.Common.Removable where
+
+import Daml.Finance.Interface.Types.Common (Parties)
+
+type I = Removable
+
+type V = View
+
+data View = View
+  with
+    removers : Parties
+  deriving (Eq, Show)
+
+interface Removable where
+  viewtype V
+
+  choice Remove : ()
+    controller (view this).removers
+    do
+      pure ()
+
+-- | Type constraint for requiring templates to implement `Removable`.
+type Implementation t = HasToInterface t Removable
+class (Implementation t) => HasImplementation t
+instance HasImplementation Removable

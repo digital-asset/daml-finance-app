@@ -3,6 +3,7 @@
 
 module Daml.Finance.App.Interface.Custody.WithdrawRequest where
 
+import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Implementation)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 
 type I = WithdrawRequest
@@ -19,8 +20,12 @@ data View = View
 
 interface WithdrawRequest where
   viewtype View
+    -- ^ Interface view types. 
+  asRemovable : Removable.I
+    -- ^ Conversion to the `Removable` interface. 
 
 -- | Type constraint for requiring templates to implement `Service`.
-type Implementation t = HasToInterface t WithdrawRequest
+type Implementation t = (HasToInterface t WithdrawRequest, Removable.Implementation t)
 class (Implementation t) => HasImplementation t
 instance HasImplementation WithdrawRequest
+instance HasToInterface WithdrawRequest Removable.I where _toInterface = asRemovable

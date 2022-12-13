@@ -3,6 +3,7 @@
 
 module Daml.Finance.App.Interface.Custody.OpenAccountRequest where
 
+import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Implementation)
 import Daml.Finance.Interface.Account.Account qualified as Account (Controllers)
 import Daml.Finance.Interface.Types.Common (Id, PartiesMap)
 
@@ -23,8 +24,12 @@ data View = View
 
 interface OpenAccountRequest where
   viewtype View
+    -- ^ Interface view types. 
+  asRemovable : Removable.I
+    -- ^ Conversion to the `Removable` interface. 
 
--- | Type constraint for requiring templates to implement `CloseAccountRequest`.
-type Implementation t = HasToInterface t OpenAccountRequest
+-- | Type constraint for requiring templates to implement `OpenAccountRequest`.
+type Implementation t = (HasToInterface t OpenAccountRequest, Removable.Implementation t)
 class (Implementation t) => HasImplementation t
 instance HasImplementation OpenAccountRequest
+instance HasToInterface OpenAccountRequest Removable.I where _toInterface = asRemovable
