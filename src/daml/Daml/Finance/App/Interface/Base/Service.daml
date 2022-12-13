@@ -1,0 +1,35 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Interface.Base.Service where
+
+type I = Service
+
+type V = View
+
+data View = View
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  deriving (Eq, Show)
+
+interface Service where
+  viewtype V
+
+  terminate : Update ()
+    -- ^ Implementation of the `terminate` choice.
+
+  choice Terminate : ()
+    with
+      actor : Party
+    controller actor
+    do
+      let v = view this
+      assert $ actor == v.operator || actor == v.provider || actor == v.customer
+      terminate this
+
+-- | Type constraint for requiring templates to implement `Service`.
+type Implementation t = HasToInterface t Service
+class (Implementation t) => HasImplementation t
+instance HasImplementation Service

@@ -13,12 +13,11 @@ export const Exchanges : React.FC = () => {
   const { loading: l1, decentralizedExchange } = useServices();
   if (l1) return (<Spinner />);
 
-  console.log(decentralizedExchange);
   return (
     <Grid container direction="column" className={classes.bg}>
       <Grid item xs={12}>
         <Grid container direction="row" spacing={2}>
-          {decentralizedExchange.map((c, i) => <Dex key={i} service={c.payload} />)}
+          {decentralizedExchange.map(c => c.payload).sort((a, b) => a.id.unpack.localeCompare(b.id.unpack)).map((p, i) => <Dex key={i} service={p} />)}
         </Grid>
       </Grid>
     </Grid>
