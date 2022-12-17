@@ -55,8 +55,7 @@ run = do
   createCustodyService          operator am           inv3      settlementFactoryCid accountFactoryCid holdingFactoryCid
   createCustodyService          operator custodian    am        settlementFactoryCid accountFactoryCid holdingFactoryCid
   createCustodyService          operator custodian    pm        settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createIssuanceService         operator custodian    pm
-  createIssuanceAutoService     operator custodian    pm
+  issuanceServiceCid <- toInterfaceContractId <$> createIssuanceAutoService     operator custodian    pm
   createStructuringService      operator custodian    pm
   createStructuringAutoService  operator custodian    pm
   createInvestmentService       operator am           inv1
@@ -117,7 +116,7 @@ run = do
       ir2Cid <- createInvestmentRequest operator am inv2 public "REQ-FUND1-INV2" today fund1Cid (coerceContractId inv2CashCid)
       ir3Cid <- createInvestmentRequest operator am inv3 public "REQ-FUND1-INV3" today fund1Cid (coerceContractId inv3CashCid)
       pirCid <- poolInvestmentRequests operator pm am public "REQ-FUND1-POOLED" today fund1Cid (coerceContractId amCashCid) [ir1Cid, ir2Cid, ir3Cid]
-      fulfillPooledInvestmentRequest operator pm am public fund1Cid pirCid navFund1Cid settlementFactoryCid
-  -- doDistribution
+      fulfillPooledInvestmentRequest operator pm am public fund1Cid pirCid navFund1Cid settlementFactoryCid issuanceServiceCid
+  --doDistribution
 
   pure parties

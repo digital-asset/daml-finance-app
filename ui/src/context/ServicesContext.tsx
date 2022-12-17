@@ -16,8 +16,8 @@ import { Service as BiddingAutoService } from "@daml.js/daml-finance-app/lib/Dam
 import { Service as SubscriptionService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Service"
 import { Service as FundService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Fund/Service"
 import { Service as InvestmentService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Investment/Service"
-import { Service as IssuanceService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Service"
-import { Service as IssuanceAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Auto/Service"
+import { Service as IssuanceService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Issuance/Service"
+import { Service as IssuanceAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Issuance/Auto"
 import { Service as LendingService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lending/Service"
 import { Service as LifecycleService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Service"
 import { Service as StructuringService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Service"
@@ -49,8 +49,7 @@ export type ServicesState = {
   bidding               : readonly CreateEvent<BiddingService, BiddingService.Key>[]
   fund                  : readonly CreateEvent<InvestmentService, InvestmentService.Key>[]
   investment            : readonly CreateEvent<InvestmentService, InvestmentService.Key>[]
-  issuanceAuto          : readonly CreateEvent<IssuanceAutoService, IssuanceAutoService.Key>[]
-  issuance              : readonly CreateEvent<IssuanceService, IssuanceService.Key>[]
+  issuance              : ServicesAggregate<IssuanceService, IssuanceAutoService>
   lending               : readonly CreateEvent<LendingService, LendingService.Key>[]
   lifecycle             : readonly CreateEvent<LifecycleService, LifecycleService.Key>[]
   listingAuto           : readonly CreateEvent<ListingAutoService, ListingAutoService.Key>[]
@@ -80,7 +79,7 @@ const empty = {
   fund: [],
   investment: [],
   issuanceAuto: [],
-  issuance: [],
+  issuance: emptyAggregate,
   lending: [],
   lifecycle: [],
   listingAuto: [],
@@ -106,10 +105,10 @@ export const ServicesProvider : React.FC = ({ children }) => {
   const { loading: l7,  contracts: auction }                = useStreamQueries(AuctionService);
   const { loading: l8,  contracts: biddingAuto }            = useStreamQueries(BiddingAutoService);
   const { loading: l9,  contracts: bidding }                = useStreamQueries(BiddingService);
-  const { loading: l10,  contracts: fund }                  = useStreamQueries(FundService);
-  const { loading: l11,  contracts: investment }            = useStreamQueries(InvestmentService);
-  const { loading: l12,  contracts: issuanceAuto }          = useStreamQueries(IssuanceAutoService);
-  const { loading: l13, contracts: issuance }               = useStreamQueries(IssuanceService);
+  const { loading: l10, contracts: fund }                   = useStreamQueries(FundService);
+  const { loading: l11, contracts: investment }             = useStreamQueries(InvestmentService);
+  const { loading: l12, contracts: issuance }               = useStreamQueries(IssuanceService);
+  const { loading: l13, contracts: issuanceAuto }           = useStreamQueries(IssuanceAutoService);
   const { loading: l14, contracts: lending }                = useStreamQueries(LendingService);
   const { loading: l15, contracts: lifecycle }              = useStreamQueries(LifecycleService);
   const { loading: l16, contracts: listingAuto }            = useStreamQueries(ListingAutoService);
@@ -122,6 +121,15 @@ export const ServicesProvider : React.FC = ({ children }) => {
   const { loading: l23, contracts: trading }                = useStreamQueries(TradingService);
   const loading = l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8 || l9 || l10 || l11 || l12 || l13 || l14 || l15 || l16 || l17 || l18 || l19 || l20 || l21 || l22 || l23;
 
+  const createServicesAggregate = <S extends object, T extends object>(services : readonly CreateEvent<S>[], autoServices : readonly CreateEvent<T>[]) : ServicesAggregate<S, T> => {
+    const serviceByCid : Map<string, CreateEvent<S>> = new Map(services.map(c => [c.contractId, c]));
+    const autoByCid : Map<string, CreateEvent<T>> = new Map(autoServices.map(c => [c.contractId, c]));
+    const filteredBase = base.filter(c => serviceByCid.has(c.contractId as string));
+    const aggregates : ServiceAggregate<S, T>[] = filteredBase.map(c => ({ ...c, service: serviceByCid.get(c.contractId)!, auto: autoByCid.get(c.contractId) }));
+    const getService = (provider : string, customer : string) => { return aggregates.find(c => c.payload.provider === provider && c.payload.customer === customer) };
+    return { services: aggregates, getService };
+  };
+
   if (loading) {
     return (
       <ServicesContext.Provider value={empty}>
@@ -129,19 +137,11 @@ export const ServicesProvider : React.FC = ({ children }) => {
       </ServicesContext.Provider>
     );
   } else {
-    const custodyByCid : Map<string, CreateEvent<CustodyService>> = new Map(custody.map(c => [c.contractId, c]));
-    const custodyAutoByCid : Map<string, CreateEvent<CustodyAutoService>> = new Map(custodyAuto.map(c => [c.contractId, c]));
-    const custodyAggregates : ServiceAggregate<CustodyService, CustodyAutoService>[] = base.map(c => ({ ...c, service: custodyByCid.get(c.contractId)!, auto: custodyAutoByCid.get(c.contractId) }));
-    const getCustodyService = (provider : string, customer : string) => { return custodyAggregates.find(c => c.payload.provider === provider && c.payload.customer === customer) };
-    const custodyAggregate = {
-      services: custodyAggregates,
-      getService: getCustodyService
-    };
 
     const value = {
       loading,
       backToBack,
-      custody: custodyAggregate,
+      custody                 : createServicesAggregate(custody, custodyAuto),
       decentralizedExchange,
       auctionAuto,
       auction,
@@ -150,7 +150,7 @@ export const ServicesProvider : React.FC = ({ children }) => {
       fund,
       investment,
       issuanceAuto,
-      issuance,
+      issuance                : createServicesAggregate(issuance, issuanceAuto),
       lending,
       lifecycle,
       listingAuto,

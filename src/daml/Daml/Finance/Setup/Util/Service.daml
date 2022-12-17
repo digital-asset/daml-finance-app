@@ -5,11 +5,16 @@ module Daml.Finance.Setup.Util.Service where
 
 import DA.Map qualified as M (fromList)
 import DA.Set (fromList, singleton)
-import Daml.Finance.App.Custody.Service qualified as Custody (Accept(..), Service)
+import Daml.Finance.App.Custody.Auto qualified as CustodyAuto (Accept(..))
+import Daml.Finance.App.Custody.Service qualified as Custody (Accept(..))
 import Daml.Finance.App.Decentralized.Exchange.Model qualified as DecentralizedExchange (Pool(..))
 import Daml.Finance.App.Decentralized.Exchange.Service qualified as DecentralizedExchange (Service(..))
-import Daml.Finance.App.Issuance.Auto.Service qualified as IssuanceAuto (Accept(..), Service)
-import Daml.Finance.App.Issuance.Service qualified as Issuance (Accept(..), Service)
+import Daml.Finance.App.Interface.Custody.Auto qualified as CustodyAuto (I)
+import Daml.Finance.App.Interface.Custody.Service qualified as Custody (I)
+import Daml.Finance.App.Interface.Issuance.Auto qualified as IssuanceAuto (I)
+import Daml.Finance.App.Interface.Issuance.Service qualified as Issuance (I)
+import Daml.Finance.App.Issuance.Auto qualified as IssuanceAuto (Accept(..))
+import Daml.Finance.App.Issuance.Service qualified as Issuance (Accept(..))
 import Daml.Finance.App.BackToBack.Service qualified as BackToBack (Accept(..), Service)
 import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Accept(..), Service)
 import Daml.Finance.App.Trading.Auto.Service qualified as TradingAuto (Accept(..), Service)
@@ -50,22 +55,29 @@ import Daml.Finance.Lifecycle.Rule.Distribution qualified as Distribution (Rule(
 import Daml.Finance.Lifecycle.Rule.Replacement qualified as Replacement (Rule(..))
 import Daml.Script
 
-createCustodyService : Party -> Party -> Party -> ContractId Settlement.Factory -> ContractId Account.F -> ContractId Holding.F -> Script (ContractId Custody.Service)
+createCustodyService : Party -> Party -> Party -> ContractId Settlement.Factory -> ContractId Account.F -> ContractId Holding.F -> Script (ContractId Custody.I)
 createCustodyService operator custodian customer settlementFactoryCid accountFactoryCid holdingFactoryCid = do
   let providers = fromList [custodian, customer]
   claimRuleCid <- toInterfaceContractId <$> submitMulti [custodian, customer] [] do createCmd Claim.Rule with providers = fromList [custodian, customer]; claimers = providers; settlers = providers; settlementFactoryCid; netInstructions = False
   offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferCustodyService with customer; claimRuleCid; accountFactoryCid; holdingFactoryCid
-  submit customer do exerciseCmd offerCid Custody.Accept
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid Custody.Accept
 
-createIssuanceService : Party -> Party -> Party -> Script (ContractId Issuance.Service)
+createCustodyAutoService : Party -> Party -> Party -> ContractId Settlement.Factory -> ContractId Account.F -> ContractId Holding.F -> Script (ContractId CustodyAuto.I)
+createCustodyAutoService operator custodian customer settlementFactoryCid accountFactoryCid holdingFactoryCid = do
+  let providers = fromList [custodian, customer]
+  claimRuleCid <- toInterfaceContractId <$> submitMulti [custodian, customer] [] do createCmd Claim.Rule with providers = fromList [custodian, customer]; claimers = providers; settlers = providers; settlementFactoryCid; netInstructions = False
+  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferCustodyAutoService with customer; claimRuleCid; accountFactoryCid; holdingFactoryCid
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid CustodyAuto.Accept
+
+createIssuanceService : Party -> Party -> Party -> Script (ContractId Issuance.I)
 createIssuanceService operator custodian customer = do
   offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferIssuanceService with ..
-  submit customer do exerciseCmd offerCid Issuance.Accept
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid Issuance.Accept
 
-createIssuanceAutoService : Party -> Party -> Party -> Script (ContractId IssuanceAuto.Service)
+createIssuanceAutoService : Party -> Party -> Party -> Script (ContractId IssuanceAuto.I)
 createIssuanceAutoService operator custodian customer = do
   offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferIssuanceAutoService with ..
-  submit customer do exerciseCmd offerCid IssuanceAuto.Accept
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid IssuanceAuto.Accept
 
 createStructuringService : Party -> Party -> Party -> Script (ContractId Structuring.Service)
 createStructuringService operator custodian customer = do

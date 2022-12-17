@@ -1,0 +1,33 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Interface.Issuance.DeissueRequest where
+
+import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Implementation)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Types.Common (Id)
+
+type I = DeissueRequest
+
+type V = View
+
+data View = View
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    issuanceId : Id
+    holdingCid : ContractId Holding.I
+  deriving (Eq, Show)
+
+interface DeissueRequest where
+  viewtype View
+    -- ^ Interface view types.
+  asRemovable : Removable.I
+    -- ^ Conversion to the `Removable` interface.
+
+-- | Type constraint for requiring templates to implement `DeissueRequest`.
+type Implementation t = (HasToInterface t DeissueRequest, Removable.Implementation t)
+class (Implementation t) => HasImplementation t
+instance HasImplementation DeissueRequest
+instance HasToInterface DeissueRequest Removable.I where _toInterface = asRemovable

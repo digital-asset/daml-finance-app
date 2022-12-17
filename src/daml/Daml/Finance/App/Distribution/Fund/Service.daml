@@ -12,6 +12,7 @@ import DA.Time (time)
 import Daml.Finance.App.Data.AccountDirectory (AccountDirectory)
 import Daml.Finance.App.Distribution.Fund.Model qualified as Fund (ApproveInstruction(..), GetFund(..), IssueUnits(..), PooledInvestmentRequest(..), Remove(..), T)
 import Daml.Finance.App.Distribution.Investment.Model (AllocateInstruction(..), ApproveInstruction(..), Delete(..), InvestmentRequest(..))
+import Daml.Finance.App.Interface.Issuance.Service qualified as IssuanceService (I)
 import Daml.Finance.Interface.Data.NumericObservable qualified as NumericObservable (I, Observe(..))
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
@@ -69,6 +70,7 @@ template Service
         fundCid : ContractId Fund.T
         navObservableCid : ContractId NumericObservable.I
         settlementFactoryCid : ContractId Settlement.Factory
+        issuanceServiceCid : ContractId IssuanceService.I
       controller provider
       do
         pir <- fetch pooledInvestmentRequestCid
@@ -82,7 +84,7 @@ template Service
           fundQty = Instrument.qty nrUnits fund.instrument
 
         -- Issue units
-        (_, fundUnitsCid, fundCid) <- exercise fundCid Fund.IssueUnits with requestId = pir.requestId; quantity = fundQty
+        (_, fundUnitsCid, fundCid) <- exercise fundCid Fund.IssueUnits with requestId = pir.requestId; quantity = fundQty; issuanceServiceCid
 
         -- Instruct settlement
         irs <- mapA fetch pir.investmentRequestCids

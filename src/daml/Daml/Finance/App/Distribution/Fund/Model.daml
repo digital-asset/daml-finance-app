@@ -3,10 +3,11 @@
 
 module Daml.Finance.App.Distribution.Fund.Model where
 
+import DA.Assert ((===))
 import DA.Set (singleton)
 import Daml.Finance.App.Distribution.Investment.Model (InvestmentRequest)
-import Daml.Finance.App.Issuance.Model qualified as Issuance (T)
-import Daml.Finance.App.Issuance.Service qualified as Issuance (CreateIssuance(..), RequestCreateIssuance(..), Service)
+import Daml.Finance.App.Interface.Issuance.Issuance qualified as Issuance (I)
+import Daml.Finance.App.Interface.Issuance.Service qualified as IssuanceService (I, Issue(..), RequestIssue(..), asBase)
 import Daml.Finance.Interface.Account.Account qualified as Account (K)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K, Q)
@@ -43,14 +44,19 @@ template Fund
       do
         pure this
 
-    choice IssueUnits : (ContractId Issuance.T, ContractId Transferable.I, ContractId Fund)
+    choice IssueUnits : (ContractId Issuance.I, ContractId Transferable.I, ContractId Fund)
       with
         requestId : Id
         quantity : Instrument.Q
+        issuanceServiceCid : ContractId IssuanceService.I
       controller manager
       do
-        createIssuanceRequestCid <- exerciseByKey @Issuance.Service (operator, custodian, manager) Issuance.RequestCreateIssuance with id = requestId; description = "Issuance for request " <> show requestId; quantity; account = managerFundAccount
-        (iss, holdingCid) <- exerciseByKey @Issuance.Service (operator, custodian, manager) Issuance.CreateIssuance with createIssuanceRequestCid
+        issuanceService <- view . IssuanceService.asBase <$> fetch issuanceServiceCid
+        issuanceService.operator === operator
+        issuanceService.provider === custodian
+        issuanceService.customer === manager
+        issueRequestCid <- exercise issuanceServiceCid IssuanceService.RequestIssue with issuanceId = requestId; description = "Issuance for request " <> show requestId; quantity; account = managerFundAccount
+        (iss, holdingCid) <- exercise issuanceServiceCid IssuanceService.Issue with issueRequestCid
         newCid <- create this with totalUnits = totalUnits + quantity.amount
         pure (iss, coerceContractId holdingCid, newCid)
 

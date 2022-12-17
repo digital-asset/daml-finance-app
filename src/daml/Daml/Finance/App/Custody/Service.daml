@@ -71,14 +71,6 @@ template Service
         account.owner === customer
         Account.exerciseInterfaceByKey @Account.I account provider Account.Debit with holdingCid
 
-    choice Terminate : ()
-      with
-        actor : Party
-      controller actor
-      do
-        assert $ actor == operator || actor == provider || actor == customer
-        pure ()
-
 template Offer
   with
     operator : Party

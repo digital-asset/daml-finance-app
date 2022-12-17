@@ -4,9 +4,11 @@
 module Daml.Finance.App.Role.Custodian where
 
 import Daml.Finance.App.BackToBack.Service qualified as BackToBack (Approve(..), Offer(..), Request, Service, Terminate(..))
-import Daml.Finance.App.Custody.Service qualified as Custody (Approve(..), Offer(..), Request, Service, Terminate(..))
-import Daml.Finance.App.Issuance.Auto.Service qualified as IssuanceAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
-import Daml.Finance.App.Issuance.Service qualified as Issuance (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Custody.Auto qualified as CustodyAuto (Approve(..), Offer(..), Request, Service)
+import Daml.Finance.App.Custody.Service qualified as Custody (Approve(..), Offer(..), Request, Service)
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Terminate(..))
+import Daml.Finance.App.Issuance.Auto qualified as IssuanceAuto (Approve(..), Offer(..), Request, Service)
+import Daml.Finance.App.Issuance.Service qualified as Issuance (Approve(..), Offer(..), Request, Service)
 import Daml.Finance.App.Lending.Service qualified as Lending (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Settlement.Service qualified as Settlement (Approve(..), Offer(..), Request, Service, Terminate(..))
@@ -52,7 +54,36 @@ template Role
         customer : Party
       controller provider
       do
-        exerciseByKey @Custody.Service (operator, provider, customer) Custody.Terminate with actor = provider
+        (serviceCid, _) <- fetchByKey @Custody.Service (operator, provider, customer)
+        exercise (toInterfaceContractId @Base.I serviceCid) Base.Terminate with actor = provider
+
+    nonconsuming choice OfferCustodyAutoService : ContractId CustodyAuto.Offer
+      with
+        customer : Party
+        claimRuleCid : ContractId Lifecycle.Claim
+        accountFactoryCid : ContractId Account.F
+        holdingFactoryCid : ContractId Holding.F
+      controller provider
+      do
+        create CustodyAuto.Offer with operator; provider; customer; claimRuleCid; accountFactoryCid; holdingFactoryCid
+
+    nonconsuming choice ApproveCustodyAutoRequest : ContractId CustodyAuto.Service
+      with
+        custodyRequestCid : ContractId CustodyAuto.Request
+        claimRuleCid : ContractId Lifecycle.Claim
+        accountFactoryCid : ContractId Account.F
+        holdingFactoryCid : ContractId Holding.F
+      controller provider
+      do
+        exercise custodyRequestCid CustodyAuto.Approve with operator; claimRuleCid; accountFactoryCid; holdingFactoryCid
+
+    nonconsuming choice TerminateCustodyAutoService : ()
+      with
+        customer : Party
+      controller provider
+      do
+        (serviceCid, _) <- fetchByKey @CustodyAuto.Service (operator, provider, customer)
+        exercise (toInterfaceContractId @Base.I serviceCid) Base.Terminate with actor = provider
 
     nonconsuming choice OfferIssuanceService : ContractId Issuance.Offer
       with
@@ -73,7 +104,8 @@ template Role
         customer : Party
       controller provider
       do
-        exerciseByKey @Issuance.Service (operator, provider, customer) Issuance.Terminate with actor = provider
+        (serviceCid, _) <- fetchByKey @Issuance.Service (operator, provider, customer)
+        exercise (toInterfaceContractId @Base.I serviceCid) Base.Terminate with actor = provider
 
     nonconsuming choice OfferIssuanceAutoService : ContractId IssuanceAuto.Offer
       with
@@ -94,7 +126,8 @@ template Role
         customer : Party
       controller provider
       do
-        exerciseByKey @IssuanceAuto.Service (operator, provider, customer) IssuanceAuto.Terminate with actor = provider
+        (serviceCid, _) <- fetchByKey @IssuanceAuto.Service (operator, provider, customer)
+        exercise (toInterfaceContractId @Base.I serviceCid) Base.Terminate with actor = provider
 
     nonconsuming choice OfferBackToBackService : ContractId BackToBack.Offer
       with

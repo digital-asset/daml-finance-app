@@ -1,0 +1,71 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Interface.Issuance.Service where
+
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
+import Daml.Finance.Interface.Types.Common (AccountKey, Id)
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Implementation)
+import Daml.Finance.App.Interface.Issuance.Issuance qualified as Issuance (I)
+import Daml.Finance.App.Interface.Issuance.IssueRequest qualified as IssueRequest (I)
+import Daml.Finance.App.Interface.Issuance.DeissueRequest qualified as DeissueRequest (I)
+
+type I = Service
+
+type V = View
+
+data View = View {}
+  deriving (Eq, Show)
+
+interface Service where
+  viewtype V
+
+  asBase : Base.I
+    -- ^ Conversion to base `Service` interface.
+  requestIssue : RequestIssue -> Update (ContractId IssueRequest.I)
+    -- ^ Implementation of the `RequestIssue` choice.
+  requestDeissue : RequestDeissue -> Update (ContractId DeissueRequest.I)
+    -- ^ Implementation of the `RequestDeissue` choice.
+  issue : Issue -> Update (ContractId Issuance.I, ContractId Holding.I)
+    -- ^ Implementation of the `Issue` choice.
+  deissue : Deissue -> Update (ContractId Issuance.I)
+    -- ^ Implementation of the `Deissue` choice.
+
+  nonconsuming choice RequestIssue : ContractId IssueRequest.I
+    with
+      issuanceId : Id
+      description : Text
+      quantity : Instrument.Q
+      account : AccountKey
+    controller (view $ asBase this).customer
+    do
+      requestIssue this arg
+
+  nonconsuming choice RequestDeissue : ContractId DeissueRequest.I
+    with
+      issuanceId : Id
+      holdingCid : ContractId Holding.I
+    controller (view $ asBase this).customer
+    do
+      requestDeissue this arg
+
+  nonconsuming choice Issue : (ContractId Issuance.I, ContractId Holding.I)
+    with
+      issueRequestCid : ContractId IssueRequest.I
+    controller (view $ asBase this).provider
+    do
+      issue this arg
+
+  nonconsuming choice Deissue : (ContractId Issuance.I)
+    with
+      deissueRequestCid : ContractId DeissueRequest.I
+    controller (view $ asBase this).provider
+    do
+      deissue this arg
+
+-- | Type constraint for requiring templates to implement `Service`.
+type Implementation t = (HasToInterface t Service, Base.Implementation t)
+class (Implementation t) => HasImplementation t
+instance HasImplementation Service
+instance HasToInterface Service Base.I where _toInterface = asBase

@@ -1,21 +1,22 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module Daml.Finance.App.Issuance.Service where
+module Daml.Finance.App.Issuance.Auto where
 
 import DA.Assert ((===))
 import Daml.Finance.App.Issuance.Model qualified as Model
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
 import Daml.Finance.App.Interface.Common.Util (fetchAndRemove)
-import Daml.Finance.App.Interface.Issuance.IssueRequest qualified as IssueRequest (View(..))
+import Daml.Finance.App.Interface.Issuance.Auto qualified as Auto (HasImplementation, I, View(..), RequestAndDeissue(..), RequestAndIssue(..))
 import Daml.Finance.App.Interface.Issuance.DeissueRequest qualified as DeissueRequest (View(..))
-import Daml.Finance.App.Interface.Issuance.Service qualified as Service
+import Daml.Finance.App.Interface.Issuance.IssueRequest qualified as IssueRequest (View(..))
+import Daml.Finance.App.Interface.Issuance.Service qualified as Service (Deissue(..), Issue(..), I, RequestDeissue(..), RequestIssue(..), View(..))
 import Daml.Finance.Interface.Account.Account qualified as Account (Credit(..), Debit(..), I, exerciseInterfaceByKey)
 import Daml.Finance.Interface.Account.Util (getAccount)
 import Daml.Finance.Interface.Holding.Util (getAmount)
 import Daml.Finance.App.Issuance.Model (DeissueRequest(..), Issuance(..), IssueRequest(..))
 
-instance Service.HasImplementation Service
+instance Auto.HasImplementation Service
 
 template Service
   with
@@ -58,6 +59,17 @@ template Service
         (issuanceCid, issuance) <- fetchByKey @Issuance (operator, provider, issuanceId)
         archive issuanceCid
         toInterfaceContractId <$> create issuance with quantity = (issuance.quantity with amount = issuance.quantity.amount - amount)
+
+    interface instance Auto.I for Service where
+      view = Auto.View
+      asService = toInterface @Service.I this
+      requestAndIssue self Auto.RequestAndIssue{issuanceId; description; quantity; account} = do
+        issueRequestCid <- exercise self Service.RequestIssue with issuanceId; description; quantity; account
+        exercise self Service.Issue with issueRequestCid
+      requestAndDeissue self Auto.RequestAndDeissue{issuanceId; holdingCid} = do
+        deissueRequestCid <- exercise self Service.RequestDeissue with issuanceId; holdingCid
+        exercise self Service.Deissue with deissueRequestCid
+
 
 template Offer
   with

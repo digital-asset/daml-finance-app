@@ -22,7 +22,7 @@ export const PooledRequests : React.FC = () => {
   const party = useParty();
   const ledger = useLedger();
 
-  const { loading: l1, fund } = useServices();
+  const { loading: l1, fund, issuance } = useServices();
   const { loading: l2, contracts: funds } = useStreamQueries(Fund);
   const { loading: l3, contracts: requests } = useStreamQueries(PooledInvestmentRequest);
   const { loading: l4, contracts: observables } = useStreamQueries(NumericObservable);
@@ -42,11 +42,14 @@ export const PooledRequests : React.FC = () => {
     if (!observable) throw new Error("NAV observable for [" + fundId + "] not found");
     const factory = factories[0];
     if (!factory) throw new Error("Settlement factory not found");
+    const svc = issuance.getService(fundContract.payload.custodian, party);
+    if (!svc) throw new Error("No issuance service found for provider [" + fundContract.payload.custodian + "] and customer [" + party + "]");
     const arg = {
       pooledInvestmentRequestCid: pir.contractId,
       fundCid: fundContract.contractId,
       navObservableCid: observable.contractId,
-      settlementFactoryCid: factory.contractId
+      settlementFactoryCid: factory.contractId,
+      issuanceServiceCid: svc.service.contractId
     };
     await ledger.exercise(FundService.FulfillPooledInvestmentRequest, service.contractId, arg);
   }
