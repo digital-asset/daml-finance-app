@@ -17,7 +17,7 @@ import { parseDate, singleton } from "../../../util";
 import { businessDayConventions, couponFrequencies, dayCountConventions, holidayCalendars } from "./util";
 import { useParties } from "../../../context/PartiesContext";
 import { useInstruments } from "../../../context/InstrumentContext";
-import { useServices } from "../../../context/ServiceContext";
+import { useServices } from "../../../context/ServicesContext";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { Message } from "../../../components/Message/Message";
 import { DateInput } from "../../../components/Form/DateInput";

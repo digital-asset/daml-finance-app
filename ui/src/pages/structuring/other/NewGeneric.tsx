@@ -16,7 +16,7 @@ import { emptyMap } from "@daml/types";
 import { useParties } from "../../../context/PartiesContext";
 import { useInstruments } from "../../../context/InstrumentContext";
 import { Message } from "../../../components/Message/Message";
-import { useServices } from "../../../context/ServiceContext";
+import { useServices } from "../../../context/ServicesContext";
 import { Service as Structuring } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Service";
 import { Service as StructuringAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service";
 

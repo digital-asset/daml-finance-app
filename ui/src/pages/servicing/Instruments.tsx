@@ -6,7 +6,7 @@ import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Service";
 import { useParties } from "../../context/PartiesContext";
-import { useServices } from "../../context/ServiceContext";
+import { useServices } from "../../context/ServicesContext";
 import { InstrumentAggregate, useInstruments } from "../../context/InstrumentContext";
 import { Event } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Event";
 import { NumericObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/NumericObservable";

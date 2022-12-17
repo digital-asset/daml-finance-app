@@ -9,7 +9,7 @@ import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
 import { BorrowAgreement } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lending/Model";
 import { fmt } from "../../util";
-import { useServices } from "../../context/ServiceContext";
+import { useServices } from "../../context/ServicesContext";
 import { CreateEvent } from "@daml/ledger";
 import { useHoldings } from "../../context/HoldingContext";
 import { ContractId } from "@daml/types";

@@ -15,7 +15,7 @@ import { Reference } from "@daml.js/daml-finance-interface-account/lib/Daml/Fina
 import { fmt } from "../../../util";
 import { Message } from "../../../components/Message/Message";
 import { useParties } from "../../../context/PartiesContext";
-import { useServices } from "../../../context/ServiceContext";
+import { useServices } from "../../../context/ServicesContext";
 import { Factory } from "@daml.js/daml-finance-interface-settlement/lib/Daml/Finance/Interface/Settlement/Factory";
 import { useHoldings } from "../../../context/HoldingContext";
 

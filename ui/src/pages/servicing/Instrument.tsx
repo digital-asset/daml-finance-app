@@ -14,7 +14,7 @@ import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/Claims
 import { and, C, claimToNode } from "../../components/Claims/util";
 import { useParties } from "../../context/PartiesContext";
 import { useInstruments } from "../../context/InstrumentContext";
-import { useServices } from "../../context/ServiceContext";
+import { useServices } from "../../context/ServicesContext";
 import { Message } from "../../components/Message/Message";
 import { NumericObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/NumericObservable";
 import { TimeObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/TimeObservable";

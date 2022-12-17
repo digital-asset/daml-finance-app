@@ -10,7 +10,7 @@ import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
 import { BorrowOffer } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lending/Model";
 import { fmt } from "../../util";
-import { useServices } from "../../context/ServiceContext";
+import { useServices } from "../../context/ServicesContext";
 import { Service as Lending } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lending/Service";
 import { Reference } from "@daml.js/daml-finance-interface-account/lib/Daml/Finance/Interface/Account/Account";
 import { CreateEvent } from "@daml/ledger";

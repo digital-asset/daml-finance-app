@@ -13,7 +13,7 @@ import { Service as Lifecycle } from "@daml.js/daml-finance-app/lib/Daml/Finance
 import { useParties } from "../../context/PartiesContext";
 import { shorten } from "../../util";
 import { Spinner } from "../Spinner/Spinner";
-import { useServices } from "../../context/ServiceContext";
+import { useServices } from "../../context/ServicesContext";
 import { NumericObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/NumericObservable";
 import { VerticalTable } from "../Table/VerticalTable";
 

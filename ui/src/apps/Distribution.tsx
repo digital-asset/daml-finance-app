@@ -16,7 +16,7 @@ import { New as NewInvestment} from "../pages/distribution/investment/New";
 import { Spinner } from "../components/Spinner/Spinner";
 import { Offerings } from "../pages/distribution/offering/Offerings";
 import { Offering } from "../pages/distribution/offering/Offering";
-import { useServices } from "../context/ServiceContext";
+import { useServices } from "../context/ServicesContext";
 import { App } from "./App";
 import { PooledRequests } from "../pages/distribution/investment/PooledRequests";
 import { Funds } from "../pages/distribution/investment/Funds";

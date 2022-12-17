@@ -15,7 +15,7 @@ import { Lending } from "./apps/Lending";
 import { Settlement } from "./apps/Settlement";
 import { Route, Routes } from "react-router-dom";
 import { Overview } from "./apps/Overview";
-import { ServicesProvider } from "./context/ServiceContext";
+import { ServicesProvider } from "./context/ServicesContext";
 import { InstrumentProvider } from "./context/InstrumentContext";
 import { HoldingProvider } from "./context/HoldingContext";
 import { AccountProvider } from "./context/AccountContext";

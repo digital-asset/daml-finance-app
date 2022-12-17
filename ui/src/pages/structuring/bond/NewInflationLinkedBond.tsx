@@ -16,7 +16,7 @@ import { DayCountConventionEnum } from "@daml.js/daml-finance-interface-types/li
 import { BusinessDayConventionEnum } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Date/Calendar";
 import { useParties } from "../../../context/PartiesContext";
 import { useInstruments } from "../../../context/InstrumentContext";
-import { useServices } from "../../../context/ServiceContext";
+import { useServices } from "../../../context/ServicesContext";
 import { Service as Structuring } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Service";
 import { Service as StructuringAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service";
 import { CenteredForm } from "../../../components/CenteredForm/CenteredForm";

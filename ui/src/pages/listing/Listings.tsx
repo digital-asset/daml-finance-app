@@ -11,7 +11,7 @@ import { Service as AutoService } from "@daml.js/daml-finance-app/lib/Daml/Finan
 import { Listing } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Model";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
-import { useServices } from "../../context/ServiceContext";
+import { useServices } from "../../context/ServicesContext";
 import { HorizontalTable } from "../../components/Table/HorizontalTable";
 
 export const Listings : React.FC = () => {

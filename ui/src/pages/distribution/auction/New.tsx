@@ -12,7 +12,7 @@ import { Reference } from "@daml.js/daml-finance-interface-account/lib/Daml/Fina
 import { createSet } from "../../../util";
 import { useParties } from "../../../context/PartiesContext";
 import { useInstruments } from "../../../context/InstrumentContext";
-import { useServices } from "../../../context/ServiceContext";
+import { useServices } from "../../../context/ServicesContext";
 import { Service as Auction } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Service";
 import { Service as AuctionAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Auto/Service";
 import { Message } from "../../../components/Message/Message";

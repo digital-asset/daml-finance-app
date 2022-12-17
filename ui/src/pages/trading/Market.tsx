@@ -18,7 +18,7 @@ import { Spinner } from "../../components/Spinner/Spinner";
 import { Percentage } from "../../components/Slider/Percentage";
 import { Reference } from "@daml.js/daml-finance-interface-account/lib/Daml/Finance/Interface/Account/Account";
 import { useParties } from "../../context/PartiesContext";
-import { useServices } from "../../context/ServiceContext";
+import { useServices } from "../../context/ServicesContext";
 import { Message } from "../../components/Message/Message";
 import { useHoldings } from "../../context/HoldingContext";
 

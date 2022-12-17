@@ -9,7 +9,7 @@ import { useLedger } from "@daml/react";
 import { Button } from "@mui/material";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { useServices } from "../../context/ServiceContext";
+import { useServices } from "../../context/ServicesContext";
 import { useInstruments } from "../../context/InstrumentContext";
 import { Service as Lending } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lending/Service";
 import { Message } from "../../components/Message/Message";

@@ -8,7 +8,7 @@ import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Typography, Grid, Paper, Button } from "@mui/material";
 import useStyles from "../../styles";
 import { Spinner } from "../../../components/Spinner/Spinner";
-import { useServices } from "../../../context/ServiceContext";
+import { useServices } from "../../../context/ServicesContext";
 import { Service as Investment } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Investment/Service";
 import { Message } from "../../../components/Message/Message";
 import { useHoldings } from "../../../context/HoldingContext";

@@ -11,7 +11,7 @@ import { Percentage } from "../../components/Slider/Percentage";
 import useStyles from "../styles";
 import { Bonding } from "../../components/Curve/Bonding";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Decentralized/Exchange/Service";
-import { useServices } from "../../context/ServiceContext";
+import { useServices } from "../../context/ServicesContext";
 import { useHoldings } from "../../context/HoldingContext";
 import { useAccounts } from "../../context/AccountContext";
 import { Message } from "../../components/Message/Message";

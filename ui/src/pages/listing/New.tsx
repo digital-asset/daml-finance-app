@@ -14,7 +14,7 @@ import { Message } from "../../components/Message/Message";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useInstruments } from "../../context/InstrumentContext";
 import { useParties } from "../../context/PartiesContext";
-import { useServices } from "../../context/ServiceContext";
+import { useServices } from "../../context/ServicesContext";
 import { createSet } from "../../util";
 import useStyles from "../styles";
 

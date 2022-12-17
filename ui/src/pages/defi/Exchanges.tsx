@@ -6,7 +6,7 @@ import { Grid, Theme } from "@mui/material";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { makeStyles, createStyles } from "@mui/styles";
 import { Dex } from "../../components/Card/Dex";
-import { useServices } from "../../context/ServiceContext";
+import { useServices } from "../../context/ServicesContext";
 
 export const Exchanges : React.FC = () => {
   const classes = useStyles();

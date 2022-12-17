@@ -13,7 +13,7 @@ import { Reference } from "@daml.js/daml-finance-interface-account/lib/Daml/Fina
 import { Message } from "../../components/Message/Message";
 import { useParties } from "../../context/PartiesContext";
 import { useInstruments } from "../../context/InstrumentContext";
-import { useServices } from "../../context/ServiceContext";
+import { useServices } from "../../context/ServicesContext";
 import { BorrowOfferRequest } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lending/Model";
 import { fmt } from "../../util";
 import { useHoldings } from "../../context/HoldingContext";

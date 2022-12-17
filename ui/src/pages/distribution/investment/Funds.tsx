@@ -12,7 +12,7 @@ import { fmt } from "../../../util";
 import { useParties } from "../../../context/PartiesContext";
 import { Alignment, HorizontalTable } from "../../../components/Table/HorizontalTable";
 import { Fund } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Fund/Model";
-import { useServices } from "../../../context/ServiceContext";
+import { useServices } from "../../../context/ServicesContext";
 
 export const Funds : React.FC = () => {
   const classes = useStyles();

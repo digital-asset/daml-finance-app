@@ -12,7 +12,7 @@ import { Spinner } from "../../../components/Spinner/Spinner";
 import { Reference } from "@daml.js/daml-finance-interface-account/lib/Daml/Finance/Interface/Account/Account";
 import { dedup } from "../../../util";
 import { BackToBack } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Model";
-import { useServices } from "../../../context/ServiceContext";
+import { useServices } from "../../../context/ServicesContext";
 import { useInstruments } from "../../../context/InstrumentContext";
 import { Message } from "../../../components/Message/Message";
 import { Aggregate } from "../../../components/Instrument/Aggregate";

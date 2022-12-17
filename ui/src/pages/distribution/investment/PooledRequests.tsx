@@ -7,7 +7,7 @@ import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { fmt } from "../../../util";
 import { useParties } from "../../../context/PartiesContext";
-import { useServices } from "../../../context/ServiceContext";
+import { useServices } from "../../../context/ServicesContext";
 import { Alignment, HorizontalTable } from "../../../components/Table/HorizontalTable";
 import { Service as FundService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Fund/Service";
 import { Fund, PooledInvestmentRequest } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Fund/Model";

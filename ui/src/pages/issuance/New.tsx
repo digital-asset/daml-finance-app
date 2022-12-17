@@ -9,7 +9,7 @@ import { Typography, Grid, Paper, Button, Checkbox, FormGroup, FormControlLabel 
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { Reference } from "@daml.js/daml-finance-interface-account/lib/Daml/Finance/Interface/Account/Account";
-import { useServices } from "../../context/ServiceContext";
+import { useServices } from "../../context/ServicesContext";
 import { useInstruments } from "../../context/InstrumentContext";
 import { Service as BackToBack } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/BackToBack/Service";
 import { Service as IssuanceAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Auto/Service";

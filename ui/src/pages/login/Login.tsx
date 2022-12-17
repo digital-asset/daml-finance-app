@@ -6,7 +6,7 @@ import React from "react";
 import { Route, Routes } from "react-router-dom";
 import { httpBaseUrl, wsBaseUrl } from "../../config";
 import { useParties } from "../../context/PartiesContext";
-import { ServicesProvider } from "../../context/ServiceContext";
+import { ServicesProvider } from "../../context/ServicesContext";
 import { Form } from "./Form";
 import { Network } from "./Network";
 

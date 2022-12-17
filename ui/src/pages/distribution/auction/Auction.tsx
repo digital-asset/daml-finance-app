@@ -16,7 +16,7 @@ import { Spinner } from "../../../components/Spinner/Spinner";
 import { fmt } from "../../../util";
 import { Message } from "../../../components/Message/Message";
 import { useParties } from "../../../context/PartiesContext";
-import { useServices } from "../../../context/ServiceContext";
+import { useServices } from "../../../context/ServicesContext";
 import { Factory } from "@daml.js/daml-finance-interface-settlement/lib/Daml/Finance/Interface/Settlement/Factory";
 
 export const Auction: React.FC = () => {
