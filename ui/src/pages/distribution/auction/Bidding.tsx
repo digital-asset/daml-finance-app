@@ -4,13 +4,13 @@
 import React, { useState } from "react";
 import useStyles from "../../styles";
 import classnames from "classnames";
-import { Auction } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Model";
-import { Bid } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Bidding/Model";
+import { Auction } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Auction/Auction";
+import { Bid } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Bidding/Bid";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Grid, Paper, Typography, Table, TableRow, TableCell, TableBody, TextField, Button } from "@mui/material";
 import { useParams } from "react-router-dom";
-import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Bidding/Service";
-import { Service as AutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Bidding/Auto/Service";
+import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Bidding/Service";
+import { Service as ServiceAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Bidding/Auto";
 import { getBidAllocation } from "../Utils";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { fmt } from "../../../util";
@@ -31,7 +31,7 @@ export const Bidding : React.FC = () => {
   const { getName } = useParties();
   const party = useParty();
   const ledger = useLedger();
-  const { loading: l1, bidding, biddingAuto } = useServices();
+  const { loading: l1, bidding } = useServices();
   const { loading: l2, latests } = useInstruments();
   const { loading: l3, getFungible } = useHoldings();
   const { loading: l4, contracts: auctions } = useStreamQueries(Auction);
@@ -44,14 +44,10 @@ export const Bidding : React.FC = () => {
 
   if (l1 || l2 || l3 || l4 || l5 || l6) return <Spinner />;
 
-  const myServices = bidding.filter(c => c.payload.customer === party);
-  const myAutoServices = biddingAuto.filter(c => c.payload.customer === party);
-
-  if (myServices.length === 0) return <Message text="No bidding service found" />
   if (!auction) return <Message text="Auction not found" />
   if (!instrument) return <Message text="Auctioned instrument not found" />
 
-  const bid = bids.find(b => b.payload.auctionId === auction.payload.id);
+  const bid = bids.find(b => b.payload.auctionId.unpack === auction.payload.id.unpack);
 
   const requestCreateBid = async () => {
     const volume = price * amount;
@@ -59,6 +55,8 @@ export const Bidding : React.FC = () => {
     const receivableAccount = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === instrument.payload.depository)?.key;
     const collateralCid = await getFungible(party, volume, auction.payload.currency);
     if (!receivableAccount) return;
+    const svc = bidding.getService(auction.payload.provider, party);
+    if (!svc) throw new Error("No bidding service found for provider [" + auction.payload.provider + "] and customer [" + party + "]");
     const arg = {
       auctionCid: auction.contractId,
       price: price.toString(),
@@ -66,24 +64,20 @@ export const Bidding : React.FC = () => {
       collateralCid,
       receivableAccount
     };
-    if (myAutoServices.length > 0) {
-      await ledger.exercise(AutoService.RequestAndCreateBid, myAutoServices[0].contractId, arg);
-    } else {
-      await ledger.exercise(Service.RequestCreateBid, myServices[0].contractId, arg);
-    }
-
+    if (!!svc.auto) await ledger.exercise(ServiceAuto.RequestAndCreateBid, svc.auto.contractId, arg);
+    else await ledger.exercise(Service.RequestCreateBid, svc.service.contractId, arg);
   };
 
   return (
     <Grid container direction="column">
       <Grid item xs={12}>
-        <Typography variant="h3" className={classes.heading}>{auction.payload.id}</Typography>
+        <Typography variant="h3" className={classes.heading}>{auction.payload.description}</Typography>
       </Grid>
       <Grid item xs={12}>
         <Grid container spacing={4}>
           <Grid item xs={4}>
             <Grid container direction="column">
-              <Grid xs={12}>
+              <Grid item xs={12}>
                 <Paper className={classnames(classes.fullWidth, classes.paper)}>
                   <Typography variant="h5" className={classes.heading}>Auction Details</Typography>
                   <Table size="small">
@@ -98,7 +92,7 @@ export const Bidding : React.FC = () => {
                       </TableRow>
                       <TableRow key={2} className={classes.tableRow}>
                         <TableCell key={0} className={classnames(classes.tableCell, classes.width50)}><b>Auction Id</b></TableCell>
-                        <TableCell key={1} className={classnames(classes.tableCell, classes.width50)}>{auction.payload.id}</TableCell>
+                        <TableCell key={1} className={classnames(classes.tableCell, classes.width50)}>{auction.payload.id.unpack}</TableCell>
                       </TableRow>
                       <TableRow key={3} className={classes.tableRow}>
                         <TableCell key={0} className={classnames(classes.tableCell, classes.width50)}><b>Instrument</b></TableCell>
@@ -116,7 +110,7 @@ export const Bidding : React.FC = () => {
                   </Table>
                 </Paper>
               </Grid>
-              <Grid xs={12}>
+              <Grid item xs={12}>
                 {!!bid &&
                   <Paper className={classnames(classes.fullWidth, classes.paper)}>
                     <Typography variant="h5" className={classes.heading}>Bid</Typography>

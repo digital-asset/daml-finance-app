@@ -3,13 +3,14 @@
 
 module Daml.Finance.App.Role.Distributor where
 
-import Daml.Finance.App.Distribution.Auction.Auto.Service qualified as AuctionAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
-import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (Approve(..), Offer(..), Request, Service, Terminate(..))
-import Daml.Finance.App.Distribution.Bidding.Auto.Service qualified as BiddingAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
-import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Distribution.Auction.Auto qualified as AuctionAuto (Approve(..), Offer(..), Request, Service)
+import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (Approve(..), Offer(..), Request, Service)
+import Daml.Finance.App.Distribution.Bidding.Auto qualified as BiddingAuto (Approve(..), Offer(..), Request, Service)
+import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Approve(..), Offer(..), Request, Service)
 import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Terminate(..))
 
 template Role
   with
@@ -40,7 +41,8 @@ template Role
         customer : Party
       controller provider
       do
-        exerciseByKey @Auction.Service (operator, provider, customer) Auction.Terminate with actor = provider
+        (serviceCid, _) <- fetchByKey @Auction.Service (operator, provider, customer)
+        exercise (toInterfaceContractId @Base.I serviceCid) Base.Terminate with actor = provider
 
     nonconsuming choice OfferAuctionAutoService : ContractId AuctionAuto.Offer
       with
@@ -61,7 +63,8 @@ template Role
         customer : Party
       controller provider
       do
-        exerciseByKey @AuctionAuto.Service (operator, provider, customer) AuctionAuto.Terminate with actor = provider
+        (serviceCid, _) <- fetchByKey @AuctionAuto.Service (operator, provider, customer)
+        exercise (toInterfaceContractId @Base.I serviceCid) Base.Terminate with actor = provider
 
     nonconsuming choice OfferBiddingService : ContractId Bidding.Offer
       with
@@ -82,7 +85,8 @@ template Role
         customer : Party
       controller provider
       do
-        exerciseByKey @Bidding.Service (operator, provider, customer) Bidding.Terminate with actor = provider
+        (serviceCid, _) <- fetchByKey @Bidding.Service (operator, provider, customer)
+        exercise (toInterfaceContractId @Base.I serviceCid) Base.Terminate with actor = provider
 
     nonconsuming choice OfferBiddingAutoService : ContractId BiddingAuto.Offer
       with
@@ -103,7 +107,8 @@ template Role
         customer : Party
       controller provider
       do
-        exerciseByKey @BiddingAuto.Service (operator, provider, customer) BiddingAuto.Terminate with actor = provider
+        (serviceCid, _) <- fetchByKey @BiddingAuto.Service (operator, provider, customer)
+        exercise (toInterfaceContractId @Base.I serviceCid) Base.Terminate with actor = provider
 
     nonconsuming choice OfferSubscriptionService : ContractId Subscription.Offer
       with

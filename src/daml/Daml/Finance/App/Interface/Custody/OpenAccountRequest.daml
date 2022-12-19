@@ -24,9 +24,9 @@ data View = View
 
 interface OpenAccountRequest where
   viewtype View
-    -- ^ Interface view types. 
+    -- ^ Interface view type.
   asRemovable : Removable.I
-    -- ^ Conversion to the `Removable` interface. 
+    -- ^ Conversion to the `Removable` interface.
 
 -- | Type constraint for requiring templates to implement `OpenAccountRequest`.
 type Implementation t = (HasToInterface t OpenAccountRequest, Removable.Implementation t)

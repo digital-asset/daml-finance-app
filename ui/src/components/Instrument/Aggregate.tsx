@@ -37,7 +37,7 @@ export const Aggregate : React.FC<AggregateProps> = ({ instrument }) => {
         setNode(claimToNode(claims));
       }
     }
-    setClaims();
+    if (lifecycle.length > 0) setClaims();
   }, [lifecycle, instrument, observables, l1, l2, ledger]);
 
   if (l1 || l2) return <Spinner />

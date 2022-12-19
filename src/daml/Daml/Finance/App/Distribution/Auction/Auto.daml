@@ -3,7 +3,7 @@
 
 {-# LANGUAGE MultiWayIf #-}
 
-module Daml.Finance.App.Distribution.Auction.Service where
+module Daml.Finance.App.Distribution.Auction.Auto where
 
 import DA.Action (foldlA)
 import DA.Either (partitionEithers)
@@ -11,23 +11,27 @@ import DA.Foldable (forA_)
 import DA.List (sortOn, mapAccumL)
 import DA.Optional (whenSome)
 import DA.Set (fromList, singleton)
-import Daml.Finance.App.Distribution.Auction.Model qualified as Model (Auction(..), CreateAuctionRequest(..))
-import Daml.Finance.App.Distribution.Auction.Utils (dutchAuction, splitList, generateSettlementInstruction)
+import Daml.Finance.App.Distribution.Auction.Model qualified as Model (Auction, CreateAuctionRequest(..))
 import Daml.Finance.App.Distribution.Bidding.Service qualified as BiddingService (T)
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
 import Daml.Finance.App.Interface.Common.Util (fetchAndRemove)
 import Daml.Finance.App.Interface.Distribution.Auction.Auction qualified as Auction (Status(..))
+import Daml.Finance.App.Interface.Distribution.Auction.Auto qualified as Auto (I, HasImplementation, RequestAndCreateAuction(..), View(..))
 import Daml.Finance.App.Interface.Distribution.Auction.CreateAuctionRequest qualified as CreateAuctionRequest (View(..))
 import Daml.Finance.App.Interface.Distribution.Auction.Service qualified as Service (CreateAuction(..), I, ProcessAuction(..), RequestCreateAuction(..), View(..))
-import Daml.Finance.App.Interface.Distribution.Bidding.Bid qualified as Bid (Allocation(..), SettleAllocation(..), Status(..))
 import Daml.Finance.App.Interface.Distribution.Bidding.Service qualified as BiddingService (I, RejectBid(..))
 import Daml.Finance.Interface.Account.Account qualified as Account (R, exerciseInterfaceByKey)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Account.Util (getAccount)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I, RemoveObservers(..))
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
+import Daml.Finance.App.Distribution.Auction.Model (Auction(..), CreateAuctionRequest(..))
+import Daml.Finance.App.Distribution.Auction.Utils (dutchAuction, splitList, generateSettlementInstruction)
+import Daml.Finance.App.Interface.Distribution.Bidding.Bid qualified as Bid (Allocation(..), SettleAllocation(..), Status(..))
 
 type T = Service
+
+instance Auto.HasImplementation Service
 
 template Service
   with
@@ -64,7 +68,7 @@ template Service
       createAuction Service.CreateAuction{createAuctionRequestCid} = do
         CreateAuctionRequest.View{auctionId; description; quantity; currency; floor; collateralCid; receivableAccount; observers} <- view <$> fetchAndRemove createAuctionRequestCid
         collateralCid <- coerceContractId <$> exercise (toInterfaceContractId collateralCid : ContractId Holding.I) Holding.Acquire with newLockers = fromList [ provider ]; context = show auctionId; lockType = Holding.Semaphore
-        toInterfaceContractId <$> create Model.Auction with operator; provider; customer; id = auctionId; description; quantity; currency; floor; collateralCid; receivableAccount; status = Auction.Open; observers
+        toInterfaceContractId <$> create Auction with operator; provider; customer; id = auctionId; description; quantity; currency; floor; collateralCid; receivableAccount; status = Auction.Open; observers
       processAuction Service.ProcessAuction{settlementFactoryCid; auctionCid; bidCids} = do
         let auctionTCid = fromInterfaceContractId @Model.Auction auctionCid
         auction <- fetch auctionTCid
@@ -119,6 +123,13 @@ template Service
               | otherwise -> Auction.FullyAllocated with finalPrice
         archive auctionCid
         toInterfaceContractId <$> create auction with status = newStatus
+
+    interface instance Auto.I for Service where
+      view = Auto.View
+      asService = toInterface @Service.I this
+      requestAndCreateAuction self Auto.RequestAndCreateAuction{auctionId; description; quantity; currency; floor; collateralCid; receivableAccount; observers} = do
+        createAuctionRequestCid <- exercise self Service.RequestCreateAuction with auctionId; description; quantity; currency; floor; collateralCid; receivableAccount; observers
+        exercise self Service.CreateAuction with createAuctionRequestCid
 
 template Offer
   with

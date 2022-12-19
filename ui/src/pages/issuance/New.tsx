@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import classnames from "classnames";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
-import { Typography, Grid, Paper, Button, Checkbox, FormGroup, FormControlLabel } from "@mui/material";
+import { Button, Checkbox, FormGroup, FormControlLabel } from "@mui/material";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { Reference } from "@daml.js/daml-finance-interface-account/lib/Daml/Finance/Interface/Account/Account";
@@ -19,6 +19,7 @@ import { Message } from "../../components/Message/Message";
 import { TextInput } from "../../components/Form/TextInput";
 import { SelectInput, toValues } from "../../components/Form/SelectInput";
 import { fmt } from "../../util";
+import { CenteredForm } from "../../components/CenteredForm/CenteredForm";
 
 export const New : React.FC = () => {
   const cls = useStyles();
@@ -78,24 +79,11 @@ export const New : React.FC = () => {
   }
 
   return (
-    <Grid container direction="column" spacing={2}>
-      <Grid item xs={12}>
-        <Typography variant="h2" className={classnames(cls.defaultHeading, cls.centered)}>New Issuance</Typography>
-      </Grid>
-      <Grid item xs={12}>
-        <Grid container direction="row" spacing={4}>
-          <Grid item xs={4} />
-          <Grid item xs={4}>
-            <Paper className={classnames(cls.fullWidth, cls.paper)}>
-              <SelectInput  label="Instrument"  value={instrumentLabel} setValue={setInstrumentLabel} values={toValues(aggregates)} />
-              <TextInput    label="Amount"      value={amount}          setValue={setAmount} />
-              {hasB2B && <FormGroup><FormControlLabel control={<Checkbox checked={isB2B} onChange={e => setIsB2B(e.target.checked)}/>} label="Issue back-to-back" /></FormGroup>}
-              <Button className={classnames(cls.fullWidth, cls.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={requestIssue}>{"Issue"}</Button>
-            </Paper>
-          </Grid>
-          <Grid item xs={4} />
-        </Grid>
-      </Grid>
-    </Grid>
+    <CenteredForm title= "New Issuance">
+      <SelectInput  label="Instrument"  value={instrumentLabel} setValue={setInstrumentLabel} values={toValues(aggregates)} />
+      <TextInput    label="Amount"      value={amount}          setValue={setAmount} />
+      {hasB2B && <FormGroup><FormControlLabel control={<Checkbox checked={isB2B} onChange={e => setIsB2B(e.target.checked)}/>} label="Issue back-to-back" /></FormGroup>}
+      <Button className={classnames(cls.fullWidth, cls.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={requestIssue}>Issue</Button>
+    </CenteredForm>
   );
 };

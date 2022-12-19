@@ -11,6 +11,10 @@ import Daml.Finance.App.Decentralized.Exchange.Model qualified as DecentralizedE
 import Daml.Finance.App.Decentralized.Exchange.Service qualified as DecentralizedExchange (Service(..))
 import Daml.Finance.App.Interface.Custody.Auto qualified as CustodyAuto (I)
 import Daml.Finance.App.Interface.Custody.Service qualified as Custody (I)
+import Daml.Finance.App.Interface.Distribution.Auction.Auto qualified as AuctionAuto (I)
+import Daml.Finance.App.Interface.Distribution.Auction.Service qualified as Auction (I)
+import Daml.Finance.App.Interface.Distribution.Bidding.Auto qualified as BiddingAuto (I)
+import Daml.Finance.App.Interface.Distribution.Bidding.Service qualified as Bidding (I)
 import Daml.Finance.App.Interface.Issuance.Auto qualified as IssuanceAuto (I)
 import Daml.Finance.App.Interface.Issuance.Service qualified as Issuance (I)
 import Daml.Finance.App.Interface.Listing.Auto qualified as ListingAuto (I)
@@ -24,10 +28,10 @@ import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Accept(..), Se
 import Daml.Finance.App.Trading.Auto.Service qualified as TradingAuto (Accept(..), Service)
 import Daml.Finance.App.Trading.Service qualified as Trading (Accept(..), Service)
 import Daml.Finance.App.Lending.Service qualified as Lending (Accept(..), Service)
-import Daml.Finance.App.Distribution.Auction.Auto.Service qualified as AuctionAuto (Accept(..), Service)
-import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (Accept(..), Service)
-import Daml.Finance.App.Distribution.Bidding.Auto.Service qualified as BiddingAuto (Accept(..), Service)
-import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Accept(..), Service)
+import Daml.Finance.App.Distribution.Auction.Auto qualified as AuctionAuto (Accept(..))
+import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (Accept(..))
+import Daml.Finance.App.Distribution.Bidding.Auto qualified as BiddingAuto (Accept(..))
+import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Accept(..))
 import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (Accept(..), Service)
 import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (Accept(..), Service)
 import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Accept(..), Service)
@@ -131,25 +135,25 @@ createListingAutoService operator exchange customer = do
   offerCid <- submit exchange do exerciseByKeyCmd @Exchange.Role (operator, exchange) Exchange.OfferListingAutoService with ..
   toInterfaceContractId <$> submit customer do exerciseCmd offerCid ListingAuto.Accept
 
-createAuctionService : Party -> Party -> Party -> Script (ContractId Auction.Service)
+createAuctionService : Party -> Party -> Party -> Script (ContractId Auction.I)
 createAuctionService operator distributor customer = do
   offerCid <- submit distributor do exerciseByKeyCmd @Distributor.Role (operator, distributor) Distributor.OfferAuctionService with customer
-  submit customer do exerciseCmd offerCid Auction.Accept
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid Auction.Accept
 
-createAuctionAutoService : Party -> Party -> Party -> Script (ContractId AuctionAuto.Service)
+createAuctionAutoService : Party -> Party -> Party -> Script (ContractId AuctionAuto.I)
 createAuctionAutoService operator distributor customer = do
   offerCid <- submit distributor do exerciseByKeyCmd @Distributor.Role (operator, distributor) Distributor.OfferAuctionAutoService with customer
-  submit customer do exerciseCmd offerCid AuctionAuto.Accept
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid AuctionAuto.Accept
 
-createBiddingService : Party -> Party -> Party -> Script (ContractId Bidding.Service)
+createBiddingService : Party -> Party -> Party -> Script (ContractId Bidding.I)
 createBiddingService operator distributor customer = do
   offerCid <- submit distributor do exerciseByKeyCmd @Distributor.Role (operator, distributor) Distributor.OfferBiddingService with ..
-  submit customer do exerciseCmd offerCid Bidding.Accept
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid Bidding.Accept
 
-createBiddingAutoService : Party -> Party -> Party -> Script (ContractId BiddingAuto.Service)
+createBiddingAutoService : Party -> Party -> Party -> Script (ContractId BiddingAuto.I)
 createBiddingAutoService operator distributor customer = do
   offerCid <- submit distributor do exerciseByKeyCmd @Distributor.Role (operator, distributor) Distributor.OfferBiddingAutoService with ..
-  submit customer do exerciseCmd offerCid BiddingAuto.Accept
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid BiddingAuto.Accept
 
 createSubscriptionService : Party -> Party -> Party -> Party -> Script (ContractId Subscription.Service)
 createSubscriptionService operator distributor customer public = do

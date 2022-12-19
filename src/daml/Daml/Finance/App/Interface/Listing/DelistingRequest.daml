@@ -20,7 +20,7 @@ data View = View
 
 interface DelistingRequest where
   viewtype View
-    -- ^ Interface view types.
+    -- ^ Interface view type.
   asRemovable : Removable.I
     -- ^ Conversion to the `Removable` interface.
 

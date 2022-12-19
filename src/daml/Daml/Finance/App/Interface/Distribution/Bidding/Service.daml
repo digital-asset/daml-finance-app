@@ -1,0 +1,73 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Interface.Distribution.Bidding.Service where
+
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Implementation)
+import Daml.Finance.App.Interface.Distribution.Auction.Auction qualified as Auction (I)
+import Daml.Finance.App.Interface.Distribution.Bidding.CreateBidRequest qualified as CreateBidRequest (I)
+import Daml.Finance.App.Interface.Distribution.Bidding.Bid qualified as Bid (I, Status)
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
+import Daml.Finance.Interface.Types.Common (AccountKey)
+
+type I = Service
+
+type V = View
+
+data View = View {}
+  deriving (Eq, Show)
+
+interface Service where
+  viewtype V
+
+  asBase : Base.I
+    -- ^ Conversion to base `Service` interface.
+  requestCreateBid : RequestCreateBid -> Update (ContractId CreateBidRequest.I)
+    -- ^ Implementation of the `RequestCreateBid` choice.
+  createBid : CreateBid -> Update (ContractId Bid.I)
+    -- ^ Implementation of the `CreateBid` choice.
+  processAllocation : ProcessAllocation -> Update (ContractId Bid.I, ContractId Fungible.I)
+    -- ^ Implementation of the `ProcessAllocation` choice.
+  rejectBid : RejectBid -> Update (ContractId Bid.I, ContractId Fungible.I)
+    -- ^ Implementation of the `RejectBid` choice.
+
+  nonconsuming choice RequestCreateBid : ContractId CreateBidRequest.I
+    with
+      auctionCid : ContractId Auction.I
+      amount : Decimal
+      price : Decimal
+      collateralCid : ContractId Fungible.I
+      receivableAccount : AccountKey
+    controller (view $ asBase this).customer
+    do
+      requestCreateBid this arg
+
+  nonconsuming choice CreateBid : ContractId Bid.I
+    with
+      createBidRequestCid : ContractId CreateBidRequest.I
+    controller (view $ asBase this).provider
+    do
+      createBid this arg
+
+  nonconsuming choice ProcessAllocation : (ContractId Bid.I, ContractId Fungible.I)
+    with
+      bidCid : ContractId Bid.I
+      amount : Decimal
+      price : Decimal
+    controller (view $ asBase this).provider
+    do
+      processAllocation this arg
+
+  nonconsuming choice RejectBid : (ContractId Bid.I, ContractId Fungible.I)
+    with
+      bidCid : ContractId Bid.I
+      newStatus : Bid.Status
+    controller (view $ asBase this).provider
+    do
+      rejectBid this arg
+
+-- | Type constraint for requiring templates to implement `Service`.
+type Implementation t = (HasToInterface t Service, Base.Implementation t)
+class (Implementation t) => HasImplementation t
+instance HasImplementation Service
+instance HasToInterface Service Base.I where _toInterface = asBase

@@ -32,19 +32,19 @@ export const useNetwork = () : Network => {
   const scenario = useScenario();
   const svc = useServices();
   const services : CreateEvent<any>[] = Array.prototype.concat.apply([], [
-    svc.auction,
+    svc.auction.services,
     svc.backToBack,
+    svc.bidding.services,
     svc.custody.services,
-    svc.bidding,
     svc.fund,
     svc.investment,
-    svc.issuance,
+    svc.issuance.services,
     svc.lending,
     svc.lifecycle,
+    svc.listing.services,
     svc.settlement,
     svc.structuring,
     svc.subscription,
-    svc.listing,
     svc.trading,
   ]);
 

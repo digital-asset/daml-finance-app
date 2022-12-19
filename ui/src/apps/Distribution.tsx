@@ -26,8 +26,8 @@ export const Distribution : React.FC = () => {
   const { loading: l1, auction, fund, investment, subscription } = useServices();
   if (l1) return <Spinner />;
 
-  const providerAuctionService = auction.find(c => c.payload.provider === party);
-  const customerAuctionService = auction.find(c => c.payload.customer === party);
+  const providerAuctionService = auction.services.find(c => c.payload.provider === party);
+  const customerAuctionService = auction.services.find(c => c.payload.customer === party);
   const providerSubscriptionService = subscription.find(c => c.payload.provider === party);
   const customerSubscriptionService = subscription.find(c => c.payload.customer === party);
   const providerInvestmentService = investment.find(c => c.payload.provider === party);

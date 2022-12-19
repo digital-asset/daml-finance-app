@@ -10,15 +10,21 @@ import DA.Set (fromList, singleton)
 import DA.Text (parseInt)
 import Daml.Finance.App.Custody.Service qualified as Custody (Service)
 import Daml.Finance.App.Data.AccountDirectory (AccountDirectory(..))
-import Daml.Finance.App.Distribution.Auction.Model qualified as Auction (T)
-import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (CreateAuction(..), ProcessAuction(..), RequestCreateAuction(..), S)
-import Daml.Finance.App.Distribution.Bidding.Model qualified as Bidding (Bid)
-import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (CreateBid(..), RequestCreateBid(..), S)
+import Daml.Finance.App.Distribution.Auction.Auto qualified as AuctionAuto (Service)
+import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (Service)
+import Daml.Finance.App.Distribution.Bidding.Auto qualified as BiddingAuto (Service)
+import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Service)
 import Daml.Finance.App.Distribution.Fund.Model qualified as Fund (PooledInvestmentRequest, T)
 import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (FulfillPooledInvestmentRequest(..), PoolInvestmentRequests(..), S)
 import Daml.Finance.App.Distribution.Investment.Model qualified as Investment (InvestmentRequest)
 import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (RequestInvestment(..), S)
 import Daml.Finance.App.Interface.Custody.Service qualified as Custody (Deposit(..), I, OpenAccount(..), RequestDeposit(..), RequestOpenAccount(..))
+import Daml.Finance.App.Interface.Distribution.Auction.Auction qualified as Auction (I)
+import Daml.Finance.App.Interface.Distribution.Auction.Auto qualified as AuctionAutoService (I, RequestAndCreateAuction(..))
+import Daml.Finance.App.Interface.Distribution.Auction.Service qualified as AuctionService (CreateAuction(..), I, ProcessAuction(..), RequestCreateAuction(..))
+import Daml.Finance.App.Interface.Distribution.Bidding.Bid qualified as Bid (I)
+import Daml.Finance.App.Interface.Distribution.Bidding.Auto qualified as BiddingAutoService (I, RequestAndCreateBid(..))
+import Daml.Finance.App.Interface.Distribution.Bidding.Service qualified as BiddingService (CreateBid(..), I, RequestCreateBid(..))
 import Daml.Finance.App.Interface.Issuance.Issuance qualified as Issuance (I)
 import Daml.Finance.App.Interface.Issuance.Service qualified as IssuanceService (I, Issue(..), RequestIssue(..))
 import Daml.Finance.App.Interface.Listing.Listing qualified as Listing (I)
@@ -62,7 +68,7 @@ import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum, RollConvent
 import Daml.Finance.Interface.Types.Date.Schedule (Frequency(..), PeriodicSchedule(..))
 import Daml.Finance.Lifecycle.Event.DateClock qualified as DateClock (Event(..))
 import Daml.Finance.Lifecycle.Types (Unit(..))
-import Daml.Finance.Settlement.Factory qualified as Settlement (Factory)
+import Daml.Finance.Settlement.Factory qualified as Settlement (FactoryWithIntermediaries)
 import Daml.Finance.Settlement.Instruction qualified as Instruction (T)
 import Daml.Finance.Setup.Util.Common (getHolding)
 import Daml.Script
@@ -231,25 +237,42 @@ createBidOrder operator provider customer public id = createOrder operator provi
 createAskOrder : Party -> Party -> Party -> Party -> Id -> Instrument.Q -> Instrument.Q -> Parties -> Script (Optional (ContractId Trading.Order, Trading.Order))
 createAskOrder operator provider customer public id = createOrder operator provider customer public id Trading.Sell
 
-createAuction : Party -> Party -> Party -> Party -> Text -> Instrument.Q -> Instrument.K -> Decimal -> ContractId Fungible.I -> Account.K -> Script (ContractId Auction.T)
-createAuction operator provider customer public id quantity currency floor collateralCid receivableAccount = do
-  createAuctionRequestCid <- submit customer do exerciseByKeyCmd @Auction.S (operator, provider, customer) Auction.RequestCreateAuction with id; quantity; currency; floor; collateralCid; receivableAccount; observers = singleton public
-  submit provider do exerciseByKeyCmd @Auction.S (operator, provider, customer) Auction.CreateAuction with createAuctionRequestCid
+createAuction : Party -> Party -> Party -> Party -> Id -> Text -> Instrument.Q -> Instrument.K -> Decimal -> ContractId Fungible.I -> AccountKey -> Script (ContractId Auction.I)
+createAuction operator provider customer public auctionId description quantity currency floor collateralCid receivableAccount = do
+  autoOpt <- queryContractKey @AuctionAuto.Service customer (operator, provider, customer)
+  serviceOpt <- queryContractKey @Auction.Service customer (operator, provider, customer)
+  case (autoOpt, serviceOpt) of
+    (Some (serviceCid, _), _) -> do
+      submit customer do exerciseCmd (toInterfaceContractId @AuctionAutoService.I serviceCid) AuctionAutoService.RequestAndCreateAuction with auctionId; description; quantity; currency; floor; collateralCid; receivableAccount; observers = singleton public
+    (_, Some (serviceCid, _)) -> do
+      createAuctionRequestCid <- submit customer do exerciseCmd (toInterfaceContractId @AuctionService.I serviceCid) AuctionService.RequestCreateAuction with auctionId; description; quantity; currency; floor; collateralCid; receivableAccount; observers = singleton public
+      submit provider do exerciseCmd (toInterfaceContractId @AuctionService.I serviceCid) AuctionService.CreateAuction with createAuctionRequestCid
+    _ -> fail "No auction service found"
 
-createAuctionBid : Party -> Party -> Party -> Party -> ContractId Auction.T -> Decimal -> Decimal -> ContractId Fungible.I -> Account.K -> Script (ContractId Bidding.Bid)
+createAuctionBid : Party -> Party -> Party -> Party -> ContractId Auction.I -> Decimal -> Decimal -> ContractId Fungible.I -> AccountKey -> Script (ContractId Bid.I)
 createAuctionBid operator provider customer public auctionCid amount price collateralCid receivableAccount = do
-  createBidRequestCid <- submitMulti [customer] [public] do exerciseByKeyCmd @Bidding.S (operator, provider, customer) Bidding.RequestCreateBid with auctionCid; amount; price; collateralCid; receivableAccount
-  submit provider do exerciseByKeyCmd @Bidding.S (operator, provider, customer) Bidding.CreateBid with createBidRequestCid
+  autoOpt <- queryContractKey @BiddingAuto.Service customer (operator, provider, customer)
+  serviceOpt <- queryContractKey @Bidding.Service customer (operator, provider, customer)
+  case (autoOpt, serviceOpt) of
+    (Some (serviceCid, _), _) -> do
+      submitMulti [customer] [public] do exerciseCmd (toInterfaceContractId @BiddingAutoService.I serviceCid) BiddingAutoService.RequestAndCreateBid with auctionCid; amount; price; collateralCid; receivableAccount
+    (_, Some (serviceCid, _)) -> do
+      createBidRequestCid <- submitMulti [customer] [public] do exerciseCmd (toInterfaceContractId @BiddingService.I serviceCid) BiddingService.RequestCreateBid with auctionCid; amount; price; collateralCid; receivableAccount
+      submit provider do exerciseCmd (toInterfaceContractId @BiddingService.I serviceCid) BiddingService.CreateBid with createBidRequestCid
+    _ -> fail "No auction service found"
 
-processAuction : Party -> Party -> Party -> Party -> ContractId Auction.T -> [ContractId Bidding.Bid] -> Script (ContractId Auction.T)
+
+processAuction : Party -> Party -> Party -> Party -> ContractId Auction.I -> [ContractId Bid.I] -> Script (ContractId Auction.I)
 processAuction operator provider customer public auctionCid bidCids = do
-  [(factoryCid, _)] <- query @Settlement.Factory provider
-  submitMulti [provider] [public] do
-    exerciseByKeyCmd @Auction.S (operator, provider, customer) Auction.ProcessAuction
-      with
-        settlementFactoryCid = toInterfaceContractId factoryCid
-        auctionCid
-        bidCids
+  [(factoryCid, _)] <- query @Settlement.FactoryWithIntermediaries public
+  autoOpt <- queryContractKey @AuctionAuto.Service provider (operator, provider, customer)
+  serviceOpt <- queryContractKey @Auction.Service provider (operator, provider, customer)
+  case (autoOpt, serviceOpt) of
+    (Some (serviceCid, _), _) -> do
+      submitMulti [provider] [public] do exerciseCmd (toInterfaceContractId @AuctionService.I serviceCid) AuctionService.ProcessAuction with settlementFactoryCid = toInterfaceContractId factoryCid; auctionCid; bidCids
+    (_, Some (serviceCid, _)) -> do
+      submitMulti [provider] [public] do exerciseCmd (toInterfaceContractId @AuctionService.I serviceCid) AuctionService.ProcessAuction with settlementFactoryCid = toInterfaceContractId factoryCid; auctionCid; bidCids
+    _ -> fail "No auction service found"
 
 declareDividend : Party -> Party -> Party -> Party -> Instrument.K -> Date -> [Instrument.Q] -> Script (ContractId Effect.I)
 declareDividend operator provider issuer public equity effectiveDate perUnitDistribution = do

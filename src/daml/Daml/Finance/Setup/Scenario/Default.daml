@@ -71,13 +71,9 @@ run  = do
   createTradingAutoService      operator exchange    inv2
   createTradingService          operator exchange    inv3   settlementFactoryCid
   createTradingAutoService      operator exchange    inv3
-  createAuctionService          operator agent       issuer
   createAuctionAutoService      operator agent       issuer
-  createBiddingService          operator agent       inv1
   createBiddingAutoService      operator agent       inv1
-  createBiddingService          operator agent       inv2
   createBiddingAutoService      operator agent       inv2
-  createBiddingService          operator agent       inv3
   createBiddingAutoService      operator agent       inv3
 
   -- Accounts
@@ -142,7 +138,7 @@ run  = do
   let
     doAuction = do
       let quantity = Instrument.qty 1_000_000.0 bnd
-      auctionCid        <- createAuction operator agent issuer public "AUCTION1" quantity usd 0.95 (coerceContractId ad2) issuerCashAccount
+      auctionCid        <- createAuction operator agent issuer public (Id "AUCTION1") "AUCTION1" quantity usd 0.95 (coerceContractId ad2) issuerCashAccount
       inv1CollateralCid <- coerceContractId <$> getHolding inv1 (Instrument.qty 500_000.0 usd)
       inv2CollateralCid <- coerceContractId <$> getHolding inv2 (Instrument.qty 392_000.0 usd)
       inv3CollateralCid <- coerceContractId <$> getHolding inv3 (Instrument.qty 297_000.0 usd)

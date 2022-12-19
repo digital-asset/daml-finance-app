@@ -9,10 +9,10 @@ import { Service as BackToBackService } from "@daml.js/daml-finance-app/lib/Daml
 import { Service as CustodyService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Custody/Service"
 import { Service as CustodyAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Custody/Auto"
 import { Service as DecentralizedExchangeService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Decentralized/Exchange/Service"
-import { Service as AuctionService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Service"
-import { Service as AuctionAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Auto/Service"
-import { Service as BiddingService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Bidding/Service"
-import { Service as BiddingAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Bidding/Auto/Service"
+import { Service as AuctionService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Auction/Service"
+import { Service as AuctionAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Auction/Auto"
+import { Service as BiddingService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Bidding/Service"
+import { Service as BiddingAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Bidding/Auto"
 import { Service as SubscriptionService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Service"
 import { Service as FundService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Fund/Service"
 import { Service as InvestmentService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Investment/Service"
@@ -40,13 +40,11 @@ type ServiceAggregate<S extends object, T extends object> = CreateEvent<BaseServ
 
 export type ServicesState = {
   loading               : boolean
+  auction               : ServicesAggregate<AuctionService, AuctionAutoService>
   backToBack            : readonly CreateEvent<BackToBackService, BackToBackService.Key>[]
+  bidding               : ServicesAggregate<BiddingService, BiddingAutoService>
   custody               : ServicesAggregate<CustodyService, CustodyAutoService>
   decentralizedExchange : readonly CreateEvent<DecentralizedExchangeService, DecentralizedExchangeService.Key>[]
-  auctionAuto           : readonly CreateEvent<AuctionAutoService, AuctionAutoService.Key>[]
-  auction               : readonly CreateEvent<AuctionService, AuctionService.Key>[]
-  biddingAuto           : readonly CreateEvent<BiddingAutoService, BiddingAutoService.Key>[]
-  bidding               : readonly CreateEvent<BiddingService, BiddingService.Key>[]
   fund                  : readonly CreateEvent<InvestmentService, InvestmentService.Key>[]
   investment            : readonly CreateEvent<InvestmentService, InvestmentService.Key>[]
   issuance              : ServicesAggregate<IssuanceService, IssuanceAutoService>
@@ -68,13 +66,11 @@ const emptyAggregate = {
 
 const empty = {
   loading: true,
+  auction: emptyAggregate,
   backToBack: [],
+  bidding: emptyAggregate,
   custody: emptyAggregate,
   decentralizedExchange: [],
-  auctionAuto: [],
-  auction: [],
-  biddingAuto: [],
-  bidding: [],
   fund: [],
   investment: [],
   issuance: emptyAggregate,
@@ -94,14 +90,14 @@ const ServicesContext = React.createContext<ServicesState>(empty);
 export const ServicesProvider : React.FC = ({ children }) => {
 
   const { loading: l1,  contracts: base }                   = useStreamQueries(BaseService);
-  const { loading: l2,  contracts: backToBack }             = useStreamQueries(BackToBackService);
-  const { loading: l3,  contracts: custody }                = useStreamQueries(CustodyService);
-  const { loading: l4,  contracts: custodyAuto }            = useStreamQueries(CustodyAutoService);
-  const { loading: l5,  contracts: decentralizedExchange }  = useStreamQueries(DecentralizedExchangeService);
-  const { loading: l6,  contracts: auctionAuto }            = useStreamQueries(AuctionAutoService);
-  const { loading: l7,  contracts: auction }                = useStreamQueries(AuctionService);
-  const { loading: l8,  contracts: biddingAuto }            = useStreamQueries(BiddingAutoService);
-  const { loading: l9,  contracts: bidding }                = useStreamQueries(BiddingService);
+  const { loading: l2,  contracts: auctionAuto }            = useStreamQueries(AuctionAutoService);
+  const { loading: l3,  contracts: auction }                = useStreamQueries(AuctionService);
+  const { loading: l4,  contracts: backToBack }             = useStreamQueries(BackToBackService);
+  const { loading: l5,  contracts: biddingAuto }            = useStreamQueries(BiddingAutoService);
+  const { loading: l6,  contracts: bidding }                = useStreamQueries(BiddingService);
+  const { loading: l7,  contracts: custody }                = useStreamQueries(CustodyService);
+  const { loading: l8,  contracts: custodyAuto }            = useStreamQueries(CustodyAutoService);
+  const { loading: l9,  contracts: decentralizedExchange }  = useStreamQueries(DecentralizedExchangeService);
   const { loading: l10, contracts: fund }                   = useStreamQueries(FundService);
   const { loading: l11, contracts: investment }             = useStreamQueries(InvestmentService);
   const { loading: l12, contracts: issuance }               = useStreamQueries(IssuanceService);
@@ -137,13 +133,11 @@ export const ServicesProvider : React.FC = ({ children }) => {
 
     const value = {
       loading,
+      auction                 : createServicesAggregate(auction, auctionAuto),
       backToBack,
+      bidding                 : createServicesAggregate(bidding, biddingAuto),
       custody                 : createServicesAggregate(custody, custodyAuto),
       decentralizedExchange,
-      auctionAuto,
-      auction,
-      biddingAuto,
-      bidding,
       fund,
       investment,
       issuance                : createServicesAggregate(issuance, issuanceAuto),

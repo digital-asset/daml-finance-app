@@ -1,7 +1,7 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module Daml.Finance.App.Distribution.Bidding.Service where
+module Daml.Finance.App.Distribution.Bidding.Auto where
 
 import DA.Assert ((===))
 import DA.List (head)
@@ -10,6 +10,7 @@ import DA.Set (singleton)
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
 import Daml.Finance.App.Interface.Common.Util (fetchAndRemove)
 import Daml.Finance.App.Interface.Distribution.Auction.Auction qualified as Auction (GetView(..))
+import Daml.Finance.App.Interface.Distribution.Bidding.Auto qualified as Auto (I, HasImplementation, RequestAndCreateBid(..), View(..))
 import Daml.Finance.App.Interface.Distribution.Bidding.Bid qualified as Bid (Details(..), Status(..), UpdateStatus(..))
 import Daml.Finance.App.Interface.Distribution.Bidding.CreateBidRequest qualified as CreateBidRequest (View(..))
 import Daml.Finance.App.Interface.Distribution.Bidding.Service qualified as Service (I, CreateBid(..), ProcessAllocation(..), RejectBid(..), RequestCreateBid(..), View(..))
@@ -23,6 +24,8 @@ import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObserv
 import Daml.Finance.App.Distribution.Bidding.Model (Bid(..), CreateBidRequest(..))
 
 type T = Service
+
+instance Auto.HasImplementation Service
 
 template Service
   with
@@ -94,6 +97,13 @@ template Service
         returnedCollateralCid <- exercise (toInterfaceContractId @Holding.I bid.collateralCid) Holding.Release with context = show bid.auctionId
         newBidCid <- exercise bidCid Bid.UpdateStatus with newStatus
         pure (newBidCid, coerceContractId returnedCollateralCid)
+
+    interface instance Auto.I for Service where
+      view = Auto.View
+      asService = toInterface @Service.I this
+      requestAndCreateBid self Auto.RequestAndCreateBid{auctionCid; amount; price; collateralCid; receivableAccount} = do
+        createBidRequestCid <- exercise self Service.RequestCreateBid with auctionCid; amount; price; collateralCid; receivableAccount
+        exercise self Service.CreateBid with createBidRequestCid
 
 template Offer
   with

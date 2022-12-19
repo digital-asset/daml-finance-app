@@ -1,13 +1,14 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module Daml.Finance.App.Interface.Issuance.IssueRequest where
+module Daml.Finance.App.Interface.Distribution.Bidding.CreateBidRequest where
 
 import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Implementation)
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 import Daml.Finance.Interface.Types.Common (AccountKey, Id)
 
-type I = IssueRequest
+type I = CreateBidRequest
 
 type V = View
 
@@ -16,20 +17,22 @@ data View = View
     operator : Party
     provider : Party
     customer : Party
-    issuanceId : Id
-    description : Text
+    issuer : Party
+    auctionId : Id
     quantity : Instrument.Q
-    account : AccountKey
+    price : Instrument.Q
+    collateralCid : ContractId Fungible.I
+    receivableAccount : AccountKey
   deriving (Eq, Show)
 
-interface IssueRequest where
+interface CreateBidRequest where
   viewtype View
     -- ^ Interface view type.
   asRemovable : Removable.I
     -- ^ Conversion to the `Removable` interface.
 
--- | Type constraint for requiring templates to implement `IssueRequest`.
-type Implementation t = (HasToInterface t IssueRequest, Removable.Implementation t)
+-- | Type constraint for requiring templates to implement `CreateBidRequest`.
+type Implementation t = (HasToInterface t CreateBidRequest, Removable.Implementation t)
 class (Implementation t) => HasImplementation t
-instance HasImplementation IssueRequest
-instance HasToInterface IssueRequest Removable.I where _toInterface = asRemovable
+instance HasImplementation CreateBidRequest
+instance HasToInterface CreateBidRequest Removable.I where _toInterface = asRemovable
