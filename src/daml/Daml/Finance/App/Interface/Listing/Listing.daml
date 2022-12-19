@@ -1,0 +1,36 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Interface.Listing.Listing where
+
+import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Implementation)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K)
+import Daml.Finance.Interface.Types.Common (Id, Parties)
+
+type I = Listing
+
+type V = View
+
+data View = View
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Id
+    description : Text
+    tradedInstrument : Instrument.K
+    quotedInstrument : Instrument.K
+    observers : Parties
+  deriving (Eq, Show)
+
+interface Listing where
+  viewtype View
+    -- ^ Interface view types.
+  asRemovable : Removable.I
+    -- ^ Conversion to the `Removable` interface.
+
+-- | Type constraint for requiring templates to implement `Listing`.
+type Implementation t = (HasToInterface t Listing, Removable.Implementation t)
+class (Implementation t) => HasImplementation t
+instance HasImplementation Listing
+instance HasToInterface Listing Removable.I where _toInterface = asRemovable

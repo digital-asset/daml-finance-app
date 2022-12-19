@@ -79,7 +79,7 @@ export const Market : React.FC = () => {
   if (myServices.length === 0) return <Message text="No trading service found" />;
   if (!listing) return <Message text="Listing not found" />;
 
-  const limits = orders.filter(c => c.payload.listingId === listing.payload.id && parseFloat(c.payload.quantity.amount) !== 0);
+  const limits = orders.filter(c => c.payload.listingId.unpack === listing.payload.id.unpack && parseFloat(c.payload.quantity.amount) !== 0);
   const bids = limits.filter(c => c.payload.side === Side.Buy).sort((a, b) => parseFloat(b.payload.price.amount) - parseFloat(a.payload.price.amount));
   const asks = limits.filter(c => c.payload.side === Side.Sell).sort((a, b) => parseFloat(b.payload.price.amount) - parseFloat(a.payload.price.amount));
   const myOrders = limits.filter(c => c.payload.customer === party);
@@ -210,7 +210,7 @@ export const Market : React.FC = () => {
                       </TableRow>
                       {myOrders.map((c, i) => (
                         <TableRow key={i+1} className={cls.tableRow}>
-                          <TableCell key={0} className={cls.tableCell}>{c.payload.listingId}</TableCell>
+                          <TableCell key={0} className={cls.tableCell}>{c.payload.listingId.unpack}</TableCell>
                           <TableCell key={1} className={cls.tableCell}>{c.payload.id.unpack}</TableCell>
                           <TableCell key={2} className={cls.tableCell}>Limit</TableCell>
                           <TableCell key={3} className={cls.tableCell} style={{ color: getColor(c)}}>{c.payload.side}</TableCell>

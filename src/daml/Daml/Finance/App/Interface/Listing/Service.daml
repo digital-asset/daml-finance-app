@@ -1,0 +1,71 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Interface.Listing.Service where
+
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Implementation)
+import Daml.Finance.App.Interface.Listing.Listing qualified as Listing (I)
+import Daml.Finance.App.Interface.Listing.ListingRequest qualified as ListingRequest (I)
+import Daml.Finance.App.Interface.Listing.DelistingRequest qualified as DelistingRequest (I)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K)
+import Daml.Finance.Interface.Types.Common (Id, Parties)
+import Prelude hiding (List)
+
+type I = Service
+
+type V = View
+
+data View = View {}
+  deriving (Eq, Show)
+
+interface Service where
+  viewtype V
+
+  asBase : Base.I
+    -- ^ Conversion to base `Service` interface.
+  requestListing : RequestListing -> Update (ContractId ListingRequest.I)
+    -- ^ Implementation of the `RequestListing` choice.
+  requestDelisting : RequestDelisting -> Update (ContractId DelistingRequest.I)
+    -- ^ Implementation of the `RequestDelisting` choice.
+  list : List -> Update (ContractId Listing.I)
+    -- ^ Implementation of the `List` choice.
+  delist : Delist -> Update ()
+    -- ^ Implementation of the `Delist` choice.
+
+  nonconsuming choice RequestListing : ContractId ListingRequest.I
+    with
+      listingId : Id
+      description : Text
+      tradedInstrument : Instrument.K
+      quotedInstrument : Instrument.K
+      observers : Parties
+    controller (view $ asBase this).customer
+    do
+      requestListing this arg
+
+  nonconsuming choice RequestDelisting : ContractId DelistingRequest.I
+    with
+      listingCid : ContractId Listing.I
+    controller (view $ asBase this).customer
+    do
+      requestDelisting this arg
+
+  nonconsuming choice List : ContractId Listing.I
+    with
+      listingRequestCid : ContractId ListingRequest.I
+    controller (view $ asBase this).provider
+    do
+      list this arg
+
+  nonconsuming choice Delist : ()
+    with
+      delistingRequestCid : ContractId DelistingRequest.I
+    controller (view $ asBase this).provider
+    do
+      delist this arg
+
+-- | Type constraint for requiring templates to implement `Service`.
+type Implementation t = (HasToInterface t Service, Base.Implementation t)
+class (Implementation t) => HasImplementation t
+instance HasImplementation Service
+instance HasToInterface Service Base.I where _toInterface = asBase

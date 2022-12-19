@@ -21,10 +21,12 @@ import Daml.Finance.App.Distribution.Investment.Service qualified as Investment 
 import Daml.Finance.App.Interface.Custody.Service qualified as Custody (Deposit(..), I, OpenAccount(..), RequestDeposit(..), RequestOpenAccount(..))
 import Daml.Finance.App.Interface.Issuance.Issuance qualified as Issuance (I)
 import Daml.Finance.App.Interface.Issuance.Service qualified as IssuanceService (I, Issue(..), RequestIssue(..))
+import Daml.Finance.App.Interface.Listing.Listing qualified as Listing (I)
+import Daml.Finance.App.Interface.Listing.Service qualified as ListingService (I, List(..), RequestListing(..))
 import Daml.Finance.App.Issuance.Service qualified as Issuance (Service)
 import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Service, DeclareDividend(..), DeclareStockSplit(..), DeclareReplacement(..))
 import Daml.Finance.App.Listing.Model qualified as Listing (T)
-import Daml.Finance.App.Listing.Service qualified as Listing (CreateListing(..), RequestCreateListing(..), Service)
+import Daml.Finance.App.Listing.Service qualified as Listing (Service)
 import Daml.Finance.App.Trading.Model qualified as Trading (Order, Side(..))
 import Daml.Finance.App.Trading.Service qualified as Trading (CreateOrder(..), RequestCreateOrder(..), Service)
 import Daml.Finance.Data.Observable.Observation qualified as Data (Observation(..))
@@ -205,10 +207,11 @@ issue operator provider customer public quantity account = do
   issueRequestCid <- submit customer do exerciseCmd (toInterfaceContractId @IssuanceService.I issuanceServiceCid) IssuanceService.RequestIssue with issuanceId; description; quantity; account
   submitMulti [provider] [public] do exerciseCmd (toInterfaceContractId @IssuanceService.I issuanceServiceCid) IssuanceService.Issue with issueRequestCid
 
-list : Party -> Party -> Party -> Text -> Instrument.K -> Instrument.K -> Parties -> Script (ContractId Listing.T)
-list operator provider customer id tradedInstrument quotedInstrument observers = do
-  createListingRequestCid <- submit customer do exerciseByKeyCmd @Listing.Service (operator, provider, customer) Listing.RequestCreateListing with id; tradedInstrument; quotedInstrument; observers
-  submit provider do exerciseByKeyCmd @Listing.Service (operator, provider, customer) Listing.CreateListing with createListingRequestCid
+list : Party -> Party -> Party -> Id -> Text -> Instrument.K -> Instrument.K -> Parties -> Script (ContractId Listing.I)
+list operator provider customer listingId description tradedInstrument quotedInstrument observers = do
+  Some (listingServiceCid, _) <- queryContractKey @Listing.Service customer (operator, provider, customer)
+  listingRequestCid <- submit customer do exerciseCmd (toInterfaceContractId @ListingService.I listingServiceCid) ListingService.RequestListing with listingId; description; tradedInstrument; quotedInstrument; observers
+  submit provider do exerciseCmd (toInterfaceContractId @ListingService.I listingServiceCid) ListingService.List with listingRequestCid
 
 createOrder : Party -> Party -> Party -> Party -> Id -> Trading.Side -> Instrument.Q -> Instrument.Q -> Parties -> Script (Optional (ContractId Trading.Order, Trading.Order))
 createOrder operator provider customer public id side quantity price observers = do

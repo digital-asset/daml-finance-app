@@ -3,8 +3,9 @@
 
 module Daml.Finance.App.Role.Exchange where
 
-import Daml.Finance.App.Listing.Auto.Service qualified as ListingAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
-import Daml.Finance.App.Listing.Service qualified as Listing (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Terminate(..))
+import Daml.Finance.App.Listing.Auto qualified as ListingAuto (Approve(..), Offer(..), Request, Service)
+import Daml.Finance.App.Listing.Service qualified as Listing (Approve(..), Offer(..), Request, Service)
 import Daml.Finance.App.Trading.Auto.Service qualified as TradingAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Trading.Service qualified as Trading (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.Interface.Settlement.Factory qualified as Factory (I)
@@ -82,7 +83,8 @@ template Role
         customer : Party
       controller provider
       do
-        exerciseByKey @Listing.Service (operator, provider, customer) Listing.Terminate with actor = provider
+        (serviceCid, _) <- fetchByKey @Listing.Service (operator, provider, customer)
+        exercise (toInterfaceContractId @Base.I serviceCid) Base.Terminate with actor = provider
 
     nonconsuming choice OfferListingAutoService : ContractId ListingAuto.Offer
       with
@@ -103,7 +105,8 @@ template Role
         customer : Party
       controller provider
       do
-        exerciseByKey @ListingAuto.Service (operator, provider, customer) ListingAuto.Terminate with actor = provider
+        (serviceCid, _) <- fetchByKey @ListingAuto.Service (operator, provider, customer)
+        exercise (toInterfaceContractId @Base.I serviceCid) Base.Terminate with actor = provider
 
     choice TerminateRole : ()
       controller operator

@@ -35,7 +35,7 @@ template Service
     nonconsuming choice RequestCreateOrder : ContractId CreateOrderRequest
       with
         id : Id
-        listingId : Text
+        listingId : Id
         quantity : Instrument.Q
         price : Instrument.Q
         side : Side

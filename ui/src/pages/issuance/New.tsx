@@ -50,9 +50,8 @@ export const New : React.FC = () => {
       const customerAccount = accounts.find(c => c.payload.accountView.custodian === party && c.payload.accountView.owner === party);
       const providerAccount = accounts.find(c => c.payload.accountView.custodian === myB2BServices[0].payload.provider && c.payload.accountView.owner === myB2BServices[0].payload.provider);
       if (!aggregate || !customerAccount || !providerAccount) return;
-      const id = uuidv4();
       const arg = {
-        id: { unpack : id },
+        id: { unpack : uuidv4() },
         description: "Issuance of " + fmt(amount, 0) + " " + aggregate.key.id.unpack,
         quantity: { amount: amount, unit: aggregate.key },
         customerAccount: customerAccount.key,
@@ -66,9 +65,8 @@ export const New : React.FC = () => {
       const svc = issuance.getService(aggregate.payload.depository, party); // TODO: Assumes depository is custodian
       if (!svc) throw new Error("No issuance service found for provider [" + aggregate.payload.depository + "] and customer [" + party + "]");
       if (!account) throw new Error("No account found for custodian " + aggregate.payload.depository + " and owner " + party);
-      const id = uuidv4();
       const arg = {
-        issuanceId: { unpack : id },
+        issuanceId: { unpack : uuidv4() },
         description: "Issuance of " + fmt(amount, 0) + " " + aggregate.key.id.unpack,
         quantity: { amount: amount, unit: aggregate.key },
         account: account.key,

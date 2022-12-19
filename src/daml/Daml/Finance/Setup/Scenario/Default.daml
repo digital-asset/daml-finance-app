@@ -152,7 +152,7 @@ run  = do
       processAuction operator agent issuer public auctionCid [inv1BidCid, inv2BidCid, inv3BidCid]
 
     doTrade = do
-      list operator exchange issuer "SWAP/USD" swp usd $ singleton public
+      list operator exchange issuer (Id "SWAP/USD") "SWAP vs USD" swp usd $ singleton public
       createAskOrder operator exchange issuer public (Id "1") (Instrument.qty 250_000.0 swp) (Instrument.qty 1.00 usd) $ singleton public
       createAskOrder operator exchange issuer public (Id "2") (Instrument.qty 250_000.0 swp) (Instrument.qty 1.00 usd) $ singleton public
       createBidOrder operator exchange inv1  public (Id "3") (Instrument.qty 400_000.0 swp) (Instrument.qty 1.00 usd) $ singleton public

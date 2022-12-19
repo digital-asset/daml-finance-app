@@ -22,15 +22,15 @@ import { Service as LendingService } from "@daml.js/daml-finance-app/lib/Daml/Fi
 import { Service as LifecycleService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Service"
 import { Service as StructuringService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Service"
 import { Service as StructuringAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service"
-import { Service as ListingService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Service"
-import { Service as ListingAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Auto/Service"
+import { Service as ListingService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Listing/Service"
+import { Service as ListingAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Listing/Auto"
 import { Service as SettlementService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Settlement/Service"
 import { Service as TradingService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Trading/Service"
 import { Service as TradingAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Trading/Auto/Service"
 
 type ServicesAggregate<S extends object, T extends object> = {
   services : ServiceAggregate<S, T>[]
-  getService : (custodian : string, owner : string) => ServiceAggregate<S, T> | undefined
+  getService : (provider : string, customer : string) => ServiceAggregate<S, T> | undefined
 };
 
 type ServiceAggregate<S extends object, T extends object> = CreateEvent<BaseService> & {
@@ -52,8 +52,7 @@ export type ServicesState = {
   issuance              : ServicesAggregate<IssuanceService, IssuanceAutoService>
   lending               : readonly CreateEvent<LendingService, LendingService.Key>[]
   lifecycle             : readonly CreateEvent<LifecycleService, LifecycleService.Key>[]
-  listingAuto           : readonly CreateEvent<ListingAutoService, ListingAutoService.Key>[]
-  listing               : readonly CreateEvent<ListingService, ListingService.Key>[]
+  listing               : ServicesAggregate<ListingService, ListingAutoService>
   settlement            : readonly CreateEvent<SettlementService, SettlementService.Key>[]
   structuringAuto       : readonly CreateEvent<StructuringAutoService, StructuringAutoService.Key>[]
   structuring           : readonly CreateEvent<StructuringService, StructuringService.Key>[]
@@ -64,7 +63,7 @@ export type ServicesState = {
 
 const emptyAggregate = {
   services: [],
-  getService: (custodian : string, owner : string) => { throw new Error("Not implemented"); }
+  getService: (provider : string, customer : string) => { throw new Error("Not implemented"); }
 };
 
 const empty = {
@@ -78,12 +77,10 @@ const empty = {
   bidding: [],
   fund: [],
   investment: [],
-  issuanceAuto: [],
   issuance: emptyAggregate,
   lending: [],
   lifecycle: [],
-  listingAuto: [],
-  listing: [],
+  listing: emptyAggregate,
   settlement: [],
   structuringAuto: [],
   structuring: [],
@@ -149,12 +146,10 @@ export const ServicesProvider : React.FC = ({ children }) => {
       bidding,
       fund,
       investment,
-      issuanceAuto,
       issuance                : createServicesAggregate(issuance, issuanceAuto),
       lending,
       lifecycle,
-      listingAuto,
-      listing,
+      listing                 : createServicesAggregate(listing, listingAuto),
       settlement,
       structuringAuto,
       structuring,

@@ -3,8 +3,13 @@
 
 module Daml.Finance.App.Listing.Model where
 
+import DA.Set (fromList)
+import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, View(..))
+import Daml.Finance.App.Interface.Listing.DelistingRequest qualified as DelistingRequest (I, View(..))
+import Daml.Finance.App.Interface.Listing.Listing qualified as Listing (I, View(..))
+import Daml.Finance.App.Interface.Listing.ListingRequest qualified as ListingRequest (I, View(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K)
-import Daml.Finance.Interface.Types.Common (Parties)
+import Daml.Finance.Interface.Types.Common (Id, Parties)
 
 type T = Listing
 
@@ -13,7 +18,8 @@ template Listing
     operator : Party
     provider : Party
     customer : Party
-    id : Text
+    id : Id
+    description : Text
     tradedInstrument : Instrument.K
     quotedInstrument : Instrument.K
     observers : Parties
@@ -21,26 +27,48 @@ template Listing
     signatory operator, provider, customer
     observer observers
 
-    key (operator, provider, id) : (Party, Party, Text)
+    key (operator, provider, id) : (Party, Party, Id)
     maintainer key._1, key._2
 
-template CreateListingRequest
+    interface instance Removable.I for Listing where
+      view = Removable.View with removers = fromList [operator, provider, customer]
+
+    interface instance Listing.I for Listing where
+      view = Listing.View with operator; provider; customer; id; description; tradedInstrument; quotedInstrument; observers
+      asRemovable = toInterface @Removable.I this
+
+template ListingRequest
   with
     operator : Party
     provider : Party
     customer : Party
-    id : Text
+    listingId : Id
+    description : Text
     tradedInstrument : Instrument.K
     quotedInstrument : Instrument.K
     observers : Parties
   where
     signatory operator, provider, customer
 
-template DeleteListingRequest
+    interface instance Removable.I for ListingRequest where
+      view = Removable.View with removers = fromList [operator, provider, customer]
+
+    interface instance ListingRequest.I for ListingRequest where
+      view = ListingRequest.View with operator; provider; customer; listingId; description; tradedInstrument; quotedInstrument; observers
+      asRemovable = toInterface @Removable.I this
+
+template DelistingRequest
   with
     operator : Party
     provider : Party
     customer : Party
-    listingCid : ContractId Listing
+    listingCid : ContractId Listing.I
   where
     signatory operator, provider, customer
+
+    interface instance Removable.I for DelistingRequest where
+      view = Removable.View with removers = fromList [operator, provider, customer]
+
+    interface instance DelistingRequest.I for DelistingRequest where
+      view = DelistingRequest.View with operator; provider; customer; listingCid
+      asRemovable = toInterface @Removable.I this

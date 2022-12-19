@@ -23,9 +23,9 @@ interface Service where
   asService : Service.I
     -- ^ Conversion to custody `Service` interface.
   requestAndIssue : ContractId Service.I -> RequestAndIssue -> Update (ContractId Issuance.I, ContractId Holding.I)
-    -- ^ Implementation of the `RequestOpenAccount` choice.
+    -- ^ Implementation of the `RequestAndIssue` choice.
   requestAndDeissue : ContractId Service.I -> RequestAndDeissue -> Update (ContractId Issuance.I)
-    -- ^ Implementation of the `RequestCloseAccount` choice.
+    -- ^ Implementation of the `RequestAndDeissue` choice.
 
   nonconsuming choice RequestAndIssue : (ContractId Issuance.I, ContractId Holding.I)
     with
