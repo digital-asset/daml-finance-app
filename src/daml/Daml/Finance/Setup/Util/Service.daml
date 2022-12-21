@@ -28,14 +28,16 @@ import Daml.Finance.App.Interface.Listing.Service qualified as Listing (I)
 import Daml.Finance.App.Interface.Settlement.Service qualified as Settlement (I)
 import Daml.Finance.App.Interface.Structuring.Auto qualified as StructuringAuto (I)
 import Daml.Finance.App.Interface.Structuring.Service qualified as Structuring (I)
+import Daml.Finance.App.Interface.Trading.Auto qualified as TradingAuto (I)
+import Daml.Finance.App.Interface.Trading.Service qualified as Trading (I)
 import Daml.Finance.App.Issuance.Auto qualified as IssuanceAuto (Accept(..))
 import Daml.Finance.App.Issuance.BackToBack qualified as BackToBack (Accept(..))
 import Daml.Finance.App.Issuance.Service qualified as Issuance (Accept(..))
 import Daml.Finance.App.Listing.Auto qualified as ListingAuto (Accept(..))
 import Daml.Finance.App.Listing.Service qualified as Listing (Accept(..))
 import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Accept(..))
-import Daml.Finance.App.Trading.Auto.Service qualified as TradingAuto (Accept(..), Service)
-import Daml.Finance.App.Trading.Service qualified as Trading (Accept(..), Service)
+import Daml.Finance.App.Trading.Auto qualified as TradingAuto (Accept(..))
+import Daml.Finance.App.Trading.Service qualified as Trading (Accept(..))
 import Daml.Finance.App.Lending.Service qualified as Lending (Accept(..))
 import Daml.Finance.App.Distribution.Auction.Auto qualified as AuctionAuto (Accept(..))
 import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (Accept(..))
@@ -125,15 +127,15 @@ createLifecycleService operator custodian customer public = do
   offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferLifecycleService with ..
   toInterfaceContractId <$> submit customer do exerciseCmd offerCid Lifecycle.Accept
 
-createTradingService : Party -> Party -> Party -> ContractId Settlement.Factory -> Script (ContractId Trading.Service)
+createTradingService : Party -> Party -> Party -> ContractId Settlement.Factory -> Script (ContractId Trading.I)
 createTradingService operator exchange customer settlementFactoryCid = do
   offerCid <- submit exchange do exerciseByKeyCmd @Exchange.Role (operator, exchange) Exchange.OfferTradingService with customer; settlementFactoryCid
-  submit customer do exerciseCmd offerCid Trading.Accept
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid Trading.Accept
 
-createTradingAutoService : Party -> Party -> Party -> Script (ContractId TradingAuto.Service)
+createTradingAutoService : Party -> Party -> Party -> Script (ContractId TradingAuto.I)
 createTradingAutoService operator exchange customer = do
   offerCid <- submit exchange do exerciseByKeyCmd @Exchange.Role (operator, exchange) Exchange.OfferTradingAutoService with ..
-  submit customer do exerciseCmd offerCid TradingAuto.Accept
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid TradingAuto.Accept
 
 createListingService : Party -> Party -> Party -> Script (ContractId Listing.I)
 createListingService operator exchange customer = do

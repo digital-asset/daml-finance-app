@@ -52,7 +52,7 @@ template Service
 
       poolInvestmentRequests Service.PoolInvestmentRequests{requestId; asOfDate; fundCid; cashCid; investmentRequestCids} = do
         fund <- exercise fundCid Fund.GetView with actor = customer
-        irs <- mapA (\cid -> view <$> fetch cid) investmentRequestCids
+        irs <- mapA (fmap view . fetch) investmentRequestCids
         (_, dir) <- fetchByKey @AccountDirectory customer
 
         -- Disclose cash to provider
@@ -84,7 +84,7 @@ template Service
         (_, fundUnitsCid, fundCid) <- exercise fundCid Fund.IssueUnits with requestId = pir.requestId; quantity = fundQty; issuanceServiceCid
 
         -- Instruct settlement
-        irs <- mapA (\cid -> view <$> fetch cid) pir.investmentRequestCids
+        irs <- mapA (fmap view . fetch) pir.investmentRequestCids
         let
           createInvestorCashStep ir = Step with sender = ir.customer; receiver = ir.provider; quantity = ir.quantity
           createInvestorFundStep ir = Step with sender = ir.provider; receiver = ir.customer; quantity = Instrument.qty (ir.quantity.amount / unitValue) fund.instrument

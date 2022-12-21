@@ -82,7 +82,7 @@ template Service
         -- Settle subscriptions
         offeringI <- fetch offeringCid
         let offering = view offeringI
-        subscriptions <- zip subscriptionCids <$> forA subscriptionCids (\cid -> view <$> fetch cid)
+        subscriptions <- zip subscriptionCids <$> forA subscriptionCids (fmap view . fetch)
         (remainingIssuerQuantity, remainingIssuerHoldingCidOpt) <- foldlA (settleSubscription provider settlementFactoryCid offering) (offering.asset.amount, Some offering.issuerHoldingCid) subscriptions
 
         -- Settle back-to-back trade

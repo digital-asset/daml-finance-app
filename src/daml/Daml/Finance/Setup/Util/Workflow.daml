@@ -29,12 +29,14 @@ import Daml.Finance.App.Interface.Issuance.Service qualified as IssuanceService 
 import Daml.Finance.App.Interface.Lifecycle.Service qualified as LifecycleService (I, DeclareDividend(..), DeclareStockSplit(..), DeclareReplacement(..))
 import Daml.Finance.App.Interface.Listing.Listing qualified as Listing (I)
 import Daml.Finance.App.Interface.Listing.Service qualified as ListingService (I, List(..), RequestListing(..))
+import Daml.Finance.App.Interface.Trading.Order qualified as Order (I, Side(..), View)
+import Daml.Finance.App.Interface.Trading.Service qualified as Trading (CreateOrder(..), I, RequestCreateOrder(..))
 import Daml.Finance.App.Issuance.Service qualified as Issuance (Service)
 import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Service)
 import Daml.Finance.App.Listing.Model qualified as Listing (T)
 import Daml.Finance.App.Listing.Service qualified as Listing (Service)
-import Daml.Finance.App.Trading.Model qualified as Trading (Order, Side(..))
-import Daml.Finance.App.Trading.Service qualified as Trading (CreateOrder(..), RequestCreateOrder(..), Service)
+import Daml.Finance.App.Trading.Model qualified as Trading (Order)
+import Daml.Finance.App.Trading.Service qualified as Trading (T)
 import Daml.Finance.Data.Observable.Observation qualified as Data (Observation(..))
 import Daml.Finance.Data.Reference.HolidayCalendar qualified as Data (HolidayCalendar(..))
 import Daml.Finance.Data.Time.DateClock qualified as Data (DateClock(..))
@@ -219,23 +221,24 @@ list operator provider customer listingId description tradedInstrument quotedIns
   listingRequestCid <- submit customer do exerciseCmd (toInterfaceContractId @ListingService.I listingServiceCid) ListingService.RequestListing with listingId; description; tradedInstrument; quotedInstrument; observers
   submit provider do exerciseCmd (toInterfaceContractId @ListingService.I listingServiceCid) ListingService.List with listingRequestCid
 
-createOrder : Party -> Party -> Party -> Party -> Id -> Trading.Side -> Instrument.Q -> Instrument.Q -> Parties -> Script (Optional (ContractId Trading.Order, Trading.Order))
+createOrder : Party -> Party -> Party -> Party -> Id -> Order.Side -> Instrument.Q -> Instrument.Q -> Parties -> Script (Optional (ContractId Order.I, Order.View))
 createOrder operator provider customer public id side quantity price observers = do
   listingId <- (.id) . snd . head <$> queryFilter @Listing.T observers (\l -> l.tradedInstrument == quantity.unit && l.quotedInstrument == price.unit)
   let
-    depository = if side == Trading.Buy then quantity.unit.depository else price.unit.depository
-    requiredQuantity = if side == Trading.Buy then price with amount = price.amount * quantity.amount else quantity
+    depository = if side == Order.Buy then quantity.unit.depository else price.unit.depository
+    requiredQuantity = if side == Order.Buy then price with amount = price.amount * quantity.amount else quantity
   account <- key . snd . head <$> queryFilter @Account.R customer (\a -> a.accountView.custodian == depository)
   holdingCid <- coerceContractId <$> getHolding customer requiredQuantity
-  orderCids <- map fst <$> queryFilter @Trading.Order observers (\o -> o.listingId == listingId)
-  createOrderRequestCid <- submit customer do exerciseByKeyCmd @Trading.Service (operator, provider, customer) Trading.RequestCreateOrder with id; listingId; quantity; price; side; collateralCid = holdingCid; account; orderCids; observers
-  submitMulti [provider] [public] do exerciseByKeyCmd @Trading.Service (operator, provider, customer) Trading.CreateOrder with createOrderRequestCid
+  orderCids <- map (toInterfaceContractId @Order.I . fst) <$> queryFilter @Trading.Order observers (\o -> o.listingId == listingId)
+  Some (serviceCid, _) <- queryContractKey @Trading.T customer (operator, provider, customer)
+  createOrderRequestCid <- submit customer do exerciseCmd (toInterfaceContractId @Trading.I serviceCid) Trading.RequestCreateOrder with id; listingId; quantity; price; side; collateralCid = holdingCid; account; orderCids; observers
+  submitMulti [provider] [public] do exerciseCmd (toInterfaceContractId @Trading.I serviceCid) Trading.CreateOrder with createOrderRequestCid
 
-createBidOrder : Party -> Party -> Party -> Party -> Id -> Instrument.Q -> Instrument.Q -> Parties -> Script (Optional (ContractId Trading.Order, Trading.Order))
-createBidOrder operator provider customer public id = createOrder operator provider customer public id Trading.Buy
+createBidOrder : Party -> Party -> Party -> Party -> Id -> Instrument.Q -> Instrument.Q -> Parties -> Script (Optional (ContractId Order.I, Order.View))
+createBidOrder operator provider customer public id = createOrder operator provider customer public id Order.Buy
 
-createAskOrder : Party -> Party -> Party -> Party -> Id -> Instrument.Q -> Instrument.Q -> Parties -> Script (Optional (ContractId Trading.Order, Trading.Order))
-createAskOrder operator provider customer public id = createOrder operator provider customer public id Trading.Sell
+createAskOrder : Party -> Party -> Party -> Party -> Id -> Instrument.Q -> Instrument.Q -> Parties -> Script (Optional (ContractId Order.I, Order.View))
+createAskOrder operator provider customer public id = createOrder operator provider customer public id Order.Sell
 
 createAuction : Party -> Party -> Party -> Party -> Id -> Text -> Instrument.Q -> InstrumentKey -> Decimal -> ContractId Fungible.I -> AccountKey -> Script (ContractId Auction.I)
 createAuction operator provider customer public auctionId description quantity currency floor collateralCid receivableAccount = do

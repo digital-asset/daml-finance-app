@@ -1,0 +1,32 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Interface.Trading.CancelOrderRequest where
+
+import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Implementation)
+import Daml.Finance.App.Interface.Trading.Order qualified as Order (I)
+
+type I = CancelOrderRequest
+
+type V = View
+
+data View = View
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    orderCid : ContractId Order.I
+  deriving (Eq, Show)
+
+interface CancelOrderRequest where
+  viewtype View
+    -- ^ Interface view type.
+
+  asRemovable : Removable.I
+    -- ^ Conversion to the `Removable` interface.
+
+-- | Type constraint for requiring templates to implement `CancelOrderRequest`.
+type Implementation t = (HasToInterface t CancelOrderRequest, Removable.Implementation t)
+class (Implementation t) => HasImplementation t
+instance HasImplementation CancelOrderRequest
+instance HasToInterface CancelOrderRequest Removable.I where _toInterface = asRemovable
