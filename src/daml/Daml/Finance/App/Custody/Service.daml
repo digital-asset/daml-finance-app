@@ -39,32 +39,42 @@ template Service
 
     interface instance Base.I for Service where
       view = Base.View with operator; provider; customer
+
       terminate = pure ()
 
     interface instance Service.I for Service where
       view = Service.View with claimRuleCid; accountFactoryCid; holdingFactoryCid
+
       asBase = toInterface @Base.I this
+
       requestOpenAccount Service.RequestOpenAccount{id; description; controllers; observers} = do
         toInterfaceContractId <$> create Model.OpenAccountRequest with operator; provider; customer; id; description; controllers; observers
+
       requestCloseAccount Service.RequestCloseAccount{account} = do
         toInterfaceContractId <$> create Model.CloseAccountRequest with operator; provider; customer; account
+
       requestDeposit Service.RequestDeposit{quantity; account} = do
         toInterfaceContractId <$> create Model.DepositRequest with operator; provider; customer; quantity; account
+
       requestWithdraw Service.RequestWithdraw{holdingCid} = do
         toInterfaceContractId <$> create Model.WithdrawRequest with operator; provider; customer; holdingCid
+
       openAccount Service.OpenAccount{openAccountRequestCid} = do
         OpenAccountRequest.View{id; description; controllers; observers} <- view <$> fetchAndRemove openAccountRequestCid
         let account = AccountKey with custodian = provider; owner = customer; id
         accountCid <- exercise accountFactoryCid Account.Create with account; description; controllers; holdingFactoryCid; observers
         pure (accountCid, account)
+
       closeAccount Service.CloseAccount{closeAccountRequestCid} = do
         CloseAccountRequest.View{account} <- view <$> fetchAndRemove closeAccountRequestCid
         exercise accountFactoryCid Account.Remove with account
+
       deposit Service.Deposit{depositRequestCid} = do
         DepositRequest.View{quantity; account} <- view <$> fetchAndRemove depositRequestCid
         account.custodian === provider
         account.owner === customer
         Account.exerciseInterfaceByKey @Account.I account provider Account.Credit with quantity
+
       withdraw Service.Withdraw{withdrawRequestCid} = do
         WithdrawRequest.View{holdingCid} <- view <$> fetchAndRemove withdrawRequestCid
         holding <- fetch holdingCid

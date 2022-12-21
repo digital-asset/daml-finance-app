@@ -23,6 +23,7 @@ data View = View
 interface DepositRequest where
   viewtype View
     -- ^ Interface view type.
+
   asRemovable : Removable.I
     -- ^ Conversion to the `Removable` interface.
 

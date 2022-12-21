@@ -21,12 +21,16 @@ interface Service where
 
   asBase : Base.I
     -- ^ Conversion to base `Service` interface.
+
   requestAndOpenAccount : RequestAndOpenAccount -> Update (ContractId Account.I, AccountKey)
     -- ^ Implementation of the `RequestOpenAccount` choice.
+
   requestAndCloseAccount : RequestAndCloseAccount -> Update ()
     -- ^ Implementation of the `RequestCloseAccount` choice.
+
   requestAndDeposit : RequestAndDeposit -> Update (ContractId Holding.I)
     -- ^ Implementation of the `RequestDeposit` choice.
+
   requestAndWithdraw : RequestAndWithdraw -> Update ()
     -- ^ Implementation of the `RequestAndWithdraw` choice.
 

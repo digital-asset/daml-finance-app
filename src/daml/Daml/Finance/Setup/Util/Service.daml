@@ -25,6 +25,9 @@ import Daml.Finance.App.Interface.Lending.Service qualified as Lending (I)
 import Daml.Finance.App.Interface.Lifecycle.Service qualified as Lifecycle (I)
 import Daml.Finance.App.Interface.Listing.Auto qualified as ListingAuto (I)
 import Daml.Finance.App.Interface.Listing.Service qualified as Listing (I)
+import Daml.Finance.App.Interface.Settlement.Service qualified as Settlement (I)
+import Daml.Finance.App.Interface.Structuring.Auto qualified as StructuringAuto (I)
+import Daml.Finance.App.Interface.Structuring.Service qualified as Structuring (I)
 import Daml.Finance.App.Issuance.Auto qualified as IssuanceAuto (Accept(..))
 import Daml.Finance.App.Issuance.BackToBack qualified as BackToBack (Accept(..))
 import Daml.Finance.App.Issuance.Service qualified as Issuance (Accept(..))
@@ -44,15 +47,16 @@ import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscript
 import Daml.Finance.App.Role.Custodian qualified as Custodian
 import Daml.Finance.App.Role.Distributor qualified as Distributor
 import Daml.Finance.App.Role.Exchange qualified as Exchange
-import Daml.Finance.App.Settlement.Service qualified as Settlement (Accept(..), Service)
-import Daml.Finance.App.Structuring.Auto.Service qualified as StructuringAuto (Accept(..), Service)
-import Daml.Finance.App.Structuring.Service qualified as Structuring (Accept(..), Factories(..), Service)
+import Daml.Finance.App.Settlement.Service qualified as Settlement (Accept(..))
+import Daml.Finance.App.Structuring.Auto qualified as StructuringAuto (Accept(..))
+import Daml.Finance.App.Structuring.Service qualified as Structuring (Accept(..))
 import Daml.Finance.Instrument.Bond.FixedRate.Factory qualified as FixedRateBond (Factory(..))
 import Daml.Finance.Instrument.Bond.FloatingRate.Factory qualified as FloatingRateBond (Factory(..))
 import Daml.Finance.Instrument.Bond.InflationLinked.Factory qualified as InflationLinkedBond (Factory(..))
 import Daml.Finance.Instrument.Bond.ZeroCoupon.Factory qualified as ZeroCouponBond (Factory(..))
 import Daml.Finance.Instrument.Equity.Factory qualified as Equity (Factory(..))
 import Daml.Finance.Instrument.Generic.Factory qualified as Generic (Factory(..))
+import Daml.Finance.Instrument.Swap.Fpml.Factory qualified as FpmlSwap (Factory(..))
 import Daml.Finance.Instrument.Token.Factory qualified as Token (Factory(..))
 import Daml.Finance.Interface.Account.Account qualified as Account (K)
 import Daml.Finance.Interface.Account.Factory qualified as Account (F)
@@ -91,7 +95,7 @@ createIssuanceAutoService operator custodian customer = do
   offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferIssuanceAutoService with ..
   toInterfaceContractId <$> submit customer do exerciseCmd offerCid IssuanceAuto.Accept
 
-createStructuringService : Party -> Party -> Party -> Script (ContractId Structuring.Service)
+createStructuringService : Party -> Party -> Party -> Script (ContractId Structuring.I)
 createStructuringService operator custodian customer = do
   token <- toInterfaceContractId <$> submit custodian do createCmd Token.Factory with provider = custodian; observers = M.fromList [("Default", singleton customer)]
   equity <- toInterfaceContractId <$> submit custodian do createCmd Equity.Factory with provider = custodian; observers = M.fromList [("Default", singleton customer)]
@@ -100,14 +104,14 @@ createStructuringService operator custodian customer = do
   floatingRateBond <- toInterfaceContractId <$> submit custodian do createCmd FloatingRateBond.Factory with provider = custodian; observers = M.fromList [("Default", singleton customer)]
   inflationLinkedBond <- toInterfaceContractId <$> submit custodian do createCmd InflationLinkedBond.Factory with provider = custodian; observers = M.fromList [("Default", singleton customer)]
   zeroCouponBond <- toInterfaceContractId <$> submit custodian do createCmd ZeroCouponBond.Factory with provider = custodian; observers = M.fromList [("Default", singleton customer)]
-  let factories = Structuring.Factories with token; equity; generic; fixedRateBond; floatingRateBond; inflationLinkedBond; zeroCouponBond
+  fpmlSwap <- toInterfaceContractId <$> submit custodian do createCmd FpmlSwap.Factory with provider = custodian; observers = M.fromList [("Default", singleton customer)]
   offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferStructuringService with ..
-  submit customer do exerciseCmd offerCid Structuring.Accept
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid Structuring.Accept
 
-createStructuringAutoService : Party -> Party -> Party -> Script (ContractId StructuringAuto.Service)
+createStructuringAutoService : Party -> Party -> Party -> Script (ContractId StructuringAuto.I)
 createStructuringAutoService operator custodian customer = do
   offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferStructuringAutoService with ..
-  submit customer do exerciseCmd offerCid StructuringAuto.Accept
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid StructuringAuto.Accept
 
 createBackToBackIssuanceService : Party -> Party -> Party -> Party -> Script (ContractId BackToBack.I)
 createBackToBackIssuanceService operator custodian customer public = do
@@ -171,10 +175,10 @@ createLendingService operator lender borrower = do
   offerCid <- submit lender do exerciseByKeyCmd @Custodian.Role (operator, lender) Custodian.OfferLendingService with customer = borrower
   toInterfaceContractId <$> submit borrower do exerciseCmd offerCid Lending.Accept
 
-createSettlementService : Party -> Party -> Party -> Script (ContractId Settlement.Service)
+createSettlementService : Party -> Party -> Party -> Script (ContractId Settlement.I)
 createSettlementService operator custodian customer = do
   offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferSettlementService with customer
-  submit customer do exerciseCmd offerCid Settlement.Accept
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid Settlement.Accept
 
 createInvestmentService : Party -> Party -> Party -> Script (ContractId Investment.I)
 createInvestmentService operator provider customer = do

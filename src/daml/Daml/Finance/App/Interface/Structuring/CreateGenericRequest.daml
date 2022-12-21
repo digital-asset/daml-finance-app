@@ -1,13 +1,13 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module Daml.Finance.App.Interface.Custody.OpenAccountRequest where
+module Daml.Finance.App.Interface.Structuring.CreateGenericRequest where
 
 import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Implementation)
-import Daml.Finance.Interface.Account.Account qualified as Account (Controllers)
+import Daml.Finance.Interface.Claims.Types (C)
 import Daml.Finance.Interface.Types.Common (Id, PartiesMap)
 
-type I = OpenAccountRequest
+type I = CreateGenericRequest
 
 type V = View
 
@@ -18,19 +18,20 @@ data View = View
     customer : Party
     id : Id
     description : Text
-    controllers : Account.Controllers
+    claims : C
+    acquisitionTime : Time
     observers : PartiesMap
+    lastEventTimestamp : Time
   deriving (Eq, Show)
 
-interface OpenAccountRequest where
+interface CreateGenericRequest where
   viewtype View
     -- ^ Interface view type.
-
   asRemovable : Removable.I
     -- ^ Conversion to the `Removable` interface.
 
--- | Type constraint for requiring templates to implement `OpenAccountRequest`.
-type Implementation t = (HasToInterface t OpenAccountRequest, Removable.Implementation t)
+-- | Type constraint for requiring templates to implement `CreateGenericRequest`.
+type Implementation t = (HasToInterface t CreateGenericRequest, Removable.Implementation t)
 class (Implementation t) => HasImplementation t
-instance HasImplementation OpenAccountRequest
-instance HasToInterface OpenAccountRequest Removable.I where _toInterface = asRemovable
+instance HasImplementation CreateGenericRequest
+instance HasToInterface CreateGenericRequest Removable.I where _toInterface = asRemovable

@@ -4,8 +4,9 @@
 module Daml.Finance.App.Settlement.Service where
 
 import DA.Set (singleton)
-import Daml.Finance.Interface.Settlement.Types qualified as Settlement (Allocation, Approval)
-import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (I, Allocate(..), Approve(..))
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
+import Daml.Finance.App.Interface.Settlement.Service qualified as Service (AllocateInstruction(..), ApproveInstruction(..), I, View(..))
+import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..))
 
 template Service
   with
@@ -18,33 +19,23 @@ template Service
     key (operator, provider, customer) : (Party, Party, Party)
     maintainer key._1
 
-    nonconsuming choice AllocateInstruction : ContractId Instruction.I
-      with
-        actor : Party
-        instructionCid : ContractId Instruction.I
-        allocation : Settlement.Allocation
-      controller actor
-      do
+    interface instance Base.I for Service where
+      view = Base.View with operator; provider; customer
+
+      terminate = pure ()
+
+    interface instance Service.I for Service where
+      view = Service.View
+
+      asBase = toInterface @Base.I this
+
+      allocateInstruction Service.AllocateInstruction{actor; instructionCid; allocation} = do
         assertMsg "Actor must be provider or customer" $ actor == customer || actor == provider
         fst <$> exercise instructionCid Instruction.Allocate with actors = singleton actor; allocation
 
-    nonconsuming choice ApproveInstruction : ContractId Instruction.I
-      with
-        actor : Party
-        instructionCid : ContractId Instruction.I
-        approval : Settlement.Approval
-      controller actor
-      do
+      approveInstruction Service.ApproveInstruction{actor; instructionCid; approval} = do
         assertMsg "Actor must be provider or customer" $ actor == customer || actor == provider
         exercise instructionCid Instruction.Approve with actors = singleton actor; approval
-
-    choice Terminate : ()
-      with
-        actor : Party
-      controller actor
-      do
-        assert $ actor == operator || actor == provider || actor == customer
-        pure ()
 
 template Offer
   with

@@ -7,9 +7,10 @@ import ContingentClaims.Core.Observation (Observation(..))
 import ContingentClaims.Lifecycle.Lifecycle qualified as Lifecycle
 import ContingentClaims.Lifecycle.Util qualified as Util (expiry, fixings, payoffs)
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
-import Daml.Finance.App.Interface.Lifecycle.Service qualified as Service (DeclareDividend(..), DeclareReplacement(..), DeclareStockSplit(..), Expiry(..), Fixings(..), GetCurrentClaims(..), HasImplementation, I, Lifecycle(..), Multipliers(..), Payoffs(..), PreviewLifecycle(..), PreviewPricing(..), SimulateLifecycle(..), Underlyings(..), View(..))
+import Daml.Finance.App.Interface.Lifecycle.Service qualified as Service
+import Daml.Finance.App.Interface.Structuring.Auto qualified as Structuring (I, RequestAndCreateEquity(..))
 import Daml.Finance.App.Lifecycle.Pricing qualified as Pricing
-import Daml.Finance.App.Structuring.Auto.Service qualified as Structuring
+import Daml.Finance.App.Structuring.Auto qualified as Structuring (T)
 import Daml.Finance.Claims.Util.Lifecycle qualified as Claim (lifecycle, lifecycleClaims, timeEvent)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I, R)
 import Daml.Finance.Interface.Instrument.Equity.Instrument qualified as Equity (I, DeclareDividend(..), DeclareReplacement(..), DeclareStockSplit(..))
@@ -54,7 +55,8 @@ template Service
           v = view equity
           dv = view disclosure
           newInstrument = InstrumentKey with depository = provider; issuer = customer; id = v.id; version = newVersion
-        exerciseByKey @Structuring.Service (operator, provider, customer) Structuring.RequestAndCreateEquity with id = v.id; description = v.description; version = newVersion; validAsOf = now; observers = dv.observers
+        serviceCid <- toInterfaceContractId @Structuring.I . fst <$> fetchByKey @Structuring.T (operator, provider, customer)
+        exercise serviceCid Structuring.RequestAndCreateEquity with id = v.id; description = v.description; version = newVersion; validAsOf = now; observers = dv.observers
         eventCid <- exercise (coerceContractId equityRef.cid : ContractId Equity.I) Equity.DeclareDividend with id; description; effectiveDate; newInstrument; perUnitDistribution
         snd <$> exercise distributionRuleCid Lifecycle.Evolve with ruleName = "Dividend"; eventCid; timeObservableCid; observableCids = []
 
@@ -72,7 +74,8 @@ template Service
           v = view equity
           dv = view disclosure
           newInstrument = InstrumentKey with depository = provider; issuer = customer; id = v.id; version = newVersion
-        exerciseByKey @Structuring.Service (operator, provider, customer) Structuring.RequestAndCreateEquity with id = v.id; description = v.description; version = newVersion; validAsOf = now; observers = dv.observers
+        serviceCid <- toInterfaceContractId @Structuring.I . fst <$> fetchByKey @Structuring.T (operator, provider, customer)
+        exercise serviceCid Structuring.RequestAndCreateEquity with id = v.id; description = v.description; version = newVersion; validAsOf = now; observers = dv.observers
         eventCid <- exercise (coerceContractId equityRef.cid : ContractId Equity.I) Equity.DeclareStockSplit with id; description; effectiveDate; newInstrument; adjustmentFactor
         snd <$> exercise replacementRuleCid Lifecycle.Evolve with ruleName = "StockSplit"; eventCid; timeObservableCid; observableCids = []
 

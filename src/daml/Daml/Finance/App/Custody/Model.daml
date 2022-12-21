@@ -5,14 +5,16 @@ module Daml.Finance.App.Custody.Model where
 
 import DA.Set (fromList)
 import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, View(..))
-import Daml.Finance.App.Interface.Custody.OpenAccountRequest qualified as OpenAccountRequest (I, View(..))
-import Daml.Finance.App.Interface.Custody.CloseAccountRequest qualified as CloseAccountRequest (I, View(..))
-import Daml.Finance.App.Interface.Custody.DepositRequest qualified as DepositRequest (I, View(..))
-import Daml.Finance.App.Interface.Custody.WithdrawRequest qualified as WithdrawRequest (I, View(..))
+import Daml.Finance.App.Interface.Custody.OpenAccountRequest qualified as OpenAccountRequest (HasImplementation, I, View(..))
+import Daml.Finance.App.Interface.Custody.CloseAccountRequest qualified as CloseAccountRequest (HasImplementation, I, View(..))
+import Daml.Finance.App.Interface.Custody.DepositRequest qualified as DepositRequest (HasImplementation, I, View(..))
+import Daml.Finance.App.Interface.Custody.WithdrawRequest qualified as WithdrawRequest (HasImplementation, I, View(..))
 import Daml.Finance.Interface.Account.Account qualified as Account (Controllers, K)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 import Daml.Finance.Interface.Types.Common (Id, PartiesMap)
+
+instance OpenAccountRequest.HasImplementation OpenAccountRequest
 
 template OpenAccountRequest
   with
@@ -38,7 +40,10 @@ template OpenAccountRequest
         description
         controllers
         observers
+
       asRemovable = toInterface @Removable.I this
+
+instance CloseAccountRequest.HasImplementation CloseAccountRequest
 
 template CloseAccountRequest
   with
@@ -58,7 +63,10 @@ template CloseAccountRequest
         provider
         customer
         account
+
       asRemovable = toInterface @Removable.I this
+
+instance DepositRequest.HasImplementation DepositRequest
 
 template DepositRequest
   with
@@ -80,7 +88,10 @@ template DepositRequest
         customer
         quantity
         account
+
       asRemovable = toInterface @Removable.I this
+
+instance WithdrawRequest.HasImplementation WithdrawRequest
 
 template WithdrawRequest
   with
@@ -100,4 +111,5 @@ template WithdrawRequest
         provider
         customer
         holdingCid
+
       asRemovable = toInterface @Removable.I this

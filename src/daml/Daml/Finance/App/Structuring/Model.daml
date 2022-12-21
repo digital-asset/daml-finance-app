@@ -3,23 +3,53 @@
 
 module Daml.Finance.App.Structuring.Model where
 
+import DA.Set(fromList)
+import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, View(..))
+import Daml.Finance.App.Interface.Structuring.CreateTokenRequest qualified as CreateTokenRequest (HasImplementation, I, View(..))
+import Daml.Finance.App.Interface.Structuring.CreateEquityRequest qualified as CreateEquityRequest (HasImplementation, I, View(..))
+import Daml.Finance.App.Interface.Structuring.CreateGenericRequest qualified as CreateGenericRequest (HasImplementation, I, View(..))
+import Daml.Finance.App.Interface.Structuring.CreateFixedRateBondRequest qualified as CreateFixedRateBondRequest (HasImplementation, I, View(..))
+import Daml.Finance.App.Interface.Structuring.CreateFloatingRateBondRequest qualified as CreateFloatingRateBondRequest (HasImplementation, I, View(..))
+import Daml.Finance.App.Interface.Structuring.CreateInflationLinkedBondRequest qualified as CreateInflationLinkedBondRequest (HasImplementation, I, View(..))
+import Daml.Finance.App.Interface.Structuring.CreateZeroCouponBondRequest qualified as CreateZeroCouponBondRequest (HasImplementation, I, View(..))
+import Daml.Finance.App.Interface.Structuring.CreateFpmlSwapRequest qualified as CreateFpmlSwapRequest (HasImplementation, I, View(..))
 import Daml.Finance.Interface.Claims.Types (C)
+import Daml.Finance.Interface.Instrument.Swap.Fpml.FpmlTypes (SwapStream)
 import Daml.Finance.Interface.Types.Common (Id, InstrumentKey, PartiesMap)
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum)
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum)
+
+instance CreateTokenRequest.HasImplementation CreateTokenRequest
 
 template CreateTokenRequest
   with
     operator : Party
     provider : Party
     customer : Party
-    id : Text
+    id : Id
     description : Text
     observers : PartiesMap
     validAsOf : Time
   where
     signatory operator, provider, customer
+
+    interface instance Removable.I for CreateTokenRequest where
+      view = Removable.View with removers = fromList [operator, provider, customer]
+
+    interface instance CreateTokenRequest.I for CreateTokenRequest where
+      view = CreateTokenRequest.View with
+        operator
+        provider
+        customer
+        id
+        description
+        observers
+        validAsOf
+
+      asRemovable = toInterface @Removable.I this
+
+instance CreateEquityRequest.HasImplementation CreateEquityRequest
 
 template CreateEquityRequest
   with
@@ -34,12 +64,30 @@ template CreateEquityRequest
   where
     signatory operator, provider, customer
 
+    interface instance Removable.I for CreateEquityRequest where
+      view = Removable.View with removers = fromList [operator, provider, customer]
+
+    interface instance CreateEquityRequest.I for CreateEquityRequest where
+      view = CreateEquityRequest.View with
+        operator
+        provider
+        customer
+        id
+        description
+        version
+        observers
+        validAsOf
+
+      asRemovable = toInterface @Removable.I this
+
+instance CreateGenericRequest.HasImplementation CreateGenericRequest
+
 template CreateGenericRequest
   with
     operator : Party
     provider : Party
     customer : Party
-    id : Text
+    id : Id
     description : Text
     claims : C
     acquisitionTime : Time
@@ -48,12 +96,31 @@ template CreateGenericRequest
   where
     signatory operator, provider, customer
 
+    interface instance Removable.I for CreateGenericRequest where
+      view = Removable.View with removers = fromList [operator, provider, customer]
+
+    interface instance CreateGenericRequest.I for CreateGenericRequest where
+      view = CreateGenericRequest.View with
+        operator
+        provider
+        customer
+        id
+        description
+        claims
+        acquisitionTime
+        observers
+        lastEventTimestamp
+
+      asRemovable = toInterface @Removable.I this
+
+instance CreateFixedRateBondRequest.HasImplementation CreateFixedRateBondRequest
+
 template CreateFixedRateBondRequest
   with
     operator : Party
     provider : Party
     customer : Party
-    id : Text
+    id : Id
     description : Text
     couponRate : Decimal
     issueDate : Date
@@ -71,12 +138,40 @@ template CreateFixedRateBondRequest
   where
     signatory operator, provider, customer
 
+    interface instance Removable.I for CreateFixedRateBondRequest where
+      view = Removable.View with removers = fromList [operator, provider, customer]
+
+    interface instance CreateFixedRateBondRequest.I for CreateFixedRateBondRequest where
+      view = CreateFixedRateBondRequest.View with
+        operator
+        provider
+        customer
+        id
+        description
+        couponRate
+        issueDate
+        firstCouponDate
+        maturityDate
+        holidayCalendarIds
+        calendarDataProvider
+        dayCountConvention
+        businessDayConvention
+        couponPeriod
+        couponPeriodMultiplier
+        currency
+        observers
+        lastEventTimestamp
+
+      asRemovable = toInterface @Removable.I this
+
+instance CreateFloatingRateBondRequest.HasImplementation CreateFloatingRateBondRequest
+
 template CreateFloatingRateBondRequest
   with
     operator : Party
     provider : Party
     customer : Party
-    id : Text
+    id : Id
     description : Text
     referenceRateId : Text
     couponSpread : Decimal
@@ -95,12 +190,41 @@ template CreateFloatingRateBondRequest
   where
     signatory operator, provider, customer
 
+    interface instance Removable.I for CreateFloatingRateBondRequest where
+      view = Removable.View with removers = fromList [operator, provider, customer]
+
+    interface instance CreateFloatingRateBondRequest.I for CreateFloatingRateBondRequest where
+      view = CreateFloatingRateBondRequest.View with
+        operator
+        provider
+        customer
+        id
+        description
+        referenceRateId
+        couponSpread
+        issueDate
+        firstCouponDate
+        maturityDate
+        holidayCalendarIds
+        calendarDataProvider
+        dayCountConvention
+        businessDayConvention
+        couponPeriod
+        couponPeriodMultiplier
+        currency
+        observers
+        lastEventTimestamp
+
+      asRemovable = toInterface @Removable.I this
+
+instance CreateInflationLinkedBondRequest.HasImplementation CreateInflationLinkedBondRequest
+
 template CreateInflationLinkedBondRequest
   with
     operator : Party
     provider : Party
     customer : Party
-    id : Text
+    id : Id
     description : Text
     inflationIndexId : Text
     inflationIndexBaseValue : Decimal
@@ -120,12 +244,42 @@ template CreateInflationLinkedBondRequest
   where
     signatory operator, provider, customer
 
+    interface instance Removable.I for CreateInflationLinkedBondRequest where
+      view = Removable.View with removers = fromList [operator, provider, customer]
+
+    interface instance CreateInflationLinkedBondRequest.I for CreateInflationLinkedBondRequest where
+      view = CreateInflationLinkedBondRequest.View with
+        operator
+        provider
+        customer
+        id
+        description
+        inflationIndexId
+        inflationIndexBaseValue
+        couponRate
+        issueDate
+        firstCouponDate
+        maturityDate
+        holidayCalendarIds
+        calendarDataProvider
+        dayCountConvention
+        businessDayConvention
+        couponPeriod
+        couponPeriodMultiplier
+        currency
+        observers
+        lastEventTimestamp
+
+      asRemovable = toInterface @Removable.I this
+
+instance CreateZeroCouponBondRequest.HasImplementation CreateZeroCouponBondRequest
+
 template CreateZeroCouponBondRequest
   with
     operator : Party
     provider : Party
     customer : Party
-    id : Text
+    id : Id
     description : Text
     issueDate : Date
     maturityDate : Date
@@ -134,4 +288,59 @@ template CreateZeroCouponBondRequest
     lastEventTimestamp : Time
   where
     signatory operator, provider, customer
+
+    interface instance Removable.I for CreateZeroCouponBondRequest where
+      view = Removable.View with removers = fromList [operator, provider, customer]
+
+    interface instance CreateZeroCouponBondRequest.I for CreateZeroCouponBondRequest where
+      view = CreateZeroCouponBondRequest.View with
+        operator
+        provider
+        customer
+        id
+        description
+        issueDate
+        maturityDate
+        currency
+        observers
+        lastEventTimestamp
+
+      asRemovable = toInterface @Removable.I this
+
+instance CreateFpmlSwapRequest.HasImplementation CreateFpmlSwapRequest
+
+template CreateFpmlSwapRequest
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Id
+    description : Text
+    swapStreams : [SwapStream]
+    issuerPartyRef : Text
+    calendarDataProvider : Party
+    currencies : [InstrumentKey]
+    observers : PartiesMap
+    lastEventTimestamp : Time
+  where
+    signatory operator, provider, customer
+
+    interface instance Removable.I for CreateFpmlSwapRequest where
+      view = Removable.View with removers = fromList [operator, provider, customer]
+
+    interface instance CreateFpmlSwapRequest.I for CreateFpmlSwapRequest where
+      view = CreateFpmlSwapRequest.View with
+        operator
+        provider
+        customer
+        id
+        description
+        swapStreams
+        issuerPartyRef
+        calendarDataProvider
+        currencies
+        observers
+        lastEventTimestamp
+
+      asRemovable = toInterface @Removable.I this
 

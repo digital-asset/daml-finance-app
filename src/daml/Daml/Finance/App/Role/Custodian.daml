@@ -11,11 +11,19 @@ import Daml.Finance.App.Issuance.BackToBack qualified as BackToBack (Approve(..)
 import Daml.Finance.App.Issuance.Service qualified as Issuance (Approve(..), Offer(..), Request, Service)
 import Daml.Finance.App.Lending.Service qualified as Lending (Approve(..), Offer(..), Request, Service)
 import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Approve(..), Offer(..), Request, Service)
-import Daml.Finance.App.Settlement.Service qualified as Settlement (Approve(..), Offer(..), Request, Service, Terminate(..))
-import Daml.Finance.App.Structuring.Auto.Service qualified as StructuringAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
-import Daml.Finance.App.Structuring.Service qualified as Structuring (Approve(..), Factories, Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Settlement.Service qualified as Settlement (Approve(..), Offer(..), Request, Service)
+import Daml.Finance.App.Structuring.Auto qualified as StructuringAuto (Approve(..), Offer(..), Request, Service)
+import Daml.Finance.App.Structuring.Service qualified as Structuring (Approve(..), Offer(..), Request, Service)
 import Daml.Finance.Interface.Account.Factory qualified as Account (F)
 import Daml.Finance.Interface.Holding.Factory qualified as Holding (F)
+import Daml.Finance.Interface.Instrument.Bond.FixedRate.Factory qualified as FixedRateBond (Factory)
+import Daml.Finance.Interface.Instrument.Bond.FloatingRate.Factory qualified as FloatingRateBond (Factory)
+import Daml.Finance.Interface.Instrument.Bond.InflationLinked.Factory qualified as InflationLinkedBond (Factory)
+import Daml.Finance.Interface.Instrument.Bond.ZeroCoupon.Factory qualified as ZeroCouponBond (Factory)
+import Daml.Finance.Interface.Instrument.Equity.Factory qualified as Equity (Factory)
+import Daml.Finance.Interface.Instrument.Generic.Factory qualified as Generic (Factory)
+import Daml.Finance.Interface.Instrument.Swap.Fpml.Factory qualified as FpmlSwap (Factory)
+import Daml.Finance.Interface.Instrument.Token.Factory qualified as Token (Factory)
 import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Lifecycle (Claim)
 import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (I)
 
@@ -171,12 +179,20 @@ template Role
         customer : Party
       controller provider
       do
-        exerciseByKey @Settlement.Service (operator, provider, customer) Settlement.Terminate with actor = provider
+        (serviceCid, _) <- fetchByKey @Settlement.Service (operator, provider, customer)
+        exercise (toInterfaceContractId @Base.I serviceCid) Base.Terminate with actor = provider
 
     nonconsuming choice OfferStructuringService : ContractId Structuring.Offer
       with
         customer : Party
-        factories : Structuring.Factories
+        token : ContractId Token.Factory
+        equity : ContractId Equity.Factory
+        generic : ContractId Generic.Factory
+        fixedRateBond : ContractId FixedRateBond.Factory
+        floatingRateBond : ContractId FloatingRateBond.Factory
+        inflationLinkedBond : ContractId InflationLinkedBond.Factory
+        zeroCouponBond : ContractId ZeroCouponBond.Factory
+        fpmlSwap : ContractId FpmlSwap.Factory
       controller provider
       do
         create Structuring.Offer with ..
@@ -184,7 +200,14 @@ template Role
     nonconsuming choice ApproveStructuringRequest : ContractId Structuring.Service
       with
         structuringServiceRequestCid : ContractId Structuring.Request
-        factories : Structuring.Factories
+        token : ContractId Token.Factory
+        equity : ContractId Equity.Factory
+        generic : ContractId Generic.Factory
+        fixedRateBond : ContractId FixedRateBond.Factory
+        floatingRateBond : ContractId FloatingRateBond.Factory
+        inflationLinkedBond : ContractId InflationLinkedBond.Factory
+        zeroCouponBond : ContractId ZeroCouponBond.Factory
+        fpmlSwap : ContractId FpmlSwap.Factory
       controller provider
       do
         exercise structuringServiceRequestCid Structuring.Approve with ..
@@ -194,7 +217,8 @@ template Role
         customer : Party
       controller provider
       do
-        exerciseByKey @Structuring.Service (operator, provider, customer) Structuring.Terminate with actor = provider
+        (serviceCid, _) <- fetchByKey @Structuring.Service (operator, provider, customer)
+        exercise (toInterfaceContractId @Base.I serviceCid) Base.Terminate with actor = provider
 
     nonconsuming choice OfferStructuringAutoService : ContractId StructuringAuto.Offer
       with
@@ -215,7 +239,8 @@ template Role
         customer : Party
       controller provider
       do
-        exerciseByKey @StructuringAuto.Service (operator, provider, customer) StructuringAuto.Terminate with actor = provider
+        (serviceCid, _) <- fetchByKey @StructuringAuto.Service (operator, provider, customer)
+        exercise (toInterfaceContractId @Base.I serviceCid) Base.Terminate with actor = provider
 
     nonconsuming choice OfferLifecycleService : ContractId Lifecycle.Offer
       with
