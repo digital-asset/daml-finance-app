@@ -1,24 +1,27 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module Daml.Finance.App.BackToBack.Service where
+module Daml.Finance.App.Issuance.BackToBack where
 
 import DA.List (head)
 import DA.Optional (fromSome)
 import DA.Set (fromList, singleton)
-import Daml.Finance.App.Distribution.Subscription.Model (BackToBack, Offering(..))
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
+import Daml.Finance.App.Interface.Issuance.BackToBack qualified as Service (CreateIssuance(..), HasImplementation, I, LockOffering(..), SettleOffering(..), View(..))
 import Daml.Finance.App.Issuance.Model (Issuance(..))
-import Daml.Finance.Interface.Account.Account qualified as Account (Credit(..), K, R)
+import Daml.Finance.Interface.Account.Account qualified as Account (Credit(..), R)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (Split(..), SplitResult(..))
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I, Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Holding.Util (getAmount)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Settlement.Factory qualified as Factory (I, Instruct(..))
+import Daml.Finance.Interface.Settlement.Factory qualified as Factory (Instruct(..))
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
 import Daml.Finance.Interface.Settlement.Types (Allocation(Pledge), Approval(TakeDelivery), Step(..))
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
-import Daml.Finance.Interface.Types.Common (Id(..))
+
+type T = Service
+
+instance Service.HasImplementation Service
 
 template Service
   with
@@ -32,53 +35,45 @@ template Service
     key (operator, provider, customer) : (Party, Party, Party)
     maintainer key._1
 
-    nonconsuming choice CreateIssuance : (ContractId Issuance, ContractId Holding.I, ContractId Holding.I)
-      with
-        id : Id
-        description : Text
-        quantity : Instrument.Q
-        customerAccount : Account.K
-        providerAccount : Account.K
-      controller customer
-      do
+    interface instance Base.I for Service where
+      view = Base.View with operator; provider; customer
+
+      terminate = pure ()
+
+    interface instance Service.I for Service where
+      view = Service.View
+
+      asBase = toInterface @Base.I this
+
+      createIssuance Service.CreateIssuance{issuanceId; description; quantity; customerAccount; providerAccount} = do
         (_, customerRef) <- fetchByKey @Account.R customerAccount
         customerHoldingCid <- exercise customerRef.cid Account.Credit with quantity
         (_, providerRef) <- fetchByKey @Account.R providerAccount
         providerHoldingCid <- exercise providerRef.cid Account.Credit with quantity
-        providerHoldingCid <- coerceContractId <$> exercise (coerceContractId providerHoldingCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton provider; observersToAdd = (show id, singleton customer)
-        issuanceCid <- create Issuance with operator; provider; customer; id; description; quantity
+        providerHoldingCid <- coerceContractId <$> exercise (coerceContractId providerHoldingCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton provider; observersToAdd = (show issuanceId, singleton customer)
+        issuanceCid <- toInterfaceContractId <$> create Issuance with operator; provider; customer; id = issuanceId; description; quantity
         pure (issuanceCid, customerHoldingCid, providerHoldingCid)
 
-    nonconsuming choice LockOffering : BackToBack
-      with
-        backToBack : BackToBack
-      controller customer
-      do
-        b2bDeliverableCid <- coerceContractId <$> exercise (toInterfaceContractId backToBack.b2bDeliverableCid : ContractId Holding.I) Holding.Acquire with newLockers = fromList [customer]; context = backToBack.offeringId; lockType = Holding.Semaphore
-        issuerDeliverableCid <- coerceContractId <$> exercise (toInterfaceContractId backToBack.issuerDeliverableCid : ContractId Holding.I) Holding.Acquire with newLockers = fromList [provider]; context = backToBack.offeringId; lockType = Holding.Semaphore
+      lockOffering Service.LockOffering{backToBack} = do
+        b2bDeliverableCid <- coerceContractId <$> exercise (toInterfaceContractId backToBack.b2bDeliverableCid : ContractId Holding.I) Holding.Acquire with newLockers = fromList [customer]; context = show backToBack.offeringId; lockType = Holding.Semaphore
+        issuerDeliverableCid <- coerceContractId <$> exercise (toInterfaceContractId backToBack.issuerDeliverableCid : ContractId Holding.I) Holding.Acquire with newLockers = fromList [provider]; context = show backToBack.offeringId; lockType = Holding.Semaphore
         pure backToBack with b2bDeliverableCid; issuerDeliverableCid
 
-    nonconsuming choice SettleOffering : [ContractId Holding.I]
-      with
-        settlementFactoryCid : ContractId Factory.I
-        offeringCid : ContractId Offering
-        totalQuantity : Decimal
-      controller customer
-      do
-        offering <- fetch offeringCid
+      settleOffering Service.SettleOffering{settlementFactoryCid; offeringCid; totalQuantity} = do
+        offering <- view <$> fetch offeringCid
         let
           Some b2b = offering.backToBack
           totalNotional = totalQuantity * offering.price.amount
           delivery = Step with sender = b2b.party; receiver = offering.issuer; quantity = (offering.asset with amount = totalQuantity)
           payment = Step with sender = offering.issuer; receiver = b2b.party; quantity = (offering.price with amount = totalNotional)
-        (batchCid, [deliveryCid, paymentCid]) <- exercise settlementFactoryCid Factory.Instruct with instructors = singleton customer; settlers = singleton offering.issuer; id = Id offering.offeringId; contextId = None; steps = [ delivery, payment ]; description = "Settlement for offering " <> offering.offeringId
+        (batchCid, [deliveryCid, paymentCid]) <- exercise settlementFactoryCid Factory.Instruct with instructors = singleton customer; settlers = singleton offering.issuer; id = offering.id; contextId = None; steps = [ delivery, payment ]; description = "Settlement for offering " <> show offering.id
 
         b2bDeliverable <- fetch b2b.b2bDeliverableCid
         b2bSizedDeliverableCid <-
           if getAmount b2bDeliverable > totalQuantity
           then do
             Fungible.SplitResult{splitCids, rest} <- exercise b2b.b2bDeliverableCid Fungible.Split with amounts = [ totalQuantity ]
-            exercise (toInterfaceContractId (fromSome rest) : ContractId Holding.I) Holding.Release with context = offering.offeringId
+            exercise (toInterfaceContractId (fromSome rest) : ContractId Holding.I) Holding.Release with context = show offering.id
             pure $ head splitCids
           else pure b2b.b2bDeliverableCid
         issuerDeliverable <- fetch b2b.issuerDeliverableCid
@@ -91,15 +86,7 @@ template Service
         paymentCid <- fst <$> exercise paymentCid Instruction.Allocate with actors = fromList [provider, customer]; allocation = Pledge $ coerceContractId issuerSizedDeliverableCid
         paymentCid <- exercise paymentCid Instruction.Approve with actors = fromList [provider, customer]; approval = TakeDelivery b2b.b2bReceivableAccount
         deliveredCids <- exercise batchCid Batch.Settle with actors = singleton customer
-        mapA (\cid -> exercise (toInterfaceContractId cid : ContractId Holding.I) Holding.Release with context = offering.offeringId) deliveredCids
-
-    choice Terminate : ()
-      with
-        actor : Party
-      controller actor
-      do
-        assert $ actor == operator || actor == customer || actor == provider
-        pure ()
+        mapA (\cid -> exercise (toInterfaceContractId cid : ContractId Holding.I) Holding.Release with context = show offering.id) deliveredCids
 
 template Offer
   with

@@ -5,7 +5,6 @@ module Daml.Finance.App.Interface.Listing.Auto where
 
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I)
 import Daml.Finance.App.Interface.Listing.Listing qualified as Listing (I)
-import Daml.Finance.App.Interface.Listing.Service qualified as Service (I, Implementation, asBase)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K)
 import Daml.Finance.Interface.Types.Common (Id, Parties)
 
@@ -19,34 +18,35 @@ data View = View {}
 interface Service where
   viewtype V
 
-  asService : Service.I
-    -- ^ Conversion to custody `Service` interface.
-  requestAndList : ContractId Service.I -> RequestAndList -> Update (ContractId Listing.I)
+  asBase : Base.I
+    -- ^ Conversion to base `Service` interface.
+
+  requestAndList : RequestAndList -> Update (ContractId Listing.I)
     -- ^ Implementation of the `RequestAndList` choice.
-  requestAndDelist : ContractId Service.I -> RequestAndDelist -> Update ()
+
+  requestAndDelist : RequestAndDelist -> Update ()
     -- ^ Implementation of the `RequestAndDelist` choice.
 
-  nonconsuming choice RequestAndList : (ContractId Listing.I)
+  nonconsuming choice RequestAndList : ContractId Listing.I
     with
       listingId : Id
       description : Text
       tradedInstrument : Instrument.K
       quotedInstrument : Instrument.K
       observers : Parties
-    controller (view $ Service.asBase $ asService this).customer
+    controller (view $ asBase this).customer
     do
-      requestAndList this (toInterfaceContractId self) arg
+      requestAndList this arg
 
   nonconsuming choice RequestAndDelist : ()
     with
       listingCid : ContractId Listing.I
-    controller (view $ Service.asBase $ asService this).customer
+    controller (view $ asBase this).customer
     do
-      requestAndDelist this (toInterfaceContractId self) arg
+      requestAndDelist this arg
 
 -- | Type constraint for requiring templates to implement `Service`.
-type Implementation t = (HasToInterface t Service, Service.Implementation t)
+type Implementation t = HasToInterface t Service
 class (Implementation t) => HasImplementation t
 instance HasImplementation Service
-instance HasToInterface Service Service.I where _toInterface = asService
-instance HasToInterface Service Base.I where _toInterface = Service.asBase . asService
+instance HasToInterface Service Base.I where _toInterface = asBase

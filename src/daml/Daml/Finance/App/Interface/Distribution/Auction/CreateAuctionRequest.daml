@@ -30,6 +30,7 @@ data View = View
 interface CreateAuctionRequest where
   viewtype View
     -- ^ Interface view type.
+
   asRemovable : Removable.I
     -- ^ Conversion to the `Removable` interface.
 

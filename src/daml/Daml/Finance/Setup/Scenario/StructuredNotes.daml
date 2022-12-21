@@ -8,10 +8,11 @@ import DA.Date (Month(..), addDays, date, toDateUTC, toGregorian)
 import DA.Map (empty, fromList)
 import DA.Set (singleton)
 import DA.Time (time)
-import Daml.Finance.App.BackToBack.Service qualified as BackToBack
-import Daml.Finance.App.Distribution.Subscription.Model qualified as Subscription
-import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription
 import Daml.Finance.Account.Account qualified as Account (Factory(..))
+import Daml.Finance.App.Interface.Distribution.Subscription.Types (BackToBack(..))
+import Daml.Finance.App.Interface.Distribution.Subscription.Offering qualified as Offering (Subscribe(..))
+import Daml.Finance.App.Interface.Distribution.Subscription.Service qualified as SubscriptionService (CreateOffering(..), ProcessOffering(..))
+import Daml.Finance.App.Interface.Issuance.BackToBack qualified as BackToBack (CreateIssuance(..))
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
 import Daml.Finance.Interface.Types.Common (Id(..))
@@ -65,10 +66,10 @@ run  = do
   createStructuringService        operator issuer       issuer
   createIssuanceService           operator issuer       issuer
   createIssuanceService           operator riskTaker    riskTaker
-  createBackToBackIssuanceService operator riskTaker    issuer    public
+  b2bServiceCid           <- createBackToBackIssuanceService operator riskTaker    issuer    public
   createLifecycleService          operator riskTaker    riskTaker public
   createLifecycleService          operator issuer       issuer    public
-  createSubscriptionService       operator issuer       issuer    public
+  subscriptionServiceCid  <- createSubscriptionService       operator issuer       issuer    public
 
   -- Accounts
   riskTakerCashAccount  <- createAccount operator centralBank  riskTaker  public "RiskTaker@CentralBank" $ fromList [("b2b", singleton issuer)]
@@ -137,9 +138,9 @@ run  = do
   let
     issuance quantity = do
       submitMulti [issuer] [public] do
-        exerciseByKeyCmd @BackToBack.Service (operator, riskTaker, issuer) BackToBack.CreateIssuance
+        exerciseCmd b2bServiceCid BackToBack.CreateIssuance
           with
-            id = Id $ "ISSUANCE-" <> show quantity.unit.id
+            issuanceId = Id $ "ISSUANCE-" <> show quantity.unit.id
             description = "Issuance of " <> show quantity.amount <> " " <> show quantity.unit.id
             quantity
             customerAccount = issuerOwnAccount
@@ -148,8 +149,9 @@ run  = do
     subscription asset price issuerCashCid issuerAssetCid riskTakerAssetCid inv1CashCid inv2CashCid inv3CashCid = do
       offeringCid <- submit issuer do
         let
-          offeringId = "OFFERING-" <> show asset.unit.id
-          backToBack = Some Subscription.BackToBack
+          offeringId = Id $ "OFFERING-" <> show asset.unit.id
+          description = "Offer for " <> show asset.amount <> " " <> show asset.unit.id
+          backToBack = Some BackToBack
             with
               party = riskTaker
               offeringId
@@ -157,21 +159,22 @@ run  = do
               issuerDeliverableCid = issuerCashCid
               b2bReceivableAccount = riskTakerCashAccount
               b2bDeliverableCid = coerceContractId riskTakerAssetCid
-        exerciseByKeyCmd @Subscription.Service (operator, issuer, issuer) Subscription.CreateOffering
+        exerciseCmd subscriptionServiceCid SubscriptionService.CreateOffering
           with
             offeringId
+            description
             asset
             price
             customerHoldingCid = coerceContractId issuerAssetCid
             customerAccount = issuerCashAccount
             backToBack
 
-      inv1SubscriptionCid   <- submitMulti [inv1] [public] do exerciseCmd offeringCid Subscription.Subscribe with investor = inv1; quantity = 10_000.0; investorHoldingCid = inv1CashCid; investorAccount = inv1SecAccount
-      inv2SubscriptionCid     <- submitMulti [inv2] [public] do exerciseCmd offeringCid Subscription.Subscribe with investor = inv2; quantity = 10_000.0; investorHoldingCid = inv2CashCid; investorAccount = inv2SecAccount
-      inv3SubscriptionCid <- submitMulti [inv3] [public] do exerciseCmd offeringCid Subscription.Subscribe with investor = inv3; quantity = 10_000.0; investorHoldingCid = inv3CashCid; investorAccount = inv3SecAccount
+      inv1SubscriptionCid   <- submitMulti [inv1] [public] do exerciseCmd offeringCid Offering.Subscribe with investor = inv1; quantity = 10_000.0; investorHoldingCid = inv1CashCid; investorAccount = inv1SecAccount
+      inv2SubscriptionCid     <- submitMulti [inv2] [public] do exerciseCmd offeringCid Offering.Subscribe with investor = inv2; quantity = 10_000.0; investorHoldingCid = inv2CashCid; investorAccount = inv2SecAccount
+      inv3SubscriptionCid <- submitMulti [inv3] [public] do exerciseCmd offeringCid Offering.Subscribe with investor = inv3; quantity = 10_000.0; investorHoldingCid = inv3CashCid; investorAccount = inv3SecAccount
 
       submitMulti [issuer] [public] do
-        exerciseByKeyCmd @Subscription.Service (operator, issuer, issuer) Subscription.ProcessOffering
+        exerciseCmd subscriptionServiceCid SubscriptionService.ProcessOffering
           with
             settlementFactoryCid
             offeringCid

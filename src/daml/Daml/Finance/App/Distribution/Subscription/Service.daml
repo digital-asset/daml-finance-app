@@ -6,16 +6,22 @@ module Daml.Finance.App.Distribution.Subscription.Service where
 import DA.Action (foldlA)
 import DA.Optional (whenSome)
 import DA.Set (fromList, singleton)
-import Daml.Finance.App.BackToBack.Service qualified as BackToBack
-import Daml.Finance.App.Distribution.Subscription.Model (BackToBack, Offering(..), Status(..), Subscription)
+import Daml.Finance.App.Distribution.Subscription.Model qualified as Model (Offering(..))
 import Daml.Finance.App.Distribution.Subscription.Util (settleSubscription)
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
+import Daml.Finance.App.Interface.Distribution.Subscription.Types (Status(..))
+import Daml.Finance.App.Interface.Distribution.Subscription.Service qualified as Service (CreateOffering(..), HasImplementation, I, ProcessOffering(..), View(..))
+import Daml.Finance.App.Interface.Issuance.BackToBack qualified as BackToBack (I, LockOffering(..), SettleOffering(..))
+import Daml.Finance.App.Issuance.BackToBack qualified as BackToBack (T)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
-import Daml.Finance.Interface.Account.Account qualified as Account (K, R)
+import Daml.Finance.Interface.Account.Account qualified as Account (R)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 import Daml.Finance.Interface.Account.Util (getAccount)
-import Daml.Finance.Interface.Settlement.Factory qualified as Factory (I)
+
+type T = Service
+
+instance Service.HasImplementation Service
 
 template Service
   with
@@ -29,61 +35,61 @@ template Service
     key (operator, provider, customer) : (Party, Party, Party)
     maintainer key._1
 
-    nonconsuming choice CreateOffering : ContractId Offering
-      with
-        offeringId : Text
-        asset : Instrument.Q
-        price : Instrument.Q
-        customerHoldingCid : ContractId Fungible.I
-        customerAccount : Account.K
-        backToBack : Optional BackToBack
-      controller customer
-      do
+    interface instance Base.I for Service where
+      view = Base.View with operator; provider; customer
+
+      terminate = pure ()
+
+    interface instance Service.I for Service where
+      view = Service.View
+
+      asBase = toInterface @Base.I this
+
+      createOffering Service.CreateOffering{offeringId; description; asset; price; customerHoldingCid; customerAccount; backToBack} = do
         -- Disclose holding
         customerHolding <- fetch customerHoldingCid
-        customerHoldingCid : ContractId Fungible.I <- coerceContractId <$> exercise (coerceContractId customerHoldingCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (offeringId, singleton provider)
+        customerHoldingCid : ContractId Fungible.I <- coerceContractId <$> exercise (coerceContractId customerHoldingCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (show offeringId, singleton provider)
         -- Disclose delivering securities account
         let customerSendingAccount = getAccount customerHolding
         (_, delRef) <- fetchByKey @Account.R customerSendingAccount
-        exercise (coerceContractId delRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (offeringId, singleton provider)
+        exercise (coerceContractId delRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (show offeringId, singleton provider)
         -- Disclose receiving cash account
         (_, recRef) <- fetchByKey @Account.R customerAccount
-        exercise (coerceContractId recRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (offeringId, singleton provider)
+        exercise (coerceContractId recRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (show offeringId, singleton provider)
         -- Lock holding
-        customerHoldingCid <- coerceContractId <$> exercise (toInterfaceContractId customerHoldingCid : ContractId Holding.I) Holding.Acquire with newLockers = fromList [ provider ]; context = offeringId; lockType = Holding.Semaphore
+        customerHoldingCid <- coerceContractId <$> exercise (toInterfaceContractId customerHoldingCid : ContractId Holding.I) Holding.Acquire with newLockers = fromList [ provider ]; context = show offeringId; lockType = Holding.Semaphore
 
         -- Lock back-to-back assets
         lockedB2b <-
           case backToBack of
-            Some b2b -> do Some <$> exerciseByKey @BackToBack.Service (operator, b2b.party, customer) BackToBack.LockOffering with backToBack = b2b
+            Some b2b -> do
+              (serviceCid, _) <- fetchByKey @BackToBack.T (operator, b2b.party, customer)
+              Some <$> exercise (toInterfaceContractId @BackToBack.I serviceCid) BackToBack.LockOffering with backToBack = b2b
             None -> pure None
 
-        create Offering
+        toInterfaceContractId <$> create Model.Offering
           with
-            operator; provider; public; asset; price; offeringId
+            operator; provider; public; asset; price
+            id = offeringId
+            description
             issuer = customer
             issuerHoldingCid = customerHoldingCid
             issuerAccount = customerAccount
             backToBack = lockedB2b
             status = Open
 
-    nonconsuming choice ProcessOffering : ContractId Offering
-      with
-        settlementFactoryCid : ContractId Factory.I
-        offeringCid : ContractId Offering
-        subscriptionCids : [ContractId Subscription]
-      controller provider
-      do
+      processOffering Service.ProcessOffering{settlementFactoryCid; offeringCid; subscriptionCids} = do
         -- Settle subscriptions
-        offering <- fetch offeringCid
-        subscriptions <- zip subscriptionCids <$> forA subscriptionCids fetch
+        offeringI <- fetch offeringCid
+        let offering = view offeringI
+        subscriptions <- zip subscriptionCids <$> forA subscriptionCids (\cid -> view <$> fetch cid)
         (remainingIssuerQuantity, remainingIssuerHoldingCidOpt) <- foldlA (settleSubscription provider settlementFactoryCid offering) (offering.asset.amount, Some offering.issuerHoldingCid) subscriptions
 
         -- Settle back-to-back trade
         whenSome offering.backToBack \b2b -> do
-          let
-            totalQuantity = sum $ map ((.quantity) . snd) subscriptions
-          exerciseByKey @BackToBack.Service (operator, b2b.party, customer) BackToBack.SettleOffering with settlementFactoryCid; offeringCid; totalQuantity
+          let totalQuantity = sum $ map ((.quantity) . snd) subscriptions
+          (serviceCid, _) <- fetchByKey @BackToBack.T (operator, b2b.party, customer)
+          exercise (toInterfaceContractId @BackToBack.I serviceCid) BackToBack.SettleOffering with settlementFactoryCid; offeringCid; totalQuantity
           pure ()
 
         -- Archive offer and subscriptions
@@ -92,18 +98,11 @@ template Service
 
         -- Unlock remaining issuer holding
         whenSome remainingIssuerHoldingCidOpt \holdingCid -> do
-          exercise (toInterfaceContractId holdingCid : ContractId Holding.I) Holding.Release with context = offering.offeringId
+          exercise (toInterfaceContractId holdingCid : ContractId Holding.I) Holding.Release with context = show offering.id
           pure ()
 
-        create offering with status = Closed
-
-    choice Terminate : ()
-      with
-        actor : Party
-      controller actor
-      do
-        assert $ actor == operator || actor == provider || actor == customer
-        pure ()
+        let Some offeringT = fromInterface @Model.Offering offeringI
+        toInterfaceContractId <$> create offeringT with status = Closed
 
 template Offer
   with

@@ -55,7 +55,7 @@ run = do
   createCustodyService          operator am           inv3      settlementFactoryCid accountFactoryCid holdingFactoryCid
   createCustodyService          operator custodian    am        settlementFactoryCid accountFactoryCid holdingFactoryCid
   createCustodyService          operator custodian    pm        settlementFactoryCid accountFactoryCid holdingFactoryCid
-  issuanceServiceCid <- toInterfaceContractId <$> createIssuanceAutoService     operator custodian    pm
+  issuanceServiceCid <- toInterfaceContractId <$> createIssuanceService     operator custodian    pm
   createStructuringService      operator custodian    pm
   createStructuringAutoService  operator custodian    pm
   createInvestmentService       operator am           inv1
@@ -96,7 +96,7 @@ run = do
   inv3CashCid <- deposit operator am           inv3  public (Instrument.qty  1_000_000.0 usd) inv3CashAccount
 
   -- Data
-  fund1Cid <- submitMulti [operator, custodian, pm] [] do createCmd Fund with operator; custodian; manager = pm; id = Id "FUND1"; description = "Fund 1"; instrument = fund1; currency = usd; custodianCashAccount; managerFundAccount = pmSecAccount; totalUnits =  1_000_000.0; observers = singleton public
+  fund1Cid <- toInterfaceContractId <$> submitMulti [operator, custodian, pm] [] do createCmd Fund with operator; custodian; manager = pm; id = Id "FUND1"; description = "Fund 1"; instrument = fund1; currency = usd; custodianCashAccount; managerFundAccount = pmSecAccount; totalUnits =  1_000_000.0; observers = singleton public
   fund2Cid <- submitMulti [operator, custodian, pm] [] do createCmd Fund with operator; custodian; manager = pm; id = Id "FUND2"; description = "Fund 2"; instrument = fund2; currency = usd; custodianCashAccount; managerFundAccount = pmSecAccount; totalUnits =  5_000_000.0; observers = singleton public
   fund3Cid <- submitMulti [operator, custodian, pm] [] do createCmd Fund with operator; custodian; manager = pm; id = Id "FUND3"; description = "Fund 3"; instrument = fund3; currency = usd; custodianCashAccount; managerFundAccount = pmSecAccount; totalUnits = 15_000_000.0; observers = singleton public
   navFund1Cid <- createObservation pm "NAV_FUND1_USD" [ (todayTime,  1_000_000.0) ] pub

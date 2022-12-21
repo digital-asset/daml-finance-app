@@ -22,12 +22,16 @@ interface Service where
 
   asBase : Base.I
     -- ^ Conversion to base `Service` interface.
+
   requestCreateBid : RequestCreateBid -> Update (ContractId CreateBidRequest.I)
     -- ^ Implementation of the `RequestCreateBid` choice.
+
   createBid : CreateBid -> Update (ContractId Bid.I)
     -- ^ Implementation of the `CreateBid` choice.
+
   processAllocation : ProcessAllocation -> Update (ContractId Bid.I, ContractId Fungible.I)
     -- ^ Implementation of the `ProcessAllocation` choice.
+
   rejectBid : RejectBid -> Update (ContractId Bid.I, ContractId Fungible.I)
     -- ^ Implementation of the `RejectBid` choice.
 

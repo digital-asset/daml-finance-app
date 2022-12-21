@@ -35,6 +35,7 @@ template Listing
 
     interface instance Listing.I for Listing where
       view = Listing.View with operator; provider; customer; id; description; tradedInstrument; quotedInstrument; observers
+
       asRemovable = toInterface @Removable.I this
 
 template ListingRequest

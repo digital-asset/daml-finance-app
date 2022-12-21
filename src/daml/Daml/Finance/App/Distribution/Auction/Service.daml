@@ -18,7 +18,7 @@ import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
 import Daml.Finance.App.Interface.Common.Util (fetchAndRemove)
 import Daml.Finance.App.Interface.Distribution.Auction.Auction qualified as Auction (Status(..))
 import Daml.Finance.App.Interface.Distribution.Auction.CreateAuctionRequest qualified as CreateAuctionRequest (View(..))
-import Daml.Finance.App.Interface.Distribution.Auction.Service qualified as Service (CreateAuction(..), I, ProcessAuction(..), RequestCreateAuction(..), View(..))
+import Daml.Finance.App.Interface.Distribution.Auction.Service qualified as Service (CreateAuction(..), HasImplementation, I, ProcessAuction(..), RequestCreateAuction(..), View(..))
 import Daml.Finance.App.Interface.Distribution.Bidding.Bid qualified as Bid (Allocation(..), SettleAllocation(..), Status(..))
 import Daml.Finance.App.Interface.Distribution.Bidding.Service qualified as BiddingService (I, RejectBid(..))
 import Daml.Finance.Interface.Account.Account qualified as Account (R, exerciseInterfaceByKey)
@@ -28,6 +28,8 @@ import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObserv
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
 
 type T = Service
+
+instance Service.HasImplementation Service
 
 template Service
   with
@@ -42,11 +44,14 @@ template Service
 
     interface instance Base.I for Service where
       view = Base.View with operator; provider; customer
+
       terminate = pure ()
 
     interface instance Service.I for Service where
       view = Service.View
+
       asBase = toInterface @Base.I this
+
       requestCreateAuction Service.RequestCreateAuction{auctionId; description; quantity; currency; floor; collateralCid; receivableAccount; observers} = do
         -- Disclose holding
         collateral <- fetch collateralCid
@@ -61,10 +66,12 @@ template Service
         exercise (coerceContractId recRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (show auctionId, singleton provider)
 
         toInterfaceContractId <$> create Model.CreateAuctionRequest with operator; provider; customer; auctionId; description; quantity; currency; floor; collateralCid; receivableAccount; observers
+
       createAuction Service.CreateAuction{createAuctionRequestCid} = do
         CreateAuctionRequest.View{auctionId; description; quantity; currency; floor; collateralCid; receivableAccount; observers} <- view <$> fetchAndRemove createAuctionRequestCid
         collateralCid <- coerceContractId <$> exercise (toInterfaceContractId collateralCid : ContractId Holding.I) Holding.Acquire with newLockers = fromList [ provider ]; context = show auctionId; lockType = Holding.Semaphore
         toInterfaceContractId <$> create Model.Auction with operator; provider; customer; id = auctionId; description; quantity; currency; floor; collateralCid; receivableAccount; status = Auction.Open; observers
+
       processAuction Service.ProcessAuction{settlementFactoryCid; auctionCid; bidCids} = do
         let auctionTCid = fromInterfaceContractId @Model.Auction auctionCid
         auction <- fetch auctionTCid

@@ -23,12 +23,16 @@ interface Service where
 
   asBase : Base.I
     -- ^ Conversion to base `Service` interface.
+
   requestListing : RequestListing -> Update (ContractId ListingRequest.I)
     -- ^ Implementation of the `RequestListing` choice.
+
   requestDelisting : RequestDelisting -> Update (ContractId DelistingRequest.I)
     -- ^ Implementation of the `RequestDelisting` choice.
+
   list : List -> Update (ContractId Listing.I)
     -- ^ Implementation of the `List` choice.
+
   delist : Delist -> Update ()
     -- ^ Implementation of the `Delist` choice.
 

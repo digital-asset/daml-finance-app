@@ -5,7 +5,6 @@ module Daml.Finance.App.Interface.Issuance.Auto where
 
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I)
 import Daml.Finance.App.Interface.Issuance.Issuance qualified as Issuance (I)
-import Daml.Finance.App.Interface.Issuance.Service qualified as Service (I, Implementation, asBase)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 import Daml.Finance.Interface.Types.Common (AccountKey, Id)
@@ -20,11 +19,13 @@ data View = View {}
 interface Service where
   viewtype V
 
-  asService : Service.I
-    -- ^ Conversion to custody `Service` interface.
-  requestAndIssue : ContractId Service.I -> RequestAndIssue -> Update (ContractId Issuance.I, ContractId Holding.I)
+  asBase : Base.I
+    -- ^ Conversion to base `Service` interface.
+
+  requestAndIssue : RequestAndIssue -> Update (ContractId Issuance.I, ContractId Holding.I)
     -- ^ Implementation of the `RequestAndIssue` choice.
-  requestAndDeissue : ContractId Service.I -> RequestAndDeissue -> Update (ContractId Issuance.I)
+
+  requestAndDeissue : RequestAndDeissue -> Update (ContractId Issuance.I)
     -- ^ Implementation of the `RequestAndDeissue` choice.
 
   nonconsuming choice RequestAndIssue : (ContractId Issuance.I, ContractId Holding.I)
@@ -33,21 +34,20 @@ interface Service where
       description : Text
       quantity : Instrument.Q
       account : AccountKey
-    controller (view $ Service.asBase $ asService this).customer
+    controller (view $ asBase this).customer
     do
-      requestAndIssue this (toInterfaceContractId self) arg
+      requestAndIssue this arg
 
   nonconsuming choice RequestAndDeissue : (ContractId Issuance.I)
     with
       issuanceId : Id
       holdingCid : ContractId Holding.I
-    controller (view $ Service.asBase $ asService this).customer
+    controller (view $ asBase this).customer
     do
-      requestAndDeissue this (toInterfaceContractId self) arg
+      requestAndDeissue this arg
 
 -- | Type constraint for requiring templates to implement `Service`.
-type Implementation t = (HasToInterface t Service, Service.Implementation t)
+type Implementation t = HasToInterface t Service
 class (Implementation t) => HasImplementation t
 instance HasImplementation Service
-instance HasToInterface Service Service.I where _toInterface = asService
-instance HasToInterface Service Base.I where _toInterface = Service.asBase . asService
+instance HasToInterface Service Base.I where _toInterface = asBase

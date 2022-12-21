@@ -12,7 +12,7 @@ import Daml.Finance.App.Interface.Common.Util (fetchAndRemove)
 import Daml.Finance.App.Interface.Distribution.Auction.Auction qualified as Auction (GetView(..))
 import Daml.Finance.App.Interface.Distribution.Bidding.Bid qualified as Bid (Details(..), Status(..), UpdateStatus(..))
 import Daml.Finance.App.Interface.Distribution.Bidding.CreateBidRequest qualified as CreateBidRequest (View(..))
-import Daml.Finance.App.Interface.Distribution.Bidding.Service qualified as Service (I, CreateBid(..), ProcessAllocation(..), RejectBid(..), RequestCreateBid(..), View(..))
+import Daml.Finance.App.Interface.Distribution.Bidding.Service qualified as Service (HasImplementation, I, CreateBid(..), ProcessAllocation(..), RejectBid(..), RequestCreateBid(..), View(..))
 import Daml.Finance.Interface.Account.Account qualified as Account (R)
 import Daml.Finance.Interface.Account.Util (getAccount)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..), SplitResult(..))
@@ -23,6 +23,8 @@ import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObserv
 import Daml.Finance.App.Distribution.Bidding.Model (Bid(..), CreateBidRequest(..))
 
 type T = Service
+
+instance Service.HasImplementation Service
 
 template Service
   with
@@ -37,11 +39,14 @@ template Service
 
     interface instance Base.I for Service where
       view = Base.View with operator; provider; customer
+
       terminate = pure ()
 
     interface instance Service.I for Service where
       view = Service.View
+
       asBase = toInterface @Base.I this
+
       requestCreateBid Service.RequestCreateBid{auctionCid; amount; price; collateralCid; receivableAccount} = do
         auction <- exercise auctionCid Auction.GetView with actor = customer
         collateral <- fetch collateralCid
@@ -66,10 +71,12 @@ template Service
           quantity = Instrument.qty amount auction.quantity.unit
           priceQty = Instrument.qty price auction.currency
         toInterfaceContractId <$> create CreateBidRequest with operator; provider; customer; issuer = auction.customer; auctionId = auction.id; quantity; price = priceQty; collateralCid; receivableAccount
+
       createBid Service.CreateBid{createBidRequestCid} = do
         CreateBidRequest.View{issuer; auctionId; collateralCid; receivableAccount; price; quantity} <- view <$> fetchAndRemove createBidRequestCid
         time <- getTime
         toInterfaceContractId <$> create Bid with operator; provider; customer; issuer; details = (Bid.Details with price; quantity; time); auctionId; collateralCid; receivableAccount; status = Bid.Pending
+
       processAllocation Service.ProcessAllocation{bidCid; amount; price} = do
         -- Fetch Bid -> Extract their deposit -> Split and return unused allocation (if necessary) to the investor -> Update Bid Status
         bid <- view <$> fetch bidCid
@@ -89,6 +96,7 @@ template Service
             else Bid.PartialAllocation with price; amount
         newBidCid <- exercise bidCid Bid.UpdateStatus with newStatus
         pure (newBidCid, bidCollateralCid)
+
       rejectBid Service.RejectBid{bidCid; newStatus} = do
         bid <- view <$> fetch bidCid
         returnedCollateralCid <- exercise (toInterfaceContractId @Holding.I bid.collateralCid) Holding.Release with context = show bid.auctionId

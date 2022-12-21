@@ -24,10 +24,13 @@ interface Service where
 
   asBase : Base.I
     -- ^ Conversion to base `Service` interface.
+
   requestCreateAuction : RequestCreateAuction -> Update (ContractId CreateAuctionRequest.I)
     -- ^ Implementation of the `RequestCreateAuction` choice.
+
   createAuction : CreateAuction -> Update (ContractId Auction.I)
     -- ^ Implementation of the `CreateAuction` choice.
+
   processAuction : ProcessAuction -> Update (ContractId Auction.I)
     -- ^ Implementation of the `ProcessAuction` choice.
 

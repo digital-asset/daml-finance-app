@@ -3,17 +3,12 @@
 
 module Daml.Finance.App.Issuance.Auto where
 
-import DA.Assert ((===))
-import Daml.Finance.App.Issuance.Model qualified as Model
+import Daml.Finance.App.Issuance.Service qualified as Service (T)
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
-import Daml.Finance.App.Interface.Common.Util (fetchAndRemove)
 import Daml.Finance.App.Interface.Issuance.Auto qualified as Auto (HasImplementation, I, View(..), RequestAndDeissue(..), RequestAndIssue(..))
-import Daml.Finance.App.Interface.Issuance.DeissueRequest qualified as DeissueRequest (View(..))
-import Daml.Finance.App.Interface.Issuance.IssueRequest qualified as IssueRequest (View(..))
-import Daml.Finance.App.Interface.Issuance.Service qualified as Service (Deissue(..), Issue(..), I, RequestDeissue(..), RequestIssue(..), View(..))
-import Daml.Finance.Interface.Account.Account qualified as Account (Credit(..), Debit(..), I, exerciseInterfaceByKey)
-import Daml.Finance.Interface.Account.Util (getAccount)
-import Daml.Finance.Interface.Holding.Util (getAmount)
+import Daml.Finance.App.Interface.Issuance.Service qualified as Service (Deissue(..), Issue(..), I, RequestDeissue(..), RequestIssue(..))
+
+type T = Service
 
 instance Auto.HasImplementation Service
 
@@ -32,43 +27,20 @@ template Service
       view = Base.View with operator; provider; customer
       terminate = pure ()
 
-    interface instance Service.I for Service where
-      view = Service.View
-      asBase = toInterface @Base.I this
-      requestIssue Service.RequestIssue{issuanceId; description; quantity; account} = do
-        toInterfaceContractId <$> create Model.IssueRequest with operator; provider; customer; issuanceId; description; quantity; account
-      requestDeissue Service.RequestDeissue{issuanceId; holdingCid} = do
-        toInterfaceContractId <$> create Model.DeissueRequest with operator; provider; customer; issuanceId; holdingCid
-      issue Service.Issue{issueRequestCid} = do
-        IssueRequest.View{issuanceId; description; quantity; account} <- view <$> fetchAndRemove issueRequestCid
-        issuanceCid <- toInterfaceContractId <$> create Model.Issuance with operator; provider; customer; id = issuanceId; description; quantity
-        account.custodian === provider
-        account.owner === customer
-        holdingCid <- Account.exerciseInterfaceByKey @Account.I account provider Account.Credit with quantity
-        pure (issuanceCid, holdingCid)
-      deissue Service.Deissue{deissueRequestCid} = do
-        DeissueRequest.View{issuanceId; holdingCid} <- view <$> fetchAndRemove deissueRequestCid
-        holding <- fetch holdingCid
-        let
-          account = getAccount holding
-          amount = getAmount holding
-        account.custodian === provider
-        account.owner === customer
-        Account.exerciseInterfaceByKey @Account.I account provider Account.Debit with holdingCid
-        (issuanceCid, issuance) <- fetchByKey @Model.Issuance (operator, provider, issuanceId)
-        archive issuanceCid
-        toInterfaceContractId <$> create issuance with quantity = (issuance.quantity with amount = issuance.quantity.amount - amount)
-
     interface instance Auto.I for Service where
       view = Auto.View
-      asService = toInterface @Service.I this
-      requestAndIssue self Auto.RequestAndIssue{issuanceId; description; quantity; account} = do
-        issueRequestCid <- exercise self Service.RequestIssue with issuanceId; description; quantity; account
-        exercise self Service.Issue with issueRequestCid
-      requestAndDeissue self Auto.RequestAndDeissue{issuanceId; holdingCid} = do
-        deissueRequestCid <- exercise self Service.RequestDeissue with issuanceId; holdingCid
-        exercise self Service.Deissue with deissueRequestCid
 
+      asBase = toInterface @Base.I this
+
+      requestAndIssue Auto.RequestAndIssue{issuanceId; description; quantity; account} = do
+        serviceCid <- toInterfaceContractId @Service.I . fst <$> fetchByKey @Service.T (operator, provider, customer)
+        issueRequestCid <- exercise serviceCid Service.RequestIssue with issuanceId; description; quantity; account
+        exercise serviceCid Service.Issue with issueRequestCid
+
+      requestAndDeissue Auto.RequestAndDeissue{issuanceId; holdingCid} = do
+        serviceCid <- toInterfaceContractId @Service.I . fst <$> fetchByKey @Service.T (operator, provider, customer)
+        deissueRequestCid <- exercise serviceCid Service.RequestDeissue with issuanceId; holdingCid
+        exercise serviceCid Service.Deissue with deissueRequestCid
 
 template Offer
   with

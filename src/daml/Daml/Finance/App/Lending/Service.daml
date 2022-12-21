@@ -4,13 +4,20 @@
 module Daml.Finance.App.Lending.Service where
 
 import DA.Set (singleton)
-import Daml.Finance.App.Lending.Model (BorrowAgreement(..), BorrowOffer(..), BorrowOfferRequest(..))
-import Daml.Finance.App.Util (fetchAndArchive)
-import Daml.Finance.Interface.Account.Account qualified as Account (K, exerciseInterfaceByKey)
+import Daml.Finance.App.Lending.Model qualified as Model (BorrowAgreement(..), BorrowOffer(..), BorrowOfferRequest(..))
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
+import Daml.Finance.App.Interface.Common.Util (fetchAndRemove)
+import Daml.Finance.App.Interface.Lending.BorrowOffer qualified as BorrowOffer (View(..))
+import Daml.Finance.App.Interface.Lending.BorrowOfferRequest qualified as BorrowOfferRequest (View(..))
+import Daml.Finance.App.Interface.Lending.Service qualified as Service (AcceptBorrowOffer(..), CreateBorrowOffer(..), HasImplementation, I, RequestBorrowOffer(..), View(..))
+import Daml.Finance.Interface.Account.Account qualified as Account (exerciseInterfaceByKey)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I, Transfer(..))
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, AddObservers(..))
+
+type T = Service
+
+instance Service.HasImplementation Service
 
 template Service
   with
@@ -23,52 +30,32 @@ template Service
     key (operator, provider, customer) : (Party, Party, Party)
     maintainer key._1
 
-    nonconsuming choice RequestBorrowOffer : ContractId BorrowOfferRequest
-      with
-        id : Text
-        borrowed : Instrument.Q
-        maturity : Date
-      controller customer
-      do
-        create BorrowOfferRequest with operator; provider; customer; id; borrowed; maturity
+    interface instance Base.I for Service where
+      view = Base.View with operator; provider; customer
+      terminate = pure ()
 
-    nonconsuming choice AcceptBorrowOffer : (ContractId Transferable.I, ContractId BorrowAgreement)
-      with
-        borrowOfferCid : ContractId BorrowOffer
-        collateralCid : ContractId Transferable.I
-        account : Account.K
-      controller customer
-      do
-        BorrowOffer{operator; provider; customer; id; borrowed; maturity; interest; collateral; borrowedCid; lenderBorrowedAccount; lenderInterestAccount} <- fetchAndArchive borrowOfferCid
-        unlockedBorrowedCid <- exercise (coerceContractId borrowedCid : ContractId Holding.I) Holding.Release with context = id
+    interface instance Service.I for Service where
+      view = Service.View
+
+      asBase = toInterface @Base.I this
+
+      requestBorrowOffer Service.RequestBorrowOffer{dealId; description; borrowed; maturity} = do
+        toInterfaceContractId <$> create Model.BorrowOfferRequest with operator; provider; customer; dealId; description; borrowed; maturity
+
+      acceptBorrowOffer Service.AcceptBorrowOffer{borrowOfferCid; collateralCid; account} = do
+        BorrowOffer.View{operator; provider; customer; dealId; description; borrowed; maturity; interest; collateral; borrowedCid; lenderBorrowedAccount; lenderInterestAccount} <- view <$> fetchAndRemove borrowOfferCid
+        unlockedBorrowedCid <- exercise (coerceContractId borrowedCid : ContractId Holding.I) Holding.Release with context = show dealId
         transferredCid <- exercise (coerceContractId unlockedBorrowedCid : ContractId Transferable.I) Transferable.Transfer with actors = singleton customer; newOwnerAccount = account
-        lockedCollateralCid : ContractId Transferable.I <- coerceContractId <$> exercise (toInterfaceContractId collateralCid : ContractId Holding.I) Holding.Acquire with newLockers = (singleton provider); context = id; lockType = Holding.Semaphore
-        borrowAgreementCid <- create BorrowAgreement with operator; provider; customer; id; borrowed; maturity; interest; collateral; collateralCid = lockedCollateralCid; lenderBorrowedAccount; lenderInterestAccount
+        lockedCollateralCid : ContractId Transferable.I <- coerceContractId <$> exercise (toInterfaceContractId collateralCid : ContractId Holding.I) Holding.Acquire with newLockers = (singleton provider); context = show dealId; lockType = Holding.Semaphore
+        borrowAgreementCid <- toInterfaceContractId <$> create Model.BorrowAgreement with operator; provider; customer; dealId; description; borrowed; maturity; interest; collateral; collateralCid = lockedCollateralCid; lenderBorrowedAccount; lenderInterestAccount
         pure (transferredCid, borrowAgreementCid)
 
-    nonconsuming choice CreateBorrowOffer : ContractId BorrowOffer
-      with
-        borrowOfferRequestCid : ContractId BorrowOfferRequest
-        interest : Instrument.Q
-        collateral : Instrument.Q
-        borrowedCid : ContractId Transferable.I
-        lenderBorrowedAccount : Account.K
-        lenderInterestAccount : Account.K
-      controller provider
-      do
-        BorrowOfferRequest{operator; provider; customer; id; borrowed; maturity} <- fetchAndArchive borrowOfferRequestCid
-        Account.exerciseInterfaceByKey @Disclosure.I lenderBorrowedAccount customer Disclosure.AddObservers with disclosers = singleton provider; observersToAdd = (id, singleton customer)
-        Account.exerciseInterfaceByKey @Disclosure.I lenderInterestAccount customer Disclosure.AddObservers with disclosers = singleton provider; observersToAdd = (id, singleton customer)
-        lockedBorrowedCid : ContractId Transferable.I <- coerceContractId <$> exercise (toInterfaceContractId borrowedCid : ContractId Holding.I) Holding.Acquire with newLockers = (singleton customer); context = id; lockType = Holding.Semaphore
-        create BorrowOffer with operator; provider; customer; id; borrowed; maturity; interest; collateral; borrowedCid = lockedBorrowedCid; lenderBorrowedAccount; lenderInterestAccount
-
-    choice Terminate : ()
-      with
-        actor : Party
-      controller actor
-      do
-        assert $ actor == operator || actor == provider || actor == customer
-        pure ()
+      createBorrowOffer Service.CreateBorrowOffer{borrowOfferRequestCid; interest; collateral; borrowedCid; lenderBorrowedAccount; lenderInterestAccount} = do
+        BorrowOfferRequest.View{operator; provider; customer; dealId; description; borrowed; maturity} <- view <$> fetchAndRemove borrowOfferRequestCid
+        Account.exerciseInterfaceByKey @Disclosure.I lenderBorrowedAccount customer Disclosure.AddObservers with disclosers = singleton provider; observersToAdd = (show dealId, singleton customer)
+        Account.exerciseInterfaceByKey @Disclosure.I lenderInterestAccount customer Disclosure.AddObservers with disclosers = singleton provider; observersToAdd = (show dealId, singleton customer)
+        lockedBorrowedCid : ContractId Transferable.I <- coerceContractId <$> exercise (toInterfaceContractId borrowedCid : ContractId Holding.I) Holding.Acquire with newLockers = (singleton customer); context = show dealId; lockType = Holding.Semaphore
+        toInterfaceContractId <$> create Model.BorrowOffer with operator; provider; customer; dealId; description; borrowed; maturity; interest; collateral; borrowedCid = lockedBorrowedCid; lenderBorrowedAccount; lenderInterestAccount
 
 template Offer
   with

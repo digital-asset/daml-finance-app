@@ -1,0 +1,42 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Interface.Distribution.Investment.Service where
+
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Implementation)
+import Daml.Finance.App.Interface.Distribution.Fund.Fund qualified as Fund (I)
+import Daml.Finance.App.Interface.Distribution.Investment.InvestmentRequest qualified as InvestmentRequest (I)
+import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
+import Daml.Finance.Interface.Types.Common (Id)
+
+type I = Service
+
+type V = View
+
+data View = View {}
+  deriving (Eq, Show)
+
+interface Service where
+  viewtype V
+
+  asBase : Base.I
+    -- ^ Conversion to base `Service` interface.
+
+  requestInvestment : RequestInvestment -> Update (ContractId InvestmentRequest.I)
+    -- ^ Implementation of the `RequestInvestment` choice.
+
+  nonconsuming choice RequestInvestment : ContractId InvestmentRequest.I
+    with
+      requestId : Id
+      asOfDate : Date
+      fundCid : ContractId Fund.I
+      cashCid : ContractId Transferable.I
+    controller (view $ asBase this).customer
+    do
+      requestInvestment this arg
+
+-- | Type constraint for requiring templates to implement `Service`.
+type Implementation t = (HasToInterface t Service, Base.Implementation t)
+class (Implementation t) => HasImplementation t
+instance HasImplementation Service
+instance HasToInterface Service Base.I where _toInterface = asBase

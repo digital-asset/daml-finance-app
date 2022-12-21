@@ -23,12 +23,16 @@ interface Service where
 
   asBase : Base.I
     -- ^ Conversion to base `Service` interface.
+
   requestIssue : RequestIssue -> Update (ContractId IssueRequest.I)
     -- ^ Implementation of the `RequestIssue` choice.
+
   requestDeissue : RequestDeissue -> Update (ContractId DeissueRequest.I)
     -- ^ Implementation of the `RequestDeissue` choice.
+
   issue : Issue -> Update (ContractId Issuance.I, ContractId Holding.I)
     -- ^ Implementation of the `Issue` choice.
+
   deissue : Deissue -> Update (ContractId Issuance.I)
     -- ^ Implementation of the `Deissue` choice.
 

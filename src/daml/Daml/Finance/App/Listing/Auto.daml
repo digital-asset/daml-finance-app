@@ -3,14 +3,10 @@
 
 module Daml.Finance.App.Listing.Auto where
 
-import Daml.Finance.App.Listing.Model qualified as Model
+import Daml.Finance.App.Listing.Service qualified as Service (T)
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
-import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Remove(..))
-import Daml.Finance.App.Interface.Common.Util (fetchAndRemove)
 import Daml.Finance.App.Interface.Listing.Auto qualified as Auto (HasImplementation, I, View(..), RequestAndDelist(..), RequestAndList(..))
-import Daml.Finance.App.Interface.Listing.DelistingRequest qualified as DelistingRequest (View(..))
-import Daml.Finance.App.Interface.Listing.ListingRequest qualified as ListingRequest (View(..))
-import Daml.Finance.App.Interface.Listing.Service qualified as Service (Delist(..), List(..), I, RequestDelisting(..), RequestListing(..), View(..))
+import Daml.Finance.App.Interface.Listing.Service qualified as Service (Delist(..), List(..), I, RequestDelisting(..), RequestListing(..))
 
 instance Auto.HasImplementation Service
 
@@ -29,29 +25,20 @@ template Service
       view = Base.View with operator; provider; customer
       terminate = pure ()
 
-    interface instance Service.I for Service where
-      view = Service.View
-      asBase = toInterface @Base.I this
-      requestListing Service.RequestListing{listingId; description; tradedInstrument; quotedInstrument; observers} = do
-        toInterfaceContractId <$> create Model.ListingRequest with operator; provider; customer; listingId; description; tradedInstrument; quotedInstrument; observers
-      requestDelisting Service.RequestDelisting{listingCid} = do
-        toInterfaceContractId <$> create Model.DelistingRequest with operator; provider; customer; listingCid
-      list Service.List{listingRequestCid} = do
-        ListingRequest.View{listingId; description; tradedInstrument; quotedInstrument; observers} <- view <$> fetchAndRemove listingRequestCid
-        toInterfaceContractId <$> create Model.Listing with operator; provider; customer; id = listingId; description; tradedInstrument; quotedInstrument; observers
-      delist Service.Delist{delistingRequestCid} = do
-        DelistingRequest.View{listingCid} <- view <$> fetchAndRemove delistingRequestCid
-        exercise (toInterfaceContractId @Removable.I listingCid) Removable.Remove
-
     interface instance Auto.I for Service where
       view = Auto.View
-      asService = toInterface @Service.I this
-      requestAndList self Auto.RequestAndList{listingId; description; tradedInstrument; quotedInstrument; observers} = do
-        listingRequestCid <- exercise self Service.RequestListing with listingId; description; tradedInstrument; quotedInstrument; observers
-        exercise self Service.List with listingRequestCid
-      requestAndDelist self Auto.RequestAndDelist{listingCid} = do
-        delistingRequestCid <- exercise self Service.RequestDelisting with listingCid
-        exercise self Service.Delist with delistingRequestCid
+
+      asBase = toInterface @Base.I this
+
+      requestAndList Auto.RequestAndList{listingId; description; tradedInstrument; quotedInstrument; observers} = do
+        serviceCid <- toInterfaceContractId @Service.I . fst <$> fetchByKey @Service.T (operator, provider, customer)
+        listingRequestCid <- exercise serviceCid Service.RequestListing with listingId; description; tradedInstrument; quotedInstrument; observers
+        exercise serviceCid Service.List with listingRequestCid
+
+      requestAndDelist Auto.RequestAndDelist{listingCid} = do
+        serviceCid <- toInterfaceContractId @Service.I . fst <$> fetchByKey @Service.T (operator, provider, customer)
+        delistingRequestCid <- exercise serviceCid Service.RequestDelisting with listingCid
+        exercise serviceCid Service.Delist with delistingRequestCid
 
 template Offer
   with

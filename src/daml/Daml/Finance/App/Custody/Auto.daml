@@ -3,22 +3,15 @@
 
 module Daml.Finance.App.Custody.Auto where
 
-import DA.Assert ((===))
-import Daml.Finance.App.Custody.Model qualified as Model
+import Daml.Finance.App.Custody.Service qualified as Service (T)
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
-import Daml.Finance.App.Interface.Common.Util (fetchAndRemove)
 import Daml.Finance.App.Interface.Custody.Auto qualified as Auto (HasImplementation, I, View(..), RequestAndCloseAccount(..), RequestAndDeposit(..), RequestAndOpenAccount(..), RequestAndWithdraw(..))
-import Daml.Finance.App.Interface.Custody.CloseAccountRequest qualified as CloseAccountRequest (View(..))
-import Daml.Finance.App.Interface.Custody.DepositRequest qualified as DepositRequest (View(..))
-import Daml.Finance.App.Interface.Custody.OpenAccountRequest qualified as OpenAccountRequest (View(..))
-import Daml.Finance.App.Interface.Custody.WithdrawRequest qualified as WithdrawRequest (View(..))
-import Daml.Finance.App.Interface.Custody.Service qualified as Service (CloseAccount(..), Deposit(..), I, OpenAccount(..), RequestCloseAccount(..), RequestDeposit(..), RequestOpenAccount(..), RequestWithdraw(..), View(..), Withdraw(..))
-import Daml.Finance.Interface.Account.Account qualified as Account (Credit(..), Debit(..), I, exerciseInterfaceByKey)
-import Daml.Finance.Interface.Account.Factory qualified as Account (Create(..), F, Remove(..))
-import Daml.Finance.Interface.Account.Util (getAccount)
+import Daml.Finance.App.Interface.Custody.Service qualified as Service (CloseAccount(..), Deposit(..), I, OpenAccount(..), RequestCloseAccount(..), RequestDeposit(..), RequestOpenAccount(..), RequestWithdraw(..), Withdraw(..))
+import Daml.Finance.Interface.Account.Factory qualified as Account (F)
 import Daml.Finance.Interface.Holding.Factory qualified as Holding (F)
 import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Lifecycle (Claim)
-import Daml.Finance.Interface.Types.Common (AccountKey(..))
+
+type T = Service
 
 instance Auto.HasImplementation Service
 
@@ -40,53 +33,30 @@ template Service
       view = Base.View with operator; provider; customer
       terminate = pure ()
 
-    interface instance Service.I for Service where
-      view = Service.View with claimRuleCid; accountFactoryCid; holdingFactoryCid
-      asBase = toInterface @Base.I this
-      requestOpenAccount Service.RequestOpenAccount{id; description; controllers; observers} = do
-        toInterfaceContractId <$> create Model.OpenAccountRequest with operator; provider; customer; id; description; controllers; observers
-      requestCloseAccount Service.RequestCloseAccount{account} = do
-        toInterfaceContractId <$> create Model.CloseAccountRequest with operator; provider; customer; account
-      requestDeposit Service.RequestDeposit{quantity; account} = do
-        toInterfaceContractId <$> create Model.DepositRequest with operator; provider; customer; quantity; account
-      requestWithdraw Service.RequestWithdraw{holdingCid} = do
-        toInterfaceContractId <$> create Model.WithdrawRequest with operator; provider; customer; holdingCid
-      openAccount Service.OpenAccount{openAccountRequestCid} = do
-        OpenAccountRequest.View{id; description; controllers; observers} <- view <$> fetchAndRemove openAccountRequestCid
-        let account = AccountKey with custodian = provider; owner = customer; id
-        accountCid <- exercise accountFactoryCid Account.Create with account; description; controllers; holdingFactoryCid; observers
-        pure (accountCid, account)
-      closeAccount Service.CloseAccount{closeAccountRequestCid} = do
-        CloseAccountRequest.View{account} <- view <$> fetchAndRemove closeAccountRequestCid
-        exercise accountFactoryCid Account.Remove with account
-      deposit Service.Deposit{depositRequestCid} = do
-        DepositRequest.View{quantity; account} <- view <$> fetchAndRemove depositRequestCid
-        account.custodian === provider
-        account.owner === customer
-        Account.exerciseInterfaceByKey @Account.I account provider Account.Credit with quantity
-      withdraw Service.Withdraw{withdrawRequestCid} = do
-        WithdrawRequest.View{holdingCid} <- view <$> fetchAndRemove withdrawRequestCid
-        holding <- fetch holdingCid
-        let account = getAccount holding
-        account.custodian === provider
-        account.owner === customer
-        Account.exerciseInterfaceByKey @Account.I account provider Account.Debit with holdingCid
-
     interface instance Auto.I for Service where
       view = Auto.View
-      asService = toInterface @Service.I this
-      requestAndOpenAccount self Auto.RequestAndOpenAccount{id; description; controllers; observers} = do
-        openAccountRequestCid <- exercise self Service.RequestOpenAccount with id; description; controllers; observers
-        exercise self Service.OpenAccount with openAccountRequestCid
-      requestAndCloseAccount self Auto.RequestAndCloseAccount{account} = do
-        closeAccountRequestCid <- exercise self Service.RequestCloseAccount with account
-        exercise self Service.CloseAccount with closeAccountRequestCid
-      requestAndDeposit self Auto.RequestAndDeposit{account; quantity} = do
-        depositRequestCid <- exercise self Service.RequestDeposit with quantity; account
-        exercise self Service.Deposit with depositRequestCid
-      requestAndWithdraw self Auto.RequestAndWithdraw{holdingCid} = do
-        withdrawRequestCid <- exercise self Service.RequestWithdraw with holdingCid
-        exercise self Service.Withdraw with withdrawRequestCid
+
+      asBase = toInterface @Base.I this
+
+      requestAndOpenAccount Auto.RequestAndOpenAccount{id; description; controllers; observers} = do
+        serviceCid <- toInterfaceContractId @Service.I . fst <$> fetchByKey @Service.T (operator, provider, customer)
+        openAccountRequestCid <- exercise serviceCid Service.RequestOpenAccount with id; description; controllers; observers
+        exercise serviceCid Service.OpenAccount with openAccountRequestCid
+
+      requestAndCloseAccount Auto.RequestAndCloseAccount{account} = do
+        serviceCid <- toInterfaceContractId @Service.I . fst <$> fetchByKey @Service.T (operator, provider, customer)
+        closeAccountRequestCid <- exercise serviceCid Service.RequestCloseAccount with account
+        exercise serviceCid Service.CloseAccount with closeAccountRequestCid
+
+      requestAndDeposit Auto.RequestAndDeposit{account; quantity} = do
+        serviceCid <- toInterfaceContractId @Service.I . fst <$> fetchByKey @Service.T (operator, provider, customer)
+        depositRequestCid <- exercise serviceCid Service.RequestDeposit with quantity; account
+        exercise serviceCid Service.Deposit with depositRequestCid
+
+      requestAndWithdraw Auto.RequestAndWithdraw{holdingCid} = do
+        serviceCid <- toInterfaceContractId @Service.I . fst <$> fetchByKey @Service.T (operator, provider, customer)
+        withdrawRequestCid <- exercise serviceCid Service.RequestWithdraw with holdingCid
+        exercise serviceCid Service.Withdraw with withdrawRequestCid
 
 template Offer
   with

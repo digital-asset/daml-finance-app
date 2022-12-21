@@ -71,9 +71,13 @@ run  = do
   createTradingAutoService      operator exchange    inv2
   createTradingService          operator exchange    inv3   settlementFactoryCid
   createTradingAutoService      operator exchange    inv3
+  createAuctionService          operator agent       issuer
   createAuctionAutoService      operator agent       issuer
+  createBiddingService          operator agent       inv1
   createBiddingAutoService      operator agent       inv1
+  createBiddingService          operator agent       inv2
   createBiddingAutoService      operator agent       inv2
+  createBiddingService          operator agent       inv3
   createBiddingAutoService      operator agent       inv3
 
   -- Accounts

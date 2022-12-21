@@ -1,0 +1,53 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Interface.Lending.BorrowAgreement where
+
+import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Implementation)
+import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
+import Daml.Finance.Interface.Types.Common (AccountKey, Id)
+
+type I = BorrowAgreement
+
+type V = View
+
+data View = View
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    dealId : Id
+    description : Text
+    borrowed : Instrument.Q
+    maturity : Date
+    interest : Instrument.Q
+    collateral : Instrument.Q
+    collateralCid : ContractId Transferable.I
+    lenderBorrowedAccount : AccountKey
+    lenderInterestAccount : AccountKey
+  deriving (Eq, Show)
+
+interface BorrowAgreement where
+  viewtype View
+    -- ^ Interface view type.
+
+  asRemovable : Removable.I
+    -- ^ Conversion to the `Removable` interface.
+
+  repay : Repay -> Update (ContractId Transferable.I, ContractId Transferable.I, ContractId Transferable.I)
+    -- ^ Implementation of the `Repay` choice.
+
+  choice Repay : (ContractId Transferable.I, ContractId Transferable.I, ContractId Transferable.I)
+    with
+      borrowedCid : ContractId Transferable.I
+      interestCid : ContractId Transferable.I
+    controller (view this).customer
+    do
+      repay this arg
+
+-- | Type constraint for requiring templates to implement `BorrowAgreement`.
+type Implementation t = (HasToInterface t BorrowAgreement, Removable.Implementation t)
+class (Implementation t) => HasImplementation t
+instance HasImplementation BorrowAgreement
+instance HasToInterface BorrowAgreement Removable.I where _toInterface = asRemovable

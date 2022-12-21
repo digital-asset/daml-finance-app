@@ -19,6 +19,8 @@ import Daml.Finance.Interface.Account.Util (getAccount)
 import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Lifecycle (Claim)
 import Daml.Finance.Interface.Types.Common (AccountKey(..))
 
+type T = Service
+
 instance Service.HasImplementation Service
 
 template Service

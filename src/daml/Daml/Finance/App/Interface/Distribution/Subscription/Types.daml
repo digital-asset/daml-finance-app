@@ -1,0 +1,22 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Interface.Distribution.Subscription.Types where
+
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
+import Daml.Finance.Interface.Types.Common (AccountKey, Id)
+
+data Status
+    = Open
+    | Closed
+  deriving (Eq, Show)
+
+data BackToBack = BackToBack
+  with
+    party : Party
+    offeringId : Id
+    issuerReceivableAccount : AccountKey
+    issuerDeliverableCid : ContractId Fungible.I
+    b2bReceivableAccount : AccountKey
+    b2bDeliverableCid : ContractId Fungible.I
+  deriving (Eq, Show)

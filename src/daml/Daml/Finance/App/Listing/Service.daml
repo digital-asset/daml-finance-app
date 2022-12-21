@@ -8,8 +8,12 @@ import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Re
 import Daml.Finance.App.Interface.Common.Util (fetchAndRemove)
 import Daml.Finance.App.Interface.Listing.ListingRequest qualified as ListingRequest (View(..))
 import Daml.Finance.App.Interface.Listing.DelistingRequest qualified as DelistingRequest (View(..))
-import Daml.Finance.App.Interface.Listing.Service qualified as Service
+import Daml.Finance.App.Interface.Listing.Service qualified as Service (Delist(..), HasImplementation, I, List(..), RequestDelisting(..), RequestListing(..), View(..))
 import Daml.Finance.App.Listing.Model qualified as Model
+
+type T = Service
+
+instance Service.HasImplementation Service
 
 template Service
   with
@@ -24,18 +28,24 @@ template Service
 
     interface instance Base.I for Service where
       view = Base.View with operator; provider; customer
+
       terminate = pure ()
 
     interface instance Service.I for Service where
       view = Service.View
+
       asBase = toInterface @Base.I this
+
       requestListing Service.RequestListing{listingId; description; tradedInstrument; quotedInstrument; observers} = do
         toInterfaceContractId <$> create Model.ListingRequest with operator; provider; customer; listingId; description; tradedInstrument; quotedInstrument; observers
+
       requestDelisting Service.RequestDelisting{listingCid} = do
         toInterfaceContractId <$> create Model.DelistingRequest with operator; provider; customer; listingCid
+
       list Service.List{listingRequestCid} = do
         ListingRequest.View{listingId; description; tradedInstrument; quotedInstrument; observers} <- view <$> fetchAndRemove listingRequestCid
         toInterfaceContractId <$> create Model.Listing with operator; provider; customer; id = listingId; description; tradedInstrument; quotedInstrument; observers
+
       delist Service.Delist{delistingRequestCid} = do
         DelistingRequest.View{listingCid} <- view <$> fetchAndRemove delistingRequestCid
         exercise (toInterfaceContractId @Removable.I listingCid) Removable.Remove

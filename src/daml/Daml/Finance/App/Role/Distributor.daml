@@ -7,9 +7,9 @@ import Daml.Finance.App.Distribution.Auction.Auto qualified as AuctionAuto (Appr
 import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (Approve(..), Offer(..), Request, Service)
 import Daml.Finance.App.Distribution.Bidding.Auto qualified as BiddingAuto (Approve(..), Offer(..), Request, Service)
 import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Approve(..), Offer(..), Request, Service)
-import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (Approve(..), Offer(..), Request, Service, Terminate(..))
-import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (Approve(..), Offer(..), Request, Service, Terminate(..))
-import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (Approve(..), Offer(..), Request, Service)
+import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (Approve(..), Offer(..), Request, Service)
+import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Approve(..), Offer(..), Request, Service)
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Terminate(..))
 
 template Role
@@ -130,7 +130,8 @@ template Role
         customer : Party
       controller provider
       do
-        exerciseByKey @Subscription.Service (operator, provider, customer) Subscription.Terminate with actor = provider
+        (serviceCid, _) <- fetchByKey @Subscription.Service (operator, provider, customer)
+        exercise (toInterfaceContractId @Base.I serviceCid) Base.Terminate with actor = provider
 
     nonconsuming choice OfferInvestmentService : ContractId Investment.Offer
       with
@@ -151,7 +152,8 @@ template Role
         customer : Party
       controller provider
       do
-        exerciseByKey @Investment.Service (operator, provider, customer) Investment.Terminate with actor = provider
+        (serviceCid, _) <- fetchByKey @Investment.Service (operator, provider, customer)
+        exercise (toInterfaceContractId @Base.I serviceCid) Base.Terminate with actor = provider
 
     nonconsuming choice OfferFundService : ContractId Fund.Offer
       with
@@ -172,7 +174,8 @@ template Role
         customer : Party
       controller provider
       do
-        exerciseByKey @Fund.Service (operator, provider, customer) Fund.Terminate with actor = provider
+        (serviceCid, _) <- fetchByKey @Fund.Service (operator, provider, customer)
+        exercise (toInterfaceContractId @Base.I serviceCid) Base.Terminate with actor = provider
 
     choice Terminate : ()
       with

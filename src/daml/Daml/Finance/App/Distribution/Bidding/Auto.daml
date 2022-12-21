@@ -3,25 +3,10 @@
 
 module Daml.Finance.App.Distribution.Bidding.Auto where
 
-import DA.Assert ((===))
-import DA.List (head)
-import DA.Optional (fromSome)
-import DA.Set (singleton)
+import Daml.Finance.App.Distribution.Bidding.Service qualified as Service (T)
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
-import Daml.Finance.App.Interface.Common.Util (fetchAndRemove)
-import Daml.Finance.App.Interface.Distribution.Auction.Auction qualified as Auction (GetView(..))
 import Daml.Finance.App.Interface.Distribution.Bidding.Auto qualified as Auto (I, HasImplementation, RequestAndCreateBid(..), View(..))
-import Daml.Finance.App.Interface.Distribution.Bidding.Bid qualified as Bid (Details(..), Status(..), UpdateStatus(..))
-import Daml.Finance.App.Interface.Distribution.Bidding.CreateBidRequest qualified as CreateBidRequest (View(..))
-import Daml.Finance.App.Interface.Distribution.Bidding.Service qualified as Service (I, CreateBid(..), ProcessAllocation(..), RejectBid(..), RequestCreateBid(..), View(..))
-import Daml.Finance.Interface.Account.Account qualified as Account (R)
-import Daml.Finance.Interface.Account.Util (getAccount)
-import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..), SplitResult(..))
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
-import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
-import Daml.Finance.Interface.Holding.Util (getAmount, getInstrument)
-import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I, RemoveObservers(..))
-import Daml.Finance.App.Distribution.Bidding.Model (Bid(..), CreateBidRequest(..))
+import Daml.Finance.App.Interface.Distribution.Bidding.Service qualified as Service (I, CreateBid(..), RequestCreateBid(..))
 
 type T = Service
 
@@ -42,68 +27,13 @@ template Service
       view = Base.View with operator; provider; customer
       terminate = pure ()
 
-    interface instance Service.I for Service where
-      view = Service.View
-      asBase = toInterface @Base.I this
-      requestCreateBid Service.RequestCreateBid{auctionCid; amount; price; collateralCid; receivableAccount} = do
-        auction <- exercise auctionCid Auction.GetView with actor = customer
-        collateral <- fetch collateralCid
-        getInstrument collateral === auction.currency
-        getAmount collateral === price * amount
-        assertMsg "Bid amount can't be larger than available size" $ amount <= auction.quantity.amount
-
-        -- Disclose holding
-        investorHolding <- fetch collateralCid
-        investorHoldingCid : ContractId Fungible.I <- coerceContractId <$> exercise (coerceContractId collateralCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (show auction.id, singleton provider)
-        -- Disclose delivering securities account
-        let investorSendingAccount = getAccount investorHolding
-        (_, delRef) <- fetchByKey @Account.R investorSendingAccount
-        exercise (coerceContractId delRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (show auction.id, singleton provider)
-        -- Disclose receiving cash account
-        (_, recRef) <- fetchByKey @Account.R receivableAccount
-        exercise (coerceContractId recRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (show auction.id, singleton provider)
-        -- Lock holding
-        collateralCid <- coerceContractId <$> exercise (coerceContractId investorHoldingCid : ContractId Holding.I) Holding.Acquire with newLockers = singleton provider; context = show auction.id; lockType = Holding.Semaphore
-
-        let
-          quantity = Instrument.qty amount auction.quantity.unit
-          priceQty = Instrument.qty price auction.currency
-        toInterfaceContractId <$> create CreateBidRequest with operator; provider; customer; issuer = auction.customer; auctionId = auction.id; quantity; price = priceQty; collateralCid; receivableAccount
-      createBid Service.CreateBid{createBidRequestCid} = do
-        CreateBidRequest.View{issuer; auctionId; collateralCid; receivableAccount; price; quantity} <- view <$> fetchAndRemove createBidRequestCid
-        time <- getTime
-        toInterfaceContractId <$> create Bid with operator; provider; customer; issuer; details = (Bid.Details with price; quantity; time); auctionId; collateralCid; receivableAccount; status = Bid.Pending
-      processAllocation Service.ProcessAllocation{bidCid; amount; price} = do
-        -- Fetch Bid -> Extract their deposit -> Split and return unused allocation (if necessary) to the investor -> Update Bid Status
-        bid <- view <$> fetch bidCid
-        bidCollateralCid : ContractId Disclosure.I <- coerceContractId <$> exercise (toInterfaceContractId @Holding.I bid.collateralCid) Holding.Release with context = show bid.auctionId
-        bidCollateralCid <- coerceContractId . fromSome <$> exercise bidCollateralCid Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (show bid.auctionId, singleton provider)
-        bidCollateral <- fetch bidCollateralCid
-        bidCollateralCid <-
-          if getAmount bidCollateral > amount * price
-          then do
-            Fungible.SplitResult{splitCids, rest} <- exercise bidCollateralCid Fungible.Split with amounts = [amount * price]
-            pure $ head splitCids
-          else do pure bidCollateralCid
-        let
-          newStatus =
-            if bid.details.quantity.amount == amount
-            then Bid.FullAllocation with price
-            else Bid.PartialAllocation with price; amount
-        newBidCid <- exercise bidCid Bid.UpdateStatus with newStatus
-        pure (newBidCid, bidCollateralCid)
-      rejectBid Service.RejectBid{bidCid; newStatus} = do
-        bid <- view <$> fetch bidCid
-        returnedCollateralCid <- exercise (toInterfaceContractId @Holding.I bid.collateralCid) Holding.Release with context = show bid.auctionId
-        newBidCid <- exercise bidCid Bid.UpdateStatus with newStatus
-        pure (newBidCid, coerceContractId returnedCollateralCid)
-
     interface instance Auto.I for Service where
       view = Auto.View
-      asService = toInterface @Service.I this
-      requestAndCreateBid self Auto.RequestAndCreateBid{auctionCid; amount; price; collateralCid; receivableAccount} = do
-        createBidRequestCid <- exercise self Service.RequestCreateBid with auctionCid; amount; price; collateralCid; receivableAccount
-        exercise self Service.CreateBid with createBidRequestCid
+      asBase = toInterface @Base.I this
+      requestAndCreateBid Auto.RequestAndCreateBid{auctionCid; amount; price; collateralCid; receivableAccount} = do
+        serviceCid <- toInterfaceContractId @Service.I . fst <$> fetchByKey @Service.T (operator, provider, customer)
+        createBidRequestCid <- exercise serviceCid Service.RequestCreateBid with auctionCid; amount; price; collateralCid; receivableAccount
+        exercise serviceCid Service.CreateBid with createBidRequestCid
 
 template Offer
   with

@@ -26,6 +26,7 @@ data View = View
 interface Listing where
   viewtype View
     -- ^ Interface view type.
+
   asRemovable : Removable.I
     -- ^ Conversion to the `Removable` interface.
 

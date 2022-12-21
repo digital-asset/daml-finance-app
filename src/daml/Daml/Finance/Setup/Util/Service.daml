@@ -15,26 +15,32 @@ import Daml.Finance.App.Interface.Distribution.Auction.Auto qualified as Auction
 import Daml.Finance.App.Interface.Distribution.Auction.Service qualified as Auction (I)
 import Daml.Finance.App.Interface.Distribution.Bidding.Auto qualified as BiddingAuto (I)
 import Daml.Finance.App.Interface.Distribution.Bidding.Service qualified as Bidding (I)
+import Daml.Finance.App.Interface.Distribution.Fund.Service qualified as Fund (I)
+import Daml.Finance.App.Interface.Distribution.Investment.Service qualified as Investment (I)
+import Daml.Finance.App.Interface.Distribution.Subscription.Service qualified as Subscription (I)
 import Daml.Finance.App.Interface.Issuance.Auto qualified as IssuanceAuto (I)
+import Daml.Finance.App.Interface.Issuance.BackToBack qualified as BackToBack (I)
 import Daml.Finance.App.Interface.Issuance.Service qualified as Issuance (I)
+import Daml.Finance.App.Interface.Lending.Service qualified as Lending (I)
+import Daml.Finance.App.Interface.Lifecycle.Service qualified as Lifecycle (I)
 import Daml.Finance.App.Interface.Listing.Auto qualified as ListingAuto (I)
 import Daml.Finance.App.Interface.Listing.Service qualified as Listing (I)
 import Daml.Finance.App.Issuance.Auto qualified as IssuanceAuto (Accept(..))
+import Daml.Finance.App.Issuance.BackToBack qualified as BackToBack (Accept(..))
 import Daml.Finance.App.Issuance.Service qualified as Issuance (Accept(..))
 import Daml.Finance.App.Listing.Auto qualified as ListingAuto (Accept(..))
 import Daml.Finance.App.Listing.Service qualified as Listing (Accept(..))
-import Daml.Finance.App.BackToBack.Service qualified as BackToBack (Accept(..), Service)
-import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Accept(..), Service)
+import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Accept(..))
 import Daml.Finance.App.Trading.Auto.Service qualified as TradingAuto (Accept(..), Service)
 import Daml.Finance.App.Trading.Service qualified as Trading (Accept(..), Service)
-import Daml.Finance.App.Lending.Service qualified as Lending (Accept(..), Service)
+import Daml.Finance.App.Lending.Service qualified as Lending (Accept(..))
 import Daml.Finance.App.Distribution.Auction.Auto qualified as AuctionAuto (Accept(..))
 import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (Accept(..))
 import Daml.Finance.App.Distribution.Bidding.Auto qualified as BiddingAuto (Accept(..))
 import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Accept(..))
-import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (Accept(..), Service)
-import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (Accept(..), Service)
-import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Accept(..), Service)
+import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (Accept(..))
+import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (Accept(..))
+import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Accept(..))
 import Daml.Finance.App.Role.Custodian qualified as Custodian
 import Daml.Finance.App.Role.Distributor qualified as Distributor
 import Daml.Finance.App.Role.Exchange qualified as Exchange
@@ -103,17 +109,17 @@ createStructuringAutoService operator custodian customer = do
   offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferStructuringAutoService with ..
   submit customer do exerciseCmd offerCid StructuringAuto.Accept
 
-createBackToBackIssuanceService : Party -> Party -> Party -> Party -> Script (ContractId BackToBack.Service)
+createBackToBackIssuanceService : Party -> Party -> Party -> Party -> Script (ContractId BackToBack.I)
 createBackToBackIssuanceService operator custodian customer public = do
   offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferBackToBackService with ..
-  submit customer do exerciseCmd offerCid BackToBack.Accept
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid BackToBack.Accept
 
-createLifecycleService : Party -> Party -> Party -> Party -> Script (ContractId Lifecycle.Service)
+createLifecycleService : Party -> Party -> Party -> Party -> Script (ContractId Lifecycle.I)
 createLifecycleService operator custodian customer public = do
   distributionRuleCid <- toInterfaceContractId <$> submit custodian do createCmd Distribution.Rule with providers = singleton custodian; lifecycler = customer; observers = singleton public
   replacementRuleCid <- toInterfaceContractId <$> submit custodian do createCmd Replacement.Rule with providers = singleton custodian; lifecycler = customer; observers = singleton public
   offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferLifecycleService with ..
-  submit customer do exerciseCmd offerCid Lifecycle.Accept
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid Lifecycle.Accept
 
 createTradingService : Party -> Party -> Party -> ContractId Settlement.Factory -> Script (ContractId Trading.Service)
 createTradingService operator exchange customer settlementFactoryCid = do
@@ -155,30 +161,30 @@ createBiddingAutoService operator distributor customer = do
   offerCid <- submit distributor do exerciseByKeyCmd @Distributor.Role (operator, distributor) Distributor.OfferBiddingAutoService with ..
   toInterfaceContractId <$> submit customer do exerciseCmd offerCid BiddingAuto.Accept
 
-createSubscriptionService : Party -> Party -> Party -> Party -> Script (ContractId Subscription.Service)
+createSubscriptionService : Party -> Party -> Party -> Party -> Script (ContractId Subscription.I)
 createSubscriptionService operator distributor customer public = do
   offerCid <- submit distributor do exerciseByKeyCmd @Distributor.Role (operator, distributor) Distributor.OfferSubscriptionService with customer; public
-  submit customer do exerciseCmd offerCid Subscription.Accept
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid Subscription.Accept
 
-createLendingService : Party -> Party -> Party -> Script (ContractId Lending.Service)
+createLendingService : Party -> Party -> Party -> Script (ContractId Lending.I)
 createLendingService operator lender borrower = do
   offerCid <- submit lender do exerciseByKeyCmd @Custodian.Role (operator, lender) Custodian.OfferLendingService with customer = borrower
-  submit borrower do exerciseCmd offerCid Lending.Accept
+  toInterfaceContractId <$> submit borrower do exerciseCmd offerCid Lending.Accept
 
 createSettlementService : Party -> Party -> Party -> Script (ContractId Settlement.Service)
 createSettlementService operator custodian customer = do
   offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferSettlementService with customer
   submit customer do exerciseCmd offerCid Settlement.Accept
 
-createInvestmentService : Party -> Party -> Party -> Script (ContractId Investment.Service)
+createInvestmentService : Party -> Party -> Party -> Script (ContractId Investment.I)
 createInvestmentService operator provider customer = do
   offerCid <- submit provider do exerciseByKeyCmd @Distributor.Role (operator, provider) Distributor.OfferInvestmentService with customer
-  submit customer do exerciseCmd offerCid Investment.Accept
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid Investment.Accept
 
-createFundService : Party -> Party -> Party -> Script (ContractId Fund.Service)
+createFundService : Party -> Party -> Party -> Script (ContractId Fund.I)
 createFundService operator provider customer = do
   offerCid <- submit provider do exerciseByKeyCmd @Distributor.Role (operator, provider) Distributor.OfferFundService with customer
-  submit customer do exerciseCmd offerCid Fund.Accept
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid Fund.Accept
 
 createDecentralizedExchangeService : Party -> Party -> Text -> Instrument.Q -> Instrument.Q -> Account.K -> ContractId Fungible.I -> Instrument.Q -> Account.K -> ContractId Fungible.I -> Script (ContractId DecentralizedExchange.Service)
 createDecentralizedExchangeService consortium public id shares quantity1 account1 fungible1Cid quantity2 account2 fungible2Cid = do

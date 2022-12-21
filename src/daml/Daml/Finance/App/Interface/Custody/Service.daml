@@ -32,20 +32,28 @@ interface Service where
 
   asBase : Base.I
     -- ^ Conversion to base `Service` interface.
+
   requestOpenAccount : RequestOpenAccount -> Update (ContractId OpenAccountRequest.I)
     -- ^ Implementation of the `RequestOpenAccount` choice.
+
   requestCloseAccount : RequestCloseAccount -> Update (ContractId CloseAccountRequest.I)
     -- ^ Implementation of the `RequestCloseAccount` choice.
+
   requestDeposit : RequestDeposit -> Update (ContractId DepositRequest.I)
     -- ^ Implementation of the `RequestDeposit` choice.
+
   requestWithdraw : RequestWithdraw -> Update (ContractId WithdrawRequest.I)
     -- ^ Implementation of the `RequestWithdraw` choice.
+
   openAccount : OpenAccount -> Update (ContractId Account.I, AccountKey)
     -- ^ Implementation of the `OpenAccount` choice.
+
   closeAccount : CloseAccount -> Update ()
     -- ^ Implementation of the `CloseAccount` choice.
+
   deposit : Deposit -> Update (ContractId Holding.I)
     -- ^ Implementation of the `Deposit` choice.
+
   withdraw : Withdraw -> Update ()
     -- ^ Implementation of the `Withdraw` choice.
 
