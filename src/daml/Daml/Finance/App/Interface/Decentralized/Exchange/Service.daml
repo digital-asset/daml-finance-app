@@ -1,0 +1,90 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Interface.Decentralized.Exchange.Service where
+
+import Daml.Finance.App.Interface.Decentralized.Exchange.FlashSwapAction qualified as FlashSwapAction (I)
+import Daml.Finance.App.Interface.Decentralized.Exchange.Types (Pool)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
+import Daml.Finance.Interface.Types.Common (AccountKey, Id)
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Implementation)
+
+type I = Service
+
+type V = View
+
+data View = View
+  with
+    consortium : Party
+    public : Party
+    id : Id
+    description : Text
+    shares : Instrument.Q -- share
+    p1 : Pool -- pool1
+    p2 : Pool -- pool2
+  deriving (Eq, Show)
+
+interface Service where
+  viewtype V
+
+  asBase : Base.I
+    -- ^ Conversion to base `Service` interface.
+
+  deposit : ContractId Service -> Deposit -> Update (ContractId Service, ContractId Holding.I)
+    -- ^ Implementation of the `Deposit` choice.
+
+  withdraw : ContractId Service -> Withdraw -> Update (ContractId Service, ContractId Fungible.I, ContractId Fungible.I)
+    -- ^ Implementation of the `Withdraw` choice.
+
+  flashSwap : ContractId Service -> FlashSwap -> Update (ContractId Service, [ContractId Holding.I])
+    -- ^ Implementation of the `FlashSwap` choice.
+
+  swap : ContractId Service -> Swap -> Update (ContractId Service, [ContractId Holding.I])
+    -- ^ Implementation of the `Swap` choice.
+
+  nonconsuming choice Deposit : (ContractId Service, ContractId Holding.I)
+    with
+      actor : Party
+      fungible1Cid: ContractId Fungible.I
+      fungible2Cid: ContractId Fungible.I
+      shareAccount : AccountKey
+    controller actor
+    do
+      deposit this self arg
+
+  nonconsuming choice Withdraw : (ContractId Service, ContractId Fungible.I, ContractId Fungible.I)
+    with
+      actor : Party
+      shareCid : ContractId Fungible.I
+      p1Account : AccountKey
+      p2Account : AccountKey
+    controller actor
+    do
+      withdraw this self arg
+
+  nonconsuming choice FlashSwap : (ContractId Service, [ContractId Holding.I])
+    with
+      actor : Party
+      xAsset : Instrument.Q
+      yAccount : AccountKey
+      actionCid : ContractId FlashSwapAction.I
+    controller actor
+    do
+      flashSwap this self arg
+
+  nonconsuming choice Swap : (ContractId Service, [ContractId Holding.I])
+    with
+      actor : Party
+      xFungibleCid : ContractId Fungible.I
+      yAccount : AccountKey
+    controller actor
+    do
+      swap this self arg
+
+-- | Type constraint for requiring templates to implement `Service`.
+type Implementation t = (HasToInterface t Service, Base.Implementation t)
+class (Implementation t) => HasImplementation t
+instance HasImplementation Service
+instance HasToInterface Service Base.I where _toInterface = asBase

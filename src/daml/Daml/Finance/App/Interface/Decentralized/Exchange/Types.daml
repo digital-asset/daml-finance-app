@@ -1,14 +1,11 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module Daml.Finance.App.Decentralized.Exchange.Model where
+module Daml.Finance.App.Interface.Decentralized.Exchange.Types where
 
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 import Daml.Finance.Interface.Types.Common (AccountKey)
-
-switchIf : Bool -> (b, b) -> (b, b)
-switchIf cond (x, y) = if cond then (y, x) else (x, y)
 
 data Pool = Pool
   with
@@ -16,4 +13,3 @@ data Pool = Pool
     account : AccountKey -- TODO: Might not need this, but instead derive it from holding
     fungibleCid : ContractId Fungible.I
   deriving (Eq, Show)
-

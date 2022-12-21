@@ -1,7 +1,7 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module Daml.Finance.App.Decentralized.Exchange.Interface where
+module Daml.Finance.App.Interface.Decentralized.Exchange.FlashSwapAction where
 
 import DA.Assert ((===))
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
@@ -9,10 +9,14 @@ import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 import Daml.Finance.Interface.Types.Common (Parties)
 
+type I = FlashSwapAction
+
 data View = View {}
+  deriving (Eq, Show)
 
 interface FlashSwapAction where
   viewtype View
+
   executeAction : ContractId Holding.I -> Update (ContractId Holding.I, [ContractId Holding.I])
 
   choice ExecuteAction: (ContractId Holding.I, [ContractId Holding.I])
@@ -45,15 +49,3 @@ interface FlashSwapAction where
       producedHolding.instrument === producedQuantity.unit
       producedHolding.amount === producedQuantity.amount
       return (producedHoldingCid, extraHoldingCids) -- <> optionalToList consumedHoldingRest <> optionalToList producedHoldingRest)
-
--- Example of a FlashSwapAction template (used for a normal DEX Swap)
-template FlashSwapPipe with
-    provider : Party
-    outCid : ContractId Holding.I
-  where
-    signatory provider
-
-    interface instance FlashSwapAction for FlashSwapPipe where
-      view = View {}
-      executeAction holdingCid = pure (outCid, [holdingCid])
-

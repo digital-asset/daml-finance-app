@@ -8,7 +8,7 @@ import DA.Map (empty, fromList)
 import DA.Set (singleton)
 import DA.Time (time)
 import Daml.Finance.Account.Account qualified as Account (Factory(..))
-import Daml.Finance.App.Decentralized.Exchange.Service as Dex (Swap(..))
+import Daml.Finance.App.Interface.Decentralized.Exchange.Service qualified as Dex (Swap(..))
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument (qty)
 import Daml.Finance.Settlement.Factory qualified as Settlement (FactoryWithIntermediaries(..))
@@ -119,10 +119,10 @@ run  = do
 
   let
     doRoundTrip = do
-      (dex1Cid, [trdEurCid]) <- submitMulti [trd] [public] do exerciseCmd dex1Cid Swap with actor = trd; xFungibleCid = trdUsdCid; yAccount = trdEcbAccount
-      (dex4Cid, [trdChfCid]) <- submitMulti [trd] [public] do exerciseCmd dex4Cid Swap with actor = trd; xFungibleCid = coerceContractId trdEurCid; yAccount = trdSnbAccount
-      (dex6Cid, [trdGbpCid]) <- submitMulti [trd] [public] do exerciseCmd dex6Cid Swap with actor = trd; xFungibleCid = coerceContractId trdChfCid; yAccount = trdBoeAccount
-      (dex3Cid, [trdUsdCid]) <- submitMulti [trd] [public] do exerciseCmd dex3Cid Swap with actor = trd; xFungibleCid = coerceContractId trdGbpCid; yAccount = trdFedAccount
+      (dex1Cid, [trdEurCid]) <- submitMulti [trd] [public] do exerciseCmd dex1Cid Dex.Swap with actor = trd; xFungibleCid = trdUsdCid; yAccount = trdEcbAccount
+      (dex4Cid, [trdChfCid]) <- submitMulti [trd] [public] do exerciseCmd dex4Cid Dex.Swap with actor = trd; xFungibleCid = coerceContractId trdEurCid; yAccount = trdSnbAccount
+      (dex6Cid, [trdGbpCid]) <- submitMulti [trd] [public] do exerciseCmd dex6Cid Dex.Swap with actor = trd; xFungibleCid = coerceContractId trdChfCid; yAccount = trdBoeAccount
+      (dex3Cid, [trdUsdCid]) <- submitMulti [trd] [public] do exerciseCmd dex3Cid Dex.Swap with actor = trd; xFungibleCid = coerceContractId trdGbpCid; yAccount = trdFedAccount
       pure ()
 
   -- doRoundTrip

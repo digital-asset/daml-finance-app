@@ -7,10 +7,11 @@ import DA.Map qualified as M (fromList)
 import DA.Set (fromList, singleton)
 import Daml.Finance.App.Custody.Auto qualified as CustodyAuto (Accept(..))
 import Daml.Finance.App.Custody.Service qualified as Custody (Accept(..))
-import Daml.Finance.App.Decentralized.Exchange.Model qualified as DecentralizedExchange (Pool(..))
 import Daml.Finance.App.Decentralized.Exchange.Service qualified as DecentralizedExchange (Service(..))
 import Daml.Finance.App.Interface.Custody.Auto qualified as CustodyAuto (I)
 import Daml.Finance.App.Interface.Custody.Service qualified as Custody (I)
+import Daml.Finance.App.Interface.Decentralized.Exchange.Service qualified as DecentralizedExchange (I)
+import Daml.Finance.App.Interface.Decentralized.Exchange.Types (Pool(..))
 import Daml.Finance.App.Interface.Distribution.Auction.Auto qualified as AuctionAuto (I)
 import Daml.Finance.App.Interface.Distribution.Auction.Service qualified as Auction (I)
 import Daml.Finance.App.Interface.Distribution.Bidding.Auto qualified as BiddingAuto (I)
@@ -192,12 +193,11 @@ createFundService operator provider customer = do
   offerCid <- submit provider do exerciseByKeyCmd @Distributor.Role (operator, provider) Distributor.OfferFundService with customer
   toInterfaceContractId <$> submit customer do exerciseCmd offerCid Fund.Accept
 
-createDecentralizedExchangeService : Party -> Party -> Text -> Instrument.Q -> Instrument.Q -> Account.K -> ContractId Fungible.I -> Instrument.Q -> Account.K -> ContractId Fungible.I -> Script (ContractId DecentralizedExchange.Service)
+createDecentralizedExchangeService : Party -> Party -> Text -> Instrument.Q -> Instrument.Q -> Account.K -> ContractId Fungible.I -> Instrument.Q -> Account.K -> ContractId Fungible.I -> Script (ContractId DecentralizedExchange.I)
 createDecentralizedExchangeService consortium public id shares quantity1 account1 fungible1Cid quantity2 account2 fungible2Cid = do
   fungible1Cid <- coerceContractId <$> submit consortium do exerciseCmd (toInterfaceContractId @Disclosure.I fungible1Cid) Disclosure.AddObservers with disclosers = singleton consortium; observersToAdd = (id, singleton public)
   fungible2Cid <- coerceContractId <$> submit consortium do exerciseCmd (toInterfaceContractId @Disclosure.I fungible2Cid) Disclosure.AddObservers with disclosers = singleton consortium; observersToAdd = (id, singleton public)
   let
-    p1 = DecentralizedExchange.Pool with quantity = quantity1; account = account1; fungibleCid = fungible1Cid
-    p2 = DecentralizedExchange.Pool with quantity = quantity2; account = account2; fungibleCid = fungible2Cid
-  submit consortium do createCmd DecentralizedExchange.Service with consortium; public; id = Id id; description = id; shares; p1; p2
-
+    p1 = Pool with quantity = quantity1; account = account1; fungibleCid = fungible1Cid
+    p2 = Pool with quantity = quantity2; account = account2; fungibleCid = fungible2Cid
+  toInterfaceContractId <$> submit consortium do createCmd DecentralizedExchange.Service with consortium; public; id = Id id; description = id; shares; p1; p2
