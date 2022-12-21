@@ -31,7 +31,7 @@ export const Bidding : React.FC = () => {
   const { getName } = useParties();
   const party = useParty();
   const ledger = useLedger();
-  const { loading: l1, bidding } = useServices();
+  const { loading: l1, bidding, biddingAuto } = useServices();
   const { loading: l2, latests } = useInstruments();
   const { loading: l3, getFungible } = useHoldings();
   const { loading: l4, contracts: auctions } = useStreamQueries(Auction);
@@ -55,8 +55,6 @@ export const Bidding : React.FC = () => {
     const receivableAccount = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === instrument.payload.depository)?.key;
     const collateralCid = await getFungible(party, volume, auction.payload.currency);
     if (!receivableAccount) return;
-    const svc = bidding.getService(auction.payload.provider, party);
-    if (!svc) throw new Error("No bidding service found for provider [" + auction.payload.provider + "] and customer [" + party + "]");
     const arg = {
       auctionCid: auction.contractId,
       price: price.toString(),
@@ -64,7 +62,10 @@ export const Bidding : React.FC = () => {
       collateralCid,
       receivableAccount
     };
-    if (!!svc.auto) await ledger.exercise(ServiceAuto.RequestAndCreateBid, svc.auto.contractId, arg);
+    const svc = bidding.getService(auction.payload.provider, party);
+    const auto = biddingAuto.getService(auction.payload.provider, party);
+    if (!svc) throw new Error("No bidding service found for provider [" + auction.payload.provider + "] and customer [" + party + "]");
+    if (!!auto) await ledger.exercise(ServiceAuto.RequestAndCreateBid, auto.service.contractId, arg);
     else await ledger.exercise(Service.RequestCreateBid, svc.service.contractId, arg);
   };
 

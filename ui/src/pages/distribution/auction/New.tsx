@@ -34,7 +34,7 @@ export const New : React.FC = () => {
   const ledger = useLedger();
   const party = useParty();
   const { getParty } = useParties();
-  const { loading: l1, auction } = useServices();
+  const { loading: l1, auction, auctionAuto } = useServices();
   const { loading: l2, latests, tokens } = useInstruments();
   const { loading: l3, holdings, getFungible } = useHoldings();
   const { loading: l4, contracts: accounts } = useStreamQueries(Reference);
@@ -53,9 +53,6 @@ export const New : React.FC = () => {
     const collateralCid = await getFungible(party, amount, instrument.key);
     const receivableAccount = accounts.find(c => c.payload.accountView.custodian === currency.payload.depository && c.payload.accountView.owner === party)?.key;
     if (!receivableAccount) throw new Error("Receivable account not found");
-    const agent = getParty("Agent"); // TODO: Hard-coded agent party
-    const svc = auction.getService(agent, party);
-    if (!svc) throw new Error("No auction service found for provider [" + agent + "] and customer [" + party + "]");
   const arg = {
       auctionId: { unpack: uuidv4() },
       description,
@@ -66,7 +63,11 @@ export const New : React.FC = () => {
       receivableAccount,
       observers: createSet([getParty("Public")])
     };
-    if (!!svc.auto) await ledger.exercise(AuctionAuto.RequestAndCreateAuction, svc.auto.contractId, arg);
+    // TODO: Assumes single service
+    const svc = auction.services[0];
+    const auto = auctionAuto.services[0];
+    if (!svc) throw new Error("No structuring service found for customer [" + party + "]");
+    if (!!auto) await ledger.exercise(AuctionAuto.RequestAndCreateAuction, auto.service.contractId, arg);
     else await ledger.exercise(Auction.RequestCreateAuction, svc.service.contractId, arg);
     navigate("/app/distribution/auctions");
   };

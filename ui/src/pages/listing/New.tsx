@@ -29,7 +29,7 @@ export const New : React.FC = () => {
   const { getParty } = useParties();
   const ledger = useLedger();
   const party = useParty();
-  const { loading: l1, listing } = useServices();
+  const { loading: l1, listing, listingAuto } = useServices();
   const { loading: l2, latests, tokens } = useInstruments();
 
   const tradableInstruments = latests;
@@ -40,9 +40,6 @@ export const New : React.FC = () => {
   if (l1 || l2) return <Spinner />;
 
   const requestListing = async () => {
-    const exchange = getParty("Exchange"); // TODO: Hard-coded exchange party
-    const svc = listing.getService(exchange, party);
-    if (!svc) throw new Error("No listing service found for provider [" + exchange + "] and customer [" + party + "]");
     if (!tradedInstrument || !quotedInstrument) throw new Error("Traded or quoted instrument not found");
     const arg = {
       listingId : { unpack: uuidv4() },
@@ -51,7 +48,11 @@ export const New : React.FC = () => {
       quotedInstrument: quotedInstrument.key,
       observers : createSet([ getParty("Public") ]) // TODO: Hard-coded public party
     };
-    if (!!svc.auto) await ledger.exercise(Auto.RequestAndList, svc.auto.contractId, arg);
+    // TODO: Assumes single service
+    const svc = listing.services[0];
+    const auto = listingAuto.services[0];
+    if (!svc) throw new Error("No listing service found for customer [" + party + "]");
+    if (!!auto) await ledger.exercise(Auto.RequestAndList, auto.service.contractId, arg);
     else await ledger.exercise(Service.RequestListing, svc.service.contractId, arg);
     navigate("/app/listing/listings");
   };

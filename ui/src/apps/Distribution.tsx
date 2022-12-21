@@ -28,11 +28,11 @@ export const Distribution : React.FC = () => {
 
   const providerAuctionService = auction.services.find(c => c.payload.provider === party);
   const customerAuctionService = auction.services.find(c => c.payload.customer === party);
-  const providerSubscriptionService = subscription.find(c => c.payload.provider === party);
-  const customerSubscriptionService = subscription.find(c => c.payload.customer === party);
-  const providerInvestmentService = investment.find(c => c.payload.provider === party);
-  const customerInvestmentService = investment.find(c => c.payload.customer === party);
-  const providerFundService = fund.find(c => c.payload.provider === party);
+  const providerSubscriptionService = subscription.services.find(c => c.payload.provider === party);
+  const customerSubscriptionService = subscription.services.find(c => c.payload.customer === party);
+  const providerInvestmentService = investment.services.find(c => c.payload.provider === party);
+  const customerInvestmentService = investment.services.find(c => c.payload.customer === party);
+  const providerFundService = fund.services.find(c => c.payload.provider === party);
   const isAgent = !!providerAuctionService || !!providerSubscriptionService;
   const isIssuer = !!customerAuctionService || !!customerSubscriptionService;
   const isInvestor = !!customerInvestmentService;

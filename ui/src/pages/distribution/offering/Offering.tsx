@@ -8,9 +8,10 @@ import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Typography, Grid, Table, TableBody, TableCell, TableRow, Button, Paper, TextField } from "@mui/material";
 import { useParams } from "react-router-dom";
 import useStyles from "../../styles";
-import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Service";
+import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Subscription/Service";
 import { Spinner } from "../../../components/Spinner/Spinner";
-import { Offering as OfferingContract, Subscription } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Model";
+import { Offering as OfferingI } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Subscription/Offering";
+import { Subscription } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Subscription/Subscription";
 import { Reference } from "@daml.js/daml-finance-interface-account/lib/Daml/Finance/Interface/Account/Account";
 import { fmt } from "../../../util";
 import { Message } from "../../../components/Message/Message";
@@ -33,7 +34,7 @@ export const Offering : React.FC = () => {
   const { loading: l1, subscription } = useServices();
   const { loading: l2, getFungible } = useHoldings();
 
-  const { contracts: offerings, loading: l3 } = useStreamQueries(OfferingContract);
+  const { contracts: offerings, loading: l3 } = useStreamQueries(OfferingI);
   const { contracts: allSubscriptions, loading: l4 } = useStreamQueries(Subscription);
   const { contracts: factories, loading: l5 } = useStreamQueries(Factory);
   const { contracts: accounts, loading: l6 } = useStreamQueries(Reference);
@@ -44,16 +45,16 @@ export const Offering : React.FC = () => {
   if (!contractId) return <Message text="No contract id provided" />
   if (!offering) return <Message text="Subscription not found" />
 
-  const providerServices = subscription.filter(s => s.payload.provider === party);
+  const providerServices = subscription.services.filter(s => s.payload.provider === party);
   const isProvider = providerServices.length > 0;
-  const service = providerServices[0];
-  const subscriptions = allSubscriptions.filter(c => c.payload.offeringId === offering.payload.offeringId);
+  const svc = providerServices[0];
+  const subscriptions = allSubscriptions.filter(c => c.payload.offeringId.unpack === offering.payload.id.unpack);
   const filledPerc = 100.0 * subscriptions.reduce((a, b) => a + parseFloat(b.payload.quantity), 0) / parseFloat(offering.payload.asset.amount);
 
   const closeSubscription = async () => {
     const subscriptionCids = subscriptions.map(c => c.contractId);
     const arg = { settlementFactoryCid: factories[0].contractId, offeringCid: offering.contractId, subscriptionCids };
-    const [result, ] = await ledger.exercise(Service.ProcessOffering, service.contractId, arg);
+    const [result, ] = await ledger.exercise(Service.ProcessOffering, svc.service.contractId, arg);
     navigate("/app/distribution/subscriptions/" + result)
   };
 
@@ -67,13 +68,13 @@ export const Offering : React.FC = () => {
       quantity: quantity.toString(),
       investorHoldingCid, investorAccount
     };
-    await ledger.exercise(OfferingContract.Subscribe, offering.contractId, arg);
+    await ledger.exercise(OfferingI.Subscribe, offering.contractId, arg);
   };
 
   return (
     <Grid container direction="column" spacing={2}>
       <Grid item xs={12}>
-        <Typography variant="h3" className={classes.heading}>{offering.payload.offeringId}</Typography>
+        <Typography variant="h3" className={classes.heading}>{offering.payload.id.unpack}</Typography>
       </Grid>
       <Grid item xs={12}>
         <Grid container spacing={4}>
@@ -121,7 +122,7 @@ export const Offering : React.FC = () => {
                       </TableRow>
                       <TableRow key={2} className={classes.tableRow}>
                         <TableCell key={0} className={classes.tableCell}><b>Subscription Id</b></TableCell>
-                        <TableCell key={1} className={classes.tableCell}>{offering.payload.offeringId}</TableCell>
+                        <TableCell key={1} className={classes.tableCell}>{offering.payload.id.unpack}</TableCell>
                       </TableRow>
                       <TableRow key={3} className={classes.tableRow}>
                         <TableCell key={0} className={classes.tableCell}><b>Asset</b></TableCell>

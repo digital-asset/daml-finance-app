@@ -4,7 +4,7 @@
 import React from "react";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Service";
+import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Lifecycle/Service";
 import { useParties } from "../../context/PartiesContext";
 import { useServices } from "../../context/ServicesContext";
 import { InstrumentAggregate, useInstruments } from "../../context/InstrumentContext";
@@ -22,19 +22,22 @@ export const Instruments : React.FC = () => {
   const { getName } = useParties();
   const party = useParty();
   const ledger = useLedger();
-  const svc = useServices();
-  const inst = useInstruments();
 
-  const { loading: l1, contracts: numericObservables } = useStreamQueries(NumericObservable);
-  const { loading: l2, contracts: events } = useStreamQueries(Event);
-  const { loading: l3, contracts: timeObservables } = useStreamQueries(TimeObservable);
+  const { loading: l1, lifecycle } = useServices();
+  const { loading: l2, latests } = useInstruments();
+  const { loading: l3, contracts: numericObservables } = useStreamQueries(NumericObservable);
+  const { loading: l4, contracts: events } = useStreamQueries(Event);
+  const { loading: l5, contracts: timeObservables } = useStreamQueries(TimeObservable);
 
-  if (l1 || l2 || l3 || svc.loading || inst.loading) return <Spinner />;
+  if (l1 || l2 || l3 || l4 || l5) return <Spinner />;
 
-  const myInstruments = inst.latests.filter(a => (!!a.lifecycle && a.lifecycle.payload.lifecycler === party) || (!!a.equity && a.payload.issuer === party));
+  const myInstruments = latests.filter(a => (!!a.lifecycle && a.lifecycle.payload.lifecycler === party) || (!!a.equity && a.payload.issuer === party));
 
   const lifecycleAll = async (cs : any[]) => {
-    const lifecycle = async (c : ContractId<Lifecycle>) => {
+    // TODO: Assumes single service
+    const svc = lifecycle.services[0]?.service;
+    if (!svc) throw new Error("No lifecycle service found for customer [" + party + "]");
+    const lifecycleOne = async (c : ContractId<Lifecycle>) => {
       const arg = {
         ruleName: "Time",
         // TODO: Assumes the only event we have is a DateClockUpdatedEvent
@@ -43,10 +46,10 @@ export const Instruments : React.FC = () => {
         observableCids: numericObservables.map(o => o.contractId),
         lifecyclableCid: c
       }
-      await ledger.exercise(Service.Lifecycle, svc.lifecycle[0].contractId, arg);
+      await ledger.exercise(Service.Lifecycle, svc.contractId, arg);
       navigate("/app/servicing/effects");
     };
-    await Promise.all(cs.map(c => lifecycle(c as ContractId<Lifecycle>)));
+    await Promise.all(cs.map(c => lifecycleOne(c as ContractId<Lifecycle>)));
   };
 
   const createRow = (c : InstrumentAggregate) : any[] => {

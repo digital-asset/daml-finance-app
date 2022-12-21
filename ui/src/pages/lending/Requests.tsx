@@ -20,7 +20,7 @@ export const Requests : React.FC = () => {
     return [
       getName(c.payload.customer),
       getName(c.payload.provider),
-      c.payload.id,
+      c.payload.dealId.unpack,
       fmt(c.payload.borrowed.amount, 0) + " " + c.payload.borrowed.unit.id.unpack,
       c.payload.maturity,
       <DetailButton path={"request/" + c.contractId} />

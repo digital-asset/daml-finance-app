@@ -3,15 +3,16 @@
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { v4 as uuidv4 } from "uuid";
 import classnames from "classnames";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Typography, Grid, Paper, Select, MenuItem, TextField, Button, MenuProps, FormControl, InputLabel, Box } from "@mui/material";
 import useStyles from "../../styles";
-import { CreateOffering, Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Service";
+import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Subscription/Service";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { Reference } from "@daml.js/daml-finance-interface-account/lib/Daml/Finance/Interface/Account/Account";
 import { dedup } from "../../../util";
-import { BackToBack } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Model";
+import { BackToBack } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Subscription/Types";
 import { useServices } from "../../../context/ServicesContext";
 import { useInstruments } from "../../../context/InstrumentContext";
 import { Message } from "../../../components/Message/Message";
@@ -22,7 +23,7 @@ export const New : React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
 
-  const [ id, setId ] = useState("");
+  const [ description, setDescription ] = useState("");
   const [ offeredInstLabel, setOfferedInstLabel ] = useState("");
   const [ priceInstLabel, setPriceInstLabel ] = useState("");
   const [ amount, setAmount ] = useState("");
@@ -36,9 +37,9 @@ export const New : React.FC = () => {
 
   const { contracts: accounts, loading: l4 } = useStreamQueries(Reference);
 
-  const myServices = subscription.filter(s => s.payload.customer === party);
-  const myB2BServices = backToBack.filter(s => s.payload.customer === party);
-  const hasB2B = backToBack.length > 0;
+  const myServices = subscription.services.filter(s => s.payload.customer === party);
+  const myB2BServices = backToBack.services.filter(s => s.payload.customer === party);
+  const hasB2B = backToBack.services.length > 0;
 
   const offeredInst = latests.find(c => c.payload.id.unpack === offeredInstLabel);
   const priceInst = tokens.find(c => c.payload.id.unpack === priceInstLabel);
@@ -55,6 +56,7 @@ export const New : React.FC = () => {
     const customerAccount = accounts.find(c => c.payload.accountView.custodian === priceInst.payload.depository && c.payload.accountView.owner === party)?.key;
     const holdingCid = await getFungible(party, amount, offeredInst.key);
     if (!customerAccount) return;
+    const offeringId = { unpack: uuidv4() };
     if (hasB2B) {
       const notional = parseFloat(amount) * parseFloat(price);
       const b2b = myB2BServices[0].payload.provider;
@@ -63,7 +65,6 @@ export const New : React.FC = () => {
       if (!b2bReceivableAccount || !issuerReceivableAccount) return;
       const b2bDeliverableCid = await getFungible(b2b, amount, offeredInst.key);
       const issuerDeliverableCid = await getFungible(party, notional, priceInst.key);
-      const offeringId = id;
       const backToBack : BackToBack = {
         party: b2b,
         offeringId,
@@ -72,25 +73,27 @@ export const New : React.FC = () => {
         b2bReceivableAccount,
         b2bDeliverableCid
       };
-      const arg : CreateOffering = {
+      const arg = {
         offeringId,
+        description,
         asset: { amount: amount, unit: offeredInst.key },
         price: { amount: price, unit: priceInst.key },
         customerHoldingCid: holdingCid,
         customerAccount,
         backToBack
       };
-      await ledger.exercise(Service.CreateOffering, myServices[0].contractId, arg);
+      await ledger.exercise(Service.CreateOffering, myServices[0].service.contractId, arg);
     } else {
-      const arg : CreateOffering = {
-        offeringId: id,
+      const arg = {
+        offeringId,
+        description,
         asset: { amount: amount, unit: offeredInst.key },
         price: { amount: price, unit: priceInst.key },
         customerHoldingCid: holdingCid,
         customerAccount,
         backToBack: null
       };
-      await ledger.exercise(Service.CreateOffering, myServices[0].contractId, arg);
+      await ledger.exercise(Service.CreateOffering, myServices[0].service.contractId, arg);
     }
     navigate("/app/distribution/offerings");
   }
@@ -108,7 +111,7 @@ export const New : React.FC = () => {
               <Grid item xs={12}>
                 <Paper className={classnames(classes.fullWidth, classes.paper)}>
                   <Typography variant="h5" className={classes.heading}>Details</Typography>
-                  <TextField variant="standard" className={classes.inputField} fullWidth label="Offering Id" type="text" value={id} onChange={e => setId(e.target.value as string)} />
+                  <TextField variant="standard" className={classes.inputField} fullWidth label="Description" type="text" value={description} onChange={e => setDescription(e.target.value as string)} />
                   <FormControl className={classes.inputField} fullWidth>
                     <InputLabel className={classes.selectLabel}>Offered Asset</InputLabel>
                     <Select fullWidth value={offeredInstLabel} onChange={e => setOfferedInstLabel(e.target.value as string)} MenuProps={menuProps}>

@@ -19,16 +19,17 @@ export const Listings : React.FC = () => {
   const party = useParty();
   const ledger = useLedger();
   const { getName } = useParties();
-  const { loading: l1, listing } = useServices();
+  const { loading: l1, listing, listingAuto } = useServices();
   const { loading: l2, contracts: listings } = useStreamQueries(Listing);
   if (l1 || l2) return <Spinner />;
 
-
   const requestDelisting = async (c : CreateEvent<Listing>) => {
-    const svc = listing.getService(c.payload.provider, party);
-    if (!svc) throw new Error("No listing service found for provider [" + c.payload.provider + "] and customer [" + party + "]");
     const arg = { listingCid: c.contractId }
-    if (!!svc.auto) await ledger.exercise(Auto.RequestAndDelist, svc.auto.contractId, arg);
+    // TODO: Assumes single service
+    const svc = listing.getService(c.payload.provider, party);
+    const auto = listingAuto.getService(c.payload.provider, party);
+    if (!svc) throw new Error("No listing service found for provider [" + c.payload.provider + "] and customer [" + party + "]");
+    if (!!auto) await ledger.exercise(Auto.RequestAndDelist, auto.service.contractId, arg);
     else await ledger.exercise(Service.RequestDelisting, svc.service.contractId, arg);
   };
 

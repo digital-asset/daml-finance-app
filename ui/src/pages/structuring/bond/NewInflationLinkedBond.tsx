@@ -9,7 +9,6 @@ import { useLedger, useParty } from "@daml/react";
 import useStyles from "../../styles";
 import { parseDate, singleton } from "../../../util";
 import { Spinner } from "../../../components/Spinner/Spinner";
-import { Message } from "../../../components/Message/Message";
 import { PeriodEnum } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Date/RollConvention";
 import { emptyMap } from "@daml/types";
 import { DayCountConventionEnum } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Date/DayCount";
@@ -17,8 +16,8 @@ import { BusinessDayConventionEnum } from "@daml.js/daml-finance-interface-types
 import { useParties } from "../../../context/PartiesContext";
 import { useInstruments } from "../../../context/InstrumentContext";
 import { useServices } from "../../../context/ServicesContext";
-import { Service as Structuring } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Service";
-import { Service as StructuringAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service";
+import { Service as Structuring } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Structuring/Service";
+import { Service as StructuringAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Structuring/Auto";
 import { CenteredForm } from "../../../components/CenteredForm/CenteredForm";
 import { TextInput } from "../../../components/Form/TextInput";
 import { SelectInput, toValues } from "../../../components/Form/SelectInput";
@@ -31,6 +30,7 @@ export const NewInflationLinkedBond : React.FC = () => {
   const navigate = useNavigate();
 
   const [ id, setId ] = useState("");
+  const [ description, setDescription ] = useState("");
   const [ inflationIndexId, setInflationIndexId ] = useState("");
   const [ inflationIndexBaseValue, setInflationIndexBaseValue ] = useState("");
   const [ couponRate, setCouponRate ] = useState("");
@@ -52,7 +52,6 @@ export const NewInflationLinkedBond : React.FC = () => {
   const { loading: l2, tokens } = useInstruments();
 
   if (l1 || l2) return <Spinner />;
-  if (structuring.length === 0) return <Message text="No structuring service found" />
 
   const createInflationLinkedBond = async () => {
     const ccy = tokens.find(c => c.payload.id.unpack === currency);
@@ -60,8 +59,8 @@ export const NewInflationLinkedBond : React.FC = () => {
     const couponPeriod = couponFrequency === "Annual" ? PeriodEnum.Y : PeriodEnum.M;
     const couponPeriodMultiplier = couponFrequency === "Annual" ? "1" : (couponFrequency === "Semi-annual" ? "6" : "3");
     const arg = {
-      id,
-      description: id,
+      id: { unpack: id },
+      description,
       inflationIndexId,
       inflationIndexBaseValue,
       couponRate,
@@ -78,14 +77,19 @@ export const NewInflationLinkedBond : React.FC = () => {
       observers: emptyMap<string, any>().set("Public", singleton(getParty("Public"))),
       lastEventTimestamp: new Date().toISOString()
     };
-    if (structuringAuto.length > 0) await ledger.exercise(StructuringAuto.RequestAndCreateInflationLinkedBond, structuringAuto[0].contractId, arg);
-    else await ledger.exercise(Structuring.RequestCreateInflationLinkedBond, structuring[0].contractId, arg);
+    // TODO: Assumes single service
+    const svc = structuring.services[0];
+    const auto = structuringAuto.services[0];
+    if (!svc) throw new Error("No structuring service found for customer [" + party + "]");
+    if (!!auto) await ledger.exercise(StructuringAuto.RequestAndCreateInflationLinkedBond, auto.service.contractId, arg);
+    else await ledger.exercise(Structuring.RequestCreateInflationLinkedBond, svc.service.contractId, arg);
     navigate("/app/structuring/instruments");
   };
 
   return (
     <CenteredForm title= "New Inflation Linked Bond">
       <TextInput    label="Id"                          value={id}                      setValue={setId} />
+      <TextInput    label="Description"                 value={description}             setValue={setDescription} />
       <SelectInput  label="Inflation Index"             value={inflationIndexId}        setValue={setInflationIndexId}        values={inflationIndices} />
       <TextInput    label="Inflation Index Base Value"  value={inflationIndexBaseValue} setValue={setInflationIndexBaseValue} />
       <TextInput    label="Coupon (per annum)"          value={couponRate}              setValue={setCouponRate} />

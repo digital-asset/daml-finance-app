@@ -5,27 +5,27 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@mui/material";
 import classnames from "classnames";
-import { useLedger } from "@daml/react";
+import { useLedger, useParty } from "@daml/react";
 import useStyles from "../../styles";
 import { parseDate, singleton } from "../../../util";
 import { Spinner } from "../../../components/Spinner/Spinner";
-import { Message } from "../../../components/Message/Message";
 import { emptyMap } from "@daml/types";
 import { useParties } from "../../../context/PartiesContext";
 import { useInstruments } from "../../../context/InstrumentContext";
 import { useServices } from "../../../context/ServicesContext";
-import { Service as Structuring } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Service";
-import { Service as StructuringAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service";
+import { Service as Structuring } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Structuring/Service";
+import { Service as StructuringAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Structuring/Auto";
 import { CenteredForm } from "../../../components/CenteredForm/CenteredForm";
 import { TextInput } from "../../../components/Form/TextInput";
 import { SelectInput, toValues } from "../../../components/Form/SelectInput";
 import { DateInput } from "../../../components/Form/DateInput";
 
 export const NewZeroCouponBond : React.FC = () => {
-  const classes = useStyles();
+  const cls = useStyles();
   const navigate = useNavigate();
 
   const [ id, setId ] = useState("");
+  const [ description, setDescription ] = useState("");
   const [ issueDate, setIssueDate ] = useState<Date | null>(null);
   const [ maturityDate, setMaturityDate ] = useState<Date | null>(null);
   const [ currency, setCurrency ] = useState("");
@@ -33,37 +33,42 @@ export const NewZeroCouponBond : React.FC = () => {
   const canRequest = !!id && !!issueDate && !!maturityDate && !!currency;
 
   const ledger = useLedger();
+  const party = useParty();
   const { getParty } = useParties();
   const { loading: l1, structuring, structuringAuto } = useServices();
   const { loading: l2, tokens } = useInstruments();
 
   if (l1 || l2) return <Spinner />;
-  if (structuring.length === 0) return <Message text="No structuring service found" />
 
-  const createFixedRateBond = async () => {
+  const createZeroCouponBond = async () => {
     const ccy = tokens.find(c => c.payload.id.unpack === currency);
     if (!ccy) throw new Error("Couldn't find currency " + currency);
     const arg = {
-      id,
-      description: id,
+      id: { unpack: id },
+      description,
       issueDate: parseDate(issueDate),
       maturityDate: parseDate(maturityDate),
       currency: ccy.key,
       observers: emptyMap<string, any>().set("Public", singleton(getParty("Public"))),
       lastEventTimestamp: new Date().toISOString()
     };
-    if (structuringAuto.length > 0) await ledger.exercise(StructuringAuto.RequestAndCreateZeroCouponBond, structuringAuto[0].contractId, arg);
-    else await ledger.exercise(Structuring.RequestCreateZeroCouponBond, structuring[0].contractId, arg);
+    // TODO: Assumes single service
+    const svc = structuring.services[0];
+    const auto = structuringAuto.services[0];
+    if (!svc) throw new Error("No structuring service found for customer [" + party + "]");
+    if (!!auto) await ledger.exercise(StructuringAuto.RequestAndCreateZeroCouponBond, auto.service.contractId, arg);
+    else await ledger.exercise(Structuring.RequestCreateZeroCouponBond, svc.service.contractId, arg);
     navigate("/app/structuring/instruments");
   };
 
   return (
     <CenteredForm title= "New Zero Coupon Bond">
       <TextInput    label="Id"            value={id}            setValue={setId} />
+      <TextInput    label="Description"   value={description}   setValue={setDescription} />
       <SelectInput  label="Currency"      value={currency}      setValue={setCurrency} values={toValues(tokens)} />
       <DateInput    label="Issue Date"    value={issueDate}     setValue={setIssueDate} />
       <DateInput    label="Maturity Date" value={maturityDate}  setValue={setMaturityDate} />
-      <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={createFixedRateBond}>Create Instrument</Button>
+      <Button className={classnames(cls.fullWidth, cls.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={createZeroCouponBond}>Create Instrument</Button>
     </CenteredForm>
     );
 };

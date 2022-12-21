@@ -9,14 +9,14 @@ import { Spinner } from "../../../components/Spinner/Spinner";
 import { dedup, fmt } from "../../../util";
 import { useParties } from "../../../context/PartiesContext";
 import { useServices } from "../../../context/ServicesContext";
-import { InvestmentRequest } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Investment/Model";
+import { InvestmentRequest } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Investment/InvestmentRequest";
 import { Alignment, HorizontalTable } from "../../../components/Table/HorizontalTable";
 import { SelectionTable } from "../../../components/Table/SelectionTable";
 import { ContractId } from "@daml/types";
-import { Service as FundService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Fund/Service";
+import { Service as FundService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Fund/Service";
 import { useHoldings } from "../../../context/HoldingContext";
 import { Transferable } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Transferable";
-import { Fund } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Fund/Model";
+import { Fund } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Fund/Fund";
 
 export const Requests : React.FC = () => {
   const navigate = useNavigate();
@@ -30,12 +30,12 @@ export const Requests : React.FC = () => {
   const { loading: l4, contracts: requests } = useStreamQueries(InvestmentRequest);
   if (l1 || l2 || l3 || l4) return <Spinner />;
 
-  const myServices = fund.filter(s => s.payload.customer === party);
+  const myServices = fund.services.filter(s => s.payload.customer === party);
   const canPool = myServices.length > 0;
 
   const poolRequests = async (cs : CreateEvent<InvestmentRequest>[]) => {
-    const service = myServices[0];
-    if (!service) throw new Error("No fund service found");
+    const svc = myServices[0];
+    if (!svc) throw new Error("No fund service found");
     const total = cs.reduce((a, b) => a + parseFloat(b.payload.quantity.amount), 0);
     const fundIds = dedup(cs.map(c => c.payload.fundId.unpack));
     if (fundIds.length > 1) throw new Error("Investment requests for more than one fund selected");
@@ -51,7 +51,7 @@ export const Requests : React.FC = () => {
       cashCid: cashCid as string as ContractId<Transferable>,
       investmentRequestCids: cs.map(c => c.contractId)
     };
-    await ledger.exercise(FundService.PoolInvestmentRequests, service.contractId, arg);
+    await ledger.exercise(FundService.PoolInvestmentRequests, svc.service.contractId, arg);
     navigate("../pooledrequests");
   }
 

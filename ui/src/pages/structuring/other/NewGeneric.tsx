@@ -5,8 +5,8 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import classnames from "classnames";
-import { useLedger } from "@daml/react";
-import { Typography, Grid, Paper, Button, TextField } from "@mui/material";
+import { useLedger, useParty } from "@daml/react";
+import { Typography, Grid, Paper, Button } from "@mui/material";
 import useStyles from "../../styles";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../../components/Claims/ClaimsTreeBuilder";
 import { nodeToClaim } from "../../../components/Claims/util";
@@ -15,24 +15,25 @@ import { singleton } from "../../../util";
 import { emptyMap } from "@daml/types";
 import { useParties } from "../../../context/PartiesContext";
 import { useInstruments } from "../../../context/InstrumentContext";
-import { Message } from "../../../components/Message/Message";
 import { useServices } from "../../../context/ServicesContext";
-import { Service as Structuring } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Service";
-import { Service as StructuringAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service";
+import { Service as Structuring } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Structuring/Service";
+import { Service as StructuringAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Structuring/Auto";
+import { TextInput } from "../../../components/Form/TextInput";
 
 export const NewGeneric : React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
 
   const [ id, setId ] = useState("");
+  const [ description, setDescription ] = useState("");
   const [ node, setNode ] = useState<ClaimTreeNode>({ id: uuidv4(), tag: "Claim", type: "Claim", children: [] });
 
   const { getParty } = useParties();
   const ledger = useLedger();
+  const party = useParty();
   const { loading: l1, structuring, structuringAuto } = useServices();
   const { loading: l2, tokens, equities } = useInstruments();
   if (l1 || l2) return <Spinner />;
-  if (structuring.length === 0) return <Message text={"No structuring service found"} />;
 
   // TODO: What we actually want here is a list of underlyings, which in theory could be anything.
   // But for demo simplicity purposes we keep it to tokens and equities for now.
@@ -44,15 +45,19 @@ export const NewGeneric : React.FC = () => {
     const epoch = new Date(1970, 1, 1).toISOString();
     const observers = emptyMap<string, any>().set("Public", singleton(getParty("Public")));
     const arg = {
-      id,
-      description: id,
+      id: { unpack: id },
+      description,
       claims,
       acquisitionTime: epoch,
       lastEventTimestamp: epoch,
       observers
     };
-    if (structuringAuto.length > 0) await ledger.exercise(StructuringAuto.RequestAndCreateGeneric, structuringAuto[0].contractId, arg);
-    else await ledger.exercise(Structuring.RequestCreateGeneric, structuring[0].contractId, arg);
+    // TODO: Assumes single service
+    const svc = structuring.services[0];
+    const auto = structuringAuto.services[0];
+    if (!svc) throw new Error("No structuring service found for customer [" + party + "]");
+    if (!!auto) await ledger.exercise(StructuringAuto.RequestAndCreateGeneric, auto.service.contractId, arg);
+    else await ledger.exercise(Structuring.RequestCreateGeneric, svc.service.contractId, arg);
     navigate("/app/structuring/instruments");
   };
 
@@ -64,7 +69,8 @@ export const NewGeneric : React.FC = () => {
       <Grid container direction="row" spacing={2}>
         <Grid item xs={4} />
         <Grid item xs={4}>
-          <TextField className={classes.inputField} InputLabelProps={{ className: classes.inputFieldPlaceholder }} fullWidth label="Id" type="text" value={id} onChange={e => setId(e.target.value as string)} />
+          <TextInput    label="Id"                      value={id}                    setValue={setId} />
+          <TextInput    label="Description"             value={description}           setValue={setDescription} />
         </Grid>
         <Grid item xs={4} />
       </Grid>

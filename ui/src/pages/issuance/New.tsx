@@ -12,7 +12,7 @@ import { Spinner } from "../../components/Spinner/Spinner";
 import { Reference } from "@daml.js/daml-finance-interface-account/lib/Daml/Finance/Interface/Account/Account";
 import { useServices } from "../../context/ServicesContext";
 import { useInstruments } from "../../context/InstrumentContext";
-import { Service as BackToBack } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/BackToBack/Service";
+import { Service as BackToBack } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Issuance/BackToBack";
 import { Service as IssuanceAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Issuance/Auto";
 import { Service as Issuance } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Issuance/Service";
 import { Message } from "../../components/Message/Message";
@@ -31,7 +31,7 @@ export const New : React.FC = () => {
 
   const ledger = useLedger();
   const party = useParty();
-  const { loading: l1, backToBack, issuance } = useServices();
+  const { loading: l1, backToBack, issuance, issuanceAuto } = useServices();
   const { loading: l2, latests } = useInstruments();
   const { loading: l3, contracts: accounts } = useStreamQueries(Reference);
 
@@ -41,7 +41,7 @@ export const New : React.FC = () => {
   if (l1 || l2 || l3) return <Spinner />;
   if (issuance.services.length === 0) return (<Message text="No issuance service found" />);
 
-  const myB2BServices = backToBack.filter(s => s.payload.customer === party);
+  const myB2BServices = backToBack.services.filter(s => s.payload.customer === party);
   const hasB2B = myB2BServices.length > 0;
   const canRequest = !!instrumentLabel && !!aggregate && !!amount;
 
@@ -52,19 +52,17 @@ export const New : React.FC = () => {
       const providerAccount = accounts.find(c => c.payload.accountView.custodian === myB2BServices[0].payload.provider && c.payload.accountView.owner === myB2BServices[0].payload.provider);
       if (!aggregate || !customerAccount || !providerAccount) return;
       const arg = {
-        id: { unpack : uuidv4() },
+        issuanceId: { unpack : uuidv4() },
         description: "Issuance of " + fmt(amount, 0) + " " + aggregate.key.id.unpack,
         quantity: { amount: amount, unit: aggregate.key },
         customerAccount: customerAccount.key,
         providerAccount: providerAccount.key
       };
-      await ledger.exercise(BackToBack.CreateIssuance, myB2BServices[0].contractId, arg);
+      await ledger.exercise(BackToBack.CreateIssuance, myB2BServices[0].service.contractId, arg);
       navigate("/app/issuance/issuances");
     } else {
       if (!aggregate) throw new Error("Aggregate with label [" + instrumentLabel + "] not found");
       const account = accounts.find(c => c.payload.accountView.custodian === aggregate.payload.depository && c.payload.accountView.owner === party);
-      const svc = issuance.getService(aggregate.payload.depository, party); // TODO: Assumes depository is custodian
-      if (!svc) throw new Error("No issuance service found for provider [" + aggregate.payload.depository + "] and customer [" + party + "]");
       if (!account) throw new Error("No account found for custodian " + aggregate.payload.depository + " and owner " + party);
       const arg = {
         issuanceId: { unpack : uuidv4() },
@@ -72,7 +70,11 @@ export const New : React.FC = () => {
         quantity: { amount: amount, unit: aggregate.key },
         account: account.key,
       };
-      if (!!svc.auto) await ledger.exercise(IssuanceAuto.RequestAndIssue, svc.auto.contractId, arg);
+      // TODO: Assumes depository is custodian
+      const svc = issuance.getService(aggregate.payload.depository, party);
+      const auto = issuanceAuto.getService(aggregate.payload.depository, party);
+      if (!svc) throw new Error("No issuance service found for provider [" + aggregate.payload.depository + "] and customer [" + party + "]");
+      if (!!auto) await ledger.exercise(IssuanceAuto.RequestAndIssue, auto.service.contractId, arg);
       else await ledger.exercise(Issuance.RequestIssue, svc.service.contractId, arg);
       navigate("/app/issuance/issuances");
     }

@@ -17,7 +17,7 @@ export const Exchanges : React.FC = () => {
     <Grid container direction="column" className={classes.bg}>
       <Grid item xs={12}>
         <Grid container direction="row" spacing={2}>
-          {decentralizedExchange.map(c => c.payload).sort((a, b) => a.id.unpack.localeCompare(b.id.unpack)).map((p, i) => <Dex key={i} service={p} />)}
+          {decentralizedExchange.services.map(c => c.service.payload).sort((a, b) => a.id.unpack.localeCompare(b.id.unpack)).map((p, i) => <Dex key={i} service={p} />)}
         </Grid>
       </Grid>
     </Grid>

@@ -9,8 +9,9 @@ import { fmt } from "../../../util";
 import { useParties } from "../../../context/PartiesContext";
 import { useServices } from "../../../context/ServicesContext";
 import { Alignment, HorizontalTable } from "../../../components/Table/HorizontalTable";
-import { Service as FundService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Fund/Service";
-import { Fund, PooledInvestmentRequest } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Fund/Model";
+import { Service as FundService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Fund/Service";
+import { Fund } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Fund/Fund";
+import { PooledInvestmentRequest } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Fund/PooledInvestmentRequest";
 import { Button } from "@mui/material";
 import useStyles from "../../styles";
 import { NumericObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/NumericObservable";
@@ -29,12 +30,12 @@ export const PooledRequests : React.FC = () => {
   const { loading: l5, contracts: factories } = useStreamQueries(Factory);
   if (l1 || l2 || l3 || l4 || l5) return <Spinner />;
 
-  const myServices = fund.filter(s => s.payload.provider === party);
+  const myServices = fund.services.filter(s => s.payload.provider === party);
   const canFulFill = myServices.length > 0;
 
   const fulfillRequest = async (pir : CreateEvent<PooledInvestmentRequest>) => {
-    const service = myServices[0];
-    if (!service) throw new Error("No fund service found");
+    const svc = myServices[0];
+    if (!svc) throw new Error("No fund service found");
     const fundId = pir.payload.fundId.unpack;
     const fundContract = funds.find(c => c.payload.id.unpack === fundId);
     if (!fundContract) throw new Error("Fund [" + fundId + "] not found");
@@ -42,16 +43,16 @@ export const PooledRequests : React.FC = () => {
     if (!observable) throw new Error("NAV observable for [" + fundId + "] not found");
     const factory = factories[0];
     if (!factory) throw new Error("Settlement factory not found");
-    const svc = issuance.getService(fundContract.payload.custodian, party);
-    if (!svc) throw new Error("No issuance service found for provider [" + fundContract.payload.custodian + "] and customer [" + party + "]");
+    const issuanceSvc = issuance.getService(fundContract.payload.custodian, party);
+    if (!issuanceSvc) throw new Error("No issuance service found for provider [" + fundContract.payload.custodian + "] and customer [" + party + "]");
     const arg = {
       pooledInvestmentRequestCid: pir.contractId,
       fundCid: fundContract.contractId,
       navObservableCid: observable.contractId,
       settlementFactoryCid: factory.contractId,
-      issuanceServiceCid: svc.service.contractId
+      issuanceServiceCid: issuanceSvc.service.contractId
     };
-    await ledger.exercise(FundService.FulfillPooledInvestmentRequest, service.contractId, arg);
+    await ledger.exercise(FundService.FulfillPooledInvestmentRequest, svc.service.contractId, arg);
   }
 
   const createRow = (c : CreateEvent<PooledInvestmentRequest>) : any[] => {

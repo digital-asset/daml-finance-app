@@ -9,7 +9,7 @@ import useStyles from "./styles";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
 import { and, claimToNode } from "../../components/Claims/util";
 import { InstrumentAggregate } from "../../context/InstrumentContext";
-import { Service as Lifecycle } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Service";
+import { Service as Lifecycle } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Lifecycle/Service";
 import { useParties } from "../../context/PartiesContext";
 import { shorten } from "../../util";
 import { Spinner } from "../Spinner/Spinner";
@@ -32,12 +32,12 @@ export const Aggregate : React.FC<AggregateProps> = ({ instrument }) => {
   useEffect(() => {
     const setClaims = async () => {
       if (!l1 && !l2 && !!instrument.claim) {
-        const [res, ] = await ledger.exercise(Lifecycle.GetCurrentClaims, lifecycle[0].contractId, { instrumentCid: instrument.claim.contractId, observableCids: observables.map(c => c.contractId) })
+        const [res, ] = await ledger.exercise(Lifecycle.GetCurrentClaims, lifecycle.services[0].service.contractId, { instrumentCid: instrument.claim.contractId, observableCids: observables.map(c => c.contractId) })
         const claims = res.length > 1 ? and(res.map(r => r.claim)) : res[0].claim;
         setNode(claimToNode(claims));
       }
     }
-    if (lifecycle.length > 0) setClaims();
+    if (lifecycle.services.length > 0) setClaims();
   }, [lifecycle, instrument, observables, l1, l2, ledger]);
 
   if (l1 || l2) return <Spinner />

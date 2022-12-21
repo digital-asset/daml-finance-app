@@ -18,7 +18,7 @@ export const Offerings : React.FC = () => {
 
   const createRow = (c : CreateEvent<Offering>) : any[] => {
     return [
-      c.payload.offeringId,
+      c.payload.id.unpack,
       getName(c.payload.provider),
       getName(c.payload.issuer),
       fmt(c.payload.asset.amount) + " " + c.payload.asset.unit.id.unpack,

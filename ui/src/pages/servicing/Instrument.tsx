@@ -8,14 +8,13 @@ import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Typography, Grid, Table, TableBody, TableCell, TableRow, Paper, Button, TableHead, Accordion, AccordionSummary, AccordionDetails } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
 import useStyles from "../styles";
-import { Service as Lifecycle } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Service";
+import { Service as Lifecycle } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Lifecycle/Service";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
 import { and, C, claimToNode } from "../../components/Claims/util";
 import { useParties } from "../../context/PartiesContext";
 import { useInstruments } from "../../context/InstrumentContext";
 import { useServices } from "../../context/ServicesContext";
-import { Message } from "../../components/Message/Message";
 import { NumericObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/NumericObservable";
 import { TimeObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/TimeObservable";
 import { Event } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Event";
@@ -51,24 +50,27 @@ export const Instrument : React.FC = () => {
   const { contractId } = useParams<any>();
   const loading = l1 || l2 || l3 || l4 || l5;
   const instrument = getByCid(contractId || "");
+  const svc = lifecycle.services[0]?.service;
 
   useEffect(() => {
     const setClaims = async () => {
       if (loading || !lifecycle || !instrument.claim) return;
       const observableCids = numericObservables.map(c => c.contractId);
-      const [res, ] = await ledger.exercise(Lifecycle.GetCurrentClaims, lifecycle[0].contractId, { instrumentCid: instrument.claim.contractId, observableCids })
+      const [res, ] = await ledger.exercise(Lifecycle.GetCurrentClaims, svc.contractId, { instrumentCid: instrument.claim.contractId, observableCids })
       const claims = res.length > 1 ? and(res.map(r => r.claim)) : res[0].claim;
       setNode1(claimToNode(claims));
     };
     setClaims();
-  }, [ledger, party, instrument, numericObservables, lifecycle, loading]);
+  }, [ledger, party, instrument, numericObservables, lifecycle, svc, loading]);
 
   useEffect(() => {
     if (!!remaining) setNode2(claimToNode(remaining));
   }, [remaining]);
 
   if (loading) return <Spinner />;
-  if (lifecycle.length === 0) return <Message text={"No lifecycle service found"} />;
+
+  // TODO: Assumes single service
+  if (!svc) throw new Error("No lifecycle service found for customer [" + party + "]");
 
   const canDeclareDividend = !!description && !!effectiveDate && !!currency && !!amount;
   const canDeclareStockSplit = !!description && !!effectiveDate && !!amount;
@@ -76,7 +78,7 @@ export const Instrument : React.FC = () => {
 
   const previewLifecycle = async () => {
     const observableCids = numericObservables.map(c => c.contractId);
-    const [ res, ] = await ledger.exercise(Lifecycle.PreviewLifecycle, lifecycle[0].contractId, { today: timeObservables[0].payload.time, observableCids, instrumentCid: instrument.claim!.contractId });
+    const [ res, ] = await ledger.exercise(Lifecycle.PreviewLifecycle, svc.contractId, { today: timeObservables[0].payload.time, observableCids, instrumentCid: instrument.claim!.contractId });
     const claims = res._1.length > 1 ? and(res._1.map(r => r.claim)) : res._1[0].claim;
     setRemaining(claims);
     setPending(res._2);
@@ -91,7 +93,7 @@ export const Instrument : React.FC = () => {
       observableCids,
       lifecyclableCid: instrument.lifecycle!.contractId
     }
-    await ledger.exercise(Lifecycle.Lifecycle, lifecycle[0].contractId, arg);
+    await ledger.exercise(Lifecycle.Lifecycle, svc.contractId, arg);
     navigate("/app/servicing/effects");
   };
 
@@ -112,7 +114,7 @@ export const Instrument : React.FC = () => {
       effectiveDate: parseDate(effectiveDate),
       perUnitDistribution: [ { amount, unit: ccy.key } ]
     };
-    await ledger.exercise(Lifecycle.DeclareDividend, lifecycle[0].contractId, arg);
+    await ledger.exercise(Lifecycle.DeclareDividend, svc.contractId, arg);
     navigate("/app/servicing/effects");
   };
 
@@ -127,7 +129,7 @@ export const Instrument : React.FC = () => {
       effectiveDate: parseDate(effectiveDate),
       adjustmentFactor: amount
     };
-    await ledger.exercise(Lifecycle.DeclareStockSplit, lifecycle[0].contractId, arg);
+    await ledger.exercise(Lifecycle.DeclareStockSplit, svc.contractId, arg);
     navigate("/app/servicing/effects");
   };
 
@@ -143,7 +145,7 @@ export const Instrument : React.FC = () => {
       effectiveDate: parseDate(effectiveDate),
       perUnitReplacement: [ { amount, unit: ccy.key } ]
     };
-    await ledger.exercise(Lifecycle.DeclareReplacement, lifecycle[0].contractId, arg);
+    await ledger.exercise(Lifecycle.DeclareReplacement, svc.contractId, arg);
     navigate("/app/servicing/effects");
   };
 

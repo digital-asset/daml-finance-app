@@ -9,9 +9,9 @@ import { Typography, Grid, Table, TableBody, TableCell, TableRow, TextField, But
 import { useParams } from "react-router-dom";
 import useStyles from "../styles";
 import { Listing } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Model";
-import { Order, Side } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Trading/Model";
-import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Trading/Service";
-import { Service as AutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Trading/Auto/Service";
+import { Order, Side } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Trading/Order";
+import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Trading/Service";
+import { Service as Auto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Trading/Auto";
 import { CreateEvent } from "@daml/ledger";
 import { createSet, fmt, keyEquals } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
@@ -72,11 +72,7 @@ export const Market : React.FC = () => {
   const { contractId } = useParams<any>();
   if (l1 || l2 || l3 || l4 || l5 || !contractId) return <Spinner />;
 
-  const myServices = trading.filter(s => s.payload.customer === party);
-  const myAutoServices = tradingAuto.filter(s => s.payload.customer === party);
   const listing = listings.find(c => c.contractId === contractId);
-
-  if (myServices.length === 0) return <Message text="No trading service found" />;
   if (!listing) return <Message text="Listing not found" />;
 
   const limits = orders.filter(c => c.payload.listingId.unpack === listing.payload.id.unpack && parseFloat(c.payload.quantity.amount) !== 0);
@@ -92,6 +88,10 @@ export const Market : React.FC = () => {
   const availableQuantity = isBuy ? fmt(quotedHoldingsTotal) + " " + listing.payload.quotedInstrument.id.unpack : fmt(tradedHoldingsTotal) + " " + listing.payload.tradedInstrument.id.unpack;
 
   const requestCreateOrder = async () => {
+    // TODO: Assumes single service
+    const svc = trading.services[0];
+    const auto = tradingAuto.services[0];
+    if (!svc) throw new Error("No trading service found for customer [" + party + "]");
     const collateralCid = isBuy ? await getFungible(party, price * amount, listing.payload.quotedInstrument) : await getFungible(party, amount, listing.payload.tradedInstrument);
     const account = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === (isBuy ? listing.payload.tradedInstrument : listing.payload.quotedInstrument).depository);
     const orderCids = isBuy ? asks.map(c => c.contractId) : bids.map(c => c.contractId);
@@ -107,11 +107,8 @@ export const Market : React.FC = () => {
       orderCids,
       observers: createSet([ getParty("Public") ])
     }
-    if (myAutoServices.length > 0) {
-      await ledger.exercise(AutoService.RequestAndCreateOrder, myAutoServices[0].contractId, arg);
-    } else {
-      await ledger.exercise(Service.RequestCreateOrder, myServices[0].contractId, arg);
-    }
+    if (!!auto) await ledger.exercise(Auto.RequestAndCreateOrder, auto.service.contractId, arg);
+    else await ledger.exercise(Service.RequestCreateOrder, svc.service.contractId, arg);
   };
 
   const getPrice = (c : CreateEvent<Order>) => {

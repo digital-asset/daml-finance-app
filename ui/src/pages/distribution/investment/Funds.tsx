@@ -23,7 +23,7 @@ export const Funds : React.FC = () => {
   const { loading: l1, investment } = useServices();
   const { loading: l2, contracts: requests } = useStreamQueries(Fund);
   if (l1 || l2) return <Spinner />;
-  const isInvestor = !!investment.find(c => c.payload.customer === party);
+  const isInvestor = !!investment.services.find(c => c.payload.customer === party);
 
   const createRow = (c : CreateEvent<Fund>) : any[] => {
     return [
