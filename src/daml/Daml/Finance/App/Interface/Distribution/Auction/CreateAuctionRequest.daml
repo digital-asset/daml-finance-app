@@ -5,8 +5,8 @@ module Daml.Finance.App.Interface.Distribution.Auction.CreateAuctionRequest wher
 
 import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Implementation)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K, Q)
-import Daml.Finance.Interface.Types.Common (AccountKey, Id, Parties)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
+import Daml.Finance.Interface.Types.Common (AccountKey, Id, InstrumentKey, Parties)
 
 type I = CreateAuctionRequest
 
@@ -20,7 +20,7 @@ data View = View
     auctionId : Id
     description : Text
     quantity : Instrument.Q
-    currency : Instrument.K
+    currency : InstrumentKey
     floor : Decimal
     collateralCid : ContractId Fungible.I
     receivableAccount : AccountKey

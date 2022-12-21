@@ -8,8 +8,7 @@ import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Vi
 import Daml.Finance.App.Interface.Listing.DelistingRequest qualified as DelistingRequest (I, View(..))
 import Daml.Finance.App.Interface.Listing.Listing qualified as Listing (I, View(..))
 import Daml.Finance.App.Interface.Listing.ListingRequest qualified as ListingRequest (I, View(..))
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K)
-import Daml.Finance.Interface.Types.Common (Id, Parties)
+import Daml.Finance.Interface.Types.Common (Id, InstrumentKey, Parties)
 
 type T = Listing
 
@@ -20,8 +19,8 @@ template Listing
     customer : Party
     id : Id
     description : Text
-    tradedInstrument : Instrument.K
-    quotedInstrument : Instrument.K
+    tradedInstrument : InstrumentKey
+    quotedInstrument : InstrumentKey
     observers : Parties
   where
     signatory operator, provider, customer
@@ -45,8 +44,8 @@ template ListingRequest
     customer : Party
     listingId : Id
     description : Text
-    tradedInstrument : Instrument.K
-    quotedInstrument : Instrument.K
+    tradedInstrument : InstrumentKey
+    quotedInstrument : InstrumentKey
     observers : Parties
   where
     signatory operator, provider, customer

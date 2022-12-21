@@ -5,8 +5,7 @@ module Daml.Finance.App.Interface.Listing.Auto where
 
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I)
 import Daml.Finance.App.Interface.Listing.Listing qualified as Listing (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K)
-import Daml.Finance.Interface.Types.Common (Id, Parties)
+import Daml.Finance.Interface.Types.Common (Id, InstrumentKey, Parties)
 
 type I = Service
 
@@ -31,8 +30,8 @@ interface Service where
     with
       listingId : Id
       description : Text
-      tradedInstrument : Instrument.K
-      quotedInstrument : Instrument.K
+      tradedInstrument : InstrumentKey
+      quotedInstrument : InstrumentKey
       observers : Parties
     controller (view $ asBase this).customer
     do

@@ -8,9 +8,9 @@ import Daml.Finance.App.Interface.Distribution.Auction.Auction qualified as Auct
 import Daml.Finance.App.Interface.Distribution.Auction.CreateAuctionRequest qualified as CreateAuctionRequest (I)
 import Daml.Finance.App.Interface.Distribution.Bidding.Bid qualified as Bid (I)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K, Q)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 import Daml.Finance.Interface.Settlement.Factory qualified as SettlementFactory (I)
-import Daml.Finance.Interface.Types.Common (AccountKey, Id, Parties)
+import Daml.Finance.Interface.Types.Common (AccountKey, Id, InstrumentKey, Parties)
 
 type I = Service
 
@@ -39,7 +39,7 @@ interface Service where
       auctionId : Id
       description : Text
       quantity : Instrument.Q
-      currency : Instrument.K
+      currency : InstrumentKey
       floor : Decimal
       collateralCid : ContractId Fungible.I
       receivableAccount : AccountKey

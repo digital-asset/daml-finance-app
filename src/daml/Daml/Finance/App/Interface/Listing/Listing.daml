@@ -4,8 +4,7 @@
 module Daml.Finance.App.Interface.Listing.Listing where
 
 import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Implementation)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K)
-import Daml.Finance.Interface.Types.Common (Id, Parties)
+import Daml.Finance.Interface.Types.Common (Id, InstrumentKey, Parties)
 
 type I = Listing
 
@@ -18,8 +17,8 @@ data View = View
     customer : Party
     id : Id
     description : Text
-    tradedInstrument : Instrument.K
-    quotedInstrument : Instrument.K
+    tradedInstrument : InstrumentKey
+    quotedInstrument : InstrumentKey
     observers : Parties
   deriving (Eq, Show)
 

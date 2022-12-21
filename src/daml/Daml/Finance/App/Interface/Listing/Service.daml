@@ -7,8 +7,7 @@ import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Implementat
 import Daml.Finance.App.Interface.Listing.Listing qualified as Listing (I)
 import Daml.Finance.App.Interface.Listing.ListingRequest qualified as ListingRequest (I)
 import Daml.Finance.App.Interface.Listing.DelistingRequest qualified as DelistingRequest (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K)
-import Daml.Finance.Interface.Types.Common (Id, Parties)
+import Daml.Finance.Interface.Types.Common (Id, InstrumentKey, Parties)
 import Prelude hiding (List)
 
 type I = Service
@@ -40,8 +39,8 @@ interface Service where
     with
       listingId : Id
       description : Text
-      tradedInstrument : Instrument.K
-      quotedInstrument : Instrument.K
+      tradedInstrument : InstrumentKey
+      quotedInstrument : InstrumentKey
       observers : Parties
     controller (view $ asBase this).customer
     do

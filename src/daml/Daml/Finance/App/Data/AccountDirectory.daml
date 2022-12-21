@@ -26,4 +26,3 @@ template AccountDirectory
       controller actor
       do
         pure this
-        

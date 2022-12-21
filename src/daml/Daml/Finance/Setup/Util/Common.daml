@@ -10,7 +10,8 @@ import DA.Optional (fromOptional)
 import Daml.Finance.Holding.Fungible qualified as Fungible (T)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..), SplitResult(..))
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (GetCid(..), K, Q, R)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (GetCid(..), Q, R)
+import Daml.Finance.Interface.Types.Common (InstrumentKey)
 import Daml.Script
 
 data PartyInfo = PartyInfo
@@ -52,5 +53,5 @@ submitExerciseInterfaceByKeyCmdHelper actAs readAs k arg1 arg2 = do
   submitMulti actAs readAs do exerciseCmd cid' arg2
 
 -- | Utility for exercising an interface by key.
-submitExerciseInterfaceByKeyCmd : forall t2 c2 b . HasTemplateTypeRep t2 => HasToAnyTemplate t2 => HasFromAnyTemplate t2 => HasFromAnyChoice t2 c2 b => HasToAnyChoice t2 c2 b => HasExercise t2 c2 b => [Party] -> [Party] -> Instrument.K -> c2 -> Script b
+submitExerciseInterfaceByKeyCmd : forall t2 c2 b . HasTemplateTypeRep t2 => HasToAnyTemplate t2 => HasFromAnyTemplate t2 => HasFromAnyChoice t2 c2 b => HasToAnyChoice t2 c2 b => HasExercise t2 c2 b => [Party] -> [Party] -> InstrumentKey -> c2 -> Script b
 submitExerciseInterfaceByKeyCmd actAs readAs k arg = submitExerciseInterfaceByKeyCmdHelper @Instrument.R @t2 actAs readAs k (Instrument.GetCid with viewer = head actAs) arg

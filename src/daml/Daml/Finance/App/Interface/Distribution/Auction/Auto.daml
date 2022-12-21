@@ -6,8 +6,8 @@ module Daml.Finance.App.Interface.Distribution.Auction.Auto where
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I)
 import Daml.Finance.App.Interface.Distribution.Auction.Auction qualified as Auction (I)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K, Q)
-import Daml.Finance.Interface.Types.Common (AccountKey, Id, Parties)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
+import Daml.Finance.Interface.Types.Common (AccountKey, Id, InstrumentKey, Parties)
 
 type I = Service
 
@@ -30,7 +30,7 @@ interface Service where
       auctionId : Id
       description : Text
       quantity : Instrument.Q
-      currency : Instrument.K
+      currency : InstrumentKey
       floor : Decimal
       collateralCid : ContractId Fungible.I
       receivableAccount : AccountKey

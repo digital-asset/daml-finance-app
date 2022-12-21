@@ -10,13 +10,13 @@ import ContingentClaims.Lifecycle.Lifecycle qualified as Lifecycle
 import ContingentClaims.Valuation.Stochastic (Expr)
 import Daml.Finance.Interface.Data.NumericObservable qualified as NumericObservable (I)
 import Daml.Finance.Interface.Data.TimeObservable qualified as TimeObservable (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K, Q)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 import Daml.Finance.Interface.Claims.Claim qualified as Claim (Claim)
 import Daml.Finance.Interface.Claims.Types (C, Pending, TaggedClaim)
 import Daml.Finance.Interface.Lifecycle.Effect qualified as Effect (I)
 import Daml.Finance.Interface.Lifecycle.Event qualified as Event (I)
 import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (I)
-import Daml.Finance.Interface.Types.Common (Id)
+import Daml.Finance.Interface.Types.Common (Id, InstrumentKey)
 
 type I = Service
 
@@ -46,7 +46,7 @@ interface Service where
   previewLifecycle : PreviewLifecycle -> Update ([TaggedClaim], [Pending])
     -- ^ Implementation of the `PreviewLifecycle` choice.
 
-  simulateLifecycle : SimulateLifecycle -> Update [[Lifecycle.Pending Time Instrument.K]]
+  simulateLifecycle : SimulateLifecycle -> Update [[Lifecycle.Pending Time InstrumentKey]]
     -- ^ Implementation of the `SimulateLifecycle` choice.
 
   getCurrentClaims : GetCurrentClaims -> Update [TaggedClaim]
@@ -58,10 +58,10 @@ interface Service where
   expiry : Expiry -> Update (Optional Time)
     -- ^ Implementation of the `Expiry` choice.
 
-  underlyings : Underlyings -> Update [Instrument.K]
+  underlyings : Underlyings -> Update [InstrumentKey]
     -- ^ Implementation of the `Underlyings` choice.
 
-  payoffs : Payoffs -> Update [(Observation Time Decimal Text, Instrument.K)]
+  payoffs : Payoffs -> Update [(Observation Time Decimal Text, InstrumentKey)]
     -- ^ Implementation of the `Payoffs` choice.
 
   fixings : Fixings -> Update [Time]
@@ -76,7 +76,7 @@ interface Service where
   nonconsuming choice DeclareDividend : [ContractId Effect.I]
     with
       timeObservableCid : ContractId TimeObservable.I
-      equity : Instrument.K
+      equity : InstrumentKey
       newVersion : Text
       id : Id
       description : Text
@@ -89,7 +89,7 @@ interface Service where
   nonconsuming choice DeclareReplacement : [ContractId Effect.I]
     with
       timeObservableCid : ContractId TimeObservable.I
-      equity : Instrument.K
+      equity : InstrumentKey
       id : Id
       description : Text
       effectiveDate : Date
@@ -101,7 +101,7 @@ interface Service where
   nonconsuming choice DeclareStockSplit : [ContractId Effect.I]
     with
       timeObservableCid : ContractId TimeObservable.I
-      equity : Instrument.K
+      equity : InstrumentKey
       newVersion : Text
       id : Id
       description : Text
@@ -120,7 +120,7 @@ interface Service where
     do
       previewLifecycle this arg
 
-  nonconsuming choice SimulateLifecycle : [[Lifecycle.Pending Time Instrument.K]]
+  nonconsuming choice SimulateLifecycle : [[Lifecycle.Pending Time InstrumentKey]]
     with
       today : Time
       prices : [Decimal]
@@ -155,14 +155,14 @@ interface Service where
     do
       expiry this arg
 
-  nonconsuming choice Underlyings : [Instrument.K]
+  nonconsuming choice Underlyings : [InstrumentKey]
     with
       claims : C
     controller (view $ asBase this).customer
     do
       underlyings this arg
 
-  nonconsuming choice Payoffs : [(Observation Time Decimal Text, Instrument.K)]
+  nonconsuming choice Payoffs : [(Observation Time Decimal Text, InstrumentKey)]
     with
       claims : C
     controller (view $ asBase this).customer
