@@ -3,7 +3,7 @@
 
 module Daml.Finance.App.Distribution.Auction.Utils where
 
-import DA.Set (singleton)
+import DA.Set (fromList, singleton)
 import Daml.Finance.App.Distribution.Bidding.Service qualified as Service (T)
 import Daml.Finance.App.Interface.Distribution.Bidding.Service qualified as Service (I, ProcessAllocation(..))
 import Daml.Finance.App.Interface.Distribution.Bidding.Bid qualified as Bid (AllocateInstruction(..), Allocation(..), ApproveInstruction(..), I, SettleAllocation(..), View)
@@ -84,9 +84,9 @@ generateSettlementInstruction settlementServiceCid settler issuerAccount (Some i
     contextId = Some $ Id id
     settlementTime = None
     steps = [delivery, payment]
-  deliveryCid <- fst <$> exercise deliveryCid Allocate with actors = singleton settler; allocation = Pledge $ toInterfaceContractId allocatedDepositCid
+  deliveryCid <- fst <$> exercise deliveryCid Allocate with actors = singleton issuer; allocation = Pledge $ toInterfaceContractId allocatedDepositCid
   exercise bidCid Bid.ApproveInstruction with instructionCid = deliveryCid; account = bid.receivableAccount
   paymentCid <- exercise bidCid Bid.AllocateInstruction with instructionCid = paymentCid; holdingCid = bidDepositCid
-  exercise paymentCid Approve with actors = singleton settler; approval = TakeDelivery issuerAccount
+  exercise paymentCid Approve with actors = fromList [issuer]; approval = TakeDelivery issuerAccount
 
   pure (splitResult.rest, batchCid :: batchCids)

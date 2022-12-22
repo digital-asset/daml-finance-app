@@ -33,7 +33,7 @@ type ServicesAggregate<S extends object> = {
   getService : (provider : string, customer : string) => ServiceAggregate<S> | undefined
 };
 
-type ServiceAggregate<S extends object> = CreateEvent<BaseService> & {
+export type ServiceAggregate<S extends object> = CreateEvent<BaseService> & {
   service : CreateEvent<S>
 };
 

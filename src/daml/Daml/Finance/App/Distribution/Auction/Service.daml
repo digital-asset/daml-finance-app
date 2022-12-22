@@ -14,7 +14,6 @@ import DA.Set (fromList, singleton)
 import Daml.Finance.App.Distribution.Auction.Model qualified as Model (Auction(..), CreateAuctionRequest(..))
 import Daml.Finance.App.Distribution.Auction.Utils (dutchAuction, splitList, generateSettlementInstruction)
 import Daml.Finance.App.Distribution.Bidding.Service qualified as BiddingService (T)
-import Daml.Finance.App.Settlement.Service qualified as SettlementService (T)
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
 import Daml.Finance.App.Interface.Common.Util (fetchAndRemove)
 import Daml.Finance.App.Interface.Distribution.Auction.Auction qualified as Auction (Status(..))
@@ -38,6 +37,7 @@ template Service
     operator : Party
     provider : Party
     customer : Party
+    settlementServiceCid : ContractId SettlementService.I
   where
     signatory operator, provider, customer
 
@@ -50,7 +50,7 @@ template Service
       terminate = pure ()
 
     interface instance Service.I for Service where
-      view = Service.View
+      view = Service.View with settlementServiceCid
 
       asBase = toInterface @Base.I this
 
@@ -104,7 +104,6 @@ template Service
         auctionCollateralClid <- coerceContractId <$> exercise (toInterfaceContractId auction.collateralCid : ContractId Holding.I) Holding.Release with context = show auction.id
 
         -- Generate Settlement instructions for allocated bids
-        settlementServiceCid <- toInterfaceContractId @SettlementService.I . fst <$> fetchByKey @SettlementService.T (operator, provider, customer)
         let
           settleAllocations = (\allocation -> Bid.SettleAllocation with allocation; price = finalPrice; issuer = customer) <$> allocatedBids
           folder = generateSettlementInstruction settlementServiceCid provider auction.receivableAccount
@@ -137,6 +136,7 @@ template Offer
     operator : Party
     provider : Party
     customer : Party
+    settlementServiceCid : ContractId SettlementService.I
   where
     signatory operator, provider
     observer customer
@@ -144,7 +144,7 @@ template Offer
     choice Accept : ContractId Service
       controller customer
       do
-        create Service with ..
+        create Service with operator; provider; customer; settlementServiceCid
 
     choice Decline : ()
       controller customer
@@ -174,6 +174,7 @@ template Request
     choice Approve : ContractId Service
       with
         operator : Party
+        settlementServiceCid : ContractId SettlementService.I
       controller operator, provider
       do
-        create Service with ..
+        create Service with operator; provider; customer; settlementServiceCid

@@ -6,6 +6,7 @@ module Daml.Finance.App.Role.Custodian where
 import Daml.Finance.App.Custody.Auto qualified as CustodyAuto (Approve(..), Offer(..), Request, Service)
 import Daml.Finance.App.Custody.Service qualified as Custody (Approve(..), Offer(..), Request, Service)
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Terminate(..))
+import Daml.Finance.App.Interface.Settlement.Service qualified as SettlementService (I)
 import Daml.Finance.App.Issuance.Auto qualified as IssuanceAuto (Approve(..), Offer(..), Request, Service)
 import Daml.Finance.App.Issuance.BackToBack qualified as BackToBack (Approve(..), Offer(..), Request, Service)
 import Daml.Finance.App.Issuance.Service qualified as Issuance (Approve(..), Offer(..), Request, Service)
@@ -140,7 +141,7 @@ template Role
     nonconsuming choice OfferBackToBackService : ContractId BackToBack.Offer
       with
         customer : Party
-        public : Party
+        settlementServiceCid : ContractId SettlementService.I
       controller provider
       do
         create BackToBack.Offer with ..
@@ -148,6 +149,7 @@ template Role
     nonconsuming choice ApproveBackToBackRequest : ContractId BackToBack.Service
       with
         backToBackServiceRequestCid : ContractId BackToBack.Request
+        settlementServiceCid : ContractId SettlementService.I
       controller provider
       do
         exercise backToBackServiceRequestCid BackToBack.Approve with ..

@@ -37,6 +37,8 @@ export const singleton = <T>(value: T) : Set<T> => {
 
 export const parseDate = (d : Date | null) => (!!d && d.toString() !== "Invalid Date" && new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10)) || "";
 
+export const parseDateAsTime = (d : Date | null) => (!!d && d.toString() !== "Invalid Date" && new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString()) || "";
+
 export const keyEquals = (k1 : InstrumentKey, k2 : InstrumentKey) : boolean => {
   return k1.depository === k2.depository && k1.issuer === k2.issuer && k1.id.unpack === k2.id.unpack && k1.version === k2.version;
 };

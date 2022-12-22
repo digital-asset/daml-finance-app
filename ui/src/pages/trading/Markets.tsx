@@ -19,13 +19,14 @@ export const Markets : React.FC = () => {
     return [
       getName(c.payload.provider),
       getName(c.payload.customer),
-      c.payload.id,
+      c.payload.id.unpack,
+      c.payload.description,
       c.payload.tradedInstrument.id.unpack,
       c.payload.quotedInstrument.id.unpack,
       <DetailButton path={c.contractId} />
     ];
   }
-  const headers = ["Exchange", "Issuer", "Id", "Traded Asset", "Quoted Asset", "Details"]
+  const headers = ["Exchange", "Issuer", "Id", "Description", "Asset", "Currency", "Details"]
   const values : any[] = listings.map(createRow);
   return (
     <HorizontalTable title="Markets" variant={"h3"} headers={headers} values={values} />

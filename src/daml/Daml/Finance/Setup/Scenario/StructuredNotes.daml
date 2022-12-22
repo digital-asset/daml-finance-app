@@ -49,24 +49,24 @@ run  = do
   createDistributorRole operator issuer
 
   -- Services
-  createCustodyService            operator centralBank  issuer    paths
-  createCustodyService            operator centralBank  riskTaker paths
-  createCustodyService            operator centralBank  inv1      paths
-  createCustodyService            operator centralBank  inv2      paths
-  createCustodyService            operator centralBank  inv3      paths
-  createCustodyService            operator riskTaker    riskTaker paths
-  createCustodyService            operator riskTaker    issuer    paths
-  createCustodyService            operator issuer       issuer    paths
-  createCustodyService            operator issuer       inv1      paths
-  createCustodyService            operator issuer       inv2      paths
-  createCustodyService            operator issuer       inv3      paths
+  createCustodyService            operator centralBank  issuer    public paths
+  createCustodyService            operator centralBank  riskTaker public paths
+  createCustodyService            operator centralBank  inv1      public paths
+  createCustodyService            operator centralBank  inv2      public paths
+  createCustodyService            operator centralBank  inv3      public paths
+  createCustodyService            operator riskTaker    riskTaker public paths
+  createCustodyService            operator riskTaker    issuer    public paths
+  createCustodyService            operator issuer       issuer    public paths
+  createCustodyService            operator issuer       inv1      public paths
+  createCustodyService            operator issuer       inv2      public paths
+  createCustodyService            operator issuer       inv3      public paths
   createStructuringService        operator issuer       issuer
   createIssuanceService           operator issuer       issuer
   createIssuanceService           operator riskTaker    riskTaker
-  createBackToBackIssuanceService operator riskTaker    issuer    public
-  createLifecycleService          operator riskTaker    riskTaker public
-  createLifecycleService          operator issuer       issuer    public
-  createSubscriptionService       operator issuer       issuer    public
+  createBackToBackIssuanceService operator riskTaker    issuer    paths
+  createLifecycleService          operator riskTaker    riskTaker
+  createLifecycleService          operator issuer       issuer
+  createSubscriptionService       operator issuer       issuer    paths
 
   -- Accounts
   riskTakerCashAccount  <- createAccount operator centralBank  riskTaker  public "RiskTaker@CentralBank" $ fromList [("b2b", singleton issuer)]
@@ -167,6 +167,7 @@ run  = do
             customerHoldingCid = coerceContractId issuerAssetCid
             customerAccount = issuerCashAccount
             backToBack
+            observers = singleton public
 
       inv1SubscriptionCid <- submitMulti [inv1] [public] do exerciseCmd offeringCid Offering.Subscribe with investor = inv1; quantity = 10_000.0; investorHoldingCid = inv1CashCid; investorAccount = inv1SecAccount
       inv2SubscriptionCid <- submitMulti [inv2] [public] do exerciseCmd offeringCid Offering.Subscribe with investor = inv2; quantity = 10_000.0; investorHoldingCid = inv2CashCid; investorAccount = inv2SecAccount

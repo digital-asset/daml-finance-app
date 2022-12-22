@@ -37,13 +37,14 @@ export const Listings : React.FC = () => {
     return [
       getName(c.payload.provider),
       getName(c.payload.customer),
-      c.payload.id,
+      c.payload.id.unpack,
+      c.payload.description,
       c.payload.tradedInstrument.id.unpack,
       c.payload.quotedInstrument.id.unpack,
       <Button color="primary" size="small" className={classes.choiceButton} variant="contained" disabled={party !== c.payload.customer} onClick={() => requestDelisting(c)}>Delist</Button>
     ];
   };
-  const headers = ["Exchange", "Issuer", "Id", "Traded Asset", "Quoted Asset", "Action"]
+  const headers = ["Exchange", "Issuer", "Id", "Description", "Instrument", "Currency", "Action"]
   const values : any[] = listings.map(createRow);
   return (
     <HorizontalTable title="Listings" variant={"h3"} headers={headers} values={values} />

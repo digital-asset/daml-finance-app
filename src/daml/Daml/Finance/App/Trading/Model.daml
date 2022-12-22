@@ -66,6 +66,7 @@ template Order
           remaining = quantity.amount - min quantity.amount other.quantity.amount
           deliverable = if side == Order.Buy then price.unit else quantity.unit
           step = Step with sender = customer; receiver = other.customer; quantity = qty amount deliverable
+          actors = fromList [provider, customer] -- provider has to be part of Allocate actors due to holding being locked to them
         (batchCid, [instructionCid]) <- exercise settlementServiceCid SettlementService.DiscoverAndInstruct with
           actor = provider
           settlers = singleton provider
@@ -77,10 +78,10 @@ template Order
         Fungible.SplitResult [splitCid] restCidOpt <- exercise collateralCid Fungible.Split with amounts = [ amount ]
         if remaining == 0.0
         then do
-          instructionCid <- fst <$> exercise instructionCid Instruction.Allocate with actors = singleton provider; allocation = Pledge $ toInterfaceContractId splitCid
+          instructionCid <- fst <$> exercise instructionCid Instruction.Allocate with actors; allocation = Pledge $ toInterfaceContractId splitCid
           pure Order.FillResult with orderOpt = None; batchCid; instructionCid
         else do
-          instructionCid <- fst <$> exercise instructionCid Instruction.Allocate with actors = singleton provider; allocation = Pledge $ toInterfaceContractId splitCid
+          instructionCid <- fst <$> exercise instructionCid Instruction.Allocate with actors; allocation = Pledge $ toInterfaceContractId splitCid
           case restCidOpt of
             Some restCid -> do
               let new = this with quantity.amount = remaining; collateralCid = restCid
@@ -89,7 +90,7 @@ template Order
             None -> fail "Insufficient collateral - this should never happen"
 
       approveInstruction Order.ApproveInstruction{instructionCid} = do
-        exercise instructionCid Instruction.Approve with actors = singleton provider; approval = TakeDelivery account
+        exercise instructionCid Instruction.Approve with actors = singleton customer; approval = TakeDelivery account
 
 instance CreateOrderRequest.HasImplementation CreateOrderRequest
 

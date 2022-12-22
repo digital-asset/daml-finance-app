@@ -43,14 +43,14 @@ run  = do
   createCustodianRole operator lender
 
   -- Create custody services
-  createCustodyService      operator centralBank  borrower  paths
-  createCustodyService      operator centralBank  lender    paths
-  createCustodyService      operator registry     borrower  paths
-  createCustodyService      operator registry     lender    paths
-  createCustodyService      operator lender       borrower  paths
+  createCustodyService      operator centralBank  borrower  public paths
+  createCustodyService      operator centralBank  lender    public paths
+  createCustodyService      operator registry     borrower  public paths
+  createCustodyService      operator registry     lender    public paths
+  createCustodyService      operator lender       borrower  public paths
   createLendingService      operator lender       borrower
   createStructuringService  operator registry     lender
-  createLifecycleService    operator registry     lender    public
+  createLifecycleService    operator registry     lender
 
   -- Accounts
   borrowerLenderAccount <- createAccount operator lender      borrower  public "Borrower@Lender"       empty

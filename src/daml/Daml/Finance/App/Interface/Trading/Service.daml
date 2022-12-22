@@ -4,6 +4,7 @@
 module Daml.Finance.App.Interface.Trading.Service where
 
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Implementation)
+import Daml.Finance.App.Interface.Settlement.Service qualified as SettlementService (I)
 import Daml.Finance.App.Interface.Trading.Order qualified as Order (I, Side, View)
 import Daml.Finance.App.Interface.Trading.CreateOrderRequest qualified as CreateOrderRequest (I)
 import Daml.Finance.App.Interface.Trading.CancelOrderRequest qualified as CancelOrderRequest (I)
@@ -14,7 +15,9 @@ type I = Service
 
 type V = View
 
-data View = View {}
+data View = View
+  with
+    settlementServiceCid : ContractId SettlementService.I
   deriving (Eq, Show)
 
 interface Service where

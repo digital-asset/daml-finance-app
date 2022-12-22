@@ -130,7 +130,7 @@ export const Market : React.FC = () => {
   return (
     <Grid container direction="column" spacing={2}>
       <Grid item xs={12}>
-        <Typography variant="h3" className={classnames(cls.defaultHeading, cls.centered)}>{listing.payload.id}</Typography>
+        <Typography variant="h3" className={classnames(cls.defaultHeading, cls.centered)}>{listing.payload.description}</Typography>
       </Grid>
       <Grid item xs={12}>
         <Grid container spacing={4}>
@@ -218,11 +218,6 @@ export const Market : React.FC = () => {
                       ))}
                     </TableBody>
                   </Table>
-            </Paper>
-          </Grid>
-          <Grid item xs={4}>
-            <Paper className={classnames(cls.fullWidth, cls.paper)}>
-              <Typography variant="h5" className={cls.heading}>Trades</Typography>
             </Paper>
           </Grid>
         </Grid>

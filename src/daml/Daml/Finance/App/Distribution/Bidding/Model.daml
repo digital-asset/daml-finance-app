@@ -59,7 +59,7 @@ template Bid
         toInterfaceContractId <$> create this with status = newStatus
       approveInstruction Bid.ApproveInstruction{instructionCid; account} = do
         -- TODO: Assert instruction is for the right auction
-        exercise instructionCid Instruction.Approve with actors = singleton provider; approval = T.TakeDelivery account
+        exercise instructionCid Instruction.Approve with actors = singleton customer; approval = T.TakeDelivery account
       allocateInstruction Bid.AllocateInstruction{instructionCid; holdingCid} = do
         -- TODO: Assert instruction is for the right auction
-        fst <$> exercise instructionCid Instruction.Allocate with actors = singleton provider; allocation = T.Pledge $ toInterfaceContractId holdingCid
+        fst <$> exercise instructionCid Instruction.Allocate with actors = singleton customer; allocation = T.Pledge $ toInterfaceContractId holdingCid

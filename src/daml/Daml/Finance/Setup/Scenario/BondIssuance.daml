@@ -48,19 +48,19 @@ run = do
   createCustodianRole operator custodian
 
   -- Services
-  createCustodyService          operator centralBank  registry  paths
-  createCustodyService          operator centralBank  issuer    paths
-  createCustodyService          operator centralBank  custodian paths
-  createCustodyService          operator registry     issuer    paths
-  createCustodyService          operator registry     custodian paths
-  createCustodyService          operator custodian    inv1      paths
-  createCustodyService          operator custodian    inv2      paths
-  createCustodyService          operator custodian    inv3      paths
+  createCustodyService          operator centralBank  registry  public paths
+  createCustodyService          operator centralBank  issuer    public paths
+  createCustodyService          operator centralBank  custodian public paths
+  createCustodyService          operator registry     issuer    public paths
+  createCustodyService          operator registry     custodian public paths
+  createCustodyService          operator custodian    inv1      public paths
+  createCustodyService          operator custodian    inv2      public paths
+  createCustodyService          operator custodian    inv3      public paths
   createIssuanceService         operator registry     issuer
   createIssuanceAutoService     operator registry     issuer
   createStructuringService      operator registry     issuer
   createStructuringAutoService  operator registry     issuer
-  createLifecycleService        operator registry     issuer    public
+  createLifecycleService        operator registry     issuer
 
   -- Accounts
   registryCashAccount   <- createAccount operator centralBank registry  public "Registry@CentralBank/Cash"       empty

@@ -7,14 +7,17 @@ import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Implementat
 import Daml.Finance.App.Interface.Distribution.Subscription.Offering qualified as Offering (I)
 import Daml.Finance.App.Interface.Distribution.Subscription.Subscription qualified as Subscription (I)
 import Daml.Finance.App.Interface.Distribution.Subscription.Types (BackToBack)
+import Daml.Finance.App.Interface.Settlement.Service qualified as SettlementService (I)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity, Parties)
 
 type I = Service
 
 type V = View
 
-data View = View {}
+data View = View
+  with
+    settlementServiceCid : ContractId SettlementService.I
   deriving (Eq, Show)
 
 interface Service where
@@ -38,6 +41,7 @@ interface Service where
       customerHoldingCid : ContractId Fungible.I
       customerAccount : AccountKey
       backToBack : Optional BackToBack
+      observers : Parties
     controller (view $ asBase this).customer
     do
       createOffering this arg

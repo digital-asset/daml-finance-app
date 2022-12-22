@@ -32,14 +32,14 @@ run  = do
   createExchangeRole    operator con
 
   -- Services
-  createCustodyService          operator fed con empty
-  createCustodyService          operator fed trd empty
-  createCustodyService          operator ecb con empty
-  createCustodyService          operator ecb trd empty
-  createCustodyService          operator snb con empty
-  createCustodyService          operator snb trd empty
-  createCustodyService          operator boe con empty
-  createCustodyService          operator boe trd empty
+  createCustodyService          operator fed con public empty
+  createCustodyService          operator fed trd public empty
+  createCustodyService          operator ecb con public empty
+  createCustodyService          operator ecb trd public empty
+  createCustodyService          operator snb con public empty
+  createCustodyService          operator snb trd public empty
+  createCustodyService          operator boe con public empty
+  createCustodyService          operator boe trd public empty
 
   -- Accounts
   conFedAccount  <- createAccount operator fed con  public "Consortium@FED" pub
@@ -96,12 +96,12 @@ run  = do
   createAccountDirectory trd (zip currencies trdAccounts) $ singleton public
 
   -- Workflows
-  dex1Cid <- createDecentralizedExchangeService con public "DEX-EURUSD" (qty 100_000_000.0 eurusd) (qty 100_000_000.0 eur) conEcbAccount conEurCid1 (qty 105_000_000.0 usd) conFedAccount conUsdCid1
-  dex2Cid <- createDecentralizedExchangeService con public "DEX-USDCHF" (qty 100_000_000.0 usdchf) (qty 100_000_000.0 usd) conFedAccount conUsdCid2 (qty  95_000_000.0 chf) conSnbAccount conChfCid1
-  dex3Cid <- createDecentralizedExchangeService con public "DEX-USDGBP" (qty 100_000_000.0 usdgbp) (qty 100_000_000.0 usd) conFedAccount conUsdCid3 (qty  80_000_000.0 gbp) conBoeAccount conGbpCid1
-  dex4Cid <- createDecentralizedExchangeService con public "DEX-EURCHF" (qty 100_000_000.0 eurchf) (qty 100_000_000.0 eur) conEcbAccount conEurCid2 (qty 100_000_000.0 chf) conSnbAccount conChfCid2
-  dex5Cid <- createDecentralizedExchangeService con public "DEX-EURGBP" (qty 100_000_000.0 eurgbp) (qty 100_000_000.0 eur) conEcbAccount conEurCid3 (qty  85_000_000.0 gbp) conBoeAccount conGbpCid2
-  dex6Cid <- createDecentralizedExchangeService con public "DEX-GBPCHF" (qty 100_000_000.0 gbpchf) (qty 100_000_000.0 gbp) conBoeAccount conGbpCid3 (qty 115_000_000.0 chf) conSnbAccount conChfCid3
+  dex1Cid <- createDecentralizedExchangeService con (singleton public) "DEX-EURUSD" (qty 100_000_000.0 eurusd) (qty 100_000_000.0 eur) conEcbAccount conEurCid1 (qty 105_000_000.0 usd) conFedAccount conUsdCid1
+  dex2Cid <- createDecentralizedExchangeService con (singleton public) "DEX-USDCHF" (qty 100_000_000.0 usdchf) (qty 100_000_000.0 usd) conFedAccount conUsdCid2 (qty  95_000_000.0 chf) conSnbAccount conChfCid1
+  dex3Cid <- createDecentralizedExchangeService con (singleton public) "DEX-USDGBP" (qty 100_000_000.0 usdgbp) (qty 100_000_000.0 usd) conFedAccount conUsdCid3 (qty  80_000_000.0 gbp) conBoeAccount conGbpCid1
+  dex4Cid <- createDecentralizedExchangeService con (singleton public) "DEX-EURCHF" (qty 100_000_000.0 eurchf) (qty 100_000_000.0 eur) conEcbAccount conEurCid2 (qty 100_000_000.0 chf) conSnbAccount conChfCid2
+  dex5Cid <- createDecentralizedExchangeService con (singleton public) "DEX-EURGBP" (qty 100_000_000.0 eurgbp) (qty 100_000_000.0 eur) conEcbAccount conEurCid3 (qty  85_000_000.0 gbp) conBoeAccount conGbpCid2
+  dex6Cid <- createDecentralizedExchangeService con (singleton public) "DEX-GBPCHF" (qty 100_000_000.0 gbpchf) (qty 100_000_000.0 gbp) conBoeAccount conGbpCid3 (qty 115_000_000.0 chf) conSnbAccount conChfCid3
 
   let
     doRoundTrip = do

@@ -11,13 +11,14 @@ import useStyles from "../../styles";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Subscription/Service";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { Reference } from "@daml.js/daml-finance-interface-account/lib/Daml/Finance/Interface/Account/Account";
-import { dedup } from "../../../util";
+import { dedup, singleton } from "../../../util";
 import { BackToBack } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Subscription/Types";
 import { useServices } from "../../../context/ServicesContext";
 import { useInstruments } from "../../../context/InstrumentContext";
 import { Message } from "../../../components/Message/Message";
 import { Aggregate } from "../../../components/Instrument/Aggregate";
 import { useHoldings } from "../../../context/HoldingContext";
+import { useParties } from "../../../context/PartiesContext";
 
 export const New : React.FC = () => {
   const classes = useStyles();
@@ -29,6 +30,7 @@ export const New : React.FC = () => {
   const [ amount, setAmount ] = useState("");
   const [ price, setPrice ] = useState("");
 
+  const { getParty } = useParties();
   const party = useParty();
   const ledger = useLedger();
   const { loading: l1, subscription, backToBack } = useServices();
@@ -57,6 +59,7 @@ export const New : React.FC = () => {
     const holdingCid = await getFungible(party, amount, offeredInst.key);
     if (!customerAccount) return;
     const offeringId = { unpack: uuidv4() };
+    const observers = singleton(getParty("Public"));
     if (hasB2B) {
       const notional = parseFloat(amount) * parseFloat(price);
       const b2b = myB2BServices[0].payload.provider;
@@ -80,7 +83,8 @@ export const New : React.FC = () => {
         price: { amount: price, unit: priceInst.key },
         customerHoldingCid: holdingCid,
         customerAccount,
-        backToBack
+        backToBack,
+        observers
       };
       await ledger.exercise(Service.CreateOffering, myServices[0].service.contractId, arg);
     } else {
@@ -91,7 +95,8 @@ export const New : React.FC = () => {
         price: { amount: price, unit: priceInst.key },
         customerHoldingCid: holdingCid,
         customerAccount,
-        backToBack: null
+        backToBack: null,
+        observers
       };
       await ledger.exercise(Service.CreateOffering, myServices[0].service.contractId, arg);
     }

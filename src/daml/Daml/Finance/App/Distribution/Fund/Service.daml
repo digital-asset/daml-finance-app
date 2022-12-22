@@ -16,10 +16,7 @@ import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
 import Daml.Finance.App.Interface.Distribution.Fund.Fund qualified as Fund (ApproveInstruction(..), GetView(..), IssueUnits(..))
 import Daml.Finance.App.Interface.Distribution.Fund.Service qualified as Service (FulfillPooledInvestmentRequest(..), HasImplementation, I, PoolInvestmentRequests(..), View(..))
 import Daml.Finance.App.Interface.Distribution.Investment.InvestmentRequest qualified as InvestmentRequest (AllocateInstruction(..), ApproveInstruction(..))
-import Daml.Finance.App.Interface.Issuance.Service qualified as IssuanceService (I)
 import Daml.Finance.App.Interface.Settlement.Service qualified as SettlementService (DiscoverAndInstruct(..), I)
-import Daml.Finance.App.Issuance.Service qualified as IssuanceService (T)
-import Daml.Finance.App.Settlement.Service qualified as SettlementService (T)
 import Daml.Finance.Interface.Lifecycle.Observable.NumericObservable qualified as NumericObservable (Observe(..))
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
@@ -37,6 +34,7 @@ template Service
     operator : Party
     provider : Party
     customer : Party
+    settlementServiceCid : ContractId SettlementService.I
   where
     signatory operator, provider, customer
 
@@ -49,7 +47,7 @@ template Service
       terminate = pure ()
 
     interface instance Service.I for Service where
-      view = Service.View
+      view = Service.View with settlementServiceCid
 
       asBase = toInterface @Base.I this
 
@@ -84,8 +82,7 @@ template Service
           fundQty = qty nrUnits fund.instrument
 
         -- Issue units
-        issuanceServiceCid <- toInterfaceContractId @IssuanceService.I . fst <$> fetchByKey @IssuanceService.T (operator, fund.custodian, provider)
-        (_, fundUnitsCid, fundCid) <- exercise fundCid Fund.IssueUnits with requestId = pir.requestId; quantity = fundQty; issuanceServiceCid
+        (fundUnitsCid, fundCid) <- exercise fundCid Fund.IssueUnits with requestId = pir.requestId; quantity = fundQty
 
         -- Instruct settlement
         irs <- mapA (fmap view . fetch) pir.investmentRequestCids
@@ -95,7 +92,6 @@ template Service
           custodianCashStep = Step with sender = pir.customer; receiver = fund.custodian; quantity = pir.quantity
           managerFundStep = Step with sender = provider; receiver = pir.customer; quantity = fundQty
           steps = custodianCashStep :: managerFundStep :: map createInvestorCashStep irs <> map createInvestorFundStep irs
-        settlementServiceCid <- toInterfaceContractId @SettlementService.I . fst <$> fetchByKey @SettlementService.T (operator, provider, customer)
         (batchCid, custodianCashInstructionCid :: managerFundInstructionCid :: investorInstructionCids) <- exercise settlementServiceCid SettlementService.DiscoverAndInstruct with
           actor = provider
           settlers = singleton provider
@@ -137,6 +133,7 @@ template Offer
     operator : Party
     provider : Party
     customer : Party
+    settlementServiceCid : ContractId SettlementService.I
   where
     signatory operator, provider
     observer customer
@@ -144,7 +141,7 @@ template Offer
     choice Accept : ContractId Service
       controller customer
       do
-        create Service with ..
+        create Service with operator; provider; customer; settlementServiceCid
 
     choice Decline : ()
       controller customer
@@ -174,6 +171,7 @@ template Request
     choice Approve : ContractId Service
       with
         operator : Party
+        settlementServiceCid : ContractId SettlementService.I
       controller operator, provider
       do
-        create Service with ..
+        create Service with operator; provider; customer; settlementServiceCid

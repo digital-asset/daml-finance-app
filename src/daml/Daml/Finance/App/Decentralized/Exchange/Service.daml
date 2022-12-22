@@ -14,7 +14,7 @@ import Daml.Finance.Interface.Account.Account qualified as Account (Credit(..), 
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (Merge(..), Split(..), SplitResult(..))
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I, Transfer(..))
-import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity, Parties)
 import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, AddObservers(..), RemoveObservers(..))
 
@@ -69,15 +69,15 @@ instance Service.HasImplementation Service
 template Service
   with
     consortium : Party
-    public : Party
     id : Id
     description : Text
     shares : InstrumentQuantity -- share
     p1 : Pool -- pool1
     p2 : Pool -- pool2
+    observers : Parties
   where
     signatory consortium
-    observer public
+    observer observers
 
     key (consortium, id) : (Party, Id)
     maintainer key._1
@@ -110,7 +110,7 @@ template Service
 
           -- transfer Y to user
           Fungible.SplitResult{splitCids = [yFungibleCid], rest = Some yFungibleCid_new} <- exercise yLP.fungibleCid Fungible.Split with amounts = [ -y_delta ] -- forced pattern match disallows draining
-          Some yFungibleCid <- exercise (toInterfaceContractId @Disclosure.I yFungibleCid) Disclosure.RemoveObservers with disclosers = singleton consortium; observersToRemove = (show id, singleton public)
+          Some yFungibleCid <- exercise (toInterfaceContractId @Disclosure.I yFungibleCid) Disclosure.RemoveObservers with disclosers = singleton consortium; observersToRemove = (show id, observers)
 
           yHoldingCid <- toInterfaceContractId @Holding.I <$> exercise (coerceContractId yFungibleCid : ContractId Transferable.I) Transferable.Transfer with actors = fromList [consortium, actor]; newOwnerAccount = actorAccount
           yHolding <- view <$> fetch yHoldingCid
@@ -125,7 +125,7 @@ template Service
           -- transfer X to dex
           xFungibleCid_new <- do
             xFungibleCid <- exercise (coerceContractId xFungibleCid : ContractId Transferable.I) Transferable.Transfer with actors = fromList [consortium, actor]; newOwnerAccount = xLP.account
-            xFungibleCid <- coerceContractId <$> exercise (toInterfaceContractId @Disclosure.I xFungibleCid) Disclosure.AddObservers with disclosers = singleton consortium; observersToAdd = (show id, singleton public)
+            xFungibleCid <- coerceContractId <$> exercise (toInterfaceContractId @Disclosure.I xFungibleCid) Disclosure.AddObservers with disclosers = singleton consortium; observersToAdd = (show id, observers)
             exercise xLP.fungibleCid Fungible.Merge with fungibleCids = [xFungibleCid]
 
           -- update pools
@@ -143,7 +143,7 @@ template Service
       terminate = pure ()
 
     interface instance Service.I for Service where
-      view = Service.View with consortium; public; id; description; shares; p1; p2
+      view = Service.View with consortium; id; description; shares; p1; p2; observers
 
       asBase = toInterface @Base.I this
 

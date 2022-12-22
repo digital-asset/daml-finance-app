@@ -7,7 +7,7 @@ import { CustomNodeElementProps, Point, TreeNodeDatum } from "react-d3-tree/lib/
 import { useTheme } from "@mui/material";
 import { claimMenu, createAsset, createDate, createDecimal, createObservable, inequalityConstructors, inequalityTags, MenuEntry, observationConstructors, observationTags, updateNode } from "./util";
 import useStyles from "./styles";
-import { InstrumentKey } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Common";
+import { InstrumentKey } from "@daml.js/daml-finance-interface-types-common/lib/Daml/Finance/Interface/Types/Common/Types";
 import "./styles-dark.css";
 
 export type ClaimsTreeBuilderProps = {

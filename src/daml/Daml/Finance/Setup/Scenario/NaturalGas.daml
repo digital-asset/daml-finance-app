@@ -39,11 +39,11 @@ run  = do
   createCustodianRole operator seller
 
   -- Services
-  createCustodyService    operator cashProvider seller  paths
-  createCustodyService    operator cashProvider buyer   paths
-  createCustodyService    operator seller       buyer   paths
+  createCustodyService    operator cashProvider seller  public paths
+  createCustodyService    operator cashProvider buyer   public paths
+  createCustodyService    operator seller       buyer   public paths
   createIssuanceService   operator seller       seller
-  createLifecycleService  operator seller       seller  public
+  createLifecycleService  operator seller       seller
 
   -- Accounts
   sellerCashAccount   <- createAccount operator cashProvider  seller  public "Seller@CashProvider" empty

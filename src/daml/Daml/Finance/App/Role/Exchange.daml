@@ -4,6 +4,7 @@
 module Daml.Finance.App.Role.Exchange where
 
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Terminate(..))
+import Daml.Finance.App.Interface.Settlement.Service qualified as SettlementService (I)
 import Daml.Finance.App.Listing.Auto qualified as ListingAuto (Approve(..), Offer(..), Request, Service)
 import Daml.Finance.App.Listing.Service qualified as Listing (Approve(..), Offer(..), Request, Service)
 import Daml.Finance.App.Trading.Auto qualified as TradingAuto (Approve(..), Offer(..), Request, Service)
@@ -22,16 +23,18 @@ template Role
     nonconsuming choice OfferTradingService : ContractId Trading.Offer
       with
         customer : Party
+        settlementServiceCid : ContractId SettlementService.I
       controller provider
       do
-        create Trading.Offer with operator; provider; customer
+        create Trading.Offer with operator; provider; customer; settlementServiceCid
 
     nonconsuming choice ApproveTradingServiceRequest : ContractId Trading.Service
       with
         tradingRequestCid : ContractId Trading.Request
+        settlementServiceCid : ContractId SettlementService.I
       controller provider
       do
-        exercise tradingRequestCid Trading.Approve with operator
+        exercise tradingRequestCid Trading.Approve with operator; settlementServiceCid
 
     nonconsuming choice TerminateTradingService : ()
       with

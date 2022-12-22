@@ -42,20 +42,17 @@ run = do
   createDistributorRole operator am
 
   -- Services
-  createCustodyService          operator cashProvider am        paths
-  createCustodyService          operator cashProvider custodian paths
-  createCustodyService          operator am           inv1      paths
-  createCustodyService          operator am           inv2      paths
-  createCustodyService          operator am           inv3      paths
-  createCustodyService          operator custodian    am        paths
-  createCustodyService          operator custodian    pm        paths
-  createIssuanceService         operator custodian    pm
-  createStructuringService      operator custodian    pm
-  createStructuringAutoService  operator custodian    pm
+  createCustodyService          operator cashProvider am        public paths
+  createCustodyService          operator cashProvider custodian public paths
+  createCustodyService          operator am           inv1      public paths
+  createCustodyService          operator am           inv2      public paths
+  createCustodyService          operator am           inv3      public paths
+  createCustodyService          operator custodian    am        public paths
+  createCustodyService          operator custodian    pm        public paths
   createInvestmentService       operator am           inv1
   createInvestmentService       operator am           inv2
   createInvestmentService       operator am           inv3
-  createFundService             operator pm           am
+  createFundService             operator pm           am        paths
 
   -- Accounts
   amCashAccount         <- createAccount operator cashProvider  am        public "AssetManager@CashProvider/Cash"        $ fromList [("PM", singleton pm)]

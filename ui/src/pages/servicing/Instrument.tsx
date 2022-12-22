@@ -16,9 +16,8 @@ import { useParties } from "../../context/PartiesContext";
 import { useInstruments } from "../../context/InstrumentContext";
 import { useServices } from "../../context/ServicesContext";
 import { NumericObservable } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Observable/NumericObservable";
-import { TimeObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/TimeObservable";
 import { Event } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Event";
-import { parseDate, shorten } from "../../util";
+import { parseDateAsTime, shorten } from "../../util";
 import { Pending } from "@daml.js/daml-finance-interface-claims/lib/Daml/Finance/Interface/Claims/Types";
 import { ExpandMore } from "@mui/icons-material";
 import { TextInput } from "../../components/Form/TextInput";
@@ -46,9 +45,8 @@ export const Instrument : React.FC = () => {
   const { loading: l2, tokens, equities, getByCid } = useInstruments();
   const { loading: l3, contracts: numericObservables } = useStreamQueries(NumericObservable);
   const { loading: l4, contracts: events } = useStreamQueries(Event);
-  const { loading: l5, contracts: timeObservables } = useStreamQueries(TimeObservable);
   const { contractId } = useParams<any>();
-  const loading = l1 || l2 || l3 || l4 || l5;
+  const loading = l1 || l2 || l3 || l4;
   const instrument = getByCid(contractId || "");
   const svc = lifecycle.services[0]?.service;
 
@@ -72,13 +70,14 @@ export const Instrument : React.FC = () => {
   // TODO: Assumes single service
   if (!svc) throw new Error("No lifecycle service found for customer [" + party + "]");
 
+  const canLifecycle = !!instrument.claim;
   const canDeclareDividend = !!description && !!effectiveDate && !!currency && !!amount;
   const canDeclareStockSplit = !!description && !!effectiveDate && !!amount;
   const canDeclareReplacement = !!description && !!effectiveDate && !!currency && !!amount;
 
   const previewLifecycle = async () => {
     const observableCids = numericObservables.map(c => c.contractId);
-    const [ res, ] = await ledger.exercise(Lifecycle.PreviewLifecycle, svc.contractId, { today: timeObservables[0].payload.time, observableCids, instrumentCid: instrument.claim!.contractId });
+    const [ res, ] = await ledger.exercise(Lifecycle.PreviewLifecycle, svc.contractId, { today: events[0].payload.eventTime, observableCids, instrumentCid: instrument.claim!.contractId });
     const claims = res._1.length > 1 ? and(res._1.map(r => r.claim)) : res._1[0].claim;
     setRemaining(claims);
     setPending(res._2);
@@ -86,12 +85,12 @@ export const Instrument : React.FC = () => {
 
   const executeLifecycle = async () => {
     const observableCids = numericObservables.map(c => c.contractId);
+    const ruleCid = !!instrument.generic ? svc.payload.genericRuleCid : svc.payload.dynamicRuleCid;
     const arg = {
-      ruleName: "Time",
+      ruleCid,
+      instrument: instrument.key,
       eventCid: events[0].contractId,
-      timeObservableCid: timeObservables[0].contractId,
-      observableCids,
-      lifecyclableCid: instrument.lifecycle!.contractId
+      observableCids
     }
     await ledger.exercise(Lifecycle.Lifecycle, svc.contractId, arg);
     navigate("/app/servicing/effects");
@@ -106,12 +105,11 @@ export const Instrument : React.FC = () => {
     const ccy = tokens.find(c => c.payload.id.unpack === currency);
     if (!lifecycle || !instrument.equity || !ccy) throw new Error("Cannot declare dividend on non-equity instrument");
     const arg = {
-      timeObservableCid: timeObservables[0].contractId,
       equity: instrument.key,
       newVersion: (parseInt(instrument.payload.version) + 1).toString(),
-      id: { unpack: uuidv4() },
+      eventId: { unpack: uuidv4() },
       description,
-      effectiveDate: parseDate(effectiveDate),
+      effectiveTime: parseDateAsTime(effectiveDate),
       perUnitDistribution: [ { amount, unit: ccy.key } ]
     };
     await ledger.exercise(Lifecycle.DeclareDividend, svc.contractId, arg);
@@ -121,12 +119,11 @@ export const Instrument : React.FC = () => {
   const declareStockSplit = async () => {
     if (!lifecycle || !instrument.equity) throw new Error("Cannot declare stock split on non-equity instrument");
     const arg = {
-      timeObservableCid: timeObservables[0].contractId,
       equity: instrument.key,
       newVersion: (parseInt(instrument.payload.version) + 1).toString(),
-      id: { unpack: uuidv4() },
+      eventId: { unpack: uuidv4() },
       description,
-      effectiveDate: parseDate(effectiveDate),
+      effectiveTime: parseDateAsTime(effectiveDate),
       adjustmentFactor: amount
     };
     await ledger.exercise(Lifecycle.DeclareStockSplit, svc.contractId, arg);
@@ -137,12 +134,11 @@ export const Instrument : React.FC = () => {
     const ccy = tokens.find(c => c.payload.id.unpack === currency);
     if (!lifecycle || !instrument.equity || !ccy) throw new Error("Cannot declare replacement on non-equity instrument");
     const arg = {
-      timeObservableCid: timeObservables[0].contractId,
       equity: instrument.key,
       newVersion: (parseInt(instrument.payload.version) + 1).toString(),
-      id: { unpack: uuidv4() },
+      eventId: { unpack: uuidv4() },
       description,
-      effectiveDate: parseDate(effectiveDate),
+      effectiveTime: parseDateAsTime(effectiveDate),
       perUnitReplacement: [ { amount, unit: ccy.key } ]
     };
     await ledger.exercise(Lifecycle.DeclareReplacement, svc.contractId, arg);
@@ -188,7 +184,7 @@ export const Instrument : React.FC = () => {
                       </TableRow>
                     </TableBody>
                   </Table>
-                  {!!instrument.lifecycle &&
+                  {canLifecycle &&
                   <>
                     <Button color="primary" className={classes.actionButton} variant="contained" disabled={!!remaining} onClick={() => previewLifecycle()}>Preview Lifecycle</Button>
                     <Button color="primary" className={classes.actionButton} variant="contained" disabled={!remaining} onClick={() => executeLifecycle()}>Execute Lifecycle</Button>
@@ -228,7 +224,7 @@ export const Instrument : React.FC = () => {
           </Grid>
           <Grid item xs={8}>
             <Grid container direction="column" spacing={2}>
-              {!!instrument.lifecycle &&
+              {canLifecycle &&
               <Grid item xs={12}>
                 <Paper className={classnames(classes.fullWidth, classes.paper)}>
                   <Typography variant="h5" className={classes.heading}>Current State</Typography>

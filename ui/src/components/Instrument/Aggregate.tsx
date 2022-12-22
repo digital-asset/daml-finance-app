@@ -42,7 +42,7 @@ export const Aggregate : React.FC<AggregateProps> = ({ instrument }) => {
 
   if (l1 || l2) return <Spinner />
 
-  const headers = ["Depository", "Issuer", "Id", "Description", "Version", "ValidAsOf"].concat(!!instrument.lifecycle ? ["Lifecycler"] : []);
+  const headers = ["Depository", "Issuer", "Id", "Description", "Version", "ValidAsOf"];
   const values : any[] = [
     getName(instrument.payload.depository),
     getName(instrument.payload.issuer),
@@ -50,7 +50,7 @@ export const Aggregate : React.FC<AggregateProps> = ({ instrument }) => {
     instrument.payload.description,
     shorten(instrument.payload.version),
     instrument.payload.validAsOf
-  ].concat(!!instrument.lifecycle ? [getName(instrument.lifecycle.payload.lifecycler)] : []);
+  ];
 
   return (
     <Grid container direction="column" spacing={2}>

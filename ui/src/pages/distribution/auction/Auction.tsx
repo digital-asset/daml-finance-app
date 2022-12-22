@@ -17,7 +17,6 @@ import { fmt } from "../../../util";
 import { Message } from "../../../components/Message/Message";
 import { useParties } from "../../../context/PartiesContext";
 import { useServices } from "../../../context/ServicesContext";
-import { Factory } from "@daml.js/daml-finance-interface-settlement/lib/Daml/Finance/Interface/Settlement/Factory";
 
 export const Auction: React.FC = () => {
   const classes = useStyles();
@@ -31,11 +30,10 @@ export const Auction: React.FC = () => {
   const { loading: l1, auction: auctionSvc } = useServices();
   const { loading: l2, contracts: auctions } = useStreamQueries(AuctionI);
   const { loading: l3, contracts: bids } = useStreamQueries(Bid);
-  const { loading: l4, contracts: factories } = useStreamQueries(Factory);
 
   const auction = auctions.find(c => c.contractId === contractId);
 
-  if (l1 || l2 || l3 || l4) return <Spinner />;
+  if (l1 || l2 || l3) return <Spinner />;
   if (!contractId) return <Message text="No contract id provided" />;
   if (!auction) return <Message text="Auction not found" />;
 
@@ -45,11 +43,10 @@ export const Auction: React.FC = () => {
   const canClose = auction.payload.status.tag !== "Open" || filteredBids.length === 0 || party !== auction.payload.provider;
 
   const closeAuction = async () => {
-    if (factories.length === 0) return new Error("No settlement factory found");
     const svc = auctionSvc.getService(party, auction.payload.customer);
     if (!svc) throw new Error("No auction service found for provider [" + party + "] and customer [" + auction.payload.customer + "]");
     const bidCids = filteredBids.map(c => c.contractId);
-    const [result, ] = await ledger.exercise(Service.ProcessAuction, svc.service.contractId, { settlementFactoryCid: factories[0].contractId, auctionCid: auction.contractId, bidCids });
+    const [result, ] = await ledger.exercise(Service.ProcessAuction, svc.service.contractId, { auctionCid: auction.contractId, bidCids });
     navigate("/app/distribution/auctions/" + result);
   };
 

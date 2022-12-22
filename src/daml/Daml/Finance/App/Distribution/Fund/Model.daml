@@ -3,13 +3,12 @@
 
 module Daml.Finance.App.Distribution.Fund.Model where
 
-import DA.Assert ((===))
 import DA.Set (fromList, singleton)
 import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, View(..))
 import Daml.Finance.App.Interface.Distribution.Fund.Fund qualified as Fund (ApproveInstruction(..), HasImplementation, I, IssueUnits(..), View(..))
 import Daml.Finance.App.Interface.Distribution.Fund.PooledInvestmentRequest qualified as PooledInvestmentRequest (HasImplementation, I, View(..))
 import Daml.Finance.App.Interface.Distribution.Investment.InvestmentRequest qualified as InvestmentRequest (I)
-import Daml.Finance.App.Interface.Issuance.Service qualified as IssuanceService (Issue(..), RequestIssue(..), asBase)
+import Daml.Finance.Interface.Account.Account qualified as Account (Credit(..), I, exerciseInterfaceByKey)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Approve(..))
 import Daml.Finance.Interface.Settlement.Types (Approval(TakeDelivery))
@@ -47,15 +46,10 @@ template Fund
 
       asRemovable = toInterface @Removable.I this
 
-      issueUnits Fund.IssueUnits{requestId; quantity; issuanceServiceCid} = do
-        issuanceService <- view . IssuanceService.asBase <$> fetch issuanceServiceCid
-        issuanceService.operator === operator
-        issuanceService.provider === custodian
-        issuanceService.customer === manager
-        issueRequestCid <- exercise issuanceServiceCid IssuanceService.RequestIssue with issuanceId = requestId; description = "Issuance for request " <> show requestId; quantity; account = managerFundAccount
-        (iss, holdingCid) <- exercise issuanceServiceCid IssuanceService.Issue with issueRequestCid
+      issueUnits Fund.IssueUnits{requestId; quantity} = do
+        holdingCid <- Account.exerciseInterfaceByKey @Account.I managerFundAccount manager Account.Credit with quantity
         newCid <- toInterfaceContractId <$> create this with totalUnits = totalUnits + quantity.amount
-        pure (iss, coerceContractId holdingCid, newCid)
+        pure (coerceContractId holdingCid, newCid)
 
       approveInstruction Fund.ApproveInstruction{instructionCid} = do
         -- TODO: Assert instruction is the correct one

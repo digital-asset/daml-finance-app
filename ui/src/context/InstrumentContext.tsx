@@ -16,7 +16,6 @@ import { Instrument as CurrencySwap } from "@daml.js/daml-finance-interface-inst
 import { Instrument as ForeignExchangeSwap } from "@daml.js/daml-finance-interface-instrument-swap/lib/Daml/Finance/Interface/Instrument/Swap/ForeignExchange/Instrument";
 import { Instrument as InterestRateSwap } from "@daml.js/daml-finance-interface-instrument-swap/lib/Daml/Finance/Interface/Instrument/Swap/InterestRate/Instrument";
 import { Instrument as Token } from "@daml.js/daml-finance-interface-instrument-token/lib/Daml/Finance/Interface/Instrument/Token/Instrument";
-import { Lifecycle } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Rule/Lifecycle";
 import { Claim } from "@daml.js/daml-finance-interface-claims/lib/Daml/Finance/Interface/Claims/Claim";
 import { Id, InstrumentKey } from "@daml.js/daml-finance-interface-types-common/lib/Daml/Finance/Interface/Types/Common/Types";
 import { key } from "../util";
@@ -42,7 +41,6 @@ type InstrumentState = {
 
 export type InstrumentAggregate = CreateEvent<Base> & {
   key                 : InstrumentKey
-  lifecycle           : CreateEvent<Lifecycle> | undefined
   claim               : CreateEvent<Claim> | undefined
   token               : CreateEvent<Token> | undefined
   equity              : CreateEvent<Equity> | undefined
@@ -91,21 +89,20 @@ const InstrumentContext = React.createContext<InstrumentState>(empty);
 export const InstrumentProvider : React.FC = ({ children }) => {
 
   const { loading: l1,  contracts: instruments }          = useStreamQueries(Base);
-  const { loading: l2,  contracts: lifecycles }           = useStreamQueries(Lifecycle);
-  const { loading: l3,  contracts: claims }               = useStreamQueries(Claim);
-  const { loading: l4,  contracts: tokens }               = useStreamQueries(Token);
-  const { loading: l5,  contracts: equities }             = useStreamQueries(Equity);
-  const { loading: l6,  contracts: generics }             = useStreamQueries(Generic);
-  const { loading: l7,  contracts: fixedRateBonds }       = useStreamQueries(FixedRateBond);
-  const { loading: l8,  contracts: floatingRateBonds }    = useStreamQueries(FloatingRateBond);
-  const { loading: l9,  contracts: inflationLinkedBonds } = useStreamQueries(InflationLinkedBond);
-  const { loading: l10,  contracts: zeroCouponBonds }      = useStreamQueries(ZeroCouponBond);
-  const { loading: l11, contracts: creditDefaultSwaps }   = useStreamQueries(CreditDefaultSwap);
-  const { loading: l12, contracts: currencySwaps }        = useStreamQueries(CurrencySwap);
-  const { loading: l13, contracts: foreignExchangeSwaps } = useStreamQueries(ForeignExchangeSwap);
-  const { loading: l14, contracts: interestRateSwaps }    = useStreamQueries(InterestRateSwap);
-  const { loading: l15, contracts: disclosures }          = useStreamQueries(Disclosure);
-  const loading = l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8 || l9 || l10 || l11 || l12 || l13 || l14 || l15;
+  const { loading: l2,  contracts: claims }               = useStreamQueries(Claim);
+  const { loading: l3,  contracts: tokens }               = useStreamQueries(Token);
+  const { loading: l4,  contracts: equities }             = useStreamQueries(Equity);
+  const { loading: l5,  contracts: generics }             = useStreamQueries(Generic);
+  const { loading: l6,  contracts: fixedRateBonds }       = useStreamQueries(FixedRateBond);
+  const { loading: l7,  contracts: floatingRateBonds }    = useStreamQueries(FloatingRateBond);
+  const { loading: l8,  contracts: inflationLinkedBonds } = useStreamQueries(InflationLinkedBond);
+  const { loading: l9,  contracts: zeroCouponBonds }      = useStreamQueries(ZeroCouponBond);
+  const { loading: l10, contracts: creditDefaultSwaps }   = useStreamQueries(CreditDefaultSwap);
+  const { loading: l11, contracts: currencySwaps }        = useStreamQueries(CurrencySwap);
+  const { loading: l12, contracts: foreignExchangeSwaps } = useStreamQueries(ForeignExchangeSwap);
+  const { loading: l13, contracts: interestRateSwaps }    = useStreamQueries(InterestRateSwap);
+  const { loading: l14, contracts: disclosures }          = useStreamQueries(Disclosure);
+  const loading = l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8 || l9 || l10 || l11 || l12 || l13 || l14;
 
   if (loading) {
     return (
@@ -115,7 +112,6 @@ export const InstrumentProvider : React.FC = ({ children }) => {
     );
   } else {
     const aggregatesByCid           : Map<string, InstrumentAggregate>              = new Map();
-    const lifecycleByCid            : Map<string, CreateEvent<Lifecycle>>           = new Map(lifecycles.map(c => [c.contractId, c]));
     const claimsByCid               : Map<string, CreateEvent<Claim>>               = new Map(claims.map(c => [c.contractId, c]));
     const tokensByCid               : Map<string, CreateEvent<Token>>               = new Map(tokens.map(c => [c.contractId, c]));
     const equitiesByCid             : Map<string, CreateEvent<Equity>>              = new Map(equities.map(c => [c.contractId, c]));
@@ -134,7 +130,6 @@ export const InstrumentProvider : React.FC = ({ children }) => {
       const aggregate = {
         ...c,
         key: key(c),
-        lifecycle: lifecycleByCid.get(c.contractId),
         claim: claimsByCid.get(c.contractId),
         token: tokensByCid.get(c.contractId),
         equity: equitiesByCid.get(c.contractId),

@@ -7,6 +7,7 @@ import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Implementat
 import Daml.Finance.App.Interface.Distribution.Fund.Fund qualified as Fund (I)
 import Daml.Finance.App.Interface.Distribution.Fund.PooledInvestmentRequest qualified as PooledInvestmentRequest (I)
 import Daml.Finance.App.Interface.Distribution.Investment.InvestmentRequest qualified as InvestmentRequest (I)
+import Daml.Finance.App.Interface.Settlement.Service qualified as SettlementService (I)
 import Daml.Finance.Interface.Lifecycle.Observable.NumericObservable qualified as NumericObservable (I)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
@@ -16,7 +17,9 @@ type I = Service
 
 type V = View
 
-data View = View {}
+data View = View
+  with
+    settlementServiceCid : ContractId SettlementService.I
   deriving (Eq, Show)
 
 interface Service where

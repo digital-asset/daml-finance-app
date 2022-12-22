@@ -8,7 +8,7 @@ import Daml.Finance.App.Interface.Decentralized.Exchange.FlashSwapAction qualifi
 import Daml.Finance.App.Interface.Decentralized.Exchange.Types (Pool)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity, Parties)
 
 type I = Service
 
@@ -17,12 +17,12 @@ type V = View
 data View = View
   with
     consortium : Party
-    public : Party
     id : Id
     description : Text
     shares : InstrumentQuantity -- share
     p1 : Pool -- pool1
     p2 : Pool -- pool2
+    observers : Parties
   deriving (Eq, Show)
 
 interface Service where

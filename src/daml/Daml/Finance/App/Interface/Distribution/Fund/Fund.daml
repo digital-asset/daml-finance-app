@@ -4,8 +4,6 @@
 module Daml.Finance.App.Interface.Distribution.Fund.Fund where
 
 import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Implementation)
-import Daml.Finance.App.Interface.Issuance.Issuance qualified as Issuance (I)
-import Daml.Finance.App.Interface.Issuance.Service qualified as IssuanceService (I)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (I)
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentKey, InstrumentQuantity, Parties)
@@ -36,7 +34,7 @@ interface Fund where
   asRemovable : Removable.I
     -- ^ Conversion to the `Removable` interface.
 
-  issueUnits : IssueUnits -> Update (ContractId Issuance.I, ContractId Transferable.I, ContractId Fund)
+  issueUnits : IssueUnits -> Update (ContractId Transferable.I, ContractId Fund)
     -- ^ Implementation of the `IssueUnits` choice.
 
   approveInstruction : ApproveInstruction -> Update (ContractId Instruction.I)
@@ -49,11 +47,10 @@ interface Fund where
     do
       pure $ view this
 
-  choice IssueUnits : (ContractId Issuance.I, ContractId Transferable.I, ContractId Fund)
+  choice IssueUnits : (ContractId Transferable.I, ContractId Fund)
     with
       requestId : Id
       quantity : InstrumentQuantity
-      issuanceServiceCid : ContractId IssuanceService.I
     controller (view this).manager
     do
       issueUnits this arg

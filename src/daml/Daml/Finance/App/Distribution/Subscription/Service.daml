@@ -14,7 +14,6 @@ import Daml.Finance.App.Interface.Distribution.Subscription.Service qualified as
 import Daml.Finance.App.Interface.Issuance.BackToBack qualified as BackToBack (I, LockOffering(..), SettleOffering(..))
 import Daml.Finance.App.Interface.Settlement.Service qualified as SettlementService (I)
 import Daml.Finance.App.Issuance.BackToBack qualified as BackToBack (T)
-import Daml.Finance.App.Settlement.Service qualified as SettlementService (T)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
 import Daml.Finance.Interface.Account.Account qualified as Account (disclose)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
@@ -30,7 +29,7 @@ template Service
     operator : Party
     provider : Party
     customer : Party
-    public : Party
+    settlementServiceCid : ContractId SettlementService.I
   where
     signatory operator, provider, customer
 
@@ -43,11 +42,11 @@ template Service
       terminate = pure ()
 
     interface instance Service.I for Service where
-      view = Service.View
+      view = Service.View with settlementServiceCid
 
       asBase = toInterface @Base.I this
 
-      createOffering Service.CreateOffering{offeringId; description; asset; price; customerHoldingCid; customerAccount; backToBack} = do
+      createOffering Service.CreateOffering{offeringId; description; asset; price; customerHoldingCid; customerAccount; backToBack; observers} = do
         -- Disclosure
         customerHolding <- fetch customerHoldingCid
         customerHoldingCid : ContractId Fungible.I <- coerceContractId <$> exercise (coerceContractId customerHoldingCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (show offeringId, singleton provider)
@@ -67,7 +66,7 @@ template Service
 
         toInterfaceContractId <$> create Model.Offering
           with
-            operator; provider; public; asset; price
+            operator; provider; asset; price
             id = offeringId
             description
             issuer = customer
@@ -75,13 +74,13 @@ template Service
             issuerAccount = customerAccount
             backToBack = lockedB2b
             status = Open
+            observers
 
       processOffering Service.ProcessOffering{offeringCid; subscriptionCids} = do
         -- Settle subscriptions
         offeringI <- fetch offeringCid
         let offering = view offeringI
         subscriptions <- zip subscriptionCids <$> forA subscriptionCids (fmap view . fetch)
-        settlementServiceCid <- toInterfaceContractId @SettlementService.I . fst <$> fetchByKey @SettlementService.T (operator, provider, customer)
         (remainingIssuerQuantity, remainingIssuerHoldingCidOpt) <- foldlA (settleSubscription provider settlementServiceCid offering) (offering.asset.amount, Some offering.issuerHoldingCid) subscriptions
 
         -- Settle back-to-back trade
@@ -108,7 +107,7 @@ template Offer
     operator : Party
     provider : Party
     customer : Party
-    public : Party
+    settlementServiceCid : ContractId SettlementService.I
   where
     signatory operator, provider
     observer customer
@@ -116,7 +115,7 @@ template Offer
     choice Accept : ContractId Service
       controller customer
       do
-        create Service with ..
+        create Service with operator; provider; customer; settlementServiceCid
 
     choice Decline : ()
       controller customer
@@ -131,7 +130,6 @@ template Request
   with
     provider : Party
     customer : Party
-    public : Party
   where
     signatory customer
     observer provider
@@ -147,6 +145,7 @@ template Request
     choice Approve : ContractId Service
       with
         operator : Party
+        settlementServiceCid : ContractId SettlementService.I
       controller operator, provider
       do
-        create Service with ..
+        create Service with operator; provider; customer; settlementServiceCid

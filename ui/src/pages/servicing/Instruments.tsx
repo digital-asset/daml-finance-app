@@ -13,8 +13,6 @@ import { NumericObservable } from "@daml.js/daml-finance-interface-lifecycle/lib
 import { DetailButton } from "../../components/DetailButton/DetailButton";
 import { SelectionTable } from "../../components/Table/SelectionTable";
 import { useNavigate } from "react-router-dom";
-import { ContractId } from "@daml/types";
-import { Lifecycle } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Rule/Lifecycle";
 
 export const Instruments : React.FC = () => {
   const navigate = useNavigate();
@@ -29,24 +27,26 @@ export const Instruments : React.FC = () => {
 
   if (l1 || l2 || l3 || l4) return <Spinner />;
 
-  const myInstruments = latests.filter(a => (!!a.lifecycle && a.lifecycle.payload.lifecycler === party) || (!!a.equity && a.payload.issuer === party));
+  const myInstruments = latests.filter(a => a.payload.issuer === party && (!!a.claim || !!a.equity));
 
   const lifecycleAll = async (cs : any[]) => {
     // TODO: Assumes single service
     const svc = lifecycle.services[0]?.service;
     if (!svc) throw new Error("No lifecycle service found for customer [" + party + "]");
-    const lifecycleOne = async (c : ContractId<Lifecycle>) => {
+    const lifecycleOne = async (c : InstrumentAggregate) => {
+      if (!c.claim) return;
+      const ruleCid = !!c.generic ? svc.payload.genericRuleCid : svc.payload.dynamicRuleCid;
       const arg = {
-        ruleCid: ???,
+        ruleCid,
         // TODO: Assumes the only event we have is a DateClockUpdatedEvent
+        instrument : c.key,
         eventCid: events[0].contractId,
         observableCids: numericObservables.map(o => o.contractId),
-        lifecyclableCid: c
       }
       await ledger.exercise(Service.Lifecycle, svc.contractId, arg);
-      navigate("/app/servicing/effects");
     };
-    await Promise.all(cs.map(c => lifecycleOne(c as ContractId<Lifecycle>)));
+    await Promise.all(cs.map(c => lifecycleOne(c as InstrumentAggregate)));
+    navigate("/app/servicing/effects");
   };
 
   const createRow = (c : InstrumentAggregate) : any[] => {
@@ -62,8 +62,7 @@ export const Instruments : React.FC = () => {
   }
   const headers = ["Depository", "Issuer", "Id", "Description", "Version", "ValidAsOf", "Details"];
   const values : any[] = myInstruments.map(createRow);
-  const callbackValues = myInstruments.map(c => c.contractId);
   return (
-    <SelectionTable title="Instruments" variant={"h3"} headers={headers} values={values} action="Lifecycle" onExecute={lifecycleAll} callbackValues={callbackValues} />
+    <SelectionTable title="Instruments" variant={"h3"} headers={headers} values={values} action="Lifecycle" onExecute={lifecycleAll} callbackValues={myInstruments} />
   );
 };

@@ -6,7 +6,7 @@
 module Daml.Finance.Setup.Util.Common where
 
 import DA.List (head)
-import DA.Optional (fromOptional)
+import DA.Optional (fromOptional, isNone)
 import Daml.Finance.Holding.Fungible qualified as Fungible (T)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..), SplitResult(..))
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
@@ -34,7 +34,7 @@ allocateParties scenario partyNames = do
 
 getHolding : Party -> InstrumentQuantity -> Script (ContractId Holding.I)
 getHolding party quantity = do
-  (holdingCid, holding) <- head <$> queryFilter @Fungible.T party (\h -> h.instrument == quantity.unit && h.amount >= quantity.amount)
+  (holdingCid, holding) <- head <$> queryFilter @Fungible.T party (\h -> isNone h.lock && h.instrument == quantity.unit && h.amount >= quantity.amount)
   if holding.amount > quantity.amount
   then do
     Fungible.SplitResult{splitCids} <- submit party do exerciseCmd (toInterfaceContractId @Fungible.I holdingCid) Fungible.Split with amounts = [ quantity.amount ]

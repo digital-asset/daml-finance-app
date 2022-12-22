@@ -15,7 +15,7 @@ import Daml.Finance.Interface.Account.Util (getAccount)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Types (Allocation(Pledge), Approval(TakeDelivery))
-import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity, Parties)
 
 instance Offering.HasImplementation Offering
 
@@ -24,7 +24,6 @@ template Offering
     operator : Party
     provider : Party
     issuer : Party
-    public : Party
     id : Id
     description : Text
     asset : InstrumentQuantity
@@ -33,9 +32,10 @@ template Offering
     issuerAccount : AccountKey
     backToBack : Optional BackToBack
     status : Status
+    observers : Parties
   where
     signatory operator, provider, issuer
-    observer public
+    observer observers
 
     key (operator, provider, id) : (Party, Party, Id)
     maintainer key._1
@@ -44,7 +44,7 @@ template Offering
       view = Removable.View with removers = fromList [operator, provider, issuer]
 
     interface instance Offering.I for Offering where
-      view = Offering.View with operator; provider; issuer; public; id; description; asset; price; issuerHoldingCid; issuerAccount; backToBack; status
+      view = Offering.View with operator; provider; issuer; id; description; asset; price; issuerHoldingCid; issuerAccount; backToBack; status; observers
 
       asRemovable = toInterface @Removable.I this
 

@@ -42,30 +42,30 @@ run  = do
   createDistributorRole operator agent
 
   -- Services
-  createCustodyService          operator centralBank issuer paths
-  createCustodyService          operator centralBank inv1   paths
-  createCustodyService          operator centralBank inv2   paths
-  createCustodyService          operator centralBank inv3   paths
-  createCustodyService          operator registry    issuer paths
-  createCustodyService          operator registry    inv1   paths
-  createCustodyService          operator registry    inv2   paths
-  createCustodyService          operator registry    inv3   paths
+  createCustodyService          operator centralBank issuer public paths
+  createCustodyService          operator centralBank inv1   public paths
+  createCustodyService          operator centralBank inv2   public paths
+  createCustodyService          operator centralBank inv3   public paths
+  createCustodyService          operator registry    issuer public paths
+  createCustodyService          operator registry    inv1   public paths
+  createCustodyService          operator registry    inv2   public paths
+  createCustodyService          operator registry    inv3   public paths
   createIssuanceService         operator registry    issuer
   createIssuanceAutoService     operator registry    issuer
   createStructuringService      operator registry    issuer
   createStructuringAutoService  operator registry    issuer
-  createLifecycleService        operator registry    issuer public
+  createLifecycleService        operator registry    issuer
   createListingService          operator exchange    issuer
   createListingAutoService      operator exchange    issuer
-  createTradingService          operator exchange    issuer
+  createTradingService          operator exchange    issuer paths
   createTradingAutoService      operator exchange    issuer
-  createTradingService          operator exchange    inv1
+  createTradingService          operator exchange    inv1 paths
   createTradingAutoService      operator exchange    inv1
-  createTradingService          operator exchange    inv2
+  createTradingService          operator exchange    inv2 paths
   createTradingAutoService      operator exchange    inv2
-  createTradingService          operator exchange    inv3
+  createTradingService          operator exchange    inv3 paths
   createTradingAutoService      operator exchange    inv3
-  createAuctionService          operator agent       issuer
+  createAuctionService          operator agent       issuer paths
   createAuctionAutoService      operator agent       issuer
   createBiddingService          operator agent       inv1
   createBiddingAutoService      operator agent       inv1
@@ -154,7 +154,7 @@ run  = do
       -- createAskOrder operator exchange issuer public "2" (qty 250_000.0 swp) (qty 0.90 usd) $ singleton public
       -- createBidOrder operator exchange inv1  public "3" (qty 500_000.0 swp) (qty 0.90 usd) $ singleton public
 
-  --doAuction
+  doAuction
   --doTrade
 
   pure parties
