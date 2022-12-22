@@ -3,6 +3,8 @@
 
 module Daml.Finance.App.Decentralized.Exchange.Service where
 
+import DA.Numeric (div)
+import DA.Set (fromList, singleton)
 import Daml.Finance.App.Decentralized.Exchange.FlashSwapPipe (FlashSwapPipe(..))
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
 import Daml.Finance.App.Interface.Decentralized.Exchange.Service qualified as Service (Deposit(..), FlashSwap(..), HasImplementation, I, Swap(..), View(..), Withdraw(..))
@@ -12,11 +14,9 @@ import Daml.Finance.Interface.Account.Account qualified as Account (Credit(..), 
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (Merge(..), Split(..), SplitResult(..))
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I, Transfer(..))
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q, qty)
-import Daml.Finance.Interface.Types.Common (AccountKey, Id)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity)
+import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, AddObservers(..), RemoveObservers(..))
-import DA.Numeric
-import DA.Set (fromList, singleton)
 
 {-  FlashSwap Decentralized Exchange (DEX)
 
@@ -72,7 +72,7 @@ template Service
     public : Party
     id : Id
     description : Text
-    shares : Instrument.Q -- share
+    shares : InstrumentQuantity -- share
     p1 : Pool -- pool1
     p2 : Pool -- pool2
   where
@@ -100,7 +100,7 @@ template Service
       -- flash swap
       flashSwapBy (actor : Party)
                   (actorAccount : AccountKey)
-                  (xAsset : Instrument.Q)
+                  (xAsset : InstrumentQuantity)
                   (xLP : Pool)
                   (yLP : Pool)
                   (flashSwapActionCid : ContractId FlashSwapAction.I) =
@@ -118,7 +118,7 @@ template Service
           -- execute flashSwapAction and get X
           (xFungibleCid, sideEffectCids) <- exercise flashSwapActionCid FlashSwapAction.ExecuteAction with
               actors = singleton actor
-              consumedQuantity = Instrument.qty yHolding.amount yHolding.instrument
+              consumedQuantity = qty yHolding.amount yHolding.instrument
               producedQuantity = xAsset
               holdingCid = yHoldingCid
 
@@ -233,7 +233,7 @@ template Service
         xHolding <- view <$> fetch (toInterfaceContractId @Holding.I xFungibleCid)
         exercise self Service.FlashSwap with
           actor
-          xAsset = Instrument.qty xHolding.amount xHolding.instrument
+          xAsset = qty xHolding.amount xHolding.instrument
           yAccount
           actionCid = toInterfaceContractId pipeCid
 

@@ -3,16 +3,17 @@
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { v4 as uuidv4 } from "uuid";
 import { Button } from "@mui/material";
 import classnames from "classnames";
 import { useLedger, useParty } from "@daml/react";
+import { emptyMap } from "@daml/types";
 import useStyles from "../../styles";
 import { parseDate, singleton } from "../../../util";
 import { Spinner } from "../../../components/Spinner/Spinner";
-import { PeriodEnum } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Date/RollConvention";
-import { emptyMap } from "@daml/types";
-import { DayCountConventionEnum } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Date/DayCount";
-import { BusinessDayConventionEnum } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Date/Calendar";
+import { PeriodEnum } from "@daml.js/daml-finance-interface-types-date/lib/Daml/Finance/Interface/Types/Date/RollConvention";
+import { DayCountConventionEnum } from "@daml.js/daml-finance-interface-types-date/lib/Daml/Finance/Interface/Types/Date/DayCount";
+import { BusinessDayConventionEnum } from "@daml.js/daml-finance-interface-types-date/lib/Daml/Finance/Interface/Types/Date/Calendar";
 import { useParties } from "../../../context/PartiesContext";
 import { useInstruments } from "../../../context/InstrumentContext";
 import { useServices } from "../../../context/ServicesContext";
@@ -60,6 +61,7 @@ export const NewFloatingRateBond : React.FC = () => {
     const arg = {
       id: { unpack: id },
       description,
+      version: uuidv4(),
       referenceRateId,
       couponSpread,
       issueDate: parseDate(issueDate),

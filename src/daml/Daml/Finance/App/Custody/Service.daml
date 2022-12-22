@@ -16,8 +16,7 @@ import Daml.Finance.Interface.Account.Account qualified as Account (Credit(..), 
 import Daml.Finance.Interface.Account.Factory qualified as Account (F, Create(..), Remove(..))
 import Daml.Finance.Interface.Holding.Factory qualified as Holding (F)
 import Daml.Finance.Interface.Account.Util (getAccount)
-import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Lifecycle (Claim)
-import Daml.Finance.Interface.Types.Common (AccountKey(..))
+import Daml.Finance.Interface.Types.Common.Types (AccountKey(..))
 
 type T = Service
 
@@ -28,7 +27,6 @@ template Service
     operator : Party
     provider : Party
     customer : Party
-    claimRuleCid : ContractId Lifecycle.Claim
     accountFactoryCid : ContractId Account.F
     holdingFactoryCid : ContractId Holding.F
   where
@@ -43,7 +41,7 @@ template Service
       terminate = pure ()
 
     interface instance Service.I for Service where
-      view = Service.View with claimRuleCid; accountFactoryCid; holdingFactoryCid
+      view = Service.View with accountFactoryCid; holdingFactoryCid
 
       asBase = toInterface @Base.I this
 
@@ -88,7 +86,6 @@ template Offer
     operator : Party
     provider : Party
     customer : Party
-    claimRuleCid : ContractId Lifecycle.Claim
     accountFactoryCid : ContractId Account.F
     holdingFactoryCid : ContractId Holding.F
   where
@@ -98,7 +95,7 @@ template Offer
     choice Accept : ContractId Service
       controller customer
       do
-        create Service with operator; provider; customer; claimRuleCid; accountFactoryCid; holdingFactoryCid
+        create Service with operator; provider; customer; accountFactoryCid; holdingFactoryCid
 
     choice Decline : ()
       controller customer
@@ -127,9 +124,8 @@ template Request
     choice Approve : ContractId Service
       with
         operator : Party
-        claimRuleCid : ContractId Lifecycle.Claim
         accountFactoryCid : ContractId Account.F
         holdingFactoryCid : ContractId Holding.F
       controller operator, provider
       do
-        create Service with operator; provider; customer; claimRuleCid; accountFactoryCid; holdingFactoryCid
+        create Service with operator; provider; customer; accountFactoryCid; holdingFactoryCid

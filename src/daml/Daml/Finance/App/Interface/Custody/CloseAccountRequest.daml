@@ -4,7 +4,7 @@
 module Daml.Finance.App.Interface.Custody.CloseAccountRequest where
 
 import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Implementation)
-import Daml.Finance.Interface.Types.Common (AccountKey)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey)
 
 type I = CloseAccountRequest
 

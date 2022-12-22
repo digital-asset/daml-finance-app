@@ -8,17 +8,13 @@ import Daml.Finance.App.Interface.Trading.Order qualified as Order (I, Side, Vie
 import Daml.Finance.App.Interface.Trading.CreateOrderRequest qualified as CreateOrderRequest (I)
 import Daml.Finance.App.Interface.Trading.CancelOrderRequest qualified as CancelOrderRequest (I)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Settlement.Factory qualified as Factory (I)
-import Daml.Finance.Interface.Types.Common (AccountKey, Id, Parties)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity, Parties)
 
 type I = Service
 
 type V = View
 
-data View = View
-  with
-    settlementFactoryCid : ContractId Factory.I
+data View = View {}
   deriving (Eq, Show)
 
 interface Service where
@@ -46,8 +42,8 @@ interface Service where
     with
       id : Id
       listingId : Id
-      quantity : Instrument.Q
-      price : Instrument.Q
+      quantity : InstrumentQuantity
+      price : InstrumentQuantity
       side : Order.Side
       collateralCid : ContractId Fungible.I
       account : AccountKey

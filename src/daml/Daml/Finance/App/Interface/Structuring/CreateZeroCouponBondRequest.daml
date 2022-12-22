@@ -4,7 +4,7 @@
 module Daml.Finance.App.Interface.Structuring.CreateZeroCouponBondRequest where
 
 import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Implementation)
-import Daml.Finance.Interface.Types.Common (Id, InstrumentKey, PartiesMap)
+import Daml.Finance.Interface.Types.Common.Types (Id, InstrumentKey, PartiesMap)
 
 type I = CreateZeroCouponBondRequest
 
@@ -17,6 +17,7 @@ data View = View
     customer : Party
     id : Id
     description : Text
+    version : Text
     issueDate : Date
     maturityDate : Date
     currency : InstrumentKey

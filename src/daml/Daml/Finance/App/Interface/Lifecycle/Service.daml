@@ -8,15 +8,13 @@ import ContingentClaims.Core.Claim (Claim)
 import ContingentClaims.Core.Observation (Observation(..))
 import ContingentClaims.Lifecycle.Lifecycle qualified as Lifecycle
 import ContingentClaims.Valuation.Stochastic (Expr)
-import Daml.Finance.Interface.Data.NumericObservable qualified as NumericObservable (I)
-import Daml.Finance.Interface.Data.TimeObservable qualified as TimeObservable (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
+import Daml.Finance.Interface.Lifecycle.Observable.NumericObservable qualified as NumericObservable (I)
 import Daml.Finance.Interface.Claims.Claim qualified as Claim (Claim)
 import Daml.Finance.Interface.Claims.Types (C, Pending, TaggedClaim)
 import Daml.Finance.Interface.Lifecycle.Effect qualified as Effect (I)
 import Daml.Finance.Interface.Lifecycle.Event qualified as Event (I)
 import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (I)
-import Daml.Finance.Interface.Types.Common (Id, InstrumentKey)
+import Daml.Finance.Interface.Types.Common.Types (Id, InstrumentKey, InstrumentQuantity)
 
 type I = Service
 
@@ -52,7 +50,7 @@ interface Service where
   getCurrentClaims : GetCurrentClaims -> Update [TaggedClaim]
     -- ^ Implementation of the `GetCurrentClaims` choice.
 
-  lifecycle : Lifecycle -> Update (ContractId Lifecycle.I, [ContractId Effect.I])
+  lifecycle : Lifecycle -> Update (Optional InstrumentKey, [ContractId Effect.I])
     -- ^ Implementation of the `Lifecycle` choice.
 
   expiry : Expiry -> Update (Optional Time)
@@ -75,37 +73,34 @@ interface Service where
 
   nonconsuming choice DeclareDividend : [ContractId Effect.I]
     with
-      timeObservableCid : ContractId TimeObservable.I
       equity : InstrumentKey
       newVersion : Text
-      id : Id
+      eventId : Id
       description : Text
-      effectiveDate : Date
-      perUnitDistribution : [ Instrument.Q ]
+      effectiveTime : Time
+      perUnitDistribution : [ InstrumentQuantity ]
     controller (view $ asBase this).customer
     do
       declareDividend this arg
 
   nonconsuming choice DeclareReplacement : [ContractId Effect.I]
     with
-      timeObservableCid : ContractId TimeObservable.I
       equity : InstrumentKey
-      id : Id
+      eventId : Id
       description : Text
-      effectiveDate : Date
-      perUnitReplacement : [ Instrument.Q ]
+      effectiveTime : Time
+      perUnitReplacement : [ InstrumentQuantity ]
     controller (view $ asBase this).customer
     do
       declareReplacement this arg
 
   nonconsuming choice DeclareStockSplit : [ContractId Effect.I]
     with
-      timeObservableCid : ContractId TimeObservable.I
       equity : InstrumentKey
       newVersion : Text
-      id : Id
+      eventId : Id
       description : Text
-      effectiveDate : Date
+      effectiveTime : Time
       adjustmentFactor : Decimal
     controller (view $ asBase this).customer
     do
@@ -137,13 +132,12 @@ interface Service where
     do
       getCurrentClaims this arg
 
-  nonconsuming choice Lifecycle : (ContractId Lifecycle.I, [ContractId Effect.I])
+  nonconsuming choice Lifecycle : (Optional InstrumentKey, [ContractId Effect.I])
     with
-      ruleName : Text
+      ruleCid : ContractId Lifecycle.I
       eventCid : ContractId Event.I
-      timeObservableCid : ContractId TimeObservable.I
       observableCids : [ContractId NumericObservable.I]
-      lifecyclableCid : ContractId Lifecycle.I
+      instrument : InstrumentKey
     controller (view $ asBase this).customer
     do
       lifecycle this arg

@@ -4,8 +4,7 @@
 module Daml.Finance.App.Interface.Issuance.IssueRequest where
 
 import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Implementation)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Types.Common (AccountKey, Id)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity)
 
 type I = IssueRequest
 
@@ -18,7 +17,7 @@ data View = View
     customer : Party
     issuanceId : Id
     description : Text
-    quantity : Instrument.Q
+    quantity : InstrumentQuantity
     account : AccountKey
   deriving (Eq, Show)
 

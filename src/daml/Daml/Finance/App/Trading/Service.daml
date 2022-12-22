@@ -8,17 +8,18 @@ import DA.Optional (isNone)
 import DA.Set (insert, singleton)
 import Daml.Finance.App.Interface.Common.Util (fetchAndRemove)
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
+import Daml.Finance.App.Interface.Settlement.Service qualified as SettlementService (I)
 import Daml.Finance.App.Interface.Trading.CancelOrderRequest qualified as CancelOrderRequest (View(..))
 import Daml.Finance.App.Interface.Trading.CreateOrderRequest qualified as CreateOrderRequest (View(..))
 import Daml.Finance.App.Interface.Trading.Order qualified as Order (ApproveInstruction(..), Fill(..), FillResult(..), I, Side(..), View(..))
 import Daml.Finance.App.Interface.Trading.Service qualified as Service (CancelOrder(..), CreateOrder(..), ExecuteOrder(..), HasImplementation, I, RequestCancelOrder(..), RequestCreateOrder(..), View(..))
+import Daml.Finance.App.Settlement.Service qualified as SettlementService (T)
 import Daml.Finance.App.Trading.Model qualified as Model (CancelOrderRequest(..), CreateOrderRequest(..), Order(..))
 import Daml.Finance.Interface.Account.Account qualified as Account (exerciseInterfaceByKey)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Account.Util (getAccount)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, AddObservers(..), RemoveObservers(..))
-import Daml.Finance.Interface.Settlement.Factory qualified as Factory (I)
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Approve(..))
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
 import Daml.Finance.Interface.Settlement.Types (Approval(TakeDelivery))
@@ -32,7 +33,6 @@ template Service
     operator : Party
     provider : Party
     customer : Party
-    settlementFactoryCid : ContractId Factory.I
   where
     signatory operator, provider, customer
 
@@ -44,7 +44,7 @@ template Service
       terminate = pure ()
 
     interface instance Service.I for Service where
-      view = Service.View with settlementFactoryCid
+      view = Service.View
 
       asBase = toInterface @Base.I this
 
@@ -74,8 +74,9 @@ template Service
       executeOrder Service.ExecuteOrder{orderCid; orderCids} = do
         order <- view <$> fetch orderCid
         orderViews <- zip orderCids <$> mapA (fmap view . fetch) orderCids
-        let orders = filter (\(_, o) -> o.customer /= customer && if order.side == Order.Buy then o.side == Order.Sell && o.price.amount <= order.price.amount else o.side == Order.Buy && o.price.amount >= order.price.amount) orderViews
+        settlementServiceCid <- toInterfaceContractId @SettlementService.I . fst <$> fetchByKey @SettlementService.T (operator, provider, customer)
         let
+          orders = filter (\(_, o) -> o.customer /= customer && if order.side == Order.Buy then o.side == Order.Sell && o.price.amount <= order.price.amount else o.side == Order.Buy && o.price.amount >= order.price.amount) orderViews
           match : Optional (ContractId Order.I, Order.View) -> (ContractId Order.I, Order.View) -> Update (Optional (ContractId Order.I, Order.View))
           match myOpt (otherCid, other) =
             case myOpt of
@@ -86,11 +87,11 @@ template Service
               Some (myCid, my) -> do
                 myCollateral <- fetch my.collateralCid
                 otherCollateral <- fetch other.collateralCid
-                Order.FillResult{orderOpt; batchCid; instructionCid} <- exercise myCid Order.Fill with settlementFactoryCid; other; isResting = False
+                Order.FillResult{orderOpt; batchCid; instructionCid} <- exercise myCid Order.Fill with settlementServiceCid; other; isResting = False
                 exercise otherCid Order.ApproveInstruction with instructionCid
                 [transferableCid] <- exercise batchCid Batch.Settle with actors = singleton provider
                 exercise (toInterfaceContractId transferableCid : ContractId Holding.I) Holding.Release with context = show my.id
-                Order.FillResult{orderOpt = otherOpt; batchCid; instructionCid} <- exercise otherCid Order.Fill with settlementFactoryCid; other = my; isResting = True
+                Order.FillResult{orderOpt = otherOpt; batchCid; instructionCid} <- exercise otherCid Order.Fill with settlementServiceCid; other = my; isResting = True
                 exercise instructionCid Instruction.Approve with actors = singleton provider; approval = TakeDelivery my.account
                 [transferableCid] <- exercise batchCid Batch.Settle with actors = singleton provider
                 exercise (toInterfaceContractId transferableCid : ContractId Holding.I) Holding.Release with context = show other.id
@@ -110,7 +111,6 @@ template Offer
     operator : Party
     provider : Party
     customer : Party
-    settlementFactoryCid : ContractId Factory.I
   where
     signatory operator, provider
     observer customer
@@ -118,7 +118,7 @@ template Offer
     choice Accept : ContractId Service
       controller customer
       do
-        create Service with operator; provider; customer; settlementFactoryCid
+        create Service with operator; provider; customer
 
     choice Decline : ()
       controller customer
@@ -147,7 +147,6 @@ template Request
     choice Approve : ContractId Service
       with
         operator : Party
-        settlementFactoryCid : ContractId Factory.I
       controller operator, provider
       do
-        create Service with operator; provider; customer; settlementFactoryCid
+        create Service with operator; provider; customer

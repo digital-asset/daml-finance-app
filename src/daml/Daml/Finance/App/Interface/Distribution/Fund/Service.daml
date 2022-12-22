@@ -8,11 +8,11 @@ import Daml.Finance.App.Interface.Distribution.Fund.Fund qualified as Fund (I)
 import Daml.Finance.App.Interface.Distribution.Fund.PooledInvestmentRequest qualified as PooledInvestmentRequest (I)
 import Daml.Finance.App.Interface.Distribution.Investment.InvestmentRequest qualified as InvestmentRequest (I)
 import Daml.Finance.App.Interface.Issuance.Service qualified as IssuanceService (I)
-import Daml.Finance.Interface.Data.NumericObservable qualified as NumericObservable (I)
+import Daml.Finance.Interface.Lifecycle.Observable.NumericObservable qualified as NumericObservable (I)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
 import Daml.Finance.Interface.Settlement.Factory qualified as SettlementFactory (I)
-import Daml.Finance.Interface.Types.Common (Id)
+import Daml.Finance.Interface.Types.Common.Types (Id)
 
 type I = Service
 

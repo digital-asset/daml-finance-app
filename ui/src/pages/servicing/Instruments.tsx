@@ -9,8 +9,7 @@ import { useParties } from "../../context/PartiesContext";
 import { useServices } from "../../context/ServicesContext";
 import { InstrumentAggregate, useInstruments } from "../../context/InstrumentContext";
 import { Event } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Event";
-import { NumericObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/NumericObservable";
-import { TimeObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/TimeObservable";
+import { NumericObservable } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Observable/NumericObservable";
 import { DetailButton } from "../../components/DetailButton/DetailButton";
 import { SelectionTable } from "../../components/Table/SelectionTable";
 import { useNavigate } from "react-router-dom";
@@ -27,9 +26,8 @@ export const Instruments : React.FC = () => {
   const { loading: l2, latests } = useInstruments();
   const { loading: l3, contracts: numericObservables } = useStreamQueries(NumericObservable);
   const { loading: l4, contracts: events } = useStreamQueries(Event);
-  const { loading: l5, contracts: timeObservables } = useStreamQueries(TimeObservable);
 
-  if (l1 || l2 || l3 || l4 || l5) return <Spinner />;
+  if (l1 || l2 || l3 || l4) return <Spinner />;
 
   const myInstruments = latests.filter(a => (!!a.lifecycle && a.lifecycle.payload.lifecycler === party) || (!!a.equity && a.payload.issuer === party));
 
@@ -39,10 +37,9 @@ export const Instruments : React.FC = () => {
     if (!svc) throw new Error("No lifecycle service found for customer [" + party + "]");
     const lifecycleOne = async (c : ContractId<Lifecycle>) => {
       const arg = {
-        ruleName: "Time",
+        ruleCid: ???,
         // TODO: Assumes the only event we have is a DateClockUpdatedEvent
         eventCid: events[0].contractId,
-        timeObservableCid: timeObservables[0].contractId,
         observableCids: numericObservables.map(o => o.contractId),
         lifecyclableCid: c
       }

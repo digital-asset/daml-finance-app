@@ -61,31 +61,26 @@ import Daml.Finance.Instrument.Equity.Factory qualified as Equity (Factory(..))
 import Daml.Finance.Instrument.Generic.Factory qualified as Generic (Factory(..))
 import Daml.Finance.Instrument.Swap.Fpml.Factory qualified as FpmlSwap (Factory(..))
 import Daml.Finance.Instrument.Token.Factory qualified as Token (Factory(..))
-import Daml.Finance.Interface.Account.Account qualified as Account (K)
 import Daml.Finance.Interface.Account.Factory qualified as Account (F)
 import Daml.Finance.Interface.Holding.Factory qualified as Holding (F)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Settlement.Factory qualified as Settlement (Factory)
-import Daml.Finance.Interface.Types.Common (Id(..))
+import Daml.Finance.Interface.Settlement.Factory qualified as SettlementFactory (I)
+import Daml.Finance.Interface.Settlement.RouteProvider qualified as RouteProvider (I)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id(..), InstrumentQuantity)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, AddObservers(..))
 import Daml.Finance.Lifecycle.Rule.Claim qualified as Claim (Rule(..))
 import Daml.Finance.Lifecycle.Rule.Distribution qualified as Distribution (Rule(..))
 import Daml.Finance.Lifecycle.Rule.Replacement qualified as Replacement (Rule(..))
 import Daml.Script
 
-createCustodyService : Party -> Party -> Party -> ContractId Settlement.Factory -> ContractId Account.F -> ContractId Holding.F -> Script (ContractId Custody.I)
-createCustodyService operator custodian customer settlementFactoryCid accountFactoryCid holdingFactoryCid = do
-  let providers = fromList [custodian, customer]
-  claimRuleCid <- toInterfaceContractId <$> submitMulti [custodian, customer] [] do createCmd Claim.Rule with providers = fromList [custodian, customer]; claimers = providers; settlers = providers; settlementFactoryCid; netInstructions = False
-  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferCustodyService with customer; claimRuleCid; accountFactoryCid; holdingFactoryCid
+createCustodyService : Party -> Party -> Party -> ContractId Account.F -> ContractId Holding.F -> Script (ContractId Custody.I)
+createCustodyService operator custodian customer accountFactoryCid holdingFactoryCid = do
+  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferCustodyService with customer; accountFactoryCid; holdingFactoryCid
   toInterfaceContractId <$> submit customer do exerciseCmd offerCid Custody.Accept
 
-createCustodyAutoService : Party -> Party -> Party -> ContractId Settlement.Factory -> ContractId Account.F -> ContractId Holding.F -> Script (ContractId CustodyAuto.I)
-createCustodyAutoService operator custodian customer settlementFactoryCid accountFactoryCid holdingFactoryCid = do
-  let providers = fromList [custodian, customer]
-  claimRuleCid <- toInterfaceContractId <$> submitMulti [custodian, customer] [] do createCmd Claim.Rule with providers = fromList [custodian, customer]; claimers = providers; settlers = providers; settlementFactoryCid; netInstructions = False
-  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferCustodyAutoService with customer; claimRuleCid; accountFactoryCid; holdingFactoryCid
+createCustodyAutoService : Party -> Party -> Party -> ContractId Account.F -> ContractId Holding.F -> Script (ContractId CustodyAuto.I)
+createCustodyAutoService operator custodian customer accountFactoryCid holdingFactoryCid = do
+  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferCustodyAutoService with customer; accountFactoryCid; holdingFactoryCid
   toInterfaceContractId <$> submit customer do exerciseCmd offerCid CustodyAuto.Accept
 
 createIssuanceService : Party -> Party -> Party -> Script (ContractId Issuance.I)
@@ -123,14 +118,14 @@ createBackToBackIssuanceService operator custodian customer public = do
 
 createLifecycleService : Party -> Party -> Party -> Party -> Script (ContractId Lifecycle.I)
 createLifecycleService operator custodian customer public = do
-  distributionRuleCid <- toInterfaceContractId <$> submit custodian do createCmd Distribution.Rule with providers = singleton custodian; lifecycler = customer; observers = singleton public
-  replacementRuleCid <- toInterfaceContractId <$> submit custodian do createCmd Replacement.Rule with providers = singleton custodian; lifecycler = customer; observers = singleton public
+  distributionRuleCid <- toInterfaceContractId <$> submit custodian do createCmd Distribution.Rule with providers = singleton custodian; id = Id "DR"; description = ""; lifecycler = customer; observers = singleton public
+  replacementRuleCid <- toInterfaceContractId <$> submit custodian do createCmd Replacement.Rule with providers = singleton custodian; id = Id "DR"; description = ""; lifecycler = customer; observers = singleton public
   offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferLifecycleService with ..
   toInterfaceContractId <$> submit customer do exerciseCmd offerCid Lifecycle.Accept
 
-createTradingService : Party -> Party -> Party -> ContractId Settlement.Factory -> Script (ContractId Trading.I)
-createTradingService operator exchange customer settlementFactoryCid = do
-  offerCid <- submit exchange do exerciseByKeyCmd @Exchange.Role (operator, exchange) Exchange.OfferTradingService with customer; settlementFactoryCid
+createTradingService : Party -> Party -> Party -> Script (ContractId Trading.I)
+createTradingService operator exchange customer = do
+  offerCid <- submit exchange do exerciseByKeyCmd @Exchange.Role (operator, exchange) Exchange.OfferTradingService with customer
   toInterfaceContractId <$> submit customer do exerciseCmd offerCid Trading.Accept
 
 createTradingAutoService : Party -> Party -> Party -> Script (ContractId TradingAuto.I)
@@ -178,9 +173,12 @@ createLendingService operator lender borrower = do
   offerCid <- submit lender do exerciseByKeyCmd @Custodian.Role (operator, lender) Custodian.OfferLendingService with customer = borrower
   toInterfaceContractId <$> submit borrower do exerciseCmd offerCid Lending.Accept
 
-createSettlementService : Party -> Party -> Party -> Script (ContractId Settlement.I)
-createSettlementService operator custodian customer = do
-  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferSettlementService with customer
+createSettlementService : Party -> Party -> Party -> ContractId RouteProvider.I -> ContractId SettlementFactory.I -> Script (ContractId Settlement.I)
+createSettlementService operator custodian customer routerCid factoryCid = do
+  -- TODO: Seems wrong to have the claim rule on the settlement service. Parties then need the service just for claiming.
+  let providers = fromList [custodian, customer]
+  claimRuleCid <- toInterfaceContractId <$> submitMulti [custodian, customer] [] do createCmd Claim.Rule with providers; claimers = providers; settlers = providers; routeProviderCid = routerCid; settlementFactoryCid = factoryCid; netInstructions = False
+  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferSettlementService with customer; routerCid; factoryCid; claimRuleCid
   toInterfaceContractId <$> submit customer do exerciseCmd offerCid Settlement.Accept
 
 createInvestmentService : Party -> Party -> Party -> Script (ContractId Investment.I)
@@ -193,7 +191,7 @@ createFundService operator provider customer = do
   offerCid <- submit provider do exerciseByKeyCmd @Distributor.Role (operator, provider) Distributor.OfferFundService with customer
   toInterfaceContractId <$> submit customer do exerciseCmd offerCid Fund.Accept
 
-createDecentralizedExchangeService : Party -> Party -> Text -> Instrument.Q -> Instrument.Q -> Account.K -> ContractId Fungible.I -> Instrument.Q -> Account.K -> ContractId Fungible.I -> Script (ContractId DecentralizedExchange.I)
+createDecentralizedExchangeService : Party -> Party -> Text -> InstrumentQuantity -> InstrumentQuantity -> AccountKey -> ContractId Fungible.I -> InstrumentQuantity -> AccountKey -> ContractId Fungible.I -> Script (ContractId DecentralizedExchange.I)
 createDecentralizedExchangeService consortium public id shares quantity1 account1 fungible1Cid quantity2 account2 fungible2Cid = do
   fungible1Cid <- coerceContractId <$> submit consortium do exerciseCmd (toInterfaceContractId @Disclosure.I fungible1Cid) Disclosure.AddObservers with disclosers = singleton consortium; observersToAdd = (id, singleton public)
   fungible2Cid <- coerceContractId <$> submit consortium do exerciseCmd (toInterfaceContractId @Disclosure.I fungible2Cid) Disclosure.AddObservers with disclosers = singleton consortium; observersToAdd = (id, singleton public)

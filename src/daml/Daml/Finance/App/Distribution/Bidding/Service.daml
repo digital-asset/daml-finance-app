@@ -7,6 +7,7 @@ import DA.Assert ((===))
 import DA.List (head)
 import DA.Optional (fromSome)
 import DA.Set (singleton)
+import Daml.Finance.App.Distribution.Bidding.Model (Bid(..), CreateBidRequest(..))
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
 import Daml.Finance.App.Interface.Common.Util (fetchAndRemove)
 import Daml.Finance.App.Interface.Distribution.Auction.Auction qualified as Auction (GetView(..))
@@ -16,11 +17,10 @@ import Daml.Finance.App.Interface.Distribution.Bidding.Service qualified as Serv
 import Daml.Finance.Interface.Account.Account qualified as Account (R)
 import Daml.Finance.Interface.Account.Util (getAccount)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..), SplitResult(..))
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Holding.Util (getAmount, getInstrument)
+import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I, RemoveObservers(..))
-import Daml.Finance.App.Distribution.Bidding.Model (Bid(..), CreateBidRequest(..))
 
 type T = Service
 
@@ -68,8 +68,8 @@ template Service
         collateralCid <- coerceContractId <$> exercise (coerceContractId investorHoldingCid : ContractId Holding.I) Holding.Acquire with newLockers = singleton provider; context = show auction.id; lockType = Holding.Semaphore
 
         let
-          quantity = Instrument.qty amount auction.quantity.unit
-          priceQty = Instrument.qty price auction.currency
+          quantity = qty amount auction.quantity.unit
+          priceQty = qty price auction.currency
         toInterfaceContractId <$> create CreateBidRequest with operator; provider; customer; issuer = auction.customer; auctionId = auction.id; quantity; price = priceQty; collateralCid; receivableAccount
 
       createBid Service.CreateBid{createBidRequestCid} = do

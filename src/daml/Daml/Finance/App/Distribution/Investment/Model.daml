@@ -6,12 +6,10 @@ module Daml.Finance.App.Distribution.Investment.Model where
 import DA.Set (fromList, singleton)
 import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, View(..))
 import Daml.Finance.App.Interface.Distribution.Investment.InvestmentRequest qualified as InvestmentRequest (AllocateInstruction(..), ApproveInstruction(..), HasImplementation, I, View(..))
-import Daml.Finance.Interface.Account.Account qualified as Account (K)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Types (Allocation(Pledge), Approval(TakeDelivery))
-import Daml.Finance.Interface.Types.Common (Id)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity)
 
 instance InvestmentRequest.HasImplementation InvestmentRequest
 
@@ -24,9 +22,9 @@ template InvestmentRequest
     requestId : Id
     asOfDate : Date
     fundId : Id
-    quantity : Instrument.Q
+    quantity : InstrumentQuantity
     cashCid : ContractId Transferable.I
-    customerFundAccount : Account.K
+    customerFundAccount : AccountKey
   where
     signatory operator, provider, customer
     observer manager

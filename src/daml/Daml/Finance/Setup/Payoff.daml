@@ -10,8 +10,7 @@ import ContingentClaims.Core.Builders (forward, fixed, floating, swap, european,
 import DA.Date (DayOfWeek(..), Month(..), addDays, date, monthDayCount, toGregorian)
 import DA.List (last)
 import DA.Time (time)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Types.Common (InstrumentKey)
+import Daml.Finance.Interface.Types.Common.Types (InstrumentKey, InstrumentQuantity)
 import Daml.Finance.Interface.Types.Date.Calendar
 import Daml.Finance.Interface.Types.Date.DayCount
 import Daml.Finance.Interface.Types.Date.RollConvention
@@ -330,7 +329,7 @@ buyWriteNote issueDate endDate maturityDate und ccy couponRatePerAnnum denominat
   in cCoupon `and` cPayoff
 
 -- | Multiple delivery locations
-ngMultiLocation : Date -> Date -> [Instrument.Q] -> Decimal -> InstrumentKey -> C
+ngMultiLocation : Date -> Date -> [InstrumentQuantity] -> Decimal -> InstrumentKey -> C
 ngMultiLocation startDate endDate deliveries price ccy =
   let
     total = sum $ map (.amount) deliveries

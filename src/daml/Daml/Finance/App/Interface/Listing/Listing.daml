@@ -4,7 +4,7 @@
 module Daml.Finance.App.Interface.Listing.Listing where
 
 import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Implementation)
-import Daml.Finance.Interface.Types.Common (Id, InstrumentKey, Parties)
+import Daml.Finance.Interface.Types.Common.Types (Id, InstrumentKey, Parties)
 
 type I = Listing
 

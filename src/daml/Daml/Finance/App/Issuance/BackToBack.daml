@@ -8,12 +8,13 @@ import DA.Optional (fromSome)
 import DA.Set (fromList, singleton)
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
 import Daml.Finance.App.Interface.Issuance.BackToBack qualified as Service (CreateIssuance(..), HasImplementation, I, LockOffering(..), SettleOffering(..), View(..))
+import Daml.Finance.App.Interface.Settlement.Service qualified as SettlementService (DiscoverAndInstruct(..), I)
 import Daml.Finance.App.Issuance.Model (Issuance(..))
+import Daml.Finance.App.Settlement.Service qualified as SettlementService (T)
 import Daml.Finance.Interface.Account.Account qualified as Account (Credit(..), R)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (Split(..), SplitResult(..))
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I, Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Holding.Util (getAmount)
-import Daml.Finance.Interface.Settlement.Factory qualified as Factory (Instruct(..))
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
 import Daml.Finance.Interface.Settlement.Types (Allocation(Pledge), Approval(TakeDelivery), Step(..))
@@ -66,7 +67,15 @@ template Service
           totalNotional = totalQuantity * offering.price.amount
           delivery = Step with sender = b2b.party; receiver = offering.issuer; quantity = (offering.asset with amount = totalQuantity)
           payment = Step with sender = offering.issuer; receiver = b2b.party; quantity = (offering.price with amount = totalNotional)
-        (batchCid, [deliveryCid, paymentCid]) <- exercise settlementFactoryCid Factory.Instruct with instructors = singleton customer; settlers = singleton offering.issuer; id = offering.id; contextId = None; steps = [ delivery, payment ]; description = "Settlement for offering " <> show offering.id
+        settlementServiceCid <- toInterfaceContractId @SettlementService.I . fst <$> fetchByKey @SettlementService.T (operator, provider, customer)
+        (batchCid, [deliveryCid, paymentCid]) <- exercise settlementServiceCid SettlementService.DiscoverAndInstruct with
+          actor = customer
+          settlers = singleton offering.issuer
+          id = offering.id
+          description = "Settlement for offering " <> show offering.id
+          contextId = None
+          settlementTime = None
+          steps = [ delivery, payment ]
 
         b2bDeliverable <- fetch b2b.b2bDeliverableCid
         b2bSizedDeliverableCid <-

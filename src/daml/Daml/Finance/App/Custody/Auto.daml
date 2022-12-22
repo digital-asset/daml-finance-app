@@ -9,7 +9,6 @@ import Daml.Finance.App.Interface.Custody.Auto qualified as Auto (HasImplementat
 import Daml.Finance.App.Interface.Custody.Service qualified as Service (CloseAccount(..), Deposit(..), I, OpenAccount(..), RequestCloseAccount(..), RequestDeposit(..), RequestOpenAccount(..), RequestWithdraw(..), Withdraw(..))
 import Daml.Finance.Interface.Account.Factory qualified as Account (F)
 import Daml.Finance.Interface.Holding.Factory qualified as Holding (F)
-import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Lifecycle (Claim)
 
 type T = Service
 
@@ -20,7 +19,6 @@ template Service
     operator : Party
     provider : Party
     customer : Party
-    claimRuleCid : ContractId Lifecycle.Claim
     accountFactoryCid : ContractId Account.F
     holdingFactoryCid : ContractId Holding.F
   where
@@ -63,7 +61,6 @@ template Offer
     operator : Party
     provider : Party
     customer : Party
-    claimRuleCid : ContractId Lifecycle.Claim
     accountFactoryCid : ContractId Account.F
     holdingFactoryCid : ContractId Holding.F
   where
@@ -73,7 +70,7 @@ template Offer
     choice Accept : ContractId Service
       controller customer
       do
-        create Service with operator; provider; customer; claimRuleCid; accountFactoryCid; holdingFactoryCid
+        create Service with operator; provider; customer; accountFactoryCid; holdingFactoryCid
 
     choice Decline : ()
       controller customer
@@ -102,9 +99,8 @@ template Request
     choice Approve : ContractId Service
       with
         operator : Party
-        claimRuleCid : ContractId Lifecycle.Claim
         accountFactoryCid : ContractId Account.F
         holdingFactoryCid : ContractId Holding.F
       controller operator, provider
       do
-        create Service with operator; provider; customer; claimRuleCid; accountFactoryCid; holdingFactoryCid
+        create Service with operator; provider; customer; accountFactoryCid; holdingFactoryCid

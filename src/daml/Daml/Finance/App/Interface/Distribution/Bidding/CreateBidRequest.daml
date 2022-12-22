@@ -5,8 +5,7 @@ module Daml.Finance.App.Interface.Distribution.Bidding.CreateBidRequest where
 
 import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Implementation)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Types.Common (AccountKey, Id)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity)
 
 type I = CreateBidRequest
 
@@ -19,8 +18,8 @@ data View = View
     customer : Party
     issuer : Party
     auctionId : Id
-    quantity : Instrument.Q
-    price : Instrument.Q
+    quantity : InstrumentQuantity
+    price : InstrumentQuantity
     collateralCid : ContractId Fungible.I
     receivableAccount : AccountKey
   deriving (Eq, Show)

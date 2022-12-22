@@ -4,7 +4,7 @@
 module Daml.Finance.App.Data.AccountDirectory where
 
 import DA.Map (Map)
-import Daml.Finance.Interface.Types.Common (AccountKey, Id, Parties)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, Parties)
 
 type T = AccountDirectory
 

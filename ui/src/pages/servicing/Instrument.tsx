@@ -15,7 +15,7 @@ import { and, C, claimToNode } from "../../components/Claims/util";
 import { useParties } from "../../context/PartiesContext";
 import { useInstruments } from "../../context/InstrumentContext";
 import { useServices } from "../../context/ServicesContext";
-import { NumericObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/NumericObservable";
+import { NumericObservable } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Observable/NumericObservable";
 import { TimeObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/TimeObservable";
 import { Event } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Event";
 import { parseDate, shorten } from "../../util";

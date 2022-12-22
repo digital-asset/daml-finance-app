@@ -10,10 +10,11 @@ import DA.Time (time)
 import Daml.Finance.App.Distribution.Fund.Model (Fund(..))
 import Daml.Finance.Account.Account qualified as Account (Factory(..))
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
-import Daml.Finance.Interface.Types.Common (Id(..))
-import Daml.Finance.Settlement.Factory qualified as Settlement (FactoryWithIntermediaries(..))
+import Daml.Finance.Interface.Types.Common.Types (Id(..))
+import Daml.Finance.Interface.Util.Common (qty)
+import Daml.Finance.Settlement.Factory qualified as Settlement (Factory(..))
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
+import Daml.Finance.Settlement.RouteProvider.IntermediatedStatic qualified as RouteProvider (IntermediatedStatic(..))
 import Daml.Finance.Setup.Util.Common
 import Daml.Finance.Setup.Util.Role
 import Daml.Finance.Setup.Util.Service
@@ -35,26 +36,28 @@ run = do
     cashRoute = Settlement.Hierarchy with rootCustodian = cashProvider; pathsToRootCustodian = settlementPaths
     secRoute = Settlement.Hierarchy with rootCustodian = custodian; pathsToRootCustodian = settlementPaths
     paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
-  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
-  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
-  settlementFactoryCid      <- toInterfaceContractId <$> submit operator do createCmd Settlement.FactoryWithIntermediaries with provider = operator; paths; observers = singleton public
+  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory                   with provider = operator; observers = pub
+  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory                  with provider = operator; observers = pub
+  routeProviderCid          <- toInterfaceContractId <$> submit operator do createCmd RouteProvider.IntermediatedStatic with provider = operator; observers = singleton public; paths
+  settlementFactoryCid      <- toInterfaceContractId <$> submit operator do createCmd Settlement.Factory                with provider = operator; observers = singleton public
 
   -- Roles
   createOperatorRole operator
   createCustodianRole operator cashProvider
   createCustodianRole operator custodian
+  createCustodianRole operator pm
   createCustodianRole operator am
   createDistributorRole operator pm
   createDistributorRole operator am
 
   -- Services
-  createCustodyService          operator cashProvider am        settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator cashProvider custodian settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator am           inv1      settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator am           inv2      settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator am           inv3      settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator custodian    am        settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator custodian    pm        settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator cashProvider am        accountFactoryCid holdingFactoryCid
+  createCustodyService          operator cashProvider custodian accountFactoryCid holdingFactoryCid
+  createCustodyService          operator am           inv1      accountFactoryCid holdingFactoryCid
+  createCustodyService          operator am           inv2      accountFactoryCid holdingFactoryCid
+  createCustodyService          operator am           inv3      accountFactoryCid holdingFactoryCid
+  createCustodyService          operator custodian    am        accountFactoryCid holdingFactoryCid
+  createCustodyService          operator custodian    pm        accountFactoryCid holdingFactoryCid
   issuanceServiceCid <- toInterfaceContractId <$> createIssuanceService     operator custodian    pm
   createStructuringService      operator custodian    pm
   createStructuringAutoService  operator custodian    pm
@@ -62,6 +65,7 @@ run = do
   createInvestmentService       operator am           inv2
   createInvestmentService       operator am           inv3
   createFundService             operator pm           am
+  createSettlementService       operator pm           am        routeProviderCid settlementFactoryCid
 
   -- Accounts
   amCashAccount         <- createAccount operator cashProvider  am        public "AssetManager@CashProvider/Cash"        $ fromList [("PM", singleton pm)]
@@ -79,8 +83,8 @@ run = do
   t <- getTime
   let
     today = toDateUTC t
-    todayTime = time today 12 0 0
-    tt d = time d 12 0 0
+    todayTime = time today 0 0 0
+    tt d = time d 0 0 0
     epoch = tt $ date 1970 Jan 1
 
   -- Instruments
@@ -90,10 +94,10 @@ run = do
   fund3 <- originateToken                    custodian     pm            pub epoch "FUND3" "FUND3 Units"
 
   -- Holdings
-  amCashCid   <- deposit operator cashProvider am    public (Instrument.qty 10_000_000.0 usd) amCashAccount
-  inv1CashCid <- deposit operator am           inv1  public (Instrument.qty  6_000_000.0 usd) inv1CashAccount
-  inv2CashCid <- deposit operator am           inv2  public (Instrument.qty  3_000_000.0 usd) inv2CashAccount
-  inv3CashCid <- deposit operator am           inv3  public (Instrument.qty  1_000_000.0 usd) inv3CashAccount
+  amCashCid   <- deposit operator cashProvider am    public (qty 10_000_000.0 usd) amCashAccount
+  inv1CashCid <- deposit operator am           inv1  public (qty  6_000_000.0 usd) inv1CashAccount
+  inv2CashCid <- deposit operator am           inv2  public (qty  3_000_000.0 usd) inv2CashAccount
+  inv3CashCid <- deposit operator am           inv3  public (qty  1_000_000.0 usd) inv3CashAccount
 
   -- Data
   fund1Cid <- toInterfaceContractId <$> submitMulti [operator, custodian, pm] [] do createCmd Fund with operator; custodian; manager = pm; id = Id "FUND1"; description = "Fund 1"; instrument = fund1; currency = usd; custodianCashAccount; managerFundAccount = pmSecAccount; totalUnits =  1_000_000.0; observers = singleton public

@@ -10,9 +10,7 @@ import DA.Time (time)
 import Daml.Finance.Account.Account qualified as Account (Factory(..))
 import Daml.Finance.App.Interface.Decentralized.Exchange.Service qualified as Dex (Swap(..))
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
-import Daml.Finance.Interface.Instrument.Base.Instrument (qty)
-import Daml.Finance.Settlement.Factory qualified as Settlement (FactoryWithIntermediaries(..))
-import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
+import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Setup.Util.Common
 import Daml.Finance.Setup.Util.Role
 import Daml.Finance.Setup.Util.Service
@@ -28,14 +26,8 @@ run  = do
     pub = fromList [("Public", singleton public)]
 
   -- Factories
-  let
-    assets = ["USD", "EUR", "CHF", "GBP"]
-    pathsToRootCustodian = [[con], [trd]]
-    hierarchies = map (\rootCustodian -> Settlement.Hierarchy with rootCustodian; pathsToRootCustodian) [fed, ecb, snb, boe]
-    paths = fromList $ zip assets hierarchies
-  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory with provider = operator; observers = pub
-  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory with provider = operator; observers = pub
-  settlementFactoryCid      <- toInterfaceContractId <$> submit operator do createCmd Settlement.FactoryWithIntermediaries with provider = operator; paths; observers = singleton public
+  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory                   with provider = operator; observers = pub
+  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory                  with provider = operator; observers = pub
 
   -- Roles
   createOperatorRole    operator
@@ -46,14 +38,14 @@ run  = do
   createExchangeRole    operator con
 
   -- Services
-  createCustodyService          operator fed con settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator fed trd     settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator ecb con settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator ecb trd     settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator snb con settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator snb trd     settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator boe con settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator boe trd     settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator fed con accountFactoryCid holdingFactoryCid
+  createCustodyService          operator fed trd accountFactoryCid holdingFactoryCid
+  createCustodyService          operator ecb con accountFactoryCid holdingFactoryCid
+  createCustodyService          operator ecb trd accountFactoryCid holdingFactoryCid
+  createCustodyService          operator snb con accountFactoryCid holdingFactoryCid
+  createCustodyService          operator snb trd accountFactoryCid holdingFactoryCid
+  createCustodyService          operator boe con accountFactoryCid holdingFactoryCid
+  createCustodyService          operator boe trd accountFactoryCid holdingFactoryCid
 
   -- Accounts
   conFedAccount  <- createAccount operator fed con  public "Consortium@FED" pub
@@ -72,7 +64,7 @@ run  = do
   t <- getTime
   let
     today = toDateUTC t
-    todayTime = time today 12 0 0
+    todayTime = time today 0 0 0
 
   -- Instruments
   usd     <- originateToken   fed        fed         pub todayTime "USD" "United States Dollar"

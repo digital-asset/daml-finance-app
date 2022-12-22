@@ -8,7 +8,6 @@ import Daml.Finance.App.Listing.Auto qualified as ListingAuto (Approve(..), Offe
 import Daml.Finance.App.Listing.Service qualified as Listing (Approve(..), Offer(..), Request, Service)
 import Daml.Finance.App.Trading.Auto qualified as TradingAuto (Approve(..), Offer(..), Request, Service)
 import Daml.Finance.App.Trading.Service qualified as Trading (Approve(..), Offer(..), Request, Service)
-import Daml.Finance.Interface.Settlement.Factory qualified as Factory (I)
 
 template Role
   with
@@ -23,18 +22,16 @@ template Role
     nonconsuming choice OfferTradingService : ContractId Trading.Offer
       with
         customer : Party
-        settlementFactoryCid : ContractId Factory.I
       controller provider
       do
-        create Trading.Offer with operator; provider; customer; settlementFactoryCid
+        create Trading.Offer with operator; provider; customer
 
     nonconsuming choice ApproveTradingServiceRequest : ContractId Trading.Service
       with
         tradingRequestCid : ContractId Trading.Request
-        settlementFactoryCid : ContractId Factory.I
       controller provider
       do
-        exercise tradingRequestCid Trading.Approve with operator; settlementFactoryCid
+        exercise tradingRequestCid Trading.Approve with operator
 
     nonconsuming choice TerminateTradingService : ()
       with

@@ -47,6 +47,7 @@ export const NewGeneric : React.FC = () => {
     const arg = {
       id: { unpack: id },
       description,
+      version: uuidv4(),
       claims,
       acquisitionTime: epoch,
       lastEventTimestamp: epoch,

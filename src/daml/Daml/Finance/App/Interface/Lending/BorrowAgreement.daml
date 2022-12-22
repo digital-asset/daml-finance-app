@@ -5,8 +5,7 @@ module Daml.Finance.App.Interface.Lending.BorrowAgreement where
 
 import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Implementation)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Types.Common (AccountKey, Id)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity)
 
 type I = BorrowAgreement
 
@@ -19,10 +18,10 @@ data View = View
     customer : Party
     dealId : Id
     description : Text
-    borrowed : Instrument.Q
+    borrowed : InstrumentQuantity
     maturity : Date
-    interest : Instrument.Q
-    collateral : Instrument.Q
+    interest : InstrumentQuantity
+    collateral : InstrumentQuantity
     collateralCid : ContractId Transferable.I
     lenderBorrowedAccount : AccountKey
     lenderInterestAccount : AccountKey

@@ -10,8 +10,8 @@ import DA.Optional (fromOptional)
 import Daml.Finance.Holding.Fungible qualified as Fungible (T)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..), SplitResult(..))
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (GetCid(..), Q, R)
-import Daml.Finance.Interface.Types.Common (InstrumentKey)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (GetCid(..), R)
+import Daml.Finance.Interface.Types.Common.Types (InstrumentKey, InstrumentQuantity)
 import Daml.Script
 
 data PartyInfo = PartyInfo
@@ -32,7 +32,7 @@ allocateParties scenario partyNames = do
   parties <- mapA allocate partyNames
   pure $ map (\(name, id) -> PartyInfo with scenario; name; id) $ zip partyNames parties
 
-getHolding : Party -> Instrument.Q -> Script (ContractId Holding.I)
+getHolding : Party -> InstrumentQuantity -> Script (ContractId Holding.I)
 getHolding party quantity = do
   (holdingCid, holding) <- head <$> queryFilter @Fungible.T party (\h -> h.instrument == quantity.unit && h.amount >= quantity.amount)
   if holding.amount > quantity.amount

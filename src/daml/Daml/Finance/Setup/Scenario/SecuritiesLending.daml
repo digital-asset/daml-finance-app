@@ -12,10 +12,11 @@ import Daml.Finance.App.Interface.Lending.Service qualified as Lending (AcceptBo
 import Daml.Finance.App.Lending.Service qualified as Lending (T)
 import Daml.Finance.Account.Account qualified as Account (Factory(..))
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
-import Daml.Finance.Interface.Types.Common (Id(..))
-import Daml.Finance.Settlement.Factory qualified as Settlement (FactoryWithIntermediaries(..))
+import Daml.Finance.Interface.Types.Common.Types (Id(..))
+import Daml.Finance.Interface.Util.Common (qty)
+import Daml.Finance.Settlement.Factory qualified as Settlement (Factory(..))
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
+import Daml.Finance.Settlement.RouteProvider.IntermediatedStatic qualified as RouteProvider (IntermediatedStatic(..))
 import Daml.Finance.Setup.Payoff
 import Daml.Finance.Setup.Util.Common
 import Daml.Finance.Setup.Util.Role
@@ -38,9 +39,10 @@ run  = do
     cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = settlementPaths
     secRoute = Settlement.Hierarchy with rootCustodian = registry; pathsToRootCustodian = settlementPaths
     paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
-  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
-  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
-  settlementFactoryCid      <- toInterfaceContractId <$> submit operator do createCmd Settlement.FactoryWithIntermediaries with provider = operator; paths; observers = singleton public
+  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory                   with provider = operator; observers = pub
+  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory                  with provider = operator; observers = pub
+  routeProviderCid          <- toInterfaceContractId <$> submit operator do createCmd RouteProvider.IntermediatedStatic with provider = operator; observers = singleton public; paths
+  settlementFactoryCid      <- toInterfaceContractId <$> submit operator do createCmd Settlement.Factory                with provider = operator; observers = singleton public
 
   -- Roles
   createOperatorRole  operator
@@ -49,14 +51,15 @@ run  = do
   createCustodianRole operator lender
 
   -- Create custody services
-  createCustodyService      operator centralBank  borrower  settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService      operator centralBank  lender    settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService      operator registry     borrower  settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService      operator registry     lender    settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService      operator lender       borrower  settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService      operator centralBank  borrower  accountFactoryCid holdingFactoryCid
+  createCustodyService      operator centralBank  lender    accountFactoryCid holdingFactoryCid
+  createCustodyService      operator registry     borrower  accountFactoryCid holdingFactoryCid
+  createCustodyService      operator registry     lender    accountFactoryCid holdingFactoryCid
+  createCustodyService      operator lender       borrower  accountFactoryCid holdingFactoryCid
   createLendingService      operator lender       borrower
   createStructuringService  operator registry     lender
   createLifecycleService    operator registry     lender    public
+  createSettlementService   operator lender       borrower  routeProviderCid settlementFactoryCid
 
   -- Accounts
   borrowerLenderAccount <- createAccount operator lender      borrower  public "Borrower@Lender"       empty
@@ -69,7 +72,7 @@ run  = do
   t <- getTime
   let
     today = toDateUTC t
-    todayTime = time today 12 0 0
+    todayTime = time today 0 0 0
     (todayYear, todayMonth, todayDay) = toGregorian today
   createClockAndEvent all today (singleton public)
 
@@ -83,18 +86,18 @@ run  = do
   createAccountDirectory borrower [(usd, borrowerCashAccount), (tsla, borrowerSecAccount), (deal1, borrowerLenderAccount)] $ singleton public
 
   -- Distribution
-  deposit operator lender borrower public (Instrument.qty    10_000.0 deal1) borrowerLenderAccount
-  borrowedCid   <- coerceContractId <$> deposit operator registry    lender   public (Instrument.qty     1_000.0 tsla) lenderSecAccount
-  collateralCid <- coerceContractId <$> deposit operator centralBank borrower public (Instrument.qty 1_000_000.0 usd) borrowerCashAccount
-  interestCid   <- coerceContractId <$> deposit operator centralBank borrower public (Instrument.qty     1_000.0 usd) borrowerCashAccount
+  deposit operator lender borrower public (qty    10_000.0 deal1) borrowerLenderAccount
+  borrowedCid   <- coerceContractId <$> deposit operator registry    lender   public (qty     1_000.0 tsla) lenderSecAccount
+  collateralCid <- coerceContractId <$> deposit operator centralBank borrower public (qty 1_000_000.0 usd) borrowerCashAccount
+  interestCid   <- coerceContractId <$> deposit operator centralBank borrower public (qty     1_000.0 usd) borrowerCashAccount
 
   -- Workflows
   let
     doLoan = do
       let
-        borrowed   = Instrument.qty     1_000.0 tsla
-        interest   = Instrument.qty     1_000.0 usd
-        collateral = Instrument.qty 1_000_000.0 usd
+        borrowed   = qty     1_000.0 tsla
+        interest   = qty     1_000.0 usd
+        collateral = qty 1_000_000.0 usd
 
       Some (serviceCid, _) <- queryContractKey @Lending.T borrower (operator, lender, borrower)
       borrowOfferRequestCid <- submit borrower do exerciseCmd (toInterfaceContractId @Lending.I serviceCid) Lending.RequestBorrowOffer with dealId = Id "BORROW1"; description = "Loan of 1000 TSLA until " <> show today; borrowed; maturity = today

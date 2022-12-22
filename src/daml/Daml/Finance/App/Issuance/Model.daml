@@ -8,10 +8,8 @@ import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Vi
 import Daml.Finance.App.Interface.Issuance.DeissueRequest qualified as DeissueRequest (I, View(..))
 import Daml.Finance.App.Interface.Issuance.Issuance qualified as Issuance (I, View(..))
 import Daml.Finance.App.Interface.Issuance.IssueRequest qualified as IssueRequest (I, View(..))
-import Daml.Finance.Interface.Account.Account qualified as Account (K)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Types.Common (Id)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity)
 
 type T = Issuance
 
@@ -22,7 +20,7 @@ template Issuance
     customer : Party
     id : Id
     description : Text
-    quantity : Instrument.Q
+    quantity : InstrumentQuantity
   where
     signatory operator, provider, customer
 
@@ -43,8 +41,8 @@ template IssueRequest
     customer : Party
     issuanceId : Id
     description : Text
-    quantity : Instrument.Q
-    account : Account.K
+    quantity : InstrumentQuantity
+    account : AccountKey
   where
     signatory operator, provider, customer
 

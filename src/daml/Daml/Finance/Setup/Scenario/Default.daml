@@ -10,10 +10,11 @@ import DA.Set (singleton)
 import DA.Time (time)
 import Daml.Finance.Account.Account qualified as Account (Factory(..))
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
-import Daml.Finance.Interface.Types.Common (Id(..))
-import Daml.Finance.Settlement.Factory qualified as Settlement (FactoryWithIntermediaries(..))
+import Daml.Finance.Interface.Types.Common.Types (Id(..))
+import Daml.Finance.Interface.Util.Common (qty)
+import Daml.Finance.Settlement.Factory qualified as Settlement (Factory(..))
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
+import Daml.Finance.Settlement.RouteProvider.IntermediatedStatic qualified as RouteProvider (IntermediatedStatic(..))
 import Daml.Finance.Setup.Payoff
 import Daml.Finance.Setup.Util.Common
 import Daml.Finance.Setup.Util.Role
@@ -38,24 +39,27 @@ run  = do
     paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
   accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
   holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
-  settlementFactoryCid      <- toInterfaceContractId <$> submit operator do createCmd Settlement.FactoryWithIntermediaries with provider = operator; paths; observers = singleton public
+  routeProviderCid          <- toInterfaceContractId <$> submit operator do createCmd RouteProvider.IntermediatedStatic with provider = operator; observers = singleton public; paths
+  settlementFactoryCid      <- toInterfaceContractId <$> submit operator do createCmd Settlement.Factory                with provider = operator; observers = singleton public
 
   -- Roles
   createOperatorRole    operator
   createCustodianRole   operator centralBank
   createCustodianRole   operator registry
+  createCustodianRole   operator exchange
+  createCustodianRole   operator agent
   createExchangeRole    operator exchange
   createDistributorRole operator agent
 
   -- Services
-  createCustodyService          operator centralBank issuer settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator centralBank inv1   settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator centralBank inv2   settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator centralBank inv3   settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator registry    issuer settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator registry    inv1   settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator registry    inv2   settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator registry    inv3   settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank issuer accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank inv1   accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank inv2   accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank inv3   accountFactoryCid holdingFactoryCid
+  createCustodyService          operator registry    issuer accountFactoryCid holdingFactoryCid
+  createCustodyService          operator registry    inv1   accountFactoryCid holdingFactoryCid
+  createCustodyService          operator registry    inv2   accountFactoryCid holdingFactoryCid
+  createCustodyService          operator registry    inv3   accountFactoryCid holdingFactoryCid
   createIssuanceService         operator registry    issuer
   createIssuanceAutoService     operator registry    issuer
   createStructuringService      operator registry    issuer
@@ -63,13 +67,13 @@ run  = do
   createLifecycleService        operator registry    issuer public
   createListingService          operator exchange    issuer
   createListingAutoService      operator exchange    issuer
-  createTradingService          operator exchange    issuer settlementFactoryCid
+  createTradingService          operator exchange    issuer
   createTradingAutoService      operator exchange    issuer
-  createTradingService          operator exchange    inv1   settlementFactoryCid
+  createTradingService          operator exchange    inv1
   createTradingAutoService      operator exchange    inv1
-  createTradingService          operator exchange    inv2   settlementFactoryCid
+  createTradingService          operator exchange    inv2
   createTradingAutoService      operator exchange    inv2
-  createTradingService          operator exchange    inv3   settlementFactoryCid
+  createTradingService          operator exchange    inv3
   createTradingAutoService      operator exchange    inv3
   createAuctionService          operator agent       issuer
   createAuctionAutoService      operator agent       issuer
@@ -79,6 +83,11 @@ run  = do
   createBiddingAutoService      operator agent       inv2
   createBiddingService          operator agent       inv3
   createBiddingAutoService      operator agent       inv3
+  createSettlementService       operator exchange    issuer routeProviderCid settlementFactoryCid
+  createSettlementService       operator exchange    inv1   routeProviderCid settlementFactoryCid
+  createSettlementService       operator exchange    inv2   routeProviderCid settlementFactoryCid
+  createSettlementService       operator exchange    inv3   routeProviderCid settlementFactoryCid
+  createSettlementService       operator agent       issuer routeProviderCid settlementFactoryCid
 
   -- Accounts
   issuerCashAccount <- createAccount operator centralBank  issuer public "Issuer@CentralBank"    empty
@@ -94,8 +103,8 @@ run  = do
   t <- getTime
   let
     today = toDateUTC t
-    todayTime = time today 12 0 0
-    yday = time (addDays today (-1)) 12 0 0
+    todayTime = time today 0 0 0
+    yday = time (addDays today (-1)) 0 0 0
     (todayYear, todayMonth, todayDay) = toGregorian today
   createClockAndEvent all today (singleton public)
 
@@ -120,14 +129,14 @@ run  = do
   let securities = [tsla, nflx, fwd, bnd, swp, bswp, opt, opt2 ]
 
   -- Distribution
-  inv1CashCid <- coerceContractId <$> deposit operator centralBank inv1 public (Instrument.qty 1_000_000.0 usd) inv1CashAccount
-  inv2CashCid <- coerceContractId <$> deposit operator centralBank inv2 public (Instrument.qty 1_000_000.0 usd) inv2CashAccount
-  inv3CashCid <- coerceContractId <$> deposit operator centralBank inv3 public (Instrument.qty 1_000_000.0 usd) inv3CashAccount
+  inv1CashCid <- coerceContractId <$> deposit operator centralBank inv1 public (qty 1_000_000.0 usd) inv1CashAccount
+  inv2CashCid <- coerceContractId <$> deposit operator centralBank inv2 public (qty 1_000_000.0 usd) inv2CashAccount
+  inv3CashCid <- coerceContractId <$> deposit operator centralBank inv3 public (qty 1_000_000.0 usd) inv3CashAccount
 
-  (_, ad1) <- issue operator registry issuer public (Instrument.qty 1.0 fwd)           issuerSecAccount
-  (_, ad2) <- issue operator registry issuer public (Instrument.qty 1_000_000.0 bnd)   issuerSecAccount
-  (_, ad3) <- issue operator registry issuer public (Instrument.qty 10_000_000.0 swp)  issuerSecAccount
-  (_, ad4) <- issue operator registry issuer public (Instrument.qty 10_000_000.0 bswp) issuerSecAccount
+  (_, ad1) <- issue operator registry issuer public (qty 1.0 fwd)           issuerSecAccount
+  (_, ad2) <- issue operator registry issuer public (qty 1_000_000.0 bnd)   issuerSecAccount
+  (_, ad3) <- issue operator registry issuer public (qty 10_000_000.0 swp)  issuerSecAccount
+  (_, ad4) <- issue operator registry issuer public (qty 10_000_000.0 bswp) issuerSecAccount
 
   -- Data
   createObservation issuer libor3M [(todayTime, 0.0018825)] pub
@@ -141,11 +150,11 @@ run  = do
   -- Workflows
   let
     doAuction = do
-      let quantity = Instrument.qty 1_000_000.0 bnd
+      let quantity = qty 1_000_000.0 bnd
       auctionCid        <- createAuction operator agent issuer public (Id "AUCTION1") "AUCTION1" quantity usd 0.95 (coerceContractId ad2) issuerCashAccount
-      inv1CollateralCid <- coerceContractId <$> getHolding inv1 (Instrument.qty 500_000.0 usd)
-      inv2CollateralCid <- coerceContractId <$> getHolding inv2 (Instrument.qty 392_000.0 usd)
-      inv3CollateralCid <- coerceContractId <$> getHolding inv3 (Instrument.qty 297_000.0 usd)
+      inv1CollateralCid <- coerceContractId <$> getHolding inv1 (qty 500_000.0 usd)
+      inv2CollateralCid <- coerceContractId <$> getHolding inv2 (qty 392_000.0 usd)
+      inv3CollateralCid <- coerceContractId <$> getHolding inv3 (qty 297_000.0 usd)
       inv1BidCid        <- createAuctionBid operator agent inv1 public auctionCid 500_000.0 1.0  inv1CollateralCid inv1SecAccount
       inv2BidCid        <- createAuctionBid operator agent inv2 public auctionCid 400_000.0 0.98 inv2CollateralCid inv2SecAccount
       inv3BidCid        <- createAuctionBid operator agent inv3 public auctionCid 300_000.0 0.99 inv3CollateralCid inv3SecAccount
@@ -153,12 +162,12 @@ run  = do
 
     doTrade = do
       list operator exchange issuer (Id "SWAP/USD") "SWAP vs USD" swp usd $ singleton public
-      createAskOrder operator exchange issuer public (Id "1") (Instrument.qty 250_000.0 swp) (Instrument.qty 1.00 usd) $ singleton public
-      createAskOrder operator exchange issuer public (Id "2") (Instrument.qty 250_000.0 swp) (Instrument.qty 1.00 usd) $ singleton public
-      createBidOrder operator exchange inv1  public (Id "3") (Instrument.qty 400_000.0 swp) (Instrument.qty 1.00 usd) $ singleton public
-      -- createAskOrder operator exchange issuer public "1" (Instrument.qty 250_000.0 swp) (Instrument.qty 0.80 usd) $ singleton public
-      -- createAskOrder operator exchange issuer public "2" (Instrument.qty 250_000.0 swp) (Instrument.qty 0.90 usd) $ singleton public
-      -- createBidOrder operator exchange inv1  public "3" (Instrument.qty 500_000.0 swp) (Instrument.qty 0.90 usd) $ singleton public
+      createAskOrder operator exchange issuer public (Id "1") (qty 250_000.0 swp) (qty 1.00 usd) $ singleton public
+      createAskOrder operator exchange issuer public (Id "2") (qty 250_000.0 swp) (qty 1.00 usd) $ singleton public
+      createBidOrder operator exchange inv1  public (Id "3") (qty 400_000.0 swp) (qty 1.00 usd) $ singleton public
+      -- createAskOrder operator exchange issuer public "1" (qty 250_000.0 swp) (qty 0.80 usd) $ singleton public
+      -- createAskOrder operator exchange issuer public "2" (qty 250_000.0 swp) (qty 0.90 usd) $ singleton public
+      -- createBidOrder operator exchange inv1  public "3" (qty 500_000.0 swp) (qty 0.90 usd) $ singleton public
 
   --doAuction
   --doTrade

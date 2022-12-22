@@ -23,7 +23,7 @@ import Daml.Finance.Interface.Instrument.Generic.Factory qualified as Generic (F
 import Daml.Finance.Interface.Instrument.Swap.Fpml.Factory qualified as FpmlSwap (Factory)
 import Daml.Finance.Interface.Instrument.Swap.Fpml.FpmlTypes (SwapStream)
 import Daml.Finance.Interface.Instrument.Token.Factory qualified as Token (Factory)
-import Daml.Finance.Interface.Types.Common (Id, InstrumentKey, PartiesMap)
+import Daml.Finance.Interface.Types.Common.Types (Id, InstrumentKey, PartiesMap)
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum)
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum)
@@ -74,34 +74,35 @@ interface Service where
   requestCreateFpmlSwap : RequestCreateFpmlSwap -> Update (ContractId CreateFpmlSwapRequest.I)
     -- ^ Implementation of the `RequestCreateFpmlSwap` choice.
 
-  createToken : CreateToken -> Update (ContractId Instrument.I)
+  createToken : CreateToken -> Update (ContractId Instrument.I, InstrumentKey)
     -- ^ Implementation of the `RequestCreateFpmlSwapBond` choice.
 
-  createEquity : CreateEquity -> Update (ContractId Instrument.I)
+  createEquity : CreateEquity -> Update (ContractId Instrument.I, InstrumentKey)
     -- ^ Implementation of the `RequestCreateFpmlSwapBond` choice.
 
-  createGeneric : CreateGeneric -> Update (ContractId Instrument.I)
+  createGeneric : CreateGeneric -> Update (ContractId Instrument.I, InstrumentKey)
     -- ^ Implementation of the `RequestCreateFpmlSwapBond` choice.
 
-  createFixedRateBond : CreateFixedRateBond -> Update (ContractId Instrument.I)
+  createFixedRateBond : CreateFixedRateBond -> Update (ContractId Instrument.I, InstrumentKey)
     -- ^ Implementation of the `RequestCreateFpmlSwapBond` choice.
 
-  createFloatingRateBond : CreateFloatingRateBond -> Update (ContractId Instrument.I)
+  createFloatingRateBond : CreateFloatingRateBond -> Update (ContractId Instrument.I, InstrumentKey)
     -- ^ Implementation of the `RequestCreateFpmlSwapBond` choice.
 
-  createInflationLinkedBond : CreateInflationLinkedBond -> Update (ContractId Instrument.I)
+  createInflationLinkedBond : CreateInflationLinkedBond -> Update (ContractId Instrument.I, InstrumentKey)
     -- ^ Implementation of the `RequestCreateFpmlSwapBond` choice.
 
-  createZeroCouponBond : CreateZeroCouponBond -> Update (ContractId Instrument.I)
+  createZeroCouponBond : CreateZeroCouponBond -> Update (ContractId Instrument.I, InstrumentKey)
     -- ^ Implementation of the `RequestCreateFpmlSwapBond` choice.
 
-  createFpmlSwap : CreateFpmlSwap -> Update (ContractId Instrument.I)
+  createFpmlSwap : CreateFpmlSwap -> Update (ContractId Instrument.I, InstrumentKey)
     -- ^ Implementation of the `RequestCreateFpmlSwapBond` choice.
 
   nonconsuming choice RequestCreateToken : ContractId CreateTokenRequest.I
     with
       id : Id
       description : Text
+      version : Text
       validAsOf : Time
       observers : PartiesMap
     controller (view $ asBase this).customer
@@ -123,6 +124,7 @@ interface Service where
     with
       id : Id
       description : Text
+      version : Text
       claims : C
       acquisitionTime : Time
       lastEventTimestamp : Time
@@ -135,6 +137,7 @@ interface Service where
     with
       id : Id
       description : Text
+      version : Text
       couponRate : Decimal
       issueDate : Date
       firstCouponDate : Date
@@ -156,6 +159,7 @@ interface Service where
     with
       id : Id
       description : Text
+      version : Text
       referenceRateId : Text
       couponSpread : Decimal
       issueDate : Date
@@ -178,6 +182,7 @@ interface Service where
     with
       id : Id
       description : Text
+      version : Text
       inflationIndexId : Text
       inflationIndexBaseValue : Decimal
       couponRate : Decimal
@@ -201,6 +206,7 @@ interface Service where
     with
       id : Id
       description : Text
+      version : Text
       issueDate : Date
       maturityDate : Date
       currency : InstrumentKey
@@ -214,6 +220,7 @@ interface Service where
     with
       id : Id
       description : Text
+      version : Text
       swapStreams : [SwapStream]
       issuerPartyRef : Text
       calendarDataProvider : Party
@@ -224,56 +231,56 @@ interface Service where
     do
       requestCreateFpmlSwap this arg
 
-  nonconsuming choice CreateToken : ContractId Instrument.I
+  nonconsuming choice CreateToken : (ContractId Instrument.I, InstrumentKey)
     with
       createTokenRequestCid : ContractId CreateTokenRequest.I
     controller (view $ asBase this).provider
     do
       createToken this arg
 
-  nonconsuming choice CreateEquity : ContractId Instrument.I
+  nonconsuming choice CreateEquity : (ContractId Instrument.I, InstrumentKey)
     with
       createEquityRequestCid : ContractId CreateEquityRequest.I
     controller (view $ asBase this).provider
     do
       createEquity this arg
 
-  nonconsuming choice CreateGeneric : ContractId Instrument.I
+  nonconsuming choice CreateGeneric : (ContractId Instrument.I, InstrumentKey)
     with
       createGenericRequestCid : ContractId CreateGenericRequest.I
     controller (view $ asBase this).provider
     do
       createGeneric this arg
 
-  nonconsuming choice CreateFixedRateBond : ContractId Instrument.I
+  nonconsuming choice CreateFixedRateBond : (ContractId Instrument.I, InstrumentKey)
     with
       createFixedRateBondRequestCid : ContractId CreateFixedRateBondRequest.I
     controller (view $ asBase this).provider
     do
       createFixedRateBond this arg
 
-  nonconsuming choice CreateFloatingRateBond : ContractId Instrument.I
+  nonconsuming choice CreateFloatingRateBond : (ContractId Instrument.I, InstrumentKey)
     with
       createFloatingRateBondRequestCid : ContractId CreateFloatingRateBondRequest.I
     controller (view $ asBase this).provider
     do
       createFloatingRateBond this arg
 
-  nonconsuming choice CreateInflationLinkedBond : ContractId Instrument.I
+  nonconsuming choice CreateInflationLinkedBond : (ContractId Instrument.I, InstrumentKey)
     with
       createInflationLinkedBondRequestCid : ContractId CreateInflationLinkedBondRequest.I
     controller (view $ asBase this).provider
     do
       createInflationLinkedBond this arg
 
-  nonconsuming choice CreateZeroCouponBond : ContractId Instrument.I
+  nonconsuming choice CreateZeroCouponBond : (ContractId Instrument.I, InstrumentKey)
     with
       createZeroCouponBondRequestCid : ContractId CreateZeroCouponBondRequest.I
     controller (view $ asBase this).provider
     do
       createZeroCouponBond this arg
 
-  nonconsuming choice CreateFpmlSwap : ContractId Instrument.I
+  nonconsuming choice CreateFpmlSwap : (ContractId Instrument.I, InstrumentKey)
     with
       createFpmlSwapRequestCid : ContractId CreateFpmlSwapRequest.I
     controller (view $ asBase this).provider

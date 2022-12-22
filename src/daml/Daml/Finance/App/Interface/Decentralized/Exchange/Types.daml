@@ -4,12 +4,11 @@
 module Daml.Finance.App.Interface.Decentralized.Exchange.Types where
 
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Types.Common (AccountKey)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentQuantity)
 
 data Pool = Pool
   with
-    quantity : Instrument.Q
+    quantity : InstrumentQuantity
     account : AccountKey -- TODO: Might not need this, but instead derive it from holding
     fungibleCid : ContractId Fungible.I
   deriving (Eq, Show)

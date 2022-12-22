@@ -7,12 +7,10 @@ import DA.Set (fromList, singleton)
 import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, View(..))
 import Daml.Finance.App.Interface.Distribution.Bidding.Bid qualified as Bid (AllocateInstruction(..), ApproveInstruction(..), Details, I, Status, UpdateStatus(..), View(..))
 import Daml.Finance.App.Interface.Distribution.Bidding.CreateBidRequest qualified as CreateBidRequest (I, View(..))
-import Daml.Finance.Interface.Account.Account qualified as Account (K)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Types qualified as T (Allocation(Pledge), Approval(TakeDelivery))
-import Daml.Finance.Interface.Types.Common (Id)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity)
 
 template CreateBidRequest
   with
@@ -21,10 +19,10 @@ template CreateBidRequest
     customer : Party
     issuer : Party
     auctionId : Id
-    quantity : Instrument.Q
-    price : Instrument.Q
+    quantity : InstrumentQuantity
+    price : InstrumentQuantity
     collateralCid : ContractId Fungible.I
-    receivableAccount : Account.K
+    receivableAccount : AccountKey
   where
     signatory operator, provider, customer
 
@@ -44,7 +42,7 @@ template Bid
     details : Bid.Details
     auctionId : Id
     collateralCid : ContractId Fungible.I
-    receivableAccount : Account.K
+    receivableAccount : AccountKey
     status : Bid.Status
   where
     signatory operator, provider, customer

@@ -8,7 +8,7 @@ import Daml.Finance.App.Interface.Distribution.Auction.Auction qualified as Auct
 import Daml.Finance.App.Interface.Distribution.Bidding.CreateBidRequest qualified as CreateBidRequest (I)
 import Daml.Finance.App.Interface.Distribution.Bidding.Bid qualified as Bid (I, Status)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Types.Common (AccountKey)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey)
 
 type I = Service
 

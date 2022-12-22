@@ -11,9 +11,9 @@ import Daml.Finance.App.Distribution.Investment.Model (InvestmentRequest(..))
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
 import Daml.Finance.App.Interface.Distribution.Fund.Fund qualified as Fund (GetView(..))
 import Daml.Finance.App.Interface.Distribution.Investment.Service qualified as Service (HasImplementation, I, RequestInvestment(..), View(..))
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
 import Daml.Finance.Interface.Holding.Util (getAmount, getInstrument)
+import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
 
 type T = Service
@@ -49,7 +49,7 @@ template Service
 
         (_, dir) <- fetchByKey @AccountDirectory customer
         let
-          quantity = Instrument.qty (getAmount cash) (getInstrument cash)
+          quantity = qty (getAmount cash) (getInstrument cash)
           customerFundAccount = fromSome $ M.lookup fund.instrument.id dir.accounts
         toInterfaceContractId <$> create InvestmentRequest with operator; provider; customer; manager = fund.manager; requestId; asOfDate; quantity; fundId = fund.id; cashCid = toInterfaceContractId cashCid; customerFundAccount
 

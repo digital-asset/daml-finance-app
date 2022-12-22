@@ -4,7 +4,7 @@
 module Daml.Finance.App.Interface.Structuring.CreateTokenRequest where
 
 import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Implementation)
-import Daml.Finance.Interface.Types.Common (Id, PartiesMap)
+import Daml.Finance.Interface.Types.Common.Types (Id, PartiesMap)
 
 type I = CreateTokenRequest
 
@@ -17,6 +17,7 @@ data View = View
     customer : Party
     id : Id
     description : Text
+    version : Text
     observers : PartiesMap
     validAsOf : Time
   deriving (Eq, Show)

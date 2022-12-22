@@ -3,7 +3,7 @@
 
 module Daml.Finance.App.Interface.Common.Removable where
 
-import Daml.Finance.Interface.Types.Common (Parties)
+import Daml.Finance.Interface.Types.Common.Types (Parties)
 
 type I = Removable
 

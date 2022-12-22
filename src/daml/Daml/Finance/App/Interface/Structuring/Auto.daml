@@ -7,7 +7,7 @@ import Daml.Finance.App.Interface.Base.Service qualified as Base (I)
 import Daml.Finance.Interface.Claims.Types (C)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I)
 import Daml.Finance.Interface.Instrument.Swap.Fpml.FpmlTypes (SwapStream)
-import Daml.Finance.Interface.Types.Common (Id, InstrumentKey, PartiesMap)
+import Daml.Finance.Interface.Types.Common.Types (Id, InstrumentKey, PartiesMap)
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum)
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum)
@@ -25,41 +25,42 @@ interface Service where
   asBase : Base.I
     -- ^ Conversion to base `Service` interface.
 
-  requestAndCreateToken : RequestAndCreateToken -> Update (ContractId Instrument.I)
+  requestAndCreateToken : RequestAndCreateToken -> Update (ContractId Instrument.I, InstrumentKey)
     -- ^ Implementation of the `RequestCreateFpmlSwapBond` choice.
 
-  requestAndCreateEquity : RequestAndCreateEquity -> Update (ContractId Instrument.I)
+  requestAndCreateEquity : RequestAndCreateEquity -> Update (ContractId Instrument.I, InstrumentKey)
     -- ^ Implementation of the `RequestCreateFpmlSwapBond` choice.
 
-  requestAndCreateGeneric : RequestAndCreateGeneric -> Update (ContractId Instrument.I)
+  requestAndCreateGeneric : RequestAndCreateGeneric -> Update (ContractId Instrument.I, InstrumentKey)
     -- ^ Implementation of the `RequestCreateFpmlSwapBond` choice.
 
-  requestAndCreateFixedRateBond : RequestAndCreateFixedRateBond -> Update (ContractId Instrument.I)
+  requestAndCreateFixedRateBond : RequestAndCreateFixedRateBond -> Update (ContractId Instrument.I, InstrumentKey)
     -- ^ Implementation of the `RequestCreateFpmlSwapBond` choice.
 
-  requestAndCreateFloatingRateBond : RequestAndCreateFloatingRateBond -> Update (ContractId Instrument.I)
+  requestAndCreateFloatingRateBond : RequestAndCreateFloatingRateBond -> Update (ContractId Instrument.I, InstrumentKey)
     -- ^ Implementation of the `RequestCreateFpmlSwapBond` choice.
 
-  requestAndCreateInflationLinkedBond : RequestAndCreateInflationLinkedBond -> Update (ContractId Instrument.I)
+  requestAndCreateInflationLinkedBond : RequestAndCreateInflationLinkedBond -> Update (ContractId Instrument.I, InstrumentKey)
     -- ^ Implementation of the `RequestCreateFpmlSwapBond` choice.
 
-  requestAndCreateZeroCouponBond : RequestAndCreateZeroCouponBond -> Update (ContractId Instrument.I)
+  requestAndCreateZeroCouponBond : RequestAndCreateZeroCouponBond -> Update (ContractId Instrument.I, InstrumentKey)
     -- ^ Implementation of the `RequestCreateFpmlSwapBond` choice.
 
-  requestAndCreateFpmlSwap : RequestAndCreateFpmlSwap -> Update (ContractId Instrument.I)
+  requestAndCreateFpmlSwap : RequestAndCreateFpmlSwap -> Update (ContractId Instrument.I, InstrumentKey)
     -- ^ Implementation of the `RequestCreateFpmlSwapBond` choice.
 
-  nonconsuming choice RequestAndCreateToken : ContractId Instrument.I
+  nonconsuming choice RequestAndCreateToken : (ContractId Instrument.I, InstrumentKey)
     with
       id : Id
       description : Text
+      version : Text
       validAsOf : Time
       observers : PartiesMap
     controller (view $ asBase this).provider
     do
       requestAndCreateToken this arg
 
-  nonconsuming choice RequestAndCreateEquity : ContractId Instrument.I
+  nonconsuming choice RequestAndCreateEquity : (ContractId Instrument.I, InstrumentKey)
     with
       id : Id
       description : Text
@@ -70,10 +71,11 @@ interface Service where
     do
       requestAndCreateEquity this arg
 
-  nonconsuming choice RequestAndCreateGeneric : ContractId Instrument.I
+  nonconsuming choice RequestAndCreateGeneric : (ContractId Instrument.I, InstrumentKey)
     with
       id : Id
       description : Text
+      version : Text
       claims : C
       acquisitionTime : Time
       lastEventTimestamp : Time
@@ -82,10 +84,11 @@ interface Service where
     do
       requestAndCreateGeneric this arg
 
-  nonconsuming choice RequestAndCreateFixedRateBond : ContractId Instrument.I
+  nonconsuming choice RequestAndCreateFixedRateBond : (ContractId Instrument.I, InstrumentKey)
     with
       id : Id
       description : Text
+      version : Text
       couponRate : Decimal
       issueDate : Date
       firstCouponDate : Date
@@ -103,10 +106,11 @@ interface Service where
     do
       requestAndCreateFixedRateBond this arg
 
-  nonconsuming choice RequestAndCreateFloatingRateBond : ContractId Instrument.I
+  nonconsuming choice RequestAndCreateFloatingRateBond : (ContractId Instrument.I, InstrumentKey)
     with
       id : Id
       description : Text
+      version : Text
       referenceRateId : Text
       couponSpread : Decimal
       issueDate : Date
@@ -125,10 +129,11 @@ interface Service where
     do
       requestAndCreateFloatingRateBond this arg
 
-  nonconsuming choice RequestAndCreateInflationLinkedBond : ContractId Instrument.I
+  nonconsuming choice RequestAndCreateInflationLinkedBond : (ContractId Instrument.I, InstrumentKey)
     with
       id : Id
       description : Text
+      version : Text
       inflationIndexId : Text
       inflationIndexBaseValue : Decimal
       couponRate : Decimal
@@ -148,10 +153,11 @@ interface Service where
     do
       requestAndCreateInflationLinkedBond this arg
 
-  nonconsuming choice RequestAndCreateZeroCouponBond : ContractId Instrument.I
+  nonconsuming choice RequestAndCreateZeroCouponBond : (ContractId Instrument.I, InstrumentKey)
     with
       id : Id
       description : Text
+      version : Text
       issueDate : Date
       maturityDate : Date
       currency : InstrumentKey
@@ -161,10 +167,11 @@ interface Service where
     do
       requestAndCreateZeroCouponBond this arg
 
-  nonconsuming choice RequestAndCreateFpmlSwap : ContractId Instrument.I
+  nonconsuming choice RequestAndCreateFpmlSwap : (ContractId Instrument.I, InstrumentKey)
     with
       id : Id
       description : Text
+      version : Text
       swapStreams : [SwapStream]
       issuerPartyRef : Text
       calendarDataProvider : Party

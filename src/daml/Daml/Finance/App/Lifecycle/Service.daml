@@ -8,16 +8,16 @@ import ContingentClaims.Lifecycle.Lifecycle qualified as Lifecycle
 import ContingentClaims.Lifecycle.Util qualified as Util (expiry, fixings, payoffs)
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
 import Daml.Finance.App.Interface.Lifecycle.Service qualified as Service
-import Daml.Finance.App.Interface.Structuring.Auto qualified as Structuring (I, RequestAndCreateEquity(..))
+import Daml.Finance.App.Interface.Structuring.Service qualified as Structuring (CreateEquity(..), I, RequestCreateEquity(..))
 import Daml.Finance.App.Lifecycle.Pricing qualified as Pricing
-import Daml.Finance.App.Structuring.Auto qualified as Structuring (T)
+import Daml.Finance.App.Structuring.Service qualified as Structuring (T)
 import Daml.Finance.Claims.Util.Lifecycle qualified as Claim (lifecycle, lifecycleClaims, timeEvent)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I, R)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I, R, exerciseInterfaceByKey)
 import Daml.Finance.Interface.Instrument.Equity.Instrument qualified as Equity (I, DeclareDividend(..), DeclareReplacement(..), DeclareStockSplit(..))
 import Daml.Finance.Interface.Claims.Claim qualified as Claim (getClaims, GetClaims(..))
 import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (I, Evolve(..))
+import Daml.Finance.Interface.Util.Common (fetchInterfaceByKey)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I)
-import Daml.Finance.Interface.Types.Common (InstrumentKey(..))
 
 type T = Service
 
@@ -46,38 +46,33 @@ template Service
 
       asBase = toInterface @Base.I this
 
-      declareDividend Service.DeclareDividend{timeObservableCid; equity; newVersion; id; description; effectiveDate; perUnitDistribution} = do
+      declareDividend Service.DeclareDividend{equity; newVersion; eventId; description; effectiveTime; perUnitDistribution} = do
         now <- getTime
-        (_, equityRef) <- fetchByKey @Instrument.R equity
-        equity <- fetch equityRef.cid
+        instrument <- fetchInterfaceByKey @Instrument.R @Instrument.I equity
         let
-          disclosure = toInterface @Disclosure.I equity
-          v = view equity
-          dv = view disclosure
-          newInstrument = InstrumentKey with depository = provider; issuer = customer; id = v.id; version = newVersion
+          iv = view instrument
+          disclosure = view $ toInterface @Disclosure.I instrument
         serviceCid <- toInterfaceContractId @Structuring.I . fst <$> fetchByKey @Structuring.T (operator, provider, customer)
-        exercise serviceCid Structuring.RequestAndCreateEquity with id = v.id; description = v.description; version = newVersion; validAsOf = now; observers = dv.observers
-        eventCid <- exercise (coerceContractId equityRef.cid : ContractId Equity.I) Equity.DeclareDividend with id; description; effectiveDate; newInstrument; perUnitDistribution
-        snd <$> exercise distributionRuleCid Lifecycle.Evolve with ruleName = "Dividend"; eventCid; timeObservableCid; observableCids = []
+        createEquityRequestCid <- exercise serviceCid Structuring.RequestCreateEquity with id = iv.id; description = iv.description; version = newVersion; validAsOf = now; observers = disclosure.observers
+        (_, newInstrument) <- exercise serviceCid Structuring.CreateEquity with createEquityRequestCid
+        eventCid <- Instrument.exerciseInterfaceByKey @Equity.I equity customer Equity.DeclareDividend with id = eventId; description; effectiveTime; newInstrument; perUnitDistribution
+        snd <$> exercise distributionRuleCid Lifecycle.Evolve with eventCid; instrument = equity; observableCids = []
 
-      declareReplacement Service.DeclareReplacement{timeObservableCid; equity; id; description; effectiveDate; perUnitReplacement} = do
-        (_, equityRef) <- fetchByKey @Instrument.R equity
-        eventCid <- exercise (coerceContractId equityRef.cid : ContractId Equity.I) Equity.DeclareReplacement with id; description; effectiveDate; perUnitReplacement
-        snd <$> exercise replacementRuleCid Lifecycle.Evolve with ruleName = "StockSplit"; eventCid; timeObservableCid; observableCids = []
+      declareReplacement Service.DeclareReplacement{equity; eventId; description; effectiveTime; perUnitReplacement} = do
+        eventCid <- Instrument.exerciseInterfaceByKey @Equity.I equity customer Equity.DeclareReplacement with id = eventId; description; effectiveTime; perUnitReplacement
+        snd <$> exercise replacementRuleCid Lifecycle.Evolve with eventCid; instrument = equity; observableCids = []
 
-      declareStockSplit Service.DeclareStockSplit{timeObservableCid; equity; newVersion; id; description; effectiveDate; adjustmentFactor} = do
+      declareStockSplit Service.DeclareStockSplit{equity; newVersion; eventId; description; effectiveTime; adjustmentFactor} = do
         now <- getTime
-        (_, equityRef) <- fetchByKey @Instrument.R equity
-        equity <- fetch equityRef.cid
+        instrument <- fetchInterfaceByKey @Instrument.R @Instrument.I equity
         let
-          disclosure = toInterface @Disclosure.I equity
-          v = view equity
-          dv = view disclosure
-          newInstrument = InstrumentKey with depository = provider; issuer = customer; id = v.id; version = newVersion
+          iv = view instrument
+          disclosure = view $ toInterface @Disclosure.I instrument
         serviceCid <- toInterfaceContractId @Structuring.I . fst <$> fetchByKey @Structuring.T (operator, provider, customer)
-        exercise serviceCid Structuring.RequestAndCreateEquity with id = v.id; description = v.description; version = newVersion; validAsOf = now; observers = dv.observers
-        eventCid <- exercise (coerceContractId equityRef.cid : ContractId Equity.I) Equity.DeclareStockSplit with id; description; effectiveDate; newInstrument; adjustmentFactor
-        snd <$> exercise replacementRuleCid Lifecycle.Evolve with ruleName = "StockSplit"; eventCid; timeObservableCid; observableCids = []
+        createEquityRequestCid <- exercise serviceCid Structuring.RequestCreateEquity with id = iv.id; description = iv.description; version = newVersion; validAsOf = now; observers = disclosure.observers
+        (_, newInstrument) <- exercise serviceCid Structuring.CreateEquity with createEquityRequestCid
+        eventCid <- Instrument.exerciseInterfaceByKey @Equity.I equity customer Equity.DeclareStockSplit with id = eventId; description; effectiveTime; newInstrument; adjustmentFactor
+        snd <$> exercise replacementRuleCid Lifecycle.Evolve with eventCid; instrument = equity; observableCids = []
 
       previewLifecycle Service.PreviewLifecycle{today; observableCids; instrumentCid} = do
         hasClaims <- fetch instrumentCid
@@ -100,8 +95,8 @@ template Service
         instrument <- fetch (coerceContractId instrumentCid : ContractId Instrument.I)
         fst <$> Claim.lifecycle customer observableCids hasClaims [Claim.timeEvent (view instrument).validAsOf]
 
-      lifecycle Service.Lifecycle{ruleName; eventCid; timeObservableCid; observableCids; lifecyclableCid} = do
-        exercise lifecyclableCid Lifecycle.Evolve with ruleName; eventCid; timeObservableCid; observableCids
+      lifecycle Service.Lifecycle{ruleCid; eventCid; observableCids; instrument} = do
+        exercise ruleCid Lifecycle.Evolve with eventCid; observableCids; instrument
 
       expiry Service.Expiry{claims} = do
         pure $ Util.expiry claims

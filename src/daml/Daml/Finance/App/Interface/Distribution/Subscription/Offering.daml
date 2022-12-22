@@ -7,8 +7,7 @@ import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Im
 import Daml.Finance.App.Interface.Distribution.Subscription.Subscription qualified as Subscription (I)
 import Daml.Finance.App.Interface.Distribution.Subscription.Types (BackToBack, Status)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Types.Common (AccountKey, Id)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity)
 
 type I = Offering
 
@@ -22,8 +21,8 @@ data View = View
     public : Party
     id : Id
     description : Text
-    asset : Instrument.Q
-    price : Instrument.Q
+    asset : InstrumentQuantity
+    price : InstrumentQuantity
     issuerHoldingCid : ContractId Fungible.I
     issuerAccount : AccountKey
     backToBack : Optional BackToBack

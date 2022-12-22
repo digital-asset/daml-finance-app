@@ -5,16 +5,15 @@ module Daml.Finance.App.Trading.Model where
 
 import DA.Set (fromList, singleton)
 import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, View(..))
+import Daml.Finance.App.Interface.Settlement.Service qualified as SettlementService (DiscoverAndInstruct(..))
 import Daml.Finance.App.Interface.Trading.CancelOrderRequest qualified as CancelOrderRequest (HasImplementation, I, View(..))
 import Daml.Finance.App.Interface.Trading.CreateOrderRequest qualified as CreateOrderRequest (HasImplementation, I, View(..))
 import Daml.Finance.App.Interface.Trading.Order qualified as Order (ApproveInstruction(..), Fill(..), FillResult(..), HasImplementation, I, Side(..), View(..))
-import Daml.Finance.Interface.Account.Account qualified as Account (K)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..), SplitResult(..))
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q, qty)
-import Daml.Finance.Interface.Settlement.Factory qualified as Factory (Instruct(..))
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Types (Allocation(Pledge), Approval(TakeDelivery), Step(..))
-import Daml.Finance.Interface.Types.Common (Id(..), Parties)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id(..), InstrumentQuantity, Parties)
+import Daml.Finance.Interface.Util.Common (qty)
 
 instance Order.HasImplementation Order
 
@@ -26,11 +25,11 @@ template Order
     id : Id
     timestamp : Time
     listingId : Id
-    quantity : Instrument.Q
+    quantity : InstrumentQuantity
     side : Order.Side
-    price : Instrument.Q
+    price : InstrumentQuantity
     collateralCid : ContractId Fungible.I
-    account : Account.K
+    account : AccountKey
     observers : Parties
   where
     signatory operator, provider, customer
@@ -59,15 +58,22 @@ template Order
 
       asRemovable = toInterface @Removable.I this
 
-      fill Order.Fill{settlementFactoryCid; other; isResting} = do
+      fill Order.Fill{settlementServiceCid; other; isResting} = do
         let
           paid = if isResting then price.amount else other.price.amount
           delivered = min quantity.amount other.quantity.amount
           amount = if side == Order.Buy then paid * delivered else delivered
           remaining = quantity.amount - min quantity.amount other.quantity.amount
           deliverable = if side == Order.Buy then price.unit else quantity.unit
-          step = Step with sender = customer; receiver = other.customer; quantity = Instrument.qty amount deliverable
-        (batchCid, [instructionCid]) <- exercise settlementFactoryCid Factory.Instruct with instructors = singleton provider; id; settlers = singleton provider; steps = [step]; contextId = Some id; description = show id
+          step = Step with sender = customer; receiver = other.customer; quantity = qty amount deliverable
+        (batchCid, [instructionCid]) <- exercise settlementServiceCid SettlementService.DiscoverAndInstruct with
+          actor = provider
+          settlers = singleton provider
+          id
+          description = show id
+          contextId = Some id
+          settlementTime = None
+          steps = [step]
         Fungible.SplitResult [splitCid] restCidOpt <- exercise collateralCid Fungible.Split with amounts = [ amount ]
         if remaining == 0.0
         then do
@@ -95,11 +101,11 @@ template CreateOrderRequest
     id : Id
     timestamp : Time
     listingId : Id
-    quantity : Instrument.Q
+    quantity : InstrumentQuantity
     side : Order.Side
-    price : Instrument.Q
+    price : InstrumentQuantity
     collateralCid : ContractId Fungible.I
-    account : Account.K
+    account : AccountKey
     orderCids : [ContractId Order.I]
     observers : Parties
   where

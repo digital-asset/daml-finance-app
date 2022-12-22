@@ -5,7 +5,7 @@ module Daml.Finance.App.Interface.Issuance.DeissueRequest where
 
 import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Implementation)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
-import Daml.Finance.Interface.Types.Common (Id)
+import Daml.Finance.Interface.Types.Common.Types (Id)
 
 type I = DeissueRequest
 

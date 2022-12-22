@@ -3,18 +3,16 @@
 
 module Daml.Finance.App.Interface.Custody.Service where
 
-import Daml.Finance.Interface.Account.Account qualified as Account (Controllers, I)
-import Daml.Finance.Interface.Account.Factory qualified as Account (F)
-import Daml.Finance.Interface.Holding.Factory qualified as Holding (F)
-import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Lifecycle (Claim)
-import Daml.Finance.Interface.Types.Common (AccountKey, Id, PartiesMap)
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Implementation)
 import Daml.Finance.App.Interface.Custody.OpenAccountRequest qualified as OpenAccountRequest (I)
 import Daml.Finance.App.Interface.Custody.CloseAccountRequest qualified as CloseAccountRequest (I)
 import Daml.Finance.App.Interface.Custody.DepositRequest qualified as DepositRequest (I)
 import Daml.Finance.App.Interface.Custody.WithdrawRequest qualified as WithdrawRequest (I)
+import Daml.Finance.Interface.Account.Account qualified as Account (Controllers, I)
+import Daml.Finance.Interface.Account.Factory qualified as Account (F)
+import Daml.Finance.Interface.Holding.Factory qualified as Holding (F)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity, PartiesMap)
 
 type I = Service
 
@@ -22,7 +20,6 @@ type V = View
 
 data View = View
   with
-    claimRuleCid : ContractId Lifecycle.Claim
     accountFactoryCid : ContractId Account.F
     holdingFactoryCid : ContractId Holding.F
   deriving (Eq, Show)
@@ -76,7 +73,7 @@ interface Service where
 
   nonconsuming choice RequestDeposit : ContractId DepositRequest.I
     with
-      quantity : Instrument.Q
+      quantity : InstrumentQuantity
       account : AccountKey
     controller (view $ asBase this).customer
     do

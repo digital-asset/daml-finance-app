@@ -5,7 +5,7 @@ module Daml.Finance.App.Interface.Listing.Auto where
 
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I)
 import Daml.Finance.App.Interface.Listing.Listing qualified as Listing (I)
-import Daml.Finance.Interface.Types.Common (Id, InstrumentKey, Parties)
+import Daml.Finance.Interface.Types.Common.Types (Id, InstrumentKey, Parties)
 
 type I = Service
 

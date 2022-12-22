@@ -4,7 +4,7 @@
 module Daml.Finance.App.Interface.Structuring.CreateInflationLinkedBondRequest where
 
 import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Implementation)
-import Daml.Finance.Interface.Types.Common (Id, InstrumentKey, PartiesMap)
+import Daml.Finance.Interface.Types.Common.Types (Id, InstrumentKey, PartiesMap)
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum)
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum)
@@ -20,6 +20,7 @@ data View = View
     customer : Party
     id : Id
     description : Text
+    version : Text
     inflationIndexId : Text
     inflationIndexBaseValue : Decimal
     couponRate : Decimal

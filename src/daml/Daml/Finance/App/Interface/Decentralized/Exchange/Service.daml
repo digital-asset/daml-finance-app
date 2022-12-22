@@ -3,13 +3,12 @@
 
 module Daml.Finance.App.Interface.Decentralized.Exchange.Service where
 
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Implementation)
 import Daml.Finance.App.Interface.Decentralized.Exchange.FlashSwapAction qualified as FlashSwapAction (I)
 import Daml.Finance.App.Interface.Decentralized.Exchange.Types (Pool)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Types.Common (AccountKey, Id)
-import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Implementation)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity)
 
 type I = Service
 
@@ -21,7 +20,7 @@ data View = View
     public : Party
     id : Id
     description : Text
-    shares : Instrument.Q -- share
+    shares : InstrumentQuantity -- share
     p1 : Pool -- pool1
     p2 : Pool -- pool2
   deriving (Eq, Show)
@@ -67,7 +66,7 @@ interface Service where
   nonconsuming choice FlashSwap : (ContractId Service, [ContractId Holding.I])
     with
       actor : Party
-      xAsset : Instrument.Q
+      xAsset : InstrumentQuantity
       yAccount : AccountKey
       actionCid : ContractId FlashSwapAction.I
     controller actor

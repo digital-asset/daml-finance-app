@@ -33,7 +33,7 @@ import Daml.Finance.Interface.Instrument.Token.Types (Token(..))
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayAdjustment(..), BusinessDayConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum, RollConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.Schedule (Frequency(..), PeriodicSchedule(..))
-import Daml.Finance.Interface.Types.Common (InstrumentKey(..))
+import Daml.Finance.Interface.Types.Common.Types (InstrumentKey(..))
 
 type T = Service
 
@@ -94,59 +94,67 @@ template Service
       createToken Service.CreateToken{createTokenRequestCid} = do
         CreateTokenRequest.View{..} <- view <$> fetchAndRemove createTokenRequestCid
         let
-          instrument = InstrumentKey with depository = provider; issuer = customer; id; version = "0"
+          instrument = InstrumentKey with depository = provider; issuer = customer; id; version
           tokenData = Token with ..
-        exercise token Token.Create with token = tokenData; observers
+        cid <- exercise token Token.Create with token = tokenData; observers
+        pure (cid, instrument)
 
       createEquity Service.CreateEquity{createEquityRequestCid} = do
         CreateEquityRequest.View{..} <- view <$> fetchAndRemove createEquityRequestCid
         let
           instrument = InstrumentKey with depository = provider; issuer = customer; id; version
-        exercise equity Equity.Create with ..
+        cid <- exercise equity Equity.Create with ..
+        pure (cid, instrument)
 
       createGeneric Service.CreateGeneric{createGenericRequestCid} = do
         CreateGenericRequest.View{..} <- view <$> fetchAndRemove createGenericRequestCid
         let
-          instrument = InstrumentKey with depository = provider; issuer = customer; id; version = "0"
-        exercise generic Generic.Create with ..
+          instrument = InstrumentKey with depository = provider; issuer = customer; id; version
+        cid <- exercise generic Generic.Create with ..
+        pure (cid, instrument)
 
       createFixedRateBond Service.CreateFixedRateBond{createFixedRateBondRequestCid} = do
         CreateFixedRateBondRequest.View{..} <- view <$> fetchAndRemove createFixedRateBondRequestCid
         let
-          instrument = InstrumentKey with depository = provider; issuer = customer; id; version = "0"
+          instrument = InstrumentKey with depository = provider; issuer = customer; id; version
           periodicSchedule = createCouponPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
           fixedRate = FixedRate with ..
-        exercise fixedRateBond FixedRateBond.Create with fixedRate; observers
+        cid <- exercise fixedRateBond FixedRateBond.Create with fixedRate; observers
+        pure (cid, instrument)
 
       createFloatingRateBond Service.CreateFloatingRateBond{createFloatingRateBondRequestCid} = do
         CreateFloatingRateBondRequest.View{..} <- view <$> fetchAndRemove createFloatingRateBondRequestCid
         let
-          instrument = InstrumentKey with depository = provider; issuer = customer; id; version = "0"
+          instrument = InstrumentKey with depository = provider; issuer = customer; id; version
           periodicSchedule = createCouponPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
           floatingRate = FloatingRate with ..
-        exercise floatingRateBond FloatingRateBond.Create with floatingRate; observers
+        cid <- exercise floatingRateBond FloatingRateBond.Create with floatingRate; observers
+        pure (cid, instrument)
 
       createInflationLinkedBond Service.CreateInflationLinkedBond{createInflationLinkedBondRequestCid} = do
         CreateInflationLinkedBondRequest.View{..} <- view <$> fetchAndRemove createInflationLinkedBondRequestCid
         let
-          instrument = InstrumentKey with depository = provider; issuer = customer; id; version = "0"
+          instrument = InstrumentKey with depository = provider; issuer = customer; id; version
           periodicSchedule = createCouponPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
           inflationLinked = InflationLinked with ..
-        exercise inflationLinkedBond InflationLinkedBond.Create with inflationLinked; observers
+        cid <- exercise inflationLinkedBond InflationLinkedBond.Create with inflationLinked; observers
+        pure (cid, instrument)
 
       createZeroCouponBond Service.CreateZeroCouponBond{createZeroCouponBondRequestCid} = do
         CreateZeroCouponBondRequest.View{..} <- view <$> fetchAndRemove createZeroCouponBondRequestCid
         let
-          instrument = InstrumentKey with depository = provider; issuer = customer; id; version = "0"
+          instrument = InstrumentKey with depository = provider; issuer = customer; id; version
           zeroCoupon = ZeroCoupon with ..
-        exercise zeroCouponBond ZeroCouponBond.Create with zeroCoupon; observers
+        cid <- exercise zeroCouponBond ZeroCouponBond.Create with zeroCoupon; observers
+        pure (cid, instrument)
 
       createFpmlSwap Service.CreateFpmlSwap{createFpmlSwapRequestCid} = do
         CreateFpmlSwapRequest.View{..} <- view <$> fetchAndRemove createFpmlSwapRequestCid
         let
-          instrument = InstrumentKey with depository = provider; issuer = customer; id; version = "0"
+          instrument = InstrumentKey with depository = provider; issuer = customer; id; version
           fpml = Fpml with ..
-        exercise fpmlSwap FpmlSwap.Create with fpml; observers
+        cid <- exercise fpmlSwap FpmlSwap.Create with fpml; observers
+        pure (cid, instrument)
 
 template Offer
   with

@@ -14,6 +14,7 @@ import DA.Set (fromList, singleton)
 import Daml.Finance.App.Distribution.Auction.Model qualified as Model (Auction(..), CreateAuctionRequest(..))
 import Daml.Finance.App.Distribution.Auction.Utils (dutchAuction, splitList, generateSettlementInstruction)
 import Daml.Finance.App.Distribution.Bidding.Service qualified as BiddingService (T)
+import Daml.Finance.App.Settlement.Service qualified as SettlementService (T)
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
 import Daml.Finance.App.Interface.Common.Util (fetchAndRemove)
 import Daml.Finance.App.Interface.Distribution.Auction.Auction qualified as Auction (Status(..))
@@ -21,6 +22,7 @@ import Daml.Finance.App.Interface.Distribution.Auction.CreateAuctionRequest qual
 import Daml.Finance.App.Interface.Distribution.Auction.Service qualified as Service (CreateAuction(..), HasImplementation, I, ProcessAuction(..), RequestCreateAuction(..), View(..))
 import Daml.Finance.App.Interface.Distribution.Bidding.Bid qualified as Bid (Allocation(..), SettleAllocation(..), Status(..))
 import Daml.Finance.App.Interface.Distribution.Bidding.Service qualified as BiddingService (I, RejectBid(..))
+import Daml.Finance.App.Interface.Settlement.Service qualified as SettlementService (I)
 import Daml.Finance.Interface.Account.Account qualified as Account (R, exerciseInterfaceByKey)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Account.Util (getAccount)
@@ -72,7 +74,7 @@ template Service
         collateralCid <- coerceContractId <$> exercise (toInterfaceContractId collateralCid : ContractId Holding.I) Holding.Acquire with newLockers = fromList [ provider ]; context = show auctionId; lockType = Holding.Semaphore
         toInterfaceContractId <$> create Model.Auction with operator; provider; customer; id = auctionId; description; quantity; currency; floor; collateralCid; receivableAccount; status = Auction.Open; observers
 
-      processAuction Service.ProcessAuction{settlementFactoryCid; auctionCid; bidCids} = do
+      processAuction Service.ProcessAuction{auctionCid; bidCids} = do
         let auctionTCid = fromInterfaceContractId @Model.Auction auctionCid
         auction <- fetch auctionTCid
         collateral <- fetch auction.collateralCid
@@ -102,8 +104,11 @@ template Service
         auctionCollateralClid <- coerceContractId <$> exercise (toInterfaceContractId auction.collateralCid : ContractId Holding.I) Holding.Release with context = show auction.id
 
         -- Generate Settlement instructions for allocated bids
-        let settleAllocations = (\allocation -> Bid.SettleAllocation with allocation; price = finalPrice; issuer = customer) <$> allocatedBids
-        (remainingDepositCidOpt, batchCids) <- foldlA (generateSettlementInstruction settlementFactoryCid provider auction.receivableAccount) (Some auctionCollateralClid, []) settleAllocations
+        settlementServiceCid <- toInterfaceContractId @SettlementService.I . fst <$> fetchByKey @SettlementService.T (operator, provider, customer)
+        let
+          settleAllocations = (\allocation -> Bid.SettleAllocation with allocation; price = finalPrice; issuer = customer) <$> allocatedBids
+          folder = generateSettlementInstruction settlementServiceCid provider auction.receivableAccount
+        (remainingDepositCidOpt, batchCids) <- foldlA folder (Some auctionCollateralClid, []) settleAllocations
 
         -- Settle transfers
         forA_ batchCids (`exercise` Batch.Settle with actors = singleton provider)

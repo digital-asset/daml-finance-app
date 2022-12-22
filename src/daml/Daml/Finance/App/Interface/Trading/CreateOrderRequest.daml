@@ -5,10 +5,8 @@ module Daml.Finance.App.Interface.Trading.CreateOrderRequest where
 
 import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Implementation)
 import Daml.Finance.App.Interface.Trading.Order qualified as Order (I, Side)
-import Daml.Finance.Interface.Account.Account qualified as Account (K)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Types.Common (Id, Parties)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity, Parties)
 
 type I = CreateOrderRequest
 
@@ -22,11 +20,11 @@ data View = View
     id : Id
     timestamp : Time
     listingId : Id
-    quantity : Instrument.Q
+    quantity : InstrumentQuantity
     side : Order.Side
-    price : Instrument.Q
+    price : InstrumentQuantity
     collateralCid : ContractId Fungible.I
-    account : Account.K
+    account : AccountKey
     orderCids : [ContractId Order.I]
     observers : Parties
   deriving (Eq, Show)

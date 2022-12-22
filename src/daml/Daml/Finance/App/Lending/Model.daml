@@ -11,9 +11,8 @@ import Daml.Finance.App.Interface.Lending.BorrowOfferRequest qualified as Borrow
 import Daml.Finance.Interface.Account.Account qualified as Account (exerciseInterfaceByKey)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I, Release(..))
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I, Transfer(..))
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, RemoveObservers(..))
-import Daml.Finance.Interface.Types.Common (AccountKey, Id)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity)
 
 template BorrowOfferRequest
   with
@@ -22,7 +21,7 @@ template BorrowOfferRequest
     customer : Party
     dealId : Id
     description : Text
-    borrowed : Instrument.Q
+    borrowed : InstrumentQuantity
     maturity : Date
   where
     signatory operator, provider, customer
@@ -45,10 +44,10 @@ template BorrowOffer
     customer : Party
     dealId : Id
     description : Text
-    borrowed : Instrument.Q
+    borrowed : InstrumentQuantity
     maturity : Date
-    interest : Instrument.Q
-    collateral : Instrument.Q
+    interest : InstrumentQuantity
+    collateral : InstrumentQuantity
     borrowedCid : ContractId Transferable.I
     lenderBorrowedAccount : AccountKey
     lenderInterestAccount : AccountKey
@@ -73,10 +72,10 @@ template BorrowAgreement
     customer : Party
     dealId : Id
     description : Text
-    borrowed : Instrument.Q
+    borrowed : InstrumentQuantity
     maturity : Date
-    interest : Instrument.Q
-    collateral : Instrument.Q
+    interest : InstrumentQuantity
+    collateral : InstrumentQuantity
     collateralCid : ContractId Transferable.I
     lenderBorrowedAccount : AccountKey
     lenderInterestAccount : AccountKey

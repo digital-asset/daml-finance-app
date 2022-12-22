@@ -7,7 +7,7 @@ import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Implementat
 import Daml.Finance.App.Interface.Listing.Listing qualified as Listing (I)
 import Daml.Finance.App.Interface.Listing.ListingRequest qualified as ListingRequest (I)
 import Daml.Finance.App.Interface.Listing.DelistingRequest qualified as DelistingRequest (I)
-import Daml.Finance.Interface.Types.Common (Id, InstrumentKey, Parties)
+import Daml.Finance.Interface.Types.Common.Types (Id, InstrumentKey, Parties)
 import Prelude hiding (List)
 
 type I = Service

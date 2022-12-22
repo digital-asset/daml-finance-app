@@ -6,8 +6,7 @@ module Daml.Finance.App.Interface.Trading.Auto where
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I)
 import Daml.Finance.App.Interface.Trading.Order qualified as Order (I, Side, View)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Types.Common (AccountKey, Id, Parties)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity, Parties)
 
 type I = Service
 
@@ -32,8 +31,8 @@ interface Service where
     with
       id : Id
       listingId : Id
-      quantity : Instrument.Q
-      price : Instrument.Q
+      quantity : InstrumentQuantity
+      price : InstrumentQuantity
       side : Order.Side
       collateralCid : ContractId Fungible.I
       account : AccountKey

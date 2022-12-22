@@ -5,7 +5,7 @@ module Daml.Finance.App.Interface.Custody.OpenAccountRequest where
 
 import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Implementation)
 import Daml.Finance.Interface.Account.Account qualified as Account (Controllers)
-import Daml.Finance.Interface.Types.Common (Id, PartiesMap)
+import Daml.Finance.Interface.Types.Common.Types (Id, PartiesMap)
 
 type I = OpenAccountRequest
 

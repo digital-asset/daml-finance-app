@@ -6,8 +6,7 @@ module Daml.Finance.App.Interface.Custody.Auto where
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I)
 import Daml.Finance.Interface.Account.Account qualified as Account (Controllers, I)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Types.Common (AccountKey, Id, InstrumentKey, PartiesMap)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentKey, InstrumentQuantity, PartiesMap)
 
 type I = Service
 
@@ -53,7 +52,7 @@ interface Service where
 
   nonconsuming choice RequestAndDeposit : (ContractId Holding.I)
     with
-      quantity : Instrument.Q
+      quantity : InstrumentQuantity
       account : AccountKey
     controller (view $ asBase this).customer
     do

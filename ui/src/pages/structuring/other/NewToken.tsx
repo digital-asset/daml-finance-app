@@ -3,6 +3,7 @@
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { v4 as uuidv4 } from "uuid";
 import { Button } from "@mui/material";
 import classnames from "classnames";
 import { useLedger, useParty } from "@daml/react";
@@ -37,6 +38,7 @@ export const NewToken : React.FC = () => {
     const arg = {
       id: { unpack: id },
       description,
+      version: uuidv4(),
       observers: emptyMap<string, any>().set("Public", singleton(getParty("Public"))),
       validAsOf: new Date().toISOString()
     };

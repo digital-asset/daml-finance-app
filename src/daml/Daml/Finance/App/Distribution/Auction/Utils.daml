@@ -7,15 +7,14 @@ import DA.Set (singleton)
 import Daml.Finance.App.Distribution.Bidding.Service qualified as Service (T)
 import Daml.Finance.App.Interface.Distribution.Bidding.Service qualified as Service (I, ProcessAllocation(..))
 import Daml.Finance.App.Interface.Distribution.Bidding.Bid qualified as Bid (AllocateInstruction(..), Allocation(..), ApproveInstruction(..), I, SettleAllocation(..), View)
-import Daml.Finance.Interface.Account.Account qualified as Account (K)
+import Daml.Finance.App.Interface.Settlement.Service qualified as Settlement (DiscoverAndInstruct(..), Service)
 import Daml.Finance.Interface.Holding.Fungible (Fungible, Split(..))
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
 import Daml.Finance.Interface.Holding.Util (getAmount, getInstrument)
-import Daml.Finance.Interface.Settlement.Factory (Factory, Instruct(..))
 import Daml.Finance.Interface.Settlement.Instruction (Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Batch (Batch)
 import Daml.Finance.Interface.Settlement.Types (Allocation(Pledge), Approval(TakeDelivery), Step(..))
-import Daml.Finance.Interface.Types.Common (Id(..))
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id(..))
+import Daml.Finance.Interface.Util.Common (qty)
 
 -- | Takes a list and splits it based off a predicate.
 splitList : (a -> Bool) -> [a] -> [Either a a]
@@ -47,9 +46,9 @@ dutchAuction (remaining, _) (bidCid, bid) =
     else ((0.0, bidPrice), Bid.Allocation with amount = remaining; bidCid; bid)
 
 -- | An accumulator function which processes generates the settlement instruction for both an issuer and a bidder based of the output of the dutch auction
-generateSettlementInstruction : ContractId Factory -> Party -> Account.K -> (Optional (ContractId Fungible), [ContractId Batch]) -> Bid.SettleAllocation -> Update (Optional (ContractId Fungible), [ContractId Batch])
+generateSettlementInstruction : ContractId Settlement.Service -> Party -> AccountKey -> (Optional (ContractId Fungible), [ContractId Batch]) -> Bid.SettleAllocation -> Update (Optional (ContractId Fungible), [ContractId Batch])
 generateSettlementInstruction _ _ _ (None, _) _ = error "Auction:generateSettlementInstruction - Issuers AssetDeposit has no remaining units to allocate"
-generateSettlementInstruction settlementFactoryCid settler issuerAccount (Some issuerDepositCid, batchCids) Bid.SettleAllocation{allocation, price, issuer} = do
+generateSettlementInstruction settlementServiceCid settler issuerAccount (Some issuerDepositCid, batchCids) Bid.SettleAllocation{allocation, price, issuer} = do
   let
     allocatedAmount = allocation.amount
     allocatedNotional = allocation.amount * price
@@ -60,7 +59,7 @@ generateSettlementInstruction settlementFactoryCid settler issuerAccount (Some i
   (bidCid, bidDepositCid) <- exercise (toInterfaceContractId @Service.I serviceCid) Service.ProcessAllocation with bidCid = allocation.bidCid; amount = allocatedAmount; price
   let
     buyer = bid.customer
-    payment = Step with sender = bid.customer; receiver = issuer; quantity = (Instrument.qty allocatedNotional bid.details.price.unit)
+    payment = Step with sender = bid.customer; receiver = issuer; quantity = (qty allocatedNotional bid.details.price.unit)
 
   -- | Process issuer side
   -- 1/ Extract their deposit
@@ -74,10 +73,17 @@ generateSettlementInstruction settlementFactoryCid settler issuerAccount (Some i
     [allocatedDepositCid] = splitResult.splitCids
   allocatedDeposit <- fetch allocatedDepositCid
   let
-    delivery = Step with sender = issuer; receiver = buyer; quantity = (Instrument.qty (getAmount allocatedDeposit) (getInstrument allocatedDeposit))
+    delivery = Step with sender = issuer; receiver = buyer; quantity = (qty (getAmount allocatedDeposit) (getInstrument allocatedDeposit))
     id = show bid.auctionId <> "-" <> partyToText buyer
 
-  (batchCid, [deliveryCid, paymentCid]) <- exercise settlementFactoryCid Instruct with instructors = singleton settler; settlers = singleton settler; id = Id id; description = "Settlement of auction " <> id; contextId = Some $ Id id; steps = [delivery, payment]
+  (batchCid, [deliveryCid, paymentCid]) <- exercise settlementServiceCid Settlement.DiscoverAndInstruct with
+    actor = settler
+    settlers = singleton settler
+    id = Id id
+    description = "Settlement of auction " <> id
+    contextId = Some $ Id id
+    settlementTime = None
+    steps = [delivery, payment]
   deliveryCid <- fst <$> exercise deliveryCid Allocate with actors = singleton settler; allocation = Pledge $ toInterfaceContractId allocatedDepositCid
   exercise bidCid Bid.ApproveInstruction with instructionCid = deliveryCid; account = bid.receivableAccount
   paymentCid <- exercise bidCid Bid.AllocateInstruction with instructionCid = paymentCid; holdingCid = bidDepositCid

@@ -4,7 +4,7 @@
 module Daml.Finance.App.Interface.Distribution.Subscription.Types where
 
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Types.Common (AccountKey, Id)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id)
 
 data Status
     = Open

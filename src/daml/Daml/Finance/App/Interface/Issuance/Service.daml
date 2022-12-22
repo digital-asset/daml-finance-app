@@ -3,13 +3,12 @@
 
 module Daml.Finance.App.Interface.Issuance.Service where
 
-import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Types.Common (AccountKey, Id)
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Implementation)
 import Daml.Finance.App.Interface.Issuance.Issuance qualified as Issuance (I)
 import Daml.Finance.App.Interface.Issuance.IssueRequest qualified as IssueRequest (I)
 import Daml.Finance.App.Interface.Issuance.DeissueRequest qualified as DeissueRequest (I)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity)
 
 type I = Service
 
@@ -40,7 +39,7 @@ interface Service where
     with
       issuanceId : Id
       description : Text
-      quantity : Instrument.Q
+      quantity : InstrumentQuantity
       account : AccountKey
     controller (view $ asBase this).customer
     do

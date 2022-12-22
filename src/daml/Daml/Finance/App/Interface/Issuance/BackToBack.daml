@@ -8,9 +8,8 @@ import Daml.Finance.App.Interface.Distribution.Subscription.Offering qualified a
 import Daml.Finance.App.Interface.Distribution.Subscription.Types (BackToBack)
 import Daml.Finance.App.Interface.Issuance.Issuance qualified as Issuance (I)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 import Daml.Finance.Interface.Settlement.Factory qualified as Factory (I)
-import Daml.Finance.Interface.Types.Common (AccountKey, Id)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity)
 
 type I = Service
 
@@ -38,7 +37,7 @@ interface Service where
     with
       issuanceId : Id
       description : Text
-      quantity : Instrument.Q
+      quantity : InstrumentQuantity
       customerAccount : AccountKey
       providerAccount : AccountKey
     controller (view $ asBase this).customer

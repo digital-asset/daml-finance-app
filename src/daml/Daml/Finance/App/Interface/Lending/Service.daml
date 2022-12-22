@@ -8,8 +8,7 @@ import Daml.Finance.App.Interface.Lending.BorrowAgreement qualified as BorrowAgr
 import Daml.Finance.App.Interface.Lending.BorrowOffer qualified as BorrowOffer (I)
 import Daml.Finance.App.Interface.Lending.BorrowOfferRequest qualified as BorrowOfferRequest (I)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Types.Common (AccountKey, Id)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity)
 
 type I = Service
 
@@ -37,7 +36,7 @@ interface Service where
     with
       dealId : Id
       description : Text
-      borrowed : Instrument.Q
+      borrowed : InstrumentQuantity
       maturity : Date
     controller (view $ asBase this).customer
     do
@@ -55,8 +54,8 @@ interface Service where
   nonconsuming choice CreateBorrowOffer : ContractId BorrowOffer.I
     with
       borrowOfferRequestCid : ContractId BorrowOfferRequest.I
-      interest : Instrument.Q
-      collateral : Instrument.Q
+      interest : InstrumentQuantity
+      collateral : InstrumentQuantity
       borrowedCid : ContractId Transferable.I
       lenderBorrowedAccount : AccountKey
       lenderInterestAccount : AccountKey

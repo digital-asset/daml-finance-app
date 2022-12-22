@@ -15,7 +15,7 @@ import Daml.Finance.App.Interface.Structuring.CreateZeroCouponBondRequest qualif
 import Daml.Finance.App.Interface.Structuring.CreateFpmlSwapRequest qualified as CreateFpmlSwapRequest (HasImplementation, I, View(..))
 import Daml.Finance.Interface.Claims.Types (C)
 import Daml.Finance.Interface.Instrument.Swap.Fpml.FpmlTypes (SwapStream)
-import Daml.Finance.Interface.Types.Common (Id, InstrumentKey, PartiesMap)
+import Daml.Finance.Interface.Types.Common.Types (Id, InstrumentKey, PartiesMap)
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum)
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum)
@@ -29,6 +29,7 @@ template CreateTokenRequest
     customer : Party
     id : Id
     description : Text
+    version : Text
     observers : PartiesMap
     validAsOf : Time
   where
@@ -44,6 +45,7 @@ template CreateTokenRequest
         customer
         id
         description
+        version
         observers
         validAsOf
 
@@ -89,6 +91,7 @@ template CreateGenericRequest
     customer : Party
     id : Id
     description : Text
+    version : Text
     claims : C
     acquisitionTime : Time
     observers : PartiesMap
@@ -106,6 +109,7 @@ template CreateGenericRequest
         customer
         id
         description
+        version
         claims
         acquisitionTime
         observers
@@ -122,6 +126,7 @@ template CreateFixedRateBondRequest
     customer : Party
     id : Id
     description : Text
+    version : Text
     couponRate : Decimal
     issueDate : Date
     firstCouponDate : Date
@@ -148,6 +153,7 @@ template CreateFixedRateBondRequest
         customer
         id
         description
+        version
         couponRate
         issueDate
         firstCouponDate
@@ -173,6 +179,7 @@ template CreateFloatingRateBondRequest
     customer : Party
     id : Id
     description : Text
+    version : Text
     referenceRateId : Text
     couponSpread : Decimal
     issueDate : Date
@@ -200,6 +207,7 @@ template CreateFloatingRateBondRequest
         customer
         id
         description
+        version
         referenceRateId
         couponSpread
         issueDate
@@ -226,6 +234,7 @@ template CreateInflationLinkedBondRequest
     customer : Party
     id : Id
     description : Text
+    version : Text
     inflationIndexId : Text
     inflationIndexBaseValue : Decimal
     couponRate : Decimal
@@ -254,6 +263,7 @@ template CreateInflationLinkedBondRequest
         customer
         id
         description
+        version
         inflationIndexId
         inflationIndexBaseValue
         couponRate
@@ -281,6 +291,7 @@ template CreateZeroCouponBondRequest
     customer : Party
     id : Id
     description : Text
+    version : Text
     issueDate : Date
     maturityDate : Date
     currency : InstrumentKey
@@ -299,6 +310,7 @@ template CreateZeroCouponBondRequest
         customer
         id
         description
+        version
         issueDate
         maturityDate
         currency
@@ -316,6 +328,7 @@ template CreateFpmlSwapRequest
     customer : Party
     id : Id
     description : Text
+    version : Text
     swapStreams : [SwapStream]
     issuerPartyRef : Text
     calendarDataProvider : Party
@@ -335,6 +348,7 @@ template CreateFpmlSwapRequest
         customer
         id
         description
+        version
         swapStreams
         issuerPartyRef
         calendarDataProvider
