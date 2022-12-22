@@ -8,13 +8,9 @@ import DA.Map (empty, fromList)
 import DA.Set (singleton)
 import DA.Time (time)
 import Daml.Finance.Data.Numeric.Observation (Observation(..))
-import Daml.Finance.Account.Account qualified as Account (Factory(..))
-import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
 import Daml.Finance.Interface.Types.Common.Types (Id(..))
 import Daml.Finance.Interface.Util.Common (qty)
-import Daml.Finance.Settlement.Factory qualified as Settlement (Factory(..))
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
-import Daml.Finance.Settlement.RouteProvider.IntermediatedStatic qualified as RouteProvider (IntermediatedStatic(..))
 import Daml.Finance.Setup.Payoff
 import Daml.Finance.Setup.Util.Common
 import Daml.Finance.Setup.Util.Role
@@ -36,10 +32,6 @@ run  = do
     cashRoute = Settlement.Hierarchy with rootCustodian = cashProvider; pathsToRootCustodian = settlementPaths
     secRoute = Settlement.Hierarchy with rootCustodian = seller; pathsToRootCustodian = settlementPaths
     paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
-  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory                   with provider = operator; observers = pub
-  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory                  with provider = operator; observers = pub
-  routeProviderCid          <- toInterfaceContractId <$> submit operator do createCmd RouteProvider.IntermediatedStatic with provider = operator; observers = singleton public; paths
-  settlementFactoryCid      <- toInterfaceContractId <$> submit operator do createCmd Settlement.Factory                with provider = operator; observers = singleton public
 
   -- Roles
   createOperatorRole  operator
@@ -47,12 +39,11 @@ run  = do
   createCustodianRole operator seller
 
   -- Services
-  createCustodyService    operator cashProvider seller  accountFactoryCid holdingFactoryCid
-  createCustodyService    operator cashProvider buyer   accountFactoryCid holdingFactoryCid
-  createCustodyService    operator seller       buyer   accountFactoryCid holdingFactoryCid
+  createCustodyService    operator cashProvider seller  paths
+  createCustodyService    operator cashProvider buyer   paths
+  createCustodyService    operator seller       buyer   paths
   createIssuanceService   operator seller       seller
   createLifecycleService  operator seller       seller  public
-  createSettlementService operator seller       buyer   routeProviderCid settlementFactoryCid
 
   -- Accounts
   sellerCashAccount   <- createAccount operator cashProvider  seller  public "Seller@CashProvider" empty

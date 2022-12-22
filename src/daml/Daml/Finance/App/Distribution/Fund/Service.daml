@@ -16,7 +16,9 @@ import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
 import Daml.Finance.App.Interface.Distribution.Fund.Fund qualified as Fund (ApproveInstruction(..), GetView(..), IssueUnits(..))
 import Daml.Finance.App.Interface.Distribution.Fund.Service qualified as Service (FulfillPooledInvestmentRequest(..), HasImplementation, I, PoolInvestmentRequests(..), View(..))
 import Daml.Finance.App.Interface.Distribution.Investment.InvestmentRequest qualified as InvestmentRequest (AllocateInstruction(..), ApproveInstruction(..))
+import Daml.Finance.App.Interface.Issuance.Service qualified as IssuanceService (I)
 import Daml.Finance.App.Interface.Settlement.Service qualified as SettlementService (DiscoverAndInstruct(..), I)
+import Daml.Finance.App.Issuance.Service qualified as IssuanceService (T)
 import Daml.Finance.App.Settlement.Service qualified as SettlementService (T)
 import Daml.Finance.Interface.Lifecycle.Observable.NumericObservable qualified as NumericObservable (Observe(..))
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
@@ -70,7 +72,7 @@ template Service
           customerFundAccount = fromSome $ M.lookup fund.instrument.id dir.accounts
         toInterfaceContractId <$> create Model.PooledInvestmentRequest with operator; provider; customer; requestId; asOfDate; fundId; quantity; cashCid; investmentRequestCids; customerFundAccount
 
-      fulfillPooledInvestmentRequest Service.FulfillPooledInvestmentRequest{pooledInvestmentRequestCid; fundCid; navObservableCid; settlementFactoryCid; issuanceServiceCid} = do
+      fulfillPooledInvestmentRequest Service.FulfillPooledInvestmentRequest{pooledInvestmentRequestCid; fundCid; navObservableCid} = do
         pir <- view <$> fetch pooledInvestmentRequestCid
         fund <- view <$> fetch fundCid
 
@@ -82,6 +84,7 @@ template Service
           fundQty = qty nrUnits fund.instrument
 
         -- Issue units
+        issuanceServiceCid <- toInterfaceContractId @IssuanceService.I . fst <$> fetchByKey @IssuanceService.T (operator, fund.custodian, provider)
         (_, fundUnitsCid, fundCid) <- exercise fundCid Fund.IssueUnits with requestId = pir.requestId; quantity = fundQty; issuanceServiceCid
 
         -- Instruct settlement

@@ -10,13 +10,9 @@ import DA.Time (time)
 import Daml.Finance.App.Interface.Lending.BorrowAgreement qualified as BorrowAgreement (Repay(..))
 import Daml.Finance.App.Interface.Lending.Service qualified as Lending (AcceptBorrowOffer(..), CreateBorrowOffer(..), I, RequestBorrowOffer(..))
 import Daml.Finance.App.Lending.Service qualified as Lending (T)
-import Daml.Finance.Account.Account qualified as Account (Factory(..))
-import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
 import Daml.Finance.Interface.Types.Common.Types (Id(..))
 import Daml.Finance.Interface.Util.Common (qty)
-import Daml.Finance.Settlement.Factory qualified as Settlement (Factory(..))
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
-import Daml.Finance.Settlement.RouteProvider.IntermediatedStatic qualified as RouteProvider (IntermediatedStatic(..))
 import Daml.Finance.Setup.Payoff
 import Daml.Finance.Setup.Util.Common
 import Daml.Finance.Setup.Util.Role
@@ -39,10 +35,6 @@ run  = do
     cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = settlementPaths
     secRoute = Settlement.Hierarchy with rootCustodian = registry; pathsToRootCustodian = settlementPaths
     paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
-  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory                   with provider = operator; observers = pub
-  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory                  with provider = operator; observers = pub
-  routeProviderCid          <- toInterfaceContractId <$> submit operator do createCmd RouteProvider.IntermediatedStatic with provider = operator; observers = singleton public; paths
-  settlementFactoryCid      <- toInterfaceContractId <$> submit operator do createCmd Settlement.Factory                with provider = operator; observers = singleton public
 
   -- Roles
   createOperatorRole  operator
@@ -51,15 +43,14 @@ run  = do
   createCustodianRole operator lender
 
   -- Create custody services
-  createCustodyService      operator centralBank  borrower  accountFactoryCid holdingFactoryCid
-  createCustodyService      operator centralBank  lender    accountFactoryCid holdingFactoryCid
-  createCustodyService      operator registry     borrower  accountFactoryCid holdingFactoryCid
-  createCustodyService      operator registry     lender    accountFactoryCid holdingFactoryCid
-  createCustodyService      operator lender       borrower  accountFactoryCid holdingFactoryCid
+  createCustodyService      operator centralBank  borrower  paths
+  createCustodyService      operator centralBank  lender    paths
+  createCustodyService      operator registry     borrower  paths
+  createCustodyService      operator registry     lender    paths
+  createCustodyService      operator lender       borrower  paths
   createLendingService      operator lender       borrower
   createStructuringService  operator registry     lender
   createLifecycleService    operator registry     lender    public
-  createSettlementService   operator lender       borrower  routeProviderCid settlementFactoryCid
 
   -- Accounts
   borrowerLenderAccount <- createAccount operator lender      borrower  public "Borrower@Lender"       empty

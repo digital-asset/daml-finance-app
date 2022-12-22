@@ -24,6 +24,8 @@ data View = View
   with
     distributionRuleCid : ContractId Lifecycle.I
     replacementRuleCid : ContractId Lifecycle.I
+    genericRuleCid : ContractId Lifecycle.I
+    dynamicRuleCid : ContractId Lifecycle.I
   deriving (Eq, Show)
 
 interface Service where

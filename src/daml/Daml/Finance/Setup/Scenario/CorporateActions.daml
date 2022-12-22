@@ -8,15 +8,11 @@ import DA.List (head)
 import DA.Map (empty, fromList)
 import DA.Set (singleton)
 import DA.Time (time)
-import Daml.Finance.Account.Account qualified as Account (Factory(..))
-import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
 import Daml.Finance.Interface.Settlement.Types (Allocation(..), Approval(..))
 import Daml.Finance.Interface.Types.Common.Types (Id(..))
 import Daml.Finance.Interface.Util.Common (qty)
-import Daml.Finance.Settlement.Factory qualified as Settlement (Factory(..))
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
-import Daml.Finance.Settlement.RouteProvider.IntermediatedStatic qualified as RouteProvider (IntermediatedStatic(..))
 import Daml.Finance.Setup.Util.Common
 import Daml.Finance.Setup.Util.Role
 import Daml.Finance.Setup.Util.Service
@@ -38,10 +34,6 @@ run = do
     cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = settlementPaths
     secRoute = Settlement.Hierarchy with rootCustodian = issuer; pathsToRootCustodian = settlementPaths
     paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
-  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
-  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
-  routeProviderCid          <- toInterfaceContractId <$> submit operator do createCmd RouteProvider.IntermediatedStatic with provider = operator; observers = singleton public; paths
-  settlementFactoryCid      <- toInterfaceContractId <$> submit operator do createCmd Settlement.Factory                with provider = operator; observers = singleton public
 
   -- Roles
   createOperatorRole  operator
@@ -51,25 +43,25 @@ run = do
   createCustodianRole operator custodian
 
   -- Services
-  createCustodyService          operator centralBank  issuer    accountFactoryCid holdingFactoryCid
-  createCustodyService          operator centralBank  registry  accountFactoryCid holdingFactoryCid
-  createCustodyService          operator centralBank  custodian accountFactoryCid holdingFactoryCid
-  createCustodyService          operator issuer       registry  accountFactoryCid holdingFactoryCid
-  createCustodyService          operator registry     issuer    accountFactoryCid holdingFactoryCid
-  createCustodyService          operator registry     custodian accountFactoryCid holdingFactoryCid
-  createCustodyService          operator custodian    inv1      accountFactoryCid holdingFactoryCid
-  createCustodyService          operator custodian    inv2      accountFactoryCid holdingFactoryCid
-  createCustodyService          operator custodian    inv3      accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank  issuer    paths
+  createCustodyService          operator centralBank  registry  paths
+  createCustodyService          operator centralBank  custodian paths
+  createCustodyService          operator issuer       registry  paths
+  createCustodyService          operator registry     issuer    paths
+  createCustodyService          operator registry     custodian paths
+  createCustodyService          operator custodian    inv1      paths
+  createCustodyService          operator custodian    inv2      paths
+  createCustodyService          operator custodian    inv3      paths
   createIssuanceService         operator registry     issuer
   createIssuanceAutoService     operator registry     issuer
   createStructuringService      operator registry     issuer
   createStructuringAutoService  operator registry     issuer
   createLifecycleService        operator registry     issuer    public
-  createSettlementService       operator issuer       registry  routeProviderCid settlementFactoryCid
-  createSettlementService       operator registry     custodian routeProviderCid settlementFactoryCid
-  createSettlementService       operator custodian    inv1      routeProviderCid settlementFactoryCid
-  createSettlementService       operator custodian    inv2      routeProviderCid settlementFactoryCid
-  createSettlementService       operator custodian    inv3      routeProviderCid settlementFactoryCid
+  createSettlementService       operator issuer       registry  paths
+  createSettlementService       operator registry     custodian paths
+  createSettlementService       operator custodian    inv1      paths
+  createSettlementService       operator custodian    inv2      paths
+  createSettlementService       operator custodian    inv3      paths
 
   -- Accounts
   issuerCashAccount     <- createAccount operator centralBank issuer    public "Issuer@CentralBank|Cash"         empty

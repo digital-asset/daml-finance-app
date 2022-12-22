@@ -7,9 +7,7 @@ import DA.Date (toDateUTC)
 import DA.Map (empty, fromList)
 import DA.Set (singleton)
 import DA.Time (time)
-import Daml.Finance.Account.Account qualified as Account (Factory(..))
 import Daml.Finance.App.Interface.Decentralized.Exchange.Service qualified as Dex (Swap(..))
-import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
 import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Setup.Util.Common
 import Daml.Finance.Setup.Util.Role
@@ -25,10 +23,6 @@ run  = do
     all@[operator, public, fed, ecb, snb, boe, con, trd] = map (.id) parties
     pub = fromList [("Public", singleton public)]
 
-  -- Factories
-  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory                   with provider = operator; observers = pub
-  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory                  with provider = operator; observers = pub
-
   -- Roles
   createOperatorRole    operator
   createCustodianRole   operator fed
@@ -38,14 +32,14 @@ run  = do
   createExchangeRole    operator con
 
   -- Services
-  createCustodyService          operator fed con accountFactoryCid holdingFactoryCid
-  createCustodyService          operator fed trd accountFactoryCid holdingFactoryCid
-  createCustodyService          operator ecb con accountFactoryCid holdingFactoryCid
-  createCustodyService          operator ecb trd accountFactoryCid holdingFactoryCid
-  createCustodyService          operator snb con accountFactoryCid holdingFactoryCid
-  createCustodyService          operator snb trd accountFactoryCid holdingFactoryCid
-  createCustodyService          operator boe con accountFactoryCid holdingFactoryCid
-  createCustodyService          operator boe trd accountFactoryCid holdingFactoryCid
+  createCustodyService          operator fed con empty
+  createCustodyService          operator fed trd empty
+  createCustodyService          operator ecb con empty
+  createCustodyService          operator ecb trd empty
+  createCustodyService          operator snb con empty
+  createCustodyService          operator snb trd empty
+  createCustodyService          operator boe con empty
+  createCustodyService          operator boe trd empty
 
   -- Accounts
   conFedAccount  <- createAccount operator fed con  public "Consortium@FED" pub

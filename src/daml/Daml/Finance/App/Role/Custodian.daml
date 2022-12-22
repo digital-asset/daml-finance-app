@@ -26,7 +26,7 @@ import Daml.Finance.Interface.Instrument.Swap.Fpml.Factory qualified as FpmlSwap
 import Daml.Finance.Interface.Instrument.Token.Factory qualified as Token (Factory)
 import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Lifecycle (Claim)
 import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (I)
-import Daml.Finance.Interface.Settlement.Factory qualified as Factory (I)
+import Daml.Finance.Interface.Settlement.Factory qualified as SettlementFactory (I)
 import Daml.Finance.Interface.Settlement.RouteProvider qualified as RouteProvider (I)
 
 template Role
@@ -44,18 +44,20 @@ template Role
         customer : Party
         accountFactoryCid : ContractId Account.F
         holdingFactoryCid : ContractId Holding.F
+        claimRuleCid : ContractId Lifecycle.Claim
       controller provider
       do
-        create Custody.Offer with operator; provider; customer; accountFactoryCid; holdingFactoryCid
+        create Custody.Offer with operator; provider; customer; accountFactoryCid; holdingFactoryCid; claimRuleCid
 
     nonconsuming choice ApproveCustodyRequest : ContractId Custody.Service
       with
         custodyRequestCid : ContractId Custody.Request
         accountFactoryCid : ContractId Account.F
         holdingFactoryCid : ContractId Holding.F
+        claimRuleCid : ContractId Lifecycle.Claim
       controller provider
       do
-        exercise custodyRequestCid Custody.Approve with operator; accountFactoryCid; holdingFactoryCid
+        exercise custodyRequestCid Custody.Approve with operator; accountFactoryCid; holdingFactoryCid; claimRuleCid
 
     nonconsuming choice TerminateCustodyService : ()
       with
@@ -161,9 +163,8 @@ template Role
     nonconsuming choice OfferSettlementService : ContractId Settlement.Offer
       with
         customer : Party
-        routerCid : ContractId RouteProvider.I
-        factoryCid : ContractId Factory.I
-        claimRuleCid : ContractId Lifecycle.Claim
+        routeProviderCid : ContractId RouteProvider.I
+        settlementFactoryCid : ContractId SettlementFactory.I
       controller provider
       do
         create Settlement.Offer with ..
@@ -171,9 +172,8 @@ template Role
     nonconsuming choice ApproveSettlementRequest : ContractId Settlement.Service
       with
         settlementServiceRequestCid : ContractId Settlement.Request
-        routerCid : ContractId RouteProvider.I
-        factoryCid : ContractId Factory.I
-        claimRuleCid : ContractId Lifecycle.Claim
+        routeProviderCid : ContractId RouteProvider.I
+        settlementFactoryCid : ContractId SettlementFactory.I
       controller provider
       do
         exercise settlementServiceRequestCid Settlement.Approve with ..
@@ -251,6 +251,8 @@ template Role
         customer : Party
         distributionRuleCid : ContractId Lifecycle.I
         replacementRuleCid : ContractId Lifecycle.I
+        genericRuleCid : ContractId Lifecycle.I
+        dynamicRuleCid : ContractId Lifecycle.I
       controller provider
       do
         create Lifecycle.Offer with ..
@@ -260,6 +262,8 @@ template Role
         lifecycleServiceRequestCid : ContractId Lifecycle.Request
         distributionRuleCid : ContractId Lifecycle.I
         replacementRuleCid : ContractId Lifecycle.I
+        genericRuleCid : ContractId Lifecycle.I
+        dynamicRuleCid : ContractId Lifecycle.I
       controller provider
       do
         exercise lifecycleServiceRequestCid Lifecycle.Approve with ..

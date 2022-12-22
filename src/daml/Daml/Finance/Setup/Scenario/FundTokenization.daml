@@ -8,13 +8,9 @@ import DA.Map (empty, fromList)
 import DA.Set (singleton)
 import DA.Time (time)
 import Daml.Finance.App.Distribution.Fund.Model (Fund(..))
-import Daml.Finance.Account.Account qualified as Account (Factory(..))
-import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
 import Daml.Finance.Interface.Types.Common.Types (Id(..))
 import Daml.Finance.Interface.Util.Common (qty)
-import Daml.Finance.Settlement.Factory qualified as Settlement (Factory(..))
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
-import Daml.Finance.Settlement.RouteProvider.IntermediatedStatic qualified as RouteProvider (IntermediatedStatic(..))
 import Daml.Finance.Setup.Util.Common
 import Daml.Finance.Setup.Util.Role
 import Daml.Finance.Setup.Util.Service
@@ -36,36 +32,30 @@ run = do
     cashRoute = Settlement.Hierarchy with rootCustodian = cashProvider; pathsToRootCustodian = settlementPaths
     secRoute = Settlement.Hierarchy with rootCustodian = custodian; pathsToRootCustodian = settlementPaths
     paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
-  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory                   with provider = operator; observers = pub
-  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory                  with provider = operator; observers = pub
-  routeProviderCid          <- toInterfaceContractId <$> submit operator do createCmd RouteProvider.IntermediatedStatic with provider = operator; observers = singleton public; paths
-  settlementFactoryCid      <- toInterfaceContractId <$> submit operator do createCmd Settlement.Factory                with provider = operator; observers = singleton public
 
   -- Roles
-  createOperatorRole operator
-  createCustodianRole operator cashProvider
-  createCustodianRole operator custodian
-  createCustodianRole operator pm
-  createCustodianRole operator am
+  createOperatorRole    operator
+  createCustodianRole   operator cashProvider
+  createCustodianRole   operator custodian
+  createCustodianRole   operator am
   createDistributorRole operator pm
   createDistributorRole operator am
 
   -- Services
-  createCustodyService          operator cashProvider am        accountFactoryCid holdingFactoryCid
-  createCustodyService          operator cashProvider custodian accountFactoryCid holdingFactoryCid
-  createCustodyService          operator am           inv1      accountFactoryCid holdingFactoryCid
-  createCustodyService          operator am           inv2      accountFactoryCid holdingFactoryCid
-  createCustodyService          operator am           inv3      accountFactoryCid holdingFactoryCid
-  createCustodyService          operator custodian    am        accountFactoryCid holdingFactoryCid
-  createCustodyService          operator custodian    pm        accountFactoryCid holdingFactoryCid
-  issuanceServiceCid <- toInterfaceContractId <$> createIssuanceService     operator custodian    pm
+  createCustodyService          operator cashProvider am        paths
+  createCustodyService          operator cashProvider custodian paths
+  createCustodyService          operator am           inv1      paths
+  createCustodyService          operator am           inv2      paths
+  createCustodyService          operator am           inv3      paths
+  createCustodyService          operator custodian    am        paths
+  createCustodyService          operator custodian    pm        paths
+  createIssuanceService         operator custodian    pm
   createStructuringService      operator custodian    pm
   createStructuringAutoService  operator custodian    pm
   createInvestmentService       operator am           inv1
   createInvestmentService       operator am           inv2
   createInvestmentService       operator am           inv3
   createFundService             operator pm           am
-  createSettlementService       operator pm           am        routeProviderCid settlementFactoryCid
 
   -- Accounts
   amCashAccount         <- createAccount operator cashProvider  am        public "AssetManager@CashProvider/Cash"        $ fromList [("PM", singleton pm)]
@@ -120,7 +110,7 @@ run = do
       ir2Cid <- createInvestmentRequest operator am inv2 public "REQ-FUND1-INV2" today fund1Cid (coerceContractId inv2CashCid)
       ir3Cid <- createInvestmentRequest operator am inv3 public "REQ-FUND1-INV3" today fund1Cid (coerceContractId inv3CashCid)
       pirCid <- poolInvestmentRequests operator pm am public "REQ-FUND1-POOLED" today fund1Cid (coerceContractId amCashCid) [ir1Cid, ir2Cid, ir3Cid]
-      fulfillPooledInvestmentRequest operator pm am public fund1Cid pirCid navFund1Cid settlementFactoryCid issuanceServiceCid
+      fulfillPooledInvestmentRequest operator pm am public fund1Cid pirCid navFund1Cid
   --doDistribution
 
   pure parties

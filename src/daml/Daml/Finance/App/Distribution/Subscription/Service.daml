@@ -76,7 +76,7 @@ template Service
             backToBack = lockedB2b
             status = Open
 
-      processOffering Service.ProcessOffering{settlementFactoryCid; offeringCid; subscriptionCids} = do
+      processOffering Service.ProcessOffering{offeringCid; subscriptionCids} = do
         -- Settle subscriptions
         offeringI <- fetch offeringCid
         let offering = view offeringI
@@ -88,7 +88,7 @@ template Service
         whenSome offering.backToBack \b2b -> do
           let totalQuantity = sum $ map ((.quantity) . snd) subscriptions
           (serviceCid, _) <- fetchByKey @BackToBack.T (operator, b2b.party, customer)
-          exercise (toInterfaceContractId @BackToBack.I serviceCid) BackToBack.SettleOffering with settlementFactoryCid; offeringCid; totalQuantity
+          exercise (toInterfaceContractId @BackToBack.I serviceCid) BackToBack.SettleOffering with offeringCid; totalQuantity
           pure ()
 
         -- Archive offer and subscriptions

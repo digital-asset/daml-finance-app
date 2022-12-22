@@ -12,6 +12,7 @@ import Daml.Finance.Interface.Account.Account qualified as Account (Controllers,
 import Daml.Finance.Interface.Account.Factory qualified as Account (F)
 import Daml.Finance.Interface.Holding.Factory qualified as Holding (F)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Lifecycle (Claim)
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity, PartiesMap)
 
 type I = Service
@@ -22,6 +23,7 @@ data View = View
   with
     accountFactoryCid : ContractId Account.F
     holdingFactoryCid : ContractId Holding.F
+    claimRuleCid : ContractId Lifecycle.Claim
   deriving (Eq, Show)
 
 interface Service where

@@ -6,8 +6,7 @@ module Daml.Finance.App.Settlement.Service where
 import DA.Set (singleton)
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
 import Daml.Finance.App.Interface.Settlement.Service qualified as Service (AllocateInstruction(..), ApproveInstruction(..), DiscoverAndInstruct(..), HasImplementation, I, View(..))
-import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Lifecycle (Claim)
-import Daml.Finance.Interface.Settlement.Factory qualified as Factory (I, Instruct(..))
+import Daml.Finance.Interface.Settlement.Factory qualified as SettlementFactory (I, Instruct(..))
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.RouteProvider qualified as RouteProvider (Discover(..), I)
 
@@ -20,9 +19,8 @@ template Service
     operator : Party
     provider : Party
     customer : Party
-    routerCid : ContractId RouteProvider.I
-    factoryCid : ContractId Factory.I
-    claimRuleCid : ContractId Lifecycle.Claim
+    routeProviderCid : ContractId RouteProvider.I
+    settlementFactoryCid : ContractId SettlementFactory.I
   where
     signatory operator, provider, customer
 
@@ -35,7 +33,7 @@ template Service
       terminate = pure ()
 
     interface instance Service.I for Service where
-      view = Service.View with routerCid; factoryCid; claimRuleCid
+      view = Service.View with routeProviderCid; settlementFactoryCid
 
       asBase = toInterface @Base.I this
 
@@ -48,17 +46,16 @@ template Service
         exercise instructionCid Instruction.Approve with actors = singleton actor; approval
 
       discoverAndInstruct Service.DiscoverAndInstruct{actor; settlers; id; description; contextId; settlementTime; steps} = do
-        routedSteps <- exercise routerCid RouteProvider.Discover with discoverors = singleton actor; contextId = None; steps
-        exercise factoryCid Factory.Instruct with instructors = singleton actor; settlers; id; description; contextId; settlementTime; routedSteps
+        routedSteps <- exercise routeProviderCid RouteProvider.Discover with discoverors = singleton actor; contextId = None; steps
+        exercise settlementFactoryCid SettlementFactory.Instruct with instructors = singleton actor; settlers; id; description; contextId; settlementTime; routedSteps
 
 template Offer
   with
     operator : Party
     provider : Party
     customer : Party
-    routerCid : ContractId RouteProvider.I
-    factoryCid : ContractId Factory.I
-    claimRuleCid : ContractId Lifecycle.Claim
+    routeProviderCid : ContractId RouteProvider.I
+    settlementFactoryCid : ContractId SettlementFactory.I
   where
     signatory operator, provider
     observer customer
@@ -66,7 +63,7 @@ template Offer
     choice Accept : ContractId Service
       controller customer
       do
-        create Service with operator; provider; customer; routerCid; factoryCid; claimRuleCid
+        create Service with operator; provider; customer; routeProviderCid; settlementFactoryCid
 
     choice Decline : ()
       controller customer
@@ -95,9 +92,8 @@ template Request
     choice Approve : ContractId Service
       with
         operator : Party
-        routerCid : ContractId RouteProvider.I
-        factoryCid : ContractId Factory.I
-        claimRuleCid : ContractId Lifecycle.Claim
+        routeProviderCid : ContractId RouteProvider.I
+        settlementFactoryCid : ContractId SettlementFactory.I
       controller operator, provider
       do
-        create Service with operator; provider; customer; routerCid; factoryCid; claimRuleCid
+        create Service with operator; provider; customer; routeProviderCid; settlementFactoryCid

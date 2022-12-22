@@ -8,11 +8,9 @@ import DA.Foldable (mapA_)
 import DA.Map (empty, fromList)
 import DA.Set (singleton)
 import DA.Time (time)
-import Daml.Finance.Account.Account qualified as Account (Factory(..))
 import Daml.Finance.Claims.Lifecycle.Rule qualified as Lifecycle (Rule(..))
 import Daml.Finance.Data.Time.DateClock qualified as Data (DateClock)
 import Daml.Finance.Data.Time.DateClockUpdate qualified as Data (DateClockUpdateEvent)
-import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
 import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (Evolve(..), I)
 import Daml.Finance.Interface.Types.Common.Types (Id(..))
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum(..))
@@ -20,9 +18,7 @@ import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum(..))
 import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Lifecycle.Effect qualified as Lifecycle (Effect)
-import Daml.Finance.Settlement.Factory qualified as Settlement (Factory(..))
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
-import Daml.Finance.Settlement.RouteProvider.IntermediatedStatic qualified as RouteProvider (IntermediatedStatic(..))
 import Daml.Finance.Setup.Util.Common
 import Daml.Finance.Setup.Util.Role
 import Daml.Finance.Setup.Util.Service
@@ -44,36 +40,27 @@ run = do
     cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = settlementPaths
     secRoute = Settlement.Hierarchy with rootCustodian = registry; pathsToRootCustodian = settlementPaths
     paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
-  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
-  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
-  routeProviderCid          <- toInterfaceContractId <$> submit operator do createCmd RouteProvider.IntermediatedStatic with provider = operator; observers = singleton public; paths
-  settlementFactoryCid      <- toInterfaceContractId <$> submit operator do createCmd Settlement.Factory                with provider = operator; observers = singleton public
 
   -- Roles
-  createOperatorRole operator
+  createOperatorRole  operator
   createCustodianRole operator centralBank
   createCustodianRole operator registry
   createCustodianRole operator custodian
 
   -- Services
-  createCustodyService          operator centralBank  registry  accountFactoryCid holdingFactoryCid
-  createCustodyService          operator centralBank  issuer    accountFactoryCid holdingFactoryCid
-  createCustodyService          operator centralBank  custodian accountFactoryCid holdingFactoryCid
-  createCustodyService          operator registry     issuer    accountFactoryCid holdingFactoryCid
-  createCustodyService          operator registry     custodian accountFactoryCid holdingFactoryCid
-  createCustodyService          operator custodian    inv1      accountFactoryCid holdingFactoryCid
-  createCustodyService          operator custodian    inv2      accountFactoryCid holdingFactoryCid
-  createCustodyService          operator custodian    inv3      accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank  registry  paths
+  createCustodyService          operator centralBank  issuer    paths
+  createCustodyService          operator centralBank  custodian paths
+  createCustodyService          operator registry     issuer    paths
+  createCustodyService          operator registry     custodian paths
+  createCustodyService          operator custodian    inv1      paths
+  createCustodyService          operator custodian    inv2      paths
+  createCustodyService          operator custodian    inv3      paths
   createIssuanceService         operator registry     issuer
   createIssuanceAutoService     operator registry     issuer
   createStructuringService      operator registry     issuer
   createStructuringAutoService  operator registry     issuer
   createLifecycleService        operator registry     issuer    public
-  createSettlementService       operator custodian    inv1      routeProviderCid settlementFactoryCid
-  createSettlementService       operator custodian    inv2      routeProviderCid settlementFactoryCid
-  createSettlementService       operator custodian    inv3      routeProviderCid settlementFactoryCid
-  createSettlementService       operator registry     custodian routeProviderCid settlementFactoryCid
-  createSettlementService       operator registry     issuer    routeProviderCid settlementFactoryCid
 
   -- Accounts
   registryCashAccount   <- createAccount operator centralBank registry  public "Registry@CentralBank/Cash"       empty

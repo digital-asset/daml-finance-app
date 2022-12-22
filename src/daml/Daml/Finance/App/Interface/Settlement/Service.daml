@@ -4,9 +4,8 @@
 module Daml.Finance.App.Interface.Settlement.Service where
 
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Implementation)
-import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Lifecycle (Claim)
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (I)
-import Daml.Finance.Interface.Settlement.Factory qualified as Factory (I)
+import Daml.Finance.Interface.Settlement.Factory qualified as SettlementFactory (I)
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (I)
 import Daml.Finance.Interface.Settlement.RouteProvider qualified as RouteProvider (I)
 import Daml.Finance.Interface.Settlement.Types (Allocation, Approval, Step)
@@ -18,9 +17,8 @@ type V = View
 
 data View = View
   with
-    routerCid : ContractId RouteProvider.I
-    factoryCid : ContractId Factory.I
-    claimRuleCid : ContractId Lifecycle.Claim
+    routeProviderCid : ContractId RouteProvider.I
+    settlementFactoryCid : ContractId SettlementFactory.I
   deriving (Eq, Show)
 
 interface Service where

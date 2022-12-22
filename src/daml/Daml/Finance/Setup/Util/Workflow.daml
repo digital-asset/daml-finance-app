@@ -37,7 +37,6 @@ import Daml.Finance.App.Issuance.Service qualified as IssuanceService (T)
 import Daml.Finance.App.Lifecycle.Service qualified as LifecycleService (T)
 import Daml.Finance.App.Listing.Model qualified as Listing (T)
 import Daml.Finance.App.Listing.Service qualified as ListingService (T)
-import Daml.Finance.App.Settlement.Service qualified as SettlementService (T)
 import Daml.Finance.App.Trading.Model qualified as Trading (Order)
 import Daml.Finance.App.Trading.Service qualified as TradingService (T)
 import Daml.Finance.Data.Numeric.Observation qualified as Data (Observation(..))
@@ -65,7 +64,6 @@ import Daml.Finance.Interface.Lifecycle.Event qualified as Event (I)
 import Daml.Finance.Interface.Lifecycle.Effect qualified as Effect (I)
 import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Claim (ClaimEffect(..), ClaimResult(..))
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (I)
-import Daml.Finance.Interface.Settlement.Factory qualified as SettlementFactory (I)
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (I, Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Types qualified as Settlement (Allocation, Approval)
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id(..), InstrumentKey, InstrumentQuantity, Parties, PartiesMap)
@@ -314,7 +312,7 @@ declareStockSplit operator provider issuer public equity effectiveTime adjustmen
 
 claimEffect : Party -> Party -> Party -> Party -> ContractId Effect.I -> [ContractId Holding.I] -> Id -> Script (ContractId Batch.I, [ContractId Instruction.I])
 claimEffect operator custodian owner public effectCid holdingCids batchId = do
-  Some (_, service) <- queryContractKey @SettlementService.T owner (operator, custodian, owner)
+  service <- snd . fromSome <$> queryContractKey @CustodyService.T owner (operator, custodian, owner)
   Claim.ClaimResult{batchCid; instructionCids} <- submitMulti [owner] [public] do exerciseCmd service.claimRuleCid Claim.ClaimEffect with claimer = owner; effectCid; holdingCids; batchId
   pure (batchCid, instructionCids)
 
@@ -334,7 +332,7 @@ poolInvestmentRequests operator provider customer public id asOfDate fundCid cas
   serviceCid <- toInterfaceContractId @FundService.I . fst . fromSome <$> queryContractKey @FundService.T customer (operator, provider, customer)
   submitMulti [customer] [public] do exerciseCmd serviceCid FundService.PoolInvestmentRequests with requestId = Id id; asOfDate; fundCid; cashCid; investmentRequestCids
 
-fulfillPooledInvestmentRequest : Party -> Party -> Party -> Party -> ContractId Fund.I -> ContractId PooledInvestmentRequest.I -> ContractId NumericObservable.I -> ContractId SettlementFactory.I -> ContractId IssuanceService.I -> Script [ContractId Holding.I]
-fulfillPooledInvestmentRequest operator provider customer public fundCid pooledInvestmentRequestCid navObservableCid settlementFactoryCid issuanceServiceCid = do
+fulfillPooledInvestmentRequest : Party -> Party -> Party -> Party -> ContractId Fund.I -> ContractId PooledInvestmentRequest.I -> ContractId NumericObservable.I -> Script [ContractId Holding.I]
+fulfillPooledInvestmentRequest operator provider customer public fundCid pooledInvestmentRequestCid navObservableCid = do
   serviceCid <- toInterfaceContractId @FundService.I . fst . fromSome <$> queryContractKey @FundService.T customer (operator, provider, customer)
-  submitMulti [provider] [public] do exerciseCmd serviceCid FundService.FulfillPooledInvestmentRequest with fundCid; pooledInvestmentRequestCid; navObservableCid; settlementFactoryCid; issuanceServiceCid
+  submitMulti [provider] [public] do exerciseCmd serviceCid FundService.FulfillPooledInvestmentRequest with fundCid; pooledInvestmentRequestCid; navObservableCid

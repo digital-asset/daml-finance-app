@@ -7,11 +7,9 @@ import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Implementat
 import Daml.Finance.App.Interface.Distribution.Fund.Fund qualified as Fund (I)
 import Daml.Finance.App.Interface.Distribution.Fund.PooledInvestmentRequest qualified as PooledInvestmentRequest (I)
 import Daml.Finance.App.Interface.Distribution.Investment.InvestmentRequest qualified as InvestmentRequest (I)
-import Daml.Finance.App.Interface.Issuance.Service qualified as IssuanceService (I)
 import Daml.Finance.Interface.Lifecycle.Observable.NumericObservable qualified as NumericObservable (I)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
-import Daml.Finance.Interface.Settlement.Factory qualified as SettlementFactory (I)
 import Daml.Finance.Interface.Types.Common.Types (Id)
 
 type I = Service
@@ -49,8 +47,6 @@ interface Service where
       pooledInvestmentRequestCid : ContractId PooledInvestmentRequest.I
       fundCid : ContractId Fund.I
       navObservableCid : ContractId NumericObservable.I
-      settlementFactoryCid : ContractId SettlementFactory.I
-      issuanceServiceCid : ContractId IssuanceService.I
     controller (view $ asBase this).provider
     do
       fulfillPooledInvestmentRequest this arg
