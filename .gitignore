@@ -1,6 +1,6 @@
 /.dev
 .daml
-/log
+log
 .DS_Store
 .lib
 
