@@ -6,8 +6,8 @@ module Daml.Finance.App.Trading.Service where
 import DA.Action (foldlA, when)
 import DA.Optional (isNone)
 import DA.Set (insert, singleton)
-import Daml.Finance.App.Interface.Common.Util (fetchAndRemove)
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
+import Daml.Finance.App.Interface.Common.Util (fetchAndRemove)
 import Daml.Finance.App.Interface.Settlement.Service qualified as SettlementService (I)
 import Daml.Finance.App.Interface.Trading.CancelOrderRequest qualified as CancelOrderRequest (View(..))
 import Daml.Finance.App.Interface.Trading.CreateOrderRequest qualified as CreateOrderRequest (View(..))
@@ -15,13 +15,13 @@ import Daml.Finance.App.Interface.Trading.Order qualified as Order (ApproveInstr
 import Daml.Finance.App.Interface.Trading.Service qualified as Service (CancelOrder(..), CreateOrder(..), ExecuteOrder(..), HasImplementation, I, RequestCancelOrder(..), RequestCreateOrder(..), View(..))
 import Daml.Finance.App.Trading.Model qualified as Model (CancelOrderRequest(..), CreateOrderRequest(..), Order(..))
 import Daml.Finance.Interface.Account.Account qualified as Account (exerciseInterfaceByKey)
+import Daml.Finance.Interface.Account.Util (getAccount)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
-import Daml.Finance.Interface.Account.Util (getAccount)
-import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, AddObservers(..), RemoveObservers(..))
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Approve(..))
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
 import Daml.Finance.Interface.Settlement.Types (Approval(TakeDelivery))
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, AddObservers(..), RemoveObservers(..))
 
 type T = Service
 

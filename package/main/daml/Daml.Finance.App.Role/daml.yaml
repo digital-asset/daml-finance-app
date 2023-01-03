@@ -1,0 +1,34 @@
+# Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+sdk-version: 2.6.0-snapshot.20221218.11169.0.9d007b31
+name: daml-finance-app-role
+version: 0.0.1
+source: daml
+dependencies:
+  - daml-prim
+  - daml-stdlib
+data-dependencies:
+  - .lib/daml-finance/Daml.Finance.Interface.Account/1.0.0/daml-finance-interface-account-1.0.0.dar
+  - .lib/daml-finance/Daml.Finance.Interface.Holding/1.0.0/daml-finance-interface-holding-1.0.0.dar
+  - .lib/daml-finance/Daml.Finance.Interface.Instrument.Bond/0.2.0/daml-finance-interface-instrument-bond-0.2.0.dar
+  - .lib/daml-finance/Daml.Finance.Interface.Instrument.Equity/0.2.0/daml-finance-interface-instrument-equity-0.2.0.dar
+  - .lib/daml-finance/Daml.Finance.Interface.Instrument.Generic/1.0.0/daml-finance-interface-instrument-generic-1.0.0.dar
+  - .lib/daml-finance/Daml.Finance.Interface.Instrument.Swap/0.2.0/daml-finance-interface-instrument-swap-0.2.0.dar
+  - .lib/daml-finance/Daml.Finance.Interface.Instrument.Token/1.0.0/daml-finance-interface-instrument-token-1.0.0.dar
+  - .lib/daml-finance/Daml.Finance.Interface.Lifecycle/1.0.0/daml-finance-interface-lifecycle-1.0.0.dar
+  - .lib/daml-finance/Daml.Finance.Interface.Settlement/1.0.0/daml-finance-interface-settlement-1.0.0.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Custody/0.0.1/daml-finance-app-custody-0.0.1.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Distribution/0.0.1/daml-finance-app-distribution-0.0.1.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Interface.Base/0.0.1/daml-finance-app-interface-base-0.0.1.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Interface.Listing/0.0.1/daml-finance-app-interface-listing-0.0.1.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Interface.Settlement/0.0.1/daml-finance-app-interface-settlement-0.0.1.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Issuance/0.0.1/daml-finance-app-issuance-0.0.1.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Lending/0.0.1/daml-finance-app-lending-0.0.1.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Lifecycle/0.0.1/daml-finance-app-lifecycle-0.0.1.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Listing/0.0.1/daml-finance-app-listing-0.0.1.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Settlement/0.0.1/daml-finance-app-settlement-0.0.1.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Structuring/0.0.1/daml-finance-app-structuring-0.0.1.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Trading/0.0.1/daml-finance-app-trading-0.0.1.dar
+build-options:
+  - --target=1.15

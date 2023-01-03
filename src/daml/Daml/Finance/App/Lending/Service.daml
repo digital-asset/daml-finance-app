@@ -4,12 +4,12 @@
 module Daml.Finance.App.Lending.Service where
 
 import DA.Set (singleton)
-import Daml.Finance.App.Lending.Model qualified as Model (BorrowAgreement(..), BorrowOffer(..), BorrowOfferRequest(..))
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
 import Daml.Finance.App.Interface.Common.Util (fetchAndRemove)
 import Daml.Finance.App.Interface.Lending.BorrowOffer qualified as BorrowOffer (View(..))
 import Daml.Finance.App.Interface.Lending.BorrowOfferRequest qualified as BorrowOfferRequest (View(..))
 import Daml.Finance.App.Interface.Lending.Service qualified as Service (AcceptBorrowOffer(..), CreateBorrowOffer(..), HasImplementation, I, RequestBorrowOffer(..), View(..))
+import Daml.Finance.App.Lending.Model qualified as Model (BorrowAgreement(..), BorrowOffer(..), BorrowOfferRequest(..))
 import Daml.Finance.Interface.Account.Account qualified as Account (exerciseInterfaceByKey)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I, Transfer(..))
 import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))

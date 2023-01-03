@@ -4,7 +4,7 @@
 module Daml.Finance.App.Issuance.Service where
 
 import DA.Assert ((===))
-import Daml.Finance.App.Issuance.Model qualified as Model
+import Daml.Finance.App.Issuance.Model qualified as Model (DeissueRequest(..), Issuance(..), IssueRequest(..))
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
 import Daml.Finance.App.Interface.Common.Util (fetchAndRemove)
 import Daml.Finance.App.Interface.Issuance.IssueRequest qualified as IssueRequest (View(..))
@@ -13,7 +13,6 @@ import Daml.Finance.App.Interface.Issuance.Service qualified as Service
 import Daml.Finance.Interface.Account.Account qualified as Account (Credit(..), Debit(..), I, exerciseInterfaceByKey)
 import Daml.Finance.Interface.Account.Util (getAccount)
 import Daml.Finance.Interface.Holding.Util (getAmount)
-import Daml.Finance.App.Issuance.Model (DeissueRequest(..), Issuance(..), IssueRequest(..))
 
 type T = Service
 
@@ -43,7 +42,7 @@ template Service
         toInterfaceContractId <$> create Model.DeissueRequest with operator; provider; customer; issuanceId; holdingCid
       issue Service.Issue{issueRequestCid} = do
         IssueRequest.View{issuanceId; description; quantity; account} <- view <$> fetchAndRemove issueRequestCid
-        issuanceCid <- toInterfaceContractId <$> create Issuance with operator; provider; customer; id = issuanceId; description; quantity
+        issuanceCid <- toInterfaceContractId <$> create Model.Issuance with operator; provider; customer; id = issuanceId; description; quantity
         account.custodian === provider
         account.owner === customer
         holdingCid <- Account.exerciseInterfaceByKey @Account.I account provider Account.Credit with quantity
@@ -57,7 +56,7 @@ template Service
         account.custodian === provider
         account.owner === customer
         Account.exerciseInterfaceByKey @Account.I account provider Account.Debit with holdingCid
-        (issuanceCid, issuance) <- fetchByKey @Issuance (operator, provider, issuanceId)
+        (issuanceCid, issuance) <- fetchByKey @Model.Issuance (operator, provider, issuanceId)
         archive issuanceCid
         toInterfaceContractId <$> create issuance with quantity = (issuance.quantity with amount = issuance.quantity.amount - amount)
 

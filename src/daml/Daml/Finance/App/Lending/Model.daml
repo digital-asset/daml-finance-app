@@ -11,8 +11,8 @@ import Daml.Finance.App.Interface.Lending.BorrowOfferRequest qualified as Borrow
 import Daml.Finance.Interface.Account.Account qualified as Account (exerciseInterfaceByKey)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I, Release(..))
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I, Transfer(..))
-import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, RemoveObservers(..))
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity)
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, RemoveObservers(..))
 
 template BorrowOfferRequest
   with

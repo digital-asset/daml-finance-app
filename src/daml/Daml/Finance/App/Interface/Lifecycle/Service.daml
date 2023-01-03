@@ -3,11 +3,11 @@
 
 module Daml.Finance.App.Interface.Lifecycle.Service where
 
-import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Implementation)
 import ContingentClaims.Core.Claim (Claim)
 import ContingentClaims.Core.Observation (Observation(..))
 import ContingentClaims.Lifecycle.Lifecycle qualified as Lifecycle
 import ContingentClaims.Valuation.Stochastic (Expr)
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Implementation)
 import Daml.Finance.Interface.Lifecycle.Observable.NumericObservable qualified as NumericObservable (I)
 import Daml.Finance.Interface.Claims.Claim qualified as Claim (Claim)
 import Daml.Finance.Interface.Claims.Types (C, Pending, TaggedClaim)

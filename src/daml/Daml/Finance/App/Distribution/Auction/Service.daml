@@ -23,10 +23,10 @@ import Daml.Finance.App.Interface.Distribution.Bidding.Bid qualified as Bid (All
 import Daml.Finance.App.Interface.Distribution.Bidding.Service qualified as BiddingService (I, RejectBid(..))
 import Daml.Finance.App.Interface.Settlement.Service qualified as SettlementService (I)
 import Daml.Finance.Interface.Account.Account qualified as Account (R, exerciseInterfaceByKey)
-import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Account.Util (getAccount)
-import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I, RemoveObservers(..))
+import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I, RemoveObservers(..))
 
 type T = Service
 
