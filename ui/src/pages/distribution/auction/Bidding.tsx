@@ -4,13 +4,13 @@
 import React, { useState } from "react";
 import useStyles from "../../styles";
 import classnames from "classnames";
-import { Auction } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Auction/Auction";
-import { Bid } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Bidding/Bid";
+import { Auction } from "@daml.js/daml-finance-app-interface-distribution/lib/Daml/Finance/App/Interface/Distribution/Auction/Auction";
+import { Bid } from "@daml.js/daml-finance-app-interface-distribution/lib/Daml/Finance/App/Interface/Distribution/Bidding/Bid";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Grid, Paper, Typography, Table, TableRow, TableCell, TableBody, TextField, Button } from "@mui/material";
 import { useParams } from "react-router-dom";
-import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Bidding/Service";
-import { Service as ServiceAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Bidding/Auto";
+import { Service } from "@daml.js/daml-finance-app-interface-distribution/lib/Daml/Finance/App/Interface/Distribution/Bidding/Service";
+import { Service as ServiceAuto } from "@daml.js/daml-finance-app-interface-distribution/lib/Daml/Finance/App/Interface/Distribution/Bidding/Auto";
 import { getBidAllocation } from "../Utils";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { fmt } from "../../../util";

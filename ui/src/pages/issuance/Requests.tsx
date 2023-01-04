@@ -7,15 +7,15 @@ import { Button } from "@mui/material";
 import { CreateEvent } from "@daml/ledger";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
-import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Issuance/Service";
+import { Service } from "@daml.js/daml-finance-app-interface-issuance/lib/Daml/Finance/App/Interface/Issuance/Service";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
 import { useServices } from "../../context/ServicesContext";
-import { IssueRequest } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Issuance/IssueRequest";
-import { DeissueRequest } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Issuance/DeissueRequest";
+import { IssueRequest } from "@daml.js/daml-finance-app-interface-issuance/lib/Daml/Finance/App/Interface/Issuance/IssueRequest";
+import { DeissueRequest } from "@daml.js/daml-finance-app-interface-issuance/lib/Daml/Finance/App/Interface/Issuance/DeissueRequest";
 import { fmt } from "../../util";
 import { useHoldings } from "../../context/HoldingContext";
-import { Issuance } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Issuance/Issuance";
+import { Issuance } from "@daml.js/daml-finance-app-interface-issuance/lib/Daml/Finance/App/Interface/Issuance/Issuance";
 import { HorizontalTable } from "../../components/Table/HorizontalTable";
 
 export const Requests : React.FC = () => {

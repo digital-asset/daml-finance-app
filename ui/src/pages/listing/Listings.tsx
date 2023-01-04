@@ -10,9 +10,9 @@ import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
 import { useServices } from "../../context/ServicesContext";
 import { HorizontalTable } from "../../components/Table/HorizontalTable";
-import { Listing } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Listing/Listing";
-import { Service as Auto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Listing/Auto";
-import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Listing/Service";
+import { Listing } from "@daml.js/daml-finance-app-interface-listing/lib/Daml/Finance/App/Interface/Listing/Listing";
+import { Service as Auto } from "@daml.js/daml-finance-app-interface-listing/lib/Daml/Finance/App/Interface/Listing/Auto";
+import { Service } from "@daml.js/daml-finance-app-interface-listing/lib/Daml/Finance/App/Interface/Listing/Service";
 
 export const Listings : React.FC = () => {
   const classes = useStyles();

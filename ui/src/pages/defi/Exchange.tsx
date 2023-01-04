@@ -10,7 +10,7 @@ import { Button, Grid, Paper, Table, TableBody, TableCell, TableRow, TextField, 
 import { Percentage } from "../../components/Slider/Percentage";
 import useStyles from "../styles";
 import { Bonding } from "../../components/Curve/Bonding";
-import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Decentralized/Exchange/Service";
+import { Service } from "@daml.js/daml-finance-app-interface-decentralized/lib/Daml/Finance/App/Interface/Decentralized/Exchange/Service";
 import { useServices } from "../../context/ServicesContext";
 import { useHoldings } from "../../context/HoldingContext";
 import { useAccounts } from "../../context/AccountContext";

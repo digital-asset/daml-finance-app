@@ -3,7 +3,7 @@
 
 import React from "react";
 import { useStreamQueries } from "@daml/react";
-import { Listing } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Model";
+import { Listing } from "@daml.js/daml-finance-app-interface-listing/lib/Daml/Finance/App/Interface/Listing/Listing";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
 import { CreateEvent } from "@daml/ledger";

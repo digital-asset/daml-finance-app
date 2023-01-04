@@ -11,7 +11,7 @@ import { Message } from "../../components/Message/Message";
 import { Aggregate } from "../../components/Instrument/Aggregate";
 import { fmt, keyEquals, keyString } from "../../util";
 import { useStreamQueries } from "@daml/react";
-import { Issuance as IssuanceContract } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Model";
+import { Issuance as IssuanceContract } from "@daml.js/daml-finance-app-interface-issuance/lib/Daml/Finance/App/Interface/Issuance/Issuance";
 import { useInstruments } from "../../context/InstrumentContext";
 import { useParties } from "../../context/PartiesContext";
 

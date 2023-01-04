@@ -11,7 +11,7 @@ import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useServices } from "../../context/ServicesContext";
 import { useInstruments } from "../../context/InstrumentContext";
-import { Service as Lending } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Lending/Service";
+import { Service as Lending } from "@daml.js/daml-finance-app-interface-lending/lib/Daml/Finance/App/Interface/Lending/Service";
 import { parseDate } from "../../util";
 import { CenteredForm } from "../../components/CenteredForm/CenteredForm";
 import { SelectInput, toValues } from "../../components/Form/SelectInput";

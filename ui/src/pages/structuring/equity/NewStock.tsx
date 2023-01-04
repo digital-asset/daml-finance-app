@@ -12,8 +12,8 @@ import { Spinner } from "../../../components/Spinner/Spinner";
 import { emptyMap } from "@daml/types";
 import { useParties } from "../../../context/PartiesContext";
 import { useServices } from "../../../context/ServicesContext";
-import { Service as Structuring } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Structuring/Service";
-import { Service as StructuringAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Structuring/Auto";
+import { Service as Structuring } from "@daml.js/daml-finance-app-interface-structuring/lib/Daml/Finance/App/Interface/Structuring/Service";
+import { Service as StructuringAuto } from "@daml.js/daml-finance-app-interface-structuring/lib/Daml/Finance/App/Interface/Structuring/Auto";
 import { CenteredForm } from "../../../components/CenteredForm/CenteredForm";
 import { TextInput } from "../../../components/Form/TextInput";
 

@@ -8,7 +8,7 @@ import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Typography, Grid, Table, TableBody, TableCell, TableRow, Paper, Button, TableHead, Accordion, AccordionSummary, AccordionDetails } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
 import useStyles from "../styles";
-import { Service as Lifecycle } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Lifecycle/Service";
+import { Service as Lifecycle } from "@daml.js/daml-finance-app-interface-lifecycle/lib/Daml/Finance/App/Interface/Lifecycle/Service";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
 import { and, C, claimToNode } from "../../components/Claims/util";

@@ -5,7 +5,7 @@ import React from "react";
 import { useStreamQueries } from "@daml/react";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
-import { BorrowOfferRequest } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lending/Model";
+import { BorrowOfferRequest } from "@daml.js/daml-finance-app-interface-lending/lib/Daml/Finance/App/Interface/Lending/BorrowOfferRequest";
 import { fmt } from "../../util";
 import { HorizontalTable } from "../../components/Table/HorizontalTable";
 import { CreateEvent } from "@daml/ledger";

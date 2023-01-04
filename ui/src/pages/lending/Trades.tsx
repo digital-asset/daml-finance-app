@@ -7,7 +7,7 @@ import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
-import { BorrowAgreement } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Lending/BorrowAgreement";
+import { BorrowAgreement } from "@daml.js/daml-finance-app-interface-lending/lib/Daml/Finance/App/Interface/Lending/BorrowAgreement";
 import { fmt } from "../../util";
 import { CreateEvent } from "@daml/ledger";
 import { useHoldings } from "../../context/HoldingContext";

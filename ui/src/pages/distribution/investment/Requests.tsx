@@ -9,14 +9,14 @@ import { Spinner } from "../../../components/Spinner/Spinner";
 import { dedup, fmt } from "../../../util";
 import { useParties } from "../../../context/PartiesContext";
 import { useServices } from "../../../context/ServicesContext";
-import { InvestmentRequest } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Investment/InvestmentRequest";
+import { InvestmentRequest } from "@daml.js/daml-finance-app-interface-distribution/lib/Daml/Finance/App/Interface/Distribution/Investment/InvestmentRequest";
 import { Alignment, HorizontalTable } from "../../../components/Table/HorizontalTable";
 import { SelectionTable } from "../../../components/Table/SelectionTable";
 import { ContractId } from "@daml/types";
-import { Service as FundService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Fund/Service";
+import { Service as FundService } from "@daml.js/daml-finance-app-interface-distribution/lib/Daml/Finance/App/Interface/Distribution/Fund/Service";
 import { useHoldings } from "../../../context/HoldingContext";
 import { Transferable } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Transferable";
-import { Fund } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Distribution/Fund/Fund";
+import { Fund } from "@daml.js/daml-finance-app-interface-distribution/lib/Daml/Finance/App/Interface/Distribution/Fund/Fund";
 
 export const Requests : React.FC = () => {
   const navigate = useNavigate();

@@ -15,8 +15,8 @@ import { useParties } from "../../context/PartiesContext";
 import { useServices } from "../../context/ServicesContext";
 import { createSet } from "../../util";
 import useStyles from "../styles";
-import { Service as Auto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Listing/Auto";
-import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Listing/Service";
+import { Service as Auto } from "@daml.js/daml-finance-app-interface-listing/lib/Daml/Finance/App/Interface/Listing/Auto";
+import { Service } from "@daml.js/daml-finance-app-interface-listing/lib/Daml/Finance/App/Interface/Listing/Service";
 
 export const New : React.FC = () => {
   const cls = useStyles();

@@ -6,7 +6,7 @@ import { FormControl, Button, Grid, Paper, Typography, InputLabel, Select, MenuI
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { Service as Lifecycle} from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Lifecycle/Service";
+import { Service as Lifecycle} from "@daml.js/daml-finance-app-interface-lifecycle/lib/Daml/Finance/App/Interface/Lifecycle/Service";
 import classnames from "classnames";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
 import { and, claimToNode, findObservables } from "../../components/Claims/util";

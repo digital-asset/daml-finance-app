@@ -9,7 +9,7 @@ import useStyles from "./styles";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
 import { and, claimToNode } from "../../components/Claims/util";
 import { InstrumentAggregate } from "../../context/InstrumentContext";
-import { Service as Lifecycle } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Interface/Lifecycle/Service";
+import { Service as Lifecycle } from "@daml.js/daml-finance-app-interface-lifecycle/lib/Daml/Finance/App/Interface/Lifecycle/Service";
 import { useParties } from "../../context/PartiesContext";
 import { shorten } from "../../util";
 import { Spinner } from "../Spinner/Spinner";

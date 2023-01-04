@@ -11,7 +11,7 @@ import { Spinner } from "../../../components/Spinner/Spinner";
 import { fmt } from "../../../util";
 import { useParties } from "../../../context/PartiesContext";
 import { Alignment, HorizontalTable } from "../../../components/Table/HorizontalTable";
-import { Fund } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Fund/Model";
+import { Fund } from "@daml.js/daml-finance-app-interface-distribution/lib/Daml/Finance/App/Interface/Distribution/Fund/Fund";
 import { useServices } from "../../../context/ServicesContext";
 
 export const Funds : React.FC = () => {

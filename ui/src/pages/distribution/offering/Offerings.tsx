@@ -4,7 +4,7 @@
 import React from "react";
 import { useStreamQueries } from "@daml/react";
 import { Spinner } from "../../../components/Spinner/Spinner";
-import { Offering } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Model";
+import { Offering } from "@daml.js/daml-finance-app-interface-distribution/lib/Daml/Finance/App/Interface/Distribution/Subscription/Offering";
 import { fmt } from "../../../util";
 import { useParties } from "../../../context/PartiesContext";
 import { CreateEvent } from "@daml/ledger";

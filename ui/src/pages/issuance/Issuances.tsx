@@ -3,7 +3,7 @@
 
 import React from "react";
 import { useStreamQueries } from "@daml/react";
-import { Issuance } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Model";
+import { Issuance } from "@daml.js/daml-finance-app-interface-issuance/lib/Daml/Finance/App/Interface/Issuance/Issuance";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
 import { fmt } from "../../util";
