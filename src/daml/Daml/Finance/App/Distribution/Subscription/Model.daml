@@ -4,72 +4,59 @@
 module Daml.Finance.App.Distribution.Subscription.Model where
 
 import DA.Set (fromList, singleton)
-import Daml.Finance.Interface.Account.Account qualified as Account (K, R)
+import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, View(..))
+import Daml.Finance.App.Interface.Distribution.Subscription.Offering qualified as Offering (HasImplementation, I, Subscribe(..), View(..))
+import Daml.Finance.App.Interface.Distribution.Subscription.Subscription qualified as Subscription (AllocateInstruction(..), ApproveInstruction(..), HasImplementation, I, UnlockHolding(..), View(..))
+import Daml.Finance.App.Interface.Distribution.Subscription.Types (BackToBack, Status)
+import Daml.Finance.Interface.Account.Account qualified as Account (disclose)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
-import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
 import Daml.Finance.Interface.Account.Util (getAccount)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
-import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..), I)
+import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Types (Allocation(Pledge), Approval(TakeDelivery))
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity, Parties)
 
-data Status
-    = Open
-    | Closed
-  deriving (Eq, Show)
-
-data BackToBack = BackToBack
-  with
-    party : Party
-    offeringId : Text
-    issuerReceivableAccount : Account.K
-    issuerDeliverableCid : ContractId Fungible.I
-    b2bReceivableAccount : Account.K
-    b2bDeliverableCid : ContractId Fungible.I
-  deriving (Eq, Show)
+instance Offering.HasImplementation Offering
 
 template Offering
   with
     operator : Party
     provider : Party
     issuer : Party
-    public : Party
-    offeringId : Text
-    asset : Instrument.Q
-    price : Instrument.Q
+    id : Id
+    description : Text
+    asset : InstrumentQuantity
+    price : InstrumentQuantity
     issuerHoldingCid : ContractId Fungible.I
-    issuerAccount : Account.K
+    issuerAccount : AccountKey
     backToBack : Optional BackToBack
     status : Status
+    observers : Parties
   where
     signatory operator, provider, issuer
-    observer public
+    observer observers
 
-    key (provider, offeringId) : (Party, Text)
+    key (operator, provider, id) : (Party, Party, Id)
     maintainer key._1
 
-    nonconsuming choice Subscribe : ContractId Subscription
-      with
-        investor : Party
-        quantity : Decimal
-        investorHoldingCid : ContractId Fungible.I
-        investorAccount : Account.K
-      controller investor
-      do
-        -- Disclose holding
-        investorHolding <- fetch investorHoldingCid
-        investorHoldingCid : ContractId Fungible.I <- coerceContractId <$> exercise (coerceContractId investorHoldingCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton investor; observersToAdd = (offeringId, singleton issuer)
-        -- Disclose delivering securities account
-        let investorSendingAccount = getAccount investorHolding
-        (_, delRef) <- fetchByKey @Account.R investorSendingAccount
-        exercise (coerceContractId delRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton investor; observersToAdd = (offeringId, singleton issuer)
-        -- Disclose receiving cash account
-        (_, recRef) <- fetchByKey @Account.R investorAccount
-        exercise (coerceContractId recRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton investor; observersToAdd = (offeringId, singleton issuer)
-        -- Lock holding
-        investorHoldingCid <- coerceContractId <$> exercise (toInterfaceContractId investorHoldingCid : ContractId Holding.I) Holding.Acquire with newLockers = singleton issuer; context = offeringId; lockType = Holding.Semaphore
-        create Subscription with holdingCid = investorHoldingCid; accountKey = investorAccount; ..
+    interface instance Removable.I for Offering where
+      view = Removable.View with removers = fromList [operator, provider, issuer]
+
+    interface instance Offering.I for Offering where
+      view = Offering.View with operator; provider; issuer; id; description; asset; price; issuerHoldingCid; issuerAccount; backToBack; status; observers
+
+      asRemovable = toInterface @Removable.I this
+
+      subscribe Offering.Subscribe{investor; quantity; investorHoldingCid; investorAccount} = do
+          investorHolding <- fetch investorHoldingCid
+          investorHoldingCid : ContractId Fungible.I <- coerceContractId <$> exercise (coerceContractId investorHoldingCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton investor; observersToAdd = (show id, singleton issuer)
+          Account.disclose (show id, singleton issuer) investor (singleton investor) $ getAccount investorHolding
+          Account.disclose (show id, singleton issuer) investor (singleton investor) investorAccount
+          investorHoldingCid <- coerceContractId <$> exercise (toInterfaceContractId investorHoldingCid : ContractId Holding.I) Holding.Acquire with newLockers = singleton issuer; context = show id; lockType = Holding.Semaphore
+          toInterfaceContractId <$> create Subscription with operator; provider; issuer; investor; offeringId = id; quantity; holdingCid = investorHoldingCid; account = investorAccount
+
+instance Subscription.HasImplementation Subscription
 
 template Subscription
   with
@@ -77,32 +64,26 @@ template Subscription
     provider : Party
     issuer : Party
     investor : Party
-    offeringId : Text
+    offeringId : Id
     quantity : Decimal
     holdingCid : ContractId Fungible.I
-    accountKey : Account.K
+    account : AccountKey
   where
     signatory operator, provider, issuer, investor
 
-    nonconsuming choice ApproveInstruction : ContractId Instruction.I
-      with
-        instructionCid : ContractId Instruction.I
-        receiverAccount : Account.K
-      controller provider
-      do
-        exercise instructionCid Instruction.Approve with actors = fromList [provider, investor]; approval = TakeDelivery receiverAccount
+    interface instance Removable.I for Subscription where
+      view = Removable.View with removers = fromList [operator, provider, issuer]
 
-    nonconsuming choice AllocateInstruction : ContractId Instruction.I
-      with
-        instructionCid : ContractId Instruction.I
-        transferableCid : ContractId Transferable.I
-      controller provider
-      do
+    interface instance Subscription.I for Subscription where
+      view = Subscription.View with operator; provider; issuer; investor; offeringId; quantity; holdingCid; account
+
+      asRemovable = toInterface @Removable.I this
+
+      allocateInstruction Subscription.AllocateInstruction{instructionCid; transferableCid} = do
         fst <$> exercise instructionCid Instruction.Allocate with actors = fromList [provider, investor]; allocation = Pledge $ toInterfaceContractId transferableCid
 
-    nonconsuming choice UnlockHolding : ContractId Holding.I
-      with
-        lockableCid : ContractId Holding.I
-      controller provider
-      do
-        exercise lockableCid Holding.Release with context = offeringId
+      approveInstruction Subscription.ApproveInstruction{instructionCid; receiverAccount} = do
+        exercise instructionCid Instruction.Approve with actors = fromList [provider, investor]; approval = TakeDelivery receiverAccount
+
+      unlockHolding Subscription.UnlockHolding{lockableCid} = do
+        exercise lockableCid Holding.Release with context = show offeringId

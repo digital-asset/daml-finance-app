@@ -3,17 +3,20 @@
 
 module Daml.Finance.App.Decentralized.Exchange.Service where
 
-import Daml.Finance.App.Decentralized.Exchange.Interface (ExecuteAction(..), FlashSwapAction, FlashSwapPipe(..))
-import Daml.Finance.App.Decentralized.Exchange.Model (Pool, switchIf)
+import DA.Numeric (div)
+import DA.Set (fromList, singleton)
+import Daml.Finance.App.Decentralized.Exchange.FlashSwapPipe (FlashSwapPipe(..))
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
+import Daml.Finance.App.Interface.Decentralized.Exchange.Service qualified as Service (Deposit(..), FlashSwap(..), HasImplementation, I, Swap(..), View(..), Withdraw(..))
+import Daml.Finance.App.Interface.Decentralized.Exchange.FlashSwapAction qualified as FlashSwapAction (ExecuteAction(..), I)
+import Daml.Finance.App.Interface.Decentralized.Exchange.Types (Pool)
 import Daml.Finance.Interface.Account.Account qualified as Account (Credit(..), Debit(..), I, exerciseInterfaceByKey)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
-import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Merge(..), Split(..), SplitResult(..))
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (Merge(..), Split(..), SplitResult(..))
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I, Transfer(..))
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q, qty)
-import Daml.Finance.Interface.Types.Common (AccountKey, Id)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity, Parties)
+import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, AddObservers(..), RemoveObservers(..))
-import DA.Numeric
-import DA.Set (fromList, singleton)
 
 {-  FlashSwap Decentralized Exchange (DEX)
 
@@ -59,18 +62,22 @@ import DA.Set (fromList, singleton)
 
 -}
 
+type T = Service
+
+instance Service.HasImplementation Service
+
 template Service
   with
     consortium : Party
-    public : Party
     id : Id
     description : Text
-    shares : Instrument.Q -- share
+    shares : InstrumentQuantity -- share
     p1 : Pool -- pool1
     p2 : Pool -- pool2
+    observers : Parties
   where
     signatory consortium
-    observer public
+    observer observers
 
     key (consortium, id) : (Party, Id)
     maintainer key._1
@@ -78,6 +85,8 @@ template Service
     ensure p1.quantity.amount > 0.0 && p2.quantity.amount > 0.0 && shares.amount > 0.0
 
     let
+      switchIf cond (x, y) = if cond then (y, x) else (x, y)
+
       -- AMM rule
       constantProductFormula delta_x x y: (Decimal, Decimal, Decimal) =
         let
@@ -91,32 +100,32 @@ template Service
       -- flash swap
       flashSwapBy (actor : Party)
                   (actorAccount : AccountKey)
-                  (xAsset : Instrument.Q)
+                  (xAsset : InstrumentQuantity)
                   (xLP : Pool)
                   (yLP : Pool)
-                  (flashSwapActionCid : ContractId FlashSwapAction) =
+                  (flashSwapActionCid : ContractId FlashSwapAction.I) =
         do
           -- AMM
           let (x_new, y_new, y_delta) = constantProductFormula xAsset.amount xLP.quantity.amount yLP.quantity.amount
 
           -- transfer Y to user
           Fungible.SplitResult{splitCids = [yFungibleCid], rest = Some yFungibleCid_new} <- exercise yLP.fungibleCid Fungible.Split with amounts = [ -y_delta ] -- forced pattern match disallows draining
-          Some yFungibleCid <- exercise (toInterfaceContractId @Disclosure.I yFungibleCid) Disclosure.RemoveObservers with disclosers = singleton consortium; observersToRemove = (show id, singleton public)
+          Some yFungibleCid <- exercise (toInterfaceContractId @Disclosure.I yFungibleCid) Disclosure.RemoveObservers with disclosers = singleton consortium; observersToRemove = (show id, observers)
 
           yHoldingCid <- toInterfaceContractId @Holding.I <$> exercise (coerceContractId yFungibleCid : ContractId Transferable.I) Transferable.Transfer with actors = fromList [consortium, actor]; newOwnerAccount = actorAccount
           yHolding <- view <$> fetch yHoldingCid
 
           -- execute flashSwapAction and get X
-          (xFungibleCid, sideEffectCids) <- exercise flashSwapActionCid ExecuteAction with
+          (xFungibleCid, sideEffectCids) <- exercise flashSwapActionCid FlashSwapAction.ExecuteAction with
               actors = singleton actor
-              consumedQuantity = Instrument.qty yHolding.amount yHolding.instrument
+              consumedQuantity = qty yHolding.amount yHolding.instrument
               producedQuantity = xAsset
               holdingCid = yHoldingCid
 
           -- transfer X to dex
           xFungibleCid_new <- do
             xFungibleCid <- exercise (coerceContractId xFungibleCid : ContractId Transferable.I) Transferable.Transfer with actors = fromList [consortium, actor]; newOwnerAccount = xLP.account
-            xFungibleCid <- coerceContractId <$> exercise (toInterfaceContractId @Disclosure.I xFungibleCid) Disclosure.AddObservers with disclosers = singleton consortium; observersToAdd = (show id, singleton public)
+            xFungibleCid <- coerceContractId <$> exercise (toInterfaceContractId @Disclosure.I xFungibleCid) Disclosure.AddObservers with disclosers = singleton consortium; observersToAdd = (show id, observers)
             exercise xLP.fungibleCid Fungible.Merge with fungibleCids = [xFungibleCid]
 
           -- update pools
@@ -128,14 +137,17 @@ template Service
                 fungibleCid = yFungibleCid_new
           return (xLP_new, yLP_new, sideEffectCids)
 
-    postconsuming choice Deposit : (ContractId Service, ContractId Holding.I)
-      with
-        actor : Party
-        fungible1Cid: ContractId Fungible.I
-        fungible2Cid: ContractId Fungible.I
-        shareAccount : AccountKey
-      controller actor
-      do
+    interface instance Base.I for Service where
+      view = Base.View with operator = consortium; provider = consortium; customer = consortium
+
+      terminate = pure ()
+
+    interface instance Service.I for Service where
+      view = Service.View with consortium; id; description; shares; p1; p2; observers
+
+      asBase = toInterface @Base.I this
+
+      deposit self Service.Deposit{actor; fungible1Cid; fungible2Cid; shareAccount} = do
         t1 <- view <$> fetch (toInterfaceContractId @Holding.I fungible1Cid)
         t2 <- view <$> fetch (toInterfaceContractId @Holding.I fungible2Cid)
         assertMsg "custodians must match" $ t1.account.custodian == p1.account.custodian && t2.account.custodian == p2.account.custodian
@@ -165,20 +177,14 @@ template Service
         shareCid <- Account.exerciseInterfaceByKey @Account.I shareAccount actor Account.Credit with quantity = (shares with amount = newShareAmount - shares.amount)
 
         -- recreate Dex
-        dexCid <- create this with
+        archive $ fromInterfaceContractId @Service self
+        dexCid <- toInterfaceContractId <$> create this with
           shares = shares with amount = newShareAmount
           p1 = p1 with quantity.amount = p1.quantity.amount + t1.amount; fungibleCid = lp1_cid
           p2 = p2 with quantity.amount = p2.quantity.amount + quantity2_needed; fungibleCid = lp2_cid
         return (dexCid, shareCid)
 
-    postconsuming choice Withdraw : (ContractId Service, ContractId Fungible.I, ContractId Fungible.I)
-      with
-        actor : Party
-        shareCid : ContractId Fungible.I
-        p1Account : AccountKey
-        p2Account : AccountKey
-      controller actor
-      do
+      withdraw self Service.Withdraw{actor; shareCid; p1Account; p2Account} = do
         share <- view <$> fetch (toInterfaceContractId @Holding.I shareCid)
         assertMsg "liquidity share matches" (share.instrument == shares.unit && share.account.custodian == consortium)
 
@@ -198,20 +204,14 @@ template Service
         -- split2Cid <- exercise fungible2Cid SetObservers with newObservers = S.empty -- TODO: check if necessary
         p2HoldingCid <- coerceContractId <$> exercise (toInterfaceContractId @Transferable.I fungible2Cid) Transferable.Transfer with actors = singleton consortium; newOwnerAccount = p2Account
         -- recreate dex (not allowing to drain)
-        dexCid <- create this with
+        archive $ fromInterfaceContractId @Service self
+        dexCid <- toInterfaceContractId <$> create this with
           shares = shares with amount = newShareAmount
           p1 = p1 with quantity.amount = p1.quantity.amount - p1Amount; fungibleCid = lp1_cid
           p2 = p2 with quantity.amount = p2.quantity.amount - p2Amount; fungibleCid = lp2_cid
         return (dexCid, p1HoldingCid, p2HoldingCid)
 
-    nonconsuming choice FlashSwap : (ContractId Service, [ContractId Holding.I])
-      with
-        actor : Party
-        xAsset : Instrument.Q
-        yAccount : AccountKey
-        actionCid : ContractId FlashSwapAction
-      controller actor
-      do
+      flashSwap self Service.FlashSwap{actor; xAsset; yAccount; actionCid} = do
         assertMsg "asset matches" $ xAsset.unit == p1.quantity.unit || xAsset.unit == p2.quantity.unit
 
         -- switch to X and Y
@@ -222,24 +222,18 @@ template Service
         let (new_lp1, new_lp2) = switchIf (xAsset.unit == p2.quantity.unit) (xLP_new, yLP_new)
         -- recreate dex
         archive self
-        dexCid <- create this with p1 = new_lp1; p2 = new_lp2
+        dexCid <- toInterfaceContractId <$> create this with p1 = new_lp1; p2 = new_lp2
         return (dexCid, sideEffectCids)
 
-    nonconsuming choice Swap : (ContractId Service, [ContractId Holding.I])
-      with
-        actor : Party
-        xFungibleCid : ContractId Fungible.I
-        yAccount : AccountKey
-      controller actor
-      do
+      swap self Service.Swap{actor; xFungibleCid; yAccount} = do
         -- making use of a FlashSwapPipe, which is a FlashSwapAction which
         -- simply takes Y as input and returns (X,[Some(Y)]), where X is (this)
         -- xTokenCid and Y a yTokenCid from one of the DEX liquidity pools.
         pipeCid <- create FlashSwapPipe with provider = actor; outCid = toInterfaceContractId xFungibleCid
         xHolding <- view <$> fetch (toInterfaceContractId @Holding.I xFungibleCid)
-        exercise self FlashSwap with
+        exercise self Service.FlashSwap with
           actor
-          xAsset = Instrument.qty xHolding.amount xHolding.instrument
+          xAsset = qty xHolding.amount xHolding.instrument
           yAccount
           actionCid = toInterfaceContractId pipeCid
 

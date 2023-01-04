@@ -3,22 +3,22 @@
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { v4 as uuidv4 } from "uuid";
 import { Button } from "@mui/material";
 import classnames from "classnames";
 import { useLedger, useParty } from "@daml/react";
+import { emptyMap } from "@daml/types";
 import useStyles from "../../styles";
 import { parseDate, singleton } from "../../../util";
 import { Spinner } from "../../../components/Spinner/Spinner";
-import { Message } from "../../../components/Message/Message";
-import { PeriodEnum } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Date/RollConvention";
-import { emptyMap } from "@daml/types";
-import { DayCountConventionEnum } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Date/DayCount";
-import { BusinessDayConventionEnum } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Date/Calendar";
+import { PeriodEnum } from "@daml.js/daml-finance-interface-types-date/lib/Daml/Finance/Interface/Types/Date/RollConvention";
+import { DayCountConventionEnum } from "@daml.js/daml-finance-interface-types-date/lib/Daml/Finance/Interface/Types/Date/DayCount";
+import { BusinessDayConventionEnum } from "@daml.js/daml-finance-interface-types-date/lib/Daml/Finance/Interface/Types/Date/Calendar";
 import { useParties } from "../../../context/PartiesContext";
 import { useInstruments } from "../../../context/InstrumentContext";
-import { useServices } from "../../../context/ServiceContext";
-import { Service as Structuring } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Service";
-import { Service as StructuringAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service";
+import { useServices } from "../../../context/ServicesContext";
+import { Service as Structuring } from "@daml.js/daml-finance-app-interface-structuring/lib/Daml/Finance/App/Interface/Structuring/Service";
+import { Service as StructuringAuto } from "@daml.js/daml-finance-app-interface-structuring/lib/Daml/Finance/App/Interface/Structuring/Auto";
 import { TextInput } from "../../../components/Form/TextInput";
 import { SelectInput, toValues } from "../../../components/Form/SelectInput";
 import { DateInput } from "../../../components/Form/DateInput";
@@ -31,6 +31,7 @@ export const NewFloatingRateBond : React.FC = () => {
   const navigate = useNavigate();
 
   const [ id, setId ] = useState("");
+  const [ description, setDescription ] = useState("");
   const [ referenceRateId, setReferenceRateId ] = useState("");
   const [ couponSpread, setCouponSpread ] = useState("");
   const [ issueDate, setIssueDate ] = useState<Date | null>(null);
@@ -51,7 +52,6 @@ export const NewFloatingRateBond : React.FC = () => {
   const { loading: l2, tokens } = useInstruments();
 
   if (l1 || l2) return <Spinner />;
-  if (structuring.length === 0) return <Message text="No structuring service found" />
 
   const createFixedRateBond = async () => {
     const ccy = tokens.find(c => c.payload.id.unpack === currency);
@@ -59,8 +59,9 @@ export const NewFloatingRateBond : React.FC = () => {
     const couponPeriod = couponFrequency === "Annual" ? PeriodEnum.Y : PeriodEnum.M;
     const couponPeriodMultiplier = couponFrequency === "Annual" ? "1" : (couponFrequency === "Semi-annual" ? "6" : "3");
     const arg = {
-      id,
-      description: id,
+      id: { unpack: id },
+      description,
+      version: uuidv4(),
       referenceRateId,
       couponSpread,
       issueDate: parseDate(issueDate),
@@ -76,14 +77,19 @@ export const NewFloatingRateBond : React.FC = () => {
       observers: emptyMap<string, any>().set("Public", singleton(getParty("Public"))),
       lastEventTimestamp: new Date().toISOString()
     };
-    if (structuringAuto.length > 0) await ledger.exercise(StructuringAuto.RequestAndCreateFloatingRateBond, structuringAuto[0].contractId, arg);
-    else await ledger.exercise(Structuring.RequestCreateFloatingRateBond, structuring[0].contractId, arg);
+    // TODO: Assumes single service
+    const svc = structuring.services[0];
+    const auto = structuringAuto.services[0];
+    if (!svc) throw new Error("No structuring service found for customer [" + party + "]");
+    if (!!auto) await ledger.exercise(StructuringAuto.RequestAndCreateFloatingRateBond, auto.service.contractId, arg);
+    else await ledger.exercise(Structuring.RequestCreateFloatingRateBond, svc.service.contractId, arg);
     navigate("/app/structuring/instruments");
   };
 
   return (
     <CenteredForm title= "New Floating Rate Bond">
       <TextInput    label="Id"                          value={id}                    setValue={setId} />
+      <TextInput    label="Description"                 value={description}           setValue={setDescription} />
       <SelectInput  label="Currency"                    value={currency}              setValue={setCurrency}              values={toValues(tokens)} />
       <SelectInput  label="Reference Rate"              value={referenceRateId}       setValue={setReferenceRateId}       values={referenceRates} />
       <TextInput    label="Coupon Spread (per period)"  value={couponSpread}          setValue={setCouponSpread} />

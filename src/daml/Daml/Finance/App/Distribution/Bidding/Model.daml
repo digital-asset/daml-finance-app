@@ -3,34 +3,14 @@
 
 module Daml.Finance.App.Distribution.Bidding.Model where
 
-import DA.Set (singleton)
-import Daml.Finance.Interface.Account.Account qualified as Account (K)
+import DA.Set (fromList, singleton)
+import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, View(..))
+import Daml.Finance.App.Interface.Distribution.Bidding.Bid qualified as Bid (AllocateInstruction(..), ApproveInstruction(..), Details, I, Status, UpdateStatus(..), View(..))
+import Daml.Finance.App.Interface.Distribution.Bidding.CreateBidRequest qualified as CreateBidRequest (I, View(..))
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
-import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..), I)
+import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Types qualified as T (Allocation(Pledge), Approval(TakeDelivery))
-
-data Details = Details with
-    quantity : Instrument.Q
-    price : Instrument.Q
-    time : Time
-  deriving (Eq, Show)
-
-instance Ord Details where
-  compare x y = (x.price.amount, x.quantity.amount, Down x.time) `compare` (y.price.amount, y.quantity.amount, Down y.time)
-
-data Allocation = Allocation with
-    bidCid : ContractId Bid
-    bid : Bid
-    amount : Decimal
-  deriving (Eq, Show)
-
-data SettleAllocation = SettleAllocation with
-    allocation : Allocation
-    price : Decimal
-    issuer : Party
-  deriving (Eq, Show)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity)
 
 template CreateBidRequest
   with
@@ -38,24 +18,20 @@ template CreateBidRequest
     provider : Party
     customer : Party
     issuer : Party
-    auctionId : Text
-    quantity : Instrument.Q
-    price : Instrument.Q
+    auctionId : Id
+    quantity : InstrumentQuantity
+    price : InstrumentQuantity
     collateralCid : ContractId Fungible.I
-    receivableAccount : Account.K
+    receivableAccount : AccountKey
   where
     signatory operator, provider, customer
 
-data Status
-    = Pending
-    | FullAllocation with
-        price : Decimal
-    | PartialAllocation with
-        price : Decimal
-        amount : Decimal
-    | NoAllocation
-    | Invalid
-  deriving (Eq, Show)
+    interface instance Removable.I for CreateBidRequest where
+      view = Removable.View with removers = fromList [operator, provider, customer]
+
+    interface instance CreateBidRequest.I for CreateBidRequest where
+      view = CreateBidRequest.View with operator; provider; customer; issuer; auctionId; quantity; price; collateralCid; receivableAccount
+      asRemovable = toInterface @Removable.I this
 
 template Bid
   with
@@ -63,35 +39,27 @@ template Bid
     provider : Party
     customer : Party
     issuer : Party
-    details : Details
-    auctionId : Text
+    details : Bid.Details
+    auctionId : Id
     collateralCid : ContractId Fungible.I
-    receivableAccount : Account.K
-    status : Status
+    receivableAccount : AccountKey
+    status : Bid.Status
   where
     signatory operator, provider, customer
     observer issuer
     ensure details.quantity.amount > 0.0
 
-    choice UpdateStatus : ContractId Bid
-      with
-        newStatus : Status
-      controller provider
-      do
-        create this with status = newStatus
+    interface instance Removable.I for Bid where
+      view = Removable.View with removers = fromList [operator, provider, customer]
 
-    nonconsuming choice ApproveInstruction : ContractId Instruction.I
-      with
-        instructionCid : ContractId Instruction.I
-        account : Account.K
-      controller provider
-      do
-        exercise instructionCid Instruction.Approve with actors = singleton provider; approval = T.TakeDelivery account
-
-    nonconsuming choice AllocateInstruction : ContractId Instruction.I
-      with
-        instructionCid : ContractId Instruction.I
-        transferableCid : ContractId Transferable.I
-      controller provider
-      do
-        fst <$> exercise instructionCid Instruction.Allocate with actors = singleton provider; allocation = T.Pledge $ toInterfaceContractId transferableCid
+    interface instance Bid.I for Bid where
+      view = Bid.View with operator; provider; customer; issuer; details; auctionId; collateralCid; receivableAccount; status
+      asRemovable = toInterface @Removable.I this
+      updateStatus Bid.UpdateStatus{newStatus} = do
+        toInterfaceContractId <$> create this with status = newStatus
+      approveInstruction Bid.ApproveInstruction{instructionCid; account} = do
+        -- TODO: Assert instruction is for the right auction
+        exercise instructionCid Instruction.Approve with actors = singleton customer; approval = T.TakeDelivery account
+      allocateInstruction Bid.AllocateInstruction{instructionCid; holdingCid} = do
+        -- TODO: Assert instruction is for the right auction
+        fst <$> exercise instructionCid Instruction.Allocate with actors = singleton customer; allocation = T.Pledge $ toInterfaceContractId holdingCid

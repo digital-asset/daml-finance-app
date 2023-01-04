@@ -1,0 +1,194 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Interface.Lifecycle.Service where
+
+import ContingentClaims.Core.Claim (Claim)
+import ContingentClaims.Core.Observation (Observation(..))
+import ContingentClaims.Lifecycle.Lifecycle qualified as Lifecycle
+import ContingentClaims.Valuation.Stochastic (Expr)
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Implementation)
+import Daml.Finance.Interface.Lifecycle.Observable.NumericObservable qualified as NumericObservable (I)
+import Daml.Finance.Interface.Claims.Claim qualified as Claim (Claim)
+import Daml.Finance.Interface.Claims.Types (C, Pending, TaggedClaim)
+import Daml.Finance.Interface.Lifecycle.Effect qualified as Effect (I)
+import Daml.Finance.Interface.Lifecycle.Event qualified as Event (I)
+import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (I)
+import Daml.Finance.Interface.Types.Common.Types (Id, InstrumentKey, InstrumentQuantity)
+
+type I = Service
+
+type V = View
+
+data View = View
+  with
+    distributionRuleCid : ContractId Lifecycle.I
+    replacementRuleCid : ContractId Lifecycle.I
+    genericRuleCid : ContractId Lifecycle.I
+    dynamicRuleCid : ContractId Lifecycle.I
+  deriving (Eq, Show)
+
+interface Service where
+  viewtype V
+
+  asBase : Base.I
+    -- ^ Conversion to base `Service` interface.
+
+  declareDividend : DeclareDividend -> Update [ContractId Effect.I]
+    -- ^ Implementation of the `DeclareDividend` choice.
+
+  declareReplacement : DeclareReplacement -> Update [ContractId Effect.I]
+    -- ^ Implementation of the `DeclareReplacement` choice.
+
+  declareStockSplit : DeclareStockSplit -> Update [ContractId Effect.I]
+    -- ^ Implementation of the `DeclareStockSplit` choice.
+
+  previewLifecycle : PreviewLifecycle -> Update ([TaggedClaim], [Pending])
+    -- ^ Implementation of the `PreviewLifecycle` choice.
+
+  simulateLifecycle : SimulateLifecycle -> Update [[Lifecycle.Pending Time InstrumentKey]]
+    -- ^ Implementation of the `SimulateLifecycle` choice.
+
+  getCurrentClaims : GetCurrentClaims -> Update [TaggedClaim]
+    -- ^ Implementation of the `GetCurrentClaims` choice.
+
+  lifecycle : Lifecycle -> Update (Optional InstrumentKey, [ContractId Effect.I])
+    -- ^ Implementation of the `Lifecycle` choice.
+
+  expiry : Expiry -> Update (Optional Time)
+    -- ^ Implementation of the `Expiry` choice.
+
+  underlyings : Underlyings -> Update [InstrumentKey]
+    -- ^ Implementation of the `Underlyings` choice.
+
+  payoffs : Payoffs -> Update [(Observation Time Decimal Text, InstrumentKey)]
+    -- ^ Implementation of the `Payoffs` choice.
+
+  fixings : Fixings -> Update [Time]
+    -- ^ Implementation of the `Fixings` choice.
+
+  multipliers : Multipliers -> Update [Decimal]
+    -- ^ Implementation of the `Multipliers` choice.
+
+  previewPricing : PreviewPricing -> Update (Expr Text, Text)
+    -- ^ Implementation of the `PreviewPricing` choice.
+
+  nonconsuming choice DeclareDividend : [ContractId Effect.I]
+    with
+      equity : InstrumentKey
+      newVersion : Text
+      eventId : Id
+      description : Text
+      effectiveTime : Time
+      perUnitDistribution : [ InstrumentQuantity ]
+    controller (view $ asBase this).customer
+    do
+      declareDividend this arg
+
+  nonconsuming choice DeclareReplacement : [ContractId Effect.I]
+    with
+      equity : InstrumentKey
+      eventId : Id
+      description : Text
+      effectiveTime : Time
+      perUnitReplacement : [ InstrumentQuantity ]
+    controller (view $ asBase this).customer
+    do
+      declareReplacement this arg
+
+  nonconsuming choice DeclareStockSplit : [ContractId Effect.I]
+    with
+      equity : InstrumentKey
+      newVersion : Text
+      eventId : Id
+      description : Text
+      effectiveTime : Time
+      adjustmentFactor : Decimal
+    controller (view $ asBase this).customer
+    do
+      declareStockSplit this arg
+
+  nonconsuming choice PreviewLifecycle : ([TaggedClaim], [Pending])
+    with
+      today : Time
+      observableCids : [ContractId NumericObservable.I]
+      instrumentCid : ContractId Claim.Claim
+    controller (view $ asBase this).customer
+    do
+      previewLifecycle this arg
+
+  nonconsuming choice SimulateLifecycle : [[Lifecycle.Pending Time InstrumentKey]]
+    with
+      today : Time
+      prices : [Decimal]
+      instrumentCid : ContractId Claim.Claim
+    controller (view $ asBase this).customer
+    do
+      simulateLifecycle this arg
+
+  nonconsuming choice GetCurrentClaims : [TaggedClaim]
+    with
+      instrumentCid : ContractId Claim.Claim
+      observableCids : [ContractId NumericObservable.I]
+    controller (view $ asBase this).customer
+    do
+      getCurrentClaims this arg
+
+  nonconsuming choice Lifecycle : (Optional InstrumentKey, [ContractId Effect.I])
+    with
+      ruleCid : ContractId Lifecycle.I
+      eventCid : ContractId Event.I
+      observableCids : [ContractId NumericObservable.I]
+      instrument : InstrumentKey
+    controller (view $ asBase this).customer
+    do
+      lifecycle this arg
+
+  nonconsuming choice Expiry : Optional Time
+    with
+      claims : C
+    controller (view $ asBase this).customer
+    do
+      expiry this arg
+
+  nonconsuming choice Underlyings : [InstrumentKey]
+    with
+      claims : C
+    controller (view $ asBase this).customer
+    do
+      underlyings this arg
+
+  nonconsuming choice Payoffs : [(Observation Time Decimal Text, InstrumentKey)]
+    with
+      claims : C
+    controller (view $ asBase this).customer
+    do
+      payoffs this arg
+
+  nonconsuming choice Fixings : [Time]
+    with
+      claims : C
+    controller (view $ asBase this).customer
+    do
+      fixings this arg
+
+  nonconsuming choice Multipliers : [Decimal]
+    with
+      claims : C
+    controller (view $ asBase this).customer
+    do
+      multipliers this arg
+
+  nonconsuming choice PreviewPricing : (Expr Text, Text)
+    with
+      ccy : Text
+      claims : Claim Text Decimal Text Text
+    controller (view $ asBase this).customer
+    do
+      previewPricing this arg
+
+-- | Type constraint for requiring templates to implement `Service`.
+type Implementation t = (HasToInterface t Service, Base.Implementation t)
+class (Implementation t) => HasImplementation t
+instance HasImplementation Service
+instance HasToInterface Service Base.I where _toInterface = asBase

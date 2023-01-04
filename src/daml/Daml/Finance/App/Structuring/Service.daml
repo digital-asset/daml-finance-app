@@ -4,10 +4,18 @@
 module Daml.Finance.App.Structuring.Service where
 
 import DA.Date (toGregorian)
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
+import Daml.Finance.App.Interface.Common.Util (fetchAndRemove)
+import Daml.Finance.App.Interface.Structuring.CreateTokenRequest qualified as CreateTokenRequest (View(..))
+import Daml.Finance.App.Interface.Structuring.CreateEquityRequest qualified as CreateEquityRequest (View(..))
+import Daml.Finance.App.Interface.Structuring.CreateGenericRequest qualified as CreateGenericRequest (View(..))
+import Daml.Finance.App.Interface.Structuring.CreateFixedRateBondRequest qualified as CreateFixedRateBondRequest (View(..))
+import Daml.Finance.App.Interface.Structuring.CreateFloatingRateBondRequest qualified as CreateFloatingRateBondRequest (View(..))
+import Daml.Finance.App.Interface.Structuring.CreateInflationLinkedBondRequest qualified as CreateInflationLinkedBondRequest (View(..))
+import Daml.Finance.App.Interface.Structuring.CreateZeroCouponBondRequest qualified as CreateZeroCouponBondRequest (View(..))
+import Daml.Finance.App.Interface.Structuring.CreateFpmlSwapRequest qualified as CreateFpmlSwapRequest (View(..))
+import Daml.Finance.App.Interface.Structuring.Service qualified as Service
 import Daml.Finance.App.Structuring.Model
-import Daml.Finance.App.Util (fetchAndArchive)
-import Daml.Finance.Interface.Claims.Types (C)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I, K)
 import Daml.Finance.Interface.Instrument.Bond.FixedRate.Factory qualified as FixedRateBond (Factory, Create(..))
 import Daml.Finance.Interface.Instrument.Bond.FixedRate.Types (FixedRate(..))
 import Daml.Finance.Interface.Instrument.Bond.FloatingRate.Factory qualified as FloatingRateBond (Factory, Create(..))
@@ -18,16 +26,24 @@ import Daml.Finance.Interface.Instrument.Bond.ZeroCoupon.Factory qualified as Ze
 import Daml.Finance.Interface.Instrument.Bond.ZeroCoupon.Types (ZeroCoupon(..))
 import Daml.Finance.Interface.Instrument.Equity.Factory qualified as Equity (Factory, Create(..))
 import Daml.Finance.Interface.Instrument.Generic.Factory qualified as Generic (Factory, Create(..))
+import Daml.Finance.Interface.Instrument.Swap.Fpml.Factory qualified as FpmlSwap (Factory, Create(..))
+import Daml.Finance.Interface.Instrument.Swap.Fpml.Types (Fpml(..))
 import Daml.Finance.Interface.Instrument.Token.Factory qualified as Token (Factory, Create(..))
 import Daml.Finance.Interface.Instrument.Token.Types (Token(..))
+import Daml.Finance.Interface.Types.Common.Types (InstrumentKey(..))
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayAdjustment(..), BusinessDayConventionEnum)
-import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum, RollConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.Schedule (Frequency(..), PeriodicSchedule(..))
-import Daml.Finance.Interface.Types.Common (Id(..), InstrumentKey(..), PartiesMap)
 
-data Factories = Factories
+type T = Service
+
+instance Service.HasImplementation Service
+
+template Service
   with
+    operator : Party
+    provider : Party
+    customer : Party
     token : ContractId Token.Factory
     equity : ContractId Equity.Factory
     generic : ContractId Generic.Factory
@@ -35,224 +51,124 @@ data Factories = Factories
     floatingRateBond : ContractId FloatingRateBond.Factory
     inflationLinkedBond : ContractId InflationLinkedBond.Factory
     zeroCouponBond : ContractId ZeroCouponBond.Factory
-  deriving (Eq, Show)
-
-template Service
-  with
-    operator : Party
-    provider : Party
-    customer : Party
-    factories : Factories
+    fpmlSwap : ContractId FpmlSwap.Factory
   where
     signatory operator, provider, customer
 
     key (operator, provider, customer) : (Party, Party, Party)
     maintainer key._1
 
-    nonconsuming choice RequestCreateToken : ContractId CreateTokenRequest
-      with
-        id : Text
-        description : Text
-        validAsOf : Time
-        observers : PartiesMap
-      controller customer
-      do
-        create CreateTokenRequest with ..
+    interface instance Base.I for Service where
+      view = Base.View with operator; provider; customer
+      terminate = pure ()
 
-    nonconsuming choice RequestCreateEquity : ContractId CreateEquityRequest
-      with
-        id : Id
-        description : Text
-        version : Text
-        validAsOf : Time
-        observers : PartiesMap
-      controller customer
-      do
-        create CreateEquityRequest with ..
+    interface instance Service.I for Service where
+      view = Service.View with token; equity; generic; fixedRateBond; floatingRateBond; inflationLinkedBond; zeroCouponBond; fpmlSwap
 
-    nonconsuming choice RequestCreateGeneric : ContractId CreateGenericRequest
-      with
-        id : Text
-        description : Text
-        claims : C
-        acquisitionTime : Time
-        lastEventTimestamp : Time
-        observers : PartiesMap
-      controller customer
-      do
-        create CreateGenericRequest with ..
+      asBase = toInterface @Base.I this
 
-    nonconsuming choice RequestCreateFixedRateBond : ContractId CreateFixedRateBondRequest
-      with
-        id : Text
-        description : Text
-        couponRate : Decimal
-        issueDate : Date
-        firstCouponDate : Date
-        maturityDate : Date
-        holidayCalendarIds : [Text]
-        calendarDataProvider : Party
-        dayCountConvention : DayCountConventionEnum
-        businessDayConvention : BusinessDayConventionEnum
-        couponPeriod : PeriodEnum
-        couponPeriodMultiplier : Int
-        currency : Instrument.K
-        observers : PartiesMap
-        lastEventTimestamp : Time
-      controller customer
-      do
-        create CreateFixedRateBondRequest with ..
+      requestCreateToken Service.RequestCreateToken{..} = do
+        toInterfaceContractId <$> create CreateTokenRequest with ..
 
-    nonconsuming choice RequestCreateFloatingRateBond : ContractId CreateFloatingRateBondRequest
-      with
-        id : Text
-        description : Text
-        referenceRateId : Text
-        couponSpread : Decimal
-        issueDate : Date
-        firstCouponDate : Date
-        maturityDate : Date
-        holidayCalendarIds : [Text]
-        calendarDataProvider : Party
-        dayCountConvention : DayCountConventionEnum
-        businessDayConvention : BusinessDayConventionEnum
-        couponPeriod : PeriodEnum
-        couponPeriodMultiplier : Int
-        currency : Instrument.K
-        observers : PartiesMap
-        lastEventTimestamp : Time
-      controller customer
-      do
-        create CreateFloatingRateBondRequest with ..
+      requestCreateEquity Service.RequestCreateEquity{..} = do
+        toInterfaceContractId <$> create CreateEquityRequest with ..
 
-    nonconsuming choice RequestCreateInflationLinkedBond : ContractId CreateInflationLinkedBondRequest
-      with
-        id : Text
-        description : Text
-        inflationIndexId : Text
-        inflationIndexBaseValue : Decimal
-        couponRate : Decimal
-        issueDate : Date
-        firstCouponDate : Date
-        maturityDate : Date
-        holidayCalendarIds : [Text]
-        calendarDataProvider : Party
-        dayCountConvention : DayCountConventionEnum
-        businessDayConvention : BusinessDayConventionEnum
-        couponPeriod : PeriodEnum
-        couponPeriodMultiplier : Int
-        currency : Instrument.K
-        observers : PartiesMap
-        lastEventTimestamp : Time
-      controller customer
-      do
-        create CreateInflationLinkedBondRequest with ..
+      requestCreateGeneric Service.RequestCreateGeneric{..} = do
+        toInterfaceContractId <$> create CreateGenericRequest with ..
 
-    nonconsuming choice RequestCreateZeroCouponBond : ContractId CreateZeroCouponBondRequest
-      with
-        id : Text
-        description : Text
-        issueDate : Date
-        maturityDate : Date
-        currency : Instrument.K
-        observers : PartiesMap
-        lastEventTimestamp : Time
-      controller customer
-      do
-        create CreateZeroCouponBondRequest with ..
+      requestCreateFixedRateBond Service.RequestCreateFixedRateBond{..} = do
+        toInterfaceContractId <$> create CreateFixedRateBondRequest with ..
 
-    nonconsuming choice CreateToken : ContractId Instrument.I
-      with
-        createTokenRequestCid : ContractId CreateTokenRequest
-      controller provider
-      do
-        CreateTokenRequest{..} <- fetchAndArchive createTokenRequestCid
-        let
-          instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"
-          token = Token with ..
-        exercise factories.token Token.Create with token; observers
+      requestCreateFloatingRateBond Service.RequestCreateFloatingRateBond{..} = do
+        toInterfaceContractId <$> create CreateFloatingRateBondRequest with ..
 
-    nonconsuming choice CreateEquity : ContractId Instrument.I
-      with
-        createEquityRequestCid : ContractId CreateEquityRequest
-      controller provider
-      do
-        CreateEquityRequest{..} <- fetchAndArchive createEquityRequestCid
+      requestCreateInflationLinkedBond Service.RequestCreateInflationLinkedBond{..} = do
+        toInterfaceContractId <$> create CreateInflationLinkedBondRequest with ..
+
+      requestCreateZeroCouponBond Service.RequestCreateZeroCouponBond{..} = do
+        toInterfaceContractId <$> create CreateZeroCouponBondRequest with ..
+
+      requestCreateFpmlSwap Service.RequestCreateFpmlSwap{..} = do
+        toInterfaceContractId <$> create CreateFpmlSwapRequest with ..
+
+      createToken Service.CreateToken{createTokenRequestCid} = do
+        CreateTokenRequest.View{..} <- view <$> fetchAndRemove createTokenRequestCid
         let
           instrument = InstrumentKey with depository = provider; issuer = customer; id; version
-        exercise factories.equity Equity.Create with ..
+          tokenData = Token with ..
+        cid <- exercise token Token.Create with token = tokenData; observers
+        pure (cid, instrument)
 
-    nonconsuming choice CreateGeneric : ContractId Instrument.I
-      with
-        createGenericRequestCid : ContractId CreateGenericRequest
-      controller provider
-      do
-        CreateGenericRequest{..} <- fetchAndArchive createGenericRequestCid
+      createEquity Service.CreateEquity{createEquityRequestCid} = do
+        CreateEquityRequest.View{..} <- view <$> fetchAndRemove createEquityRequestCid
         let
-          instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"
-        exercise factories.generic Generic.Create with ..
+          instrument = InstrumentKey with depository = provider; issuer = customer; id; version
+        cid <- exercise equity Equity.Create with ..
+        pure (cid, instrument)
 
-    nonconsuming choice CreateFixedRateBond : ContractId Instrument.I
-      with
-        createFixedRateBondRequestCid : ContractId CreateFixedRateBondRequest
-      controller provider
-      do
-        CreateFixedRateBondRequest{..} <- fetchAndArchive createFixedRateBondRequestCid
+      createGeneric Service.CreateGeneric{createGenericRequestCid} = do
+        CreateGenericRequest.View{..} <- view <$> fetchAndRemove createGenericRequestCid
         let
-          instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"
+          instrument = InstrumentKey with depository = provider; issuer = customer; id; version
+        cid <- exercise generic Generic.Create with ..
+        pure (cid, instrument)
+
+      createFixedRateBond Service.CreateFixedRateBond{createFixedRateBondRequestCid} = do
+        CreateFixedRateBondRequest.View{..} <- view <$> fetchAndRemove createFixedRateBondRequestCid
+        let
+          instrument = InstrumentKey with depository = provider; issuer = customer; id; version
           periodicSchedule = createCouponPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
           fixedRate = FixedRate with ..
-        exercise factories.fixedRateBond FixedRateBond.Create with fixedRate; observers
+        cid <- exercise fixedRateBond FixedRateBond.Create with fixedRate; observers
+        pure (cid, instrument)
 
-    nonconsuming choice CreateFloatingRateBond : ContractId Instrument.I
-      with
-        createFloatingRateBondRequestCid : ContractId CreateFloatingRateBondRequest
-      controller provider
-      do
-        CreateFloatingRateBondRequest{..} <- fetchAndArchive createFloatingRateBondRequestCid
+      createFloatingRateBond Service.CreateFloatingRateBond{createFloatingRateBondRequestCid} = do
+        CreateFloatingRateBondRequest.View{..} <- view <$> fetchAndRemove createFloatingRateBondRequestCid
         let
-          instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"
+          instrument = InstrumentKey with depository = provider; issuer = customer; id; version
           periodicSchedule = createCouponPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
           floatingRate = FloatingRate with ..
-        exercise factories.floatingRateBond FloatingRateBond.Create with floatingRate; observers
+        cid <- exercise floatingRateBond FloatingRateBond.Create with floatingRate; observers
+        pure (cid, instrument)
 
-    nonconsuming choice CreateInflationLinkedBond : ContractId Instrument.I
-      with
-        createInflationLinkedBondRequestCid : ContractId CreateInflationLinkedBondRequest
-      controller provider
-      do
-        CreateInflationLinkedBondRequest{..} <- fetchAndArchive createInflationLinkedBondRequestCid
+      createInflationLinkedBond Service.CreateInflationLinkedBond{createInflationLinkedBondRequestCid} = do
+        CreateInflationLinkedBondRequest.View{..} <- view <$> fetchAndRemove createInflationLinkedBondRequestCid
         let
-          instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"
+          instrument = InstrumentKey with depository = provider; issuer = customer; id; version
           periodicSchedule = createCouponPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
           inflationLinked = InflationLinked with ..
-        exercise factories.inflationLinkedBond InflationLinkedBond.Create with inflationLinked; observers
+        cid <- exercise inflationLinkedBond InflationLinkedBond.Create with inflationLinked; observers
+        pure (cid, instrument)
 
-    nonconsuming choice CreateZeroCouponBond : ContractId Instrument.I
-      with
-        createZeroCouponBondRequestCid : ContractId CreateZeroCouponBondRequest
-      controller provider
-      do
-        CreateZeroCouponBondRequest{..} <- fetchAndArchive createZeroCouponBondRequestCid
+      createZeroCouponBond Service.CreateZeroCouponBond{createZeroCouponBondRequestCid} = do
+        CreateZeroCouponBondRequest.View{..} <- view <$> fetchAndRemove createZeroCouponBondRequestCid
         let
-          instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"
+          instrument = InstrumentKey with depository = provider; issuer = customer; id; version
           zeroCoupon = ZeroCoupon with ..
-        exercise factories.zeroCouponBond ZeroCouponBond.Create with zeroCoupon; observers
+        cid <- exercise zeroCouponBond ZeroCouponBond.Create with zeroCoupon; observers
+        pure (cid, instrument)
 
-    choice Terminate : ()
-      with
-        actor : Party
-      controller actor
-      do
-        assert $ actor == operator || actor == provider || actor == customer
-        pure ()
+      createFpmlSwap Service.CreateFpmlSwap{createFpmlSwapRequestCid} = do
+        CreateFpmlSwapRequest.View{..} <- view <$> fetchAndRemove createFpmlSwapRequestCid
+        let
+          instrument = InstrumentKey with depository = provider; issuer = customer; id; version
+          fpml = Fpml with ..
+        cid <- exercise fpmlSwap FpmlSwap.Create with fpml; observers
+        pure (cid, instrument)
 
 template Offer
   with
     operator : Party
     provider : Party
     customer : Party
-    factories : Factories
+    token : ContractId Token.Factory
+    equity : ContractId Equity.Factory
+    generic : ContractId Generic.Factory
+    fixedRateBond : ContractId FixedRateBond.Factory
+    floatingRateBond : ContractId FloatingRateBond.Factory
+    inflationLinkedBond : ContractId InflationLinkedBond.Factory
+    zeroCouponBond : ContractId ZeroCouponBond.Factory
+    fpmlSwap : ContractId FpmlSwap.Factory
   where
     signatory operator, provider
     observer customer
@@ -289,7 +205,14 @@ template Request
     choice Approve : ContractId Service
       with
         operator : Party
-        factories : Factories
+        token : ContractId Token.Factory
+        equity : ContractId Equity.Factory
+        generic : ContractId Generic.Factory
+        fixedRateBond : ContractId FixedRateBond.Factory
+        floatingRateBond : ContractId FloatingRateBond.Factory
+        inflationLinkedBond : ContractId InflationLinkedBond.Factory
+        zeroCouponBond : ContractId ZeroCouponBond.Factory
+        fpmlSwap : ContractId FpmlSwap.Factory
       controller operator, provider
       do
         create Service with ..

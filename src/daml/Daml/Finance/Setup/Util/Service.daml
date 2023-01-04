@@ -3,171 +3,224 @@
 
 module Daml.Finance.Setup.Util.Service where
 
-import DA.Map qualified as M (fromList)
-import DA.Set (fromList, singleton)
-import Daml.Finance.App.Custody.Service qualified as Custody (Accept(..), Service)
-import Daml.Finance.App.Decentralized.Exchange.Model qualified as DecentralizedExchange (Pool(..))
+import DA.Map (Map, fromList)
+import DA.Set (singleton)
+import Daml.Finance.App.Custody.Auto qualified as CustodyAuto (Accept(..))
+import Daml.Finance.App.Custody.Service qualified as Custody (Accept(..))
 import Daml.Finance.App.Decentralized.Exchange.Service qualified as DecentralizedExchange (Service(..))
-import Daml.Finance.App.Issuance.Auto.Service qualified as IssuanceAuto (Accept(..), Service)
-import Daml.Finance.App.Issuance.Service qualified as Issuance (Accept(..), Service)
-import Daml.Finance.App.BackToBack.Service qualified as BackToBack (Accept(..), Service)
-import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Accept(..), Service)
-import Daml.Finance.App.Trading.Auto.Service qualified as TradingAuto (Accept(..), Service)
-import Daml.Finance.App.Trading.Service qualified as Trading (Accept(..), Service)
-import Daml.Finance.App.Lending.Service qualified as Lending (Accept(..), Service)
-import Daml.Finance.App.Listing.Auto.Service qualified as ListingAuto (Accept(..), Service)
-import Daml.Finance.App.Listing.Service qualified as Listing (Accept(..), Service)
-import Daml.Finance.App.Distribution.Auction.Auto.Service qualified as AuctionAuto (Accept(..), Service)
-import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (Accept(..), Service)
-import Daml.Finance.App.Distribution.Bidding.Auto.Service qualified as BiddingAuto (Accept(..), Service)
-import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Accept(..), Service)
-import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (Accept(..), Service)
-import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (Accept(..), Service)
-import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Accept(..), Service)
+import Daml.Finance.App.Distribution.Auction.Auto qualified as AuctionAuto (Accept(..))
+import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (Accept(..))
+import Daml.Finance.App.Distribution.Bidding.Auto qualified as BiddingAuto (Accept(..))
+import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Accept(..))
+import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (Accept(..))
+import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (Accept(..))
+import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Accept(..))
+import Daml.Finance.App.Interface.Custody.Auto qualified as CustodyAuto (I)
+import Daml.Finance.App.Interface.Custody.Service qualified as Custody (I)
+import Daml.Finance.App.Interface.Decentralized.Exchange.Service qualified as DecentralizedExchange (I)
+import Daml.Finance.App.Interface.Decentralized.Exchange.Types (Pool(..))
+import Daml.Finance.App.Interface.Distribution.Auction.Auto qualified as AuctionAuto (I)
+import Daml.Finance.App.Interface.Distribution.Auction.Service qualified as Auction (I)
+import Daml.Finance.App.Interface.Distribution.Bidding.Auto qualified as BiddingAuto (I)
+import Daml.Finance.App.Interface.Distribution.Bidding.Service qualified as Bidding (I)
+import Daml.Finance.App.Interface.Distribution.Fund.Service qualified as Fund (I)
+import Daml.Finance.App.Interface.Distribution.Investment.Service qualified as Investment (I)
+import Daml.Finance.App.Interface.Distribution.Subscription.Service qualified as Subscription (I)
+import Daml.Finance.App.Interface.Issuance.Auto qualified as IssuanceAuto (I)
+import Daml.Finance.App.Interface.Issuance.BackToBack qualified as BackToBack (I)
+import Daml.Finance.App.Interface.Issuance.Service qualified as Issuance (I)
+import Daml.Finance.App.Interface.Lending.Service qualified as Lending (I)
+import Daml.Finance.App.Interface.Lifecycle.Service qualified as Lifecycle (I)
+import Daml.Finance.App.Interface.Listing.Auto qualified as ListingAuto (I)
+import Daml.Finance.App.Interface.Listing.Service qualified as Listing (I)
+import Daml.Finance.App.Interface.Settlement.Service qualified as Settlement (I)
+import Daml.Finance.App.Interface.Structuring.Auto qualified as StructuringAuto (I)
+import Daml.Finance.App.Interface.Structuring.Service qualified as Structuring (I)
+import Daml.Finance.App.Interface.Trading.Auto qualified as TradingAuto (I)
+import Daml.Finance.App.Interface.Trading.Service qualified as Trading (I)
+import Daml.Finance.App.Issuance.Auto qualified as IssuanceAuto (Accept(..))
+import Daml.Finance.App.Issuance.BackToBack qualified as BackToBack (Accept(..))
+import Daml.Finance.App.Issuance.Service qualified as Issuance (Accept(..))
+import Daml.Finance.App.Lending.Service qualified as Lending (Accept(..))
+import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Accept(..))
+import Daml.Finance.App.Listing.Auto qualified as ListingAuto (Accept(..))
+import Daml.Finance.App.Listing.Service qualified as Listing (Accept(..))
 import Daml.Finance.App.Role.Custodian qualified as Custodian
 import Daml.Finance.App.Role.Distributor qualified as Distributor
 import Daml.Finance.App.Role.Exchange qualified as Exchange
-import Daml.Finance.App.Settlement.Service qualified as Settlement (Accept(..), Service)
-import Daml.Finance.App.Structuring.Auto.Service qualified as StructuringAuto (Accept(..), Service)
-import Daml.Finance.App.Structuring.Service qualified as Structuring (Accept(..), Factories(..), Service)
+import Daml.Finance.App.Settlement.Service qualified as Settlement (Accept(..), Offer(..))
+import Daml.Finance.App.Structuring.Auto qualified as StructuringAuto (Accept(..))
+import Daml.Finance.App.Structuring.Service qualified as Structuring (Accept(..))
+import Daml.Finance.App.Trading.Auto qualified as TradingAuto (Accept(..))
+import Daml.Finance.App.Trading.Service qualified as Trading (Accept(..))
+import Daml.Finance.Account.Account qualified as Account (Factory(..))
+import Daml.Finance.Claims.Lifecycle.Rule qualified as Dynamic (Rule(..))
+import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
 import Daml.Finance.Instrument.Bond.FixedRate.Factory qualified as FixedRateBond (Factory(..))
 import Daml.Finance.Instrument.Bond.FloatingRate.Factory qualified as FloatingRateBond (Factory(..))
 import Daml.Finance.Instrument.Bond.InflationLinked.Factory qualified as InflationLinkedBond (Factory(..))
 import Daml.Finance.Instrument.Bond.ZeroCoupon.Factory qualified as ZeroCouponBond (Factory(..))
 import Daml.Finance.Instrument.Equity.Factory qualified as Equity (Factory(..))
 import Daml.Finance.Instrument.Generic.Factory qualified as Generic (Factory(..))
+import Daml.Finance.Instrument.Generic.Lifecycle.Rule qualified as Generic (Rule(..))
+import Daml.Finance.Instrument.Swap.Fpml.Factory qualified as FpmlSwap (Factory(..))
 import Daml.Finance.Instrument.Token.Factory qualified as Token (Factory(..))
-import Daml.Finance.Interface.Account.Account qualified as Account (K)
 import Daml.Finance.Interface.Account.Factory qualified as Account (F)
 import Daml.Finance.Interface.Holding.Factory qualified as Holding (F)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Settlement.Factory qualified as Settlement (Factory)
-import Daml.Finance.Interface.Types.Common (Id(..))
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id(..), InstrumentQuantity, Parties)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, AddObservers(..))
 import Daml.Finance.Lifecycle.Rule.Claim qualified as Claim (Rule(..))
 import Daml.Finance.Lifecycle.Rule.Distribution qualified as Distribution (Rule(..))
 import Daml.Finance.Lifecycle.Rule.Replacement qualified as Replacement (Rule(..))
+import Daml.Finance.Settlement.Factory qualified as Settlement (Factory(..))
+import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
+import Daml.Finance.Settlement.RouteProvider.IntermediatedStatic qualified as RouteProvider (IntermediatedStatic(..))
 import Daml.Script
 
-createCustodyService : Party -> Party -> Party -> ContractId Settlement.Factory -> ContractId Account.F -> ContractId Holding.F -> Script (ContractId Custody.Service)
-createCustodyService operator custodian customer settlementFactoryCid accountFactoryCid holdingFactoryCid = do
-  let providers = fromList [custodian, customer]
-  claimRuleCid <- toInterfaceContractId <$> submitMulti [custodian, customer] [] do createCmd Claim.Rule with providers = fromList [custodian, customer]; claimers = providers; settlers = providers; settlementFactoryCid; netInstructions = False
-  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferCustodyService with customer; claimRuleCid; accountFactoryCid; holdingFactoryCid
-  submit customer do exerciseCmd offerCid Custody.Accept
+createCustodyService : Party -> Party -> Party -> Party -> Map Text Settlement.Hierarchy -> Script (ContractId Custody.I)
+createCustodyService operator provider customer public paths = do
+  -- NOTE: Holding factory needs public visibility, as eg. the exchange has to fetch it to credit/debit a trade
+  let
+    publicObs = fromList [("Default", singleton public)]
+    observers = singleton customer
+    providers = singleton provider
+  accountFactoryCid         <- toInterfaceContractId <$> submit provider do createCmd Account.Factory                    with provider; observers = fromList [("Default", observers)]
+  holdingFactoryCid         <- toInterfaceContractId <$> submit provider do createCmd Fungible.Factory                   with provider; observers = publicObs
+  routeProviderCid          <- toInterfaceContractId <$> submit provider do createCmd RouteProvider.IntermediatedStatic  with provider; observers; paths
+  settlementFactoryCid      <- toInterfaceContractId <$> submit provider do createCmd Settlement.Factory                 with provider; observers
+  claimRuleCid              <- toInterfaceContractId <$> submit provider do createCmd Claim.Rule                         with providers; claimers = providers; settlers = providers; routeProviderCid; settlementFactoryCid; netInstructions = False
+  offerCid <- submit provider do exerciseByKeyCmd @Custodian.Role (operator, provider) Custodian.OfferCustodyService with customer; accountFactoryCid; holdingFactoryCid; claimRuleCid
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid Custody.Accept
 
-createIssuanceService : Party -> Party -> Party -> Script (ContractId Issuance.Service)
-createIssuanceService operator custodian customer = do
-  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferIssuanceService with ..
-  submit customer do exerciseCmd offerCid Issuance.Accept
+createCustodyAutoService : Party -> Party -> Party -> ContractId Account.F -> ContractId Holding.F -> Script (ContractId CustodyAuto.I)
+createCustodyAutoService operator provider customer accountFactoryCid holdingFactoryCid = do
+  offerCid <- submit provider do exerciseByKeyCmd @Custodian.Role (operator, provider) Custodian.OfferCustodyAutoService with customer; accountFactoryCid; holdingFactoryCid
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid CustodyAuto.Accept
 
-createIssuanceAutoService : Party -> Party -> Party -> Script (ContractId IssuanceAuto.Service)
-createIssuanceAutoService operator custodian customer = do
-  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferIssuanceAutoService with ..
-  submit customer do exerciseCmd offerCid IssuanceAuto.Accept
+createIssuanceService : Party -> Party -> Party -> Script (ContractId Issuance.I)
+createIssuanceService operator provider customer = do
+  offerCid <- submit provider do exerciseByKeyCmd @Custodian.Role (operator, provider) Custodian.OfferIssuanceService with ..
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid Issuance.Accept
 
-createStructuringService : Party -> Party -> Party -> Script (ContractId Structuring.Service)
-createStructuringService operator custodian customer = do
-  token <- toInterfaceContractId <$> submit custodian do createCmd Token.Factory with provider = custodian; observers = M.fromList [("Default", singleton customer)]
-  equity <- toInterfaceContractId <$> submit custodian do createCmd Equity.Factory with provider = custodian; observers = M.fromList [("Default", singleton customer)]
-  generic <- toInterfaceContractId <$> submit custodian do createCmd Generic.Factory with provider = custodian; observers = M.fromList [("Default", singleton customer)]
-  fixedRateBond <- toInterfaceContractId <$> submit custodian do createCmd FixedRateBond.Factory with provider = custodian; observers = M.fromList [("Default", singleton customer)]
-  floatingRateBond <- toInterfaceContractId <$> submit custodian do createCmd FloatingRateBond.Factory with provider = custodian; observers = M.fromList [("Default", singleton customer)]
-  inflationLinkedBond <- toInterfaceContractId <$> submit custodian do createCmd InflationLinkedBond.Factory with provider = custodian; observers = M.fromList [("Default", singleton customer)]
-  zeroCouponBond <- toInterfaceContractId <$> submit custodian do createCmd ZeroCouponBond.Factory with provider = custodian; observers = M.fromList [("Default", singleton customer)]
-  let factories = Structuring.Factories with token; equity; generic; fixedRateBond; floatingRateBond; inflationLinkedBond; zeroCouponBond
-  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferStructuringService with ..
-  submit customer do exerciseCmd offerCid Structuring.Accept
+createIssuanceAutoService : Party -> Party -> Party -> Script (ContractId IssuanceAuto.I)
+createIssuanceAutoService operator provider customer = do
+  offerCid <- submit provider do exerciseByKeyCmd @Custodian.Role (operator, provider) Custodian.OfferIssuanceAutoService with ..
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid IssuanceAuto.Accept
 
-createStructuringAutoService : Party -> Party -> Party -> Script (ContractId StructuringAuto.Service)
-createStructuringAutoService operator custodian customer = do
-  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferStructuringAutoService with ..
-  submit customer do exerciseCmd offerCid StructuringAuto.Accept
+createStructuringService : Party -> Party -> Party -> Script (ContractId Structuring.I)
+createStructuringService operator provider customer = do
+  let observers = fromList [("Default", singleton customer)]
+  token               <- toInterfaceContractId <$> submit provider do createCmd Token.Factory                with provider; observers
+  equity              <- toInterfaceContractId <$> submit provider do createCmd Equity.Factory               with provider; observers
+  generic             <- toInterfaceContractId <$> submit provider do createCmd Generic.Factory              with provider; observers
+  fixedRateBond       <- toInterfaceContractId <$> submit provider do createCmd FixedRateBond.Factory        with provider; observers
+  floatingRateBond    <- toInterfaceContractId <$> submit provider do createCmd FloatingRateBond.Factory     with provider; observers
+  inflationLinkedBond <- toInterfaceContractId <$> submit provider do createCmd InflationLinkedBond.Factory  with provider; observers
+  zeroCouponBond      <- toInterfaceContractId <$> submit provider do createCmd ZeroCouponBond.Factory       with provider; observers
+  fpmlSwap            <- toInterfaceContractId <$> submit provider do createCmd FpmlSwap.Factory             with provider; observers
+  offerCid <- submit provider do exerciseByKeyCmd @Custodian.Role (operator, provider) Custodian.OfferStructuringService with ..
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid Structuring.Accept
 
-createBackToBackIssuanceService : Party -> Party -> Party -> Party -> Script (ContractId BackToBack.Service)
-createBackToBackIssuanceService operator custodian customer public = do
-  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferBackToBackService with ..
-  submit customer do exerciseCmd offerCid BackToBack.Accept
+createStructuringAutoService : Party -> Party -> Party -> Script (ContractId StructuringAuto.I)
+createStructuringAutoService operator provider customer = do
+  offerCid <- submit provider do exerciseByKeyCmd @Custodian.Role (operator, provider) Custodian.OfferStructuringAutoService with ..
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid StructuringAuto.Accept
 
-createLifecycleService : Party -> Party -> Party -> Party -> Script (ContractId Lifecycle.Service)
-createLifecycleService operator custodian customer public = do
-  distributionRuleCid <- toInterfaceContractId <$> submit custodian do createCmd Distribution.Rule with providers = singleton custodian; lifecycler = customer; observers = singleton public
-  replacementRuleCid <- toInterfaceContractId <$> submit custodian do createCmd Replacement.Rule with providers = singleton custodian; lifecycler = customer; observers = singleton public
-  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferLifecycleService with ..
-  submit customer do exerciseCmd offerCid Lifecycle.Accept
+createBackToBackIssuanceService : Party -> Party -> Party -> Map Text Settlement.Hierarchy -> Script (ContractId BackToBack.I)
+createBackToBackIssuanceService operator provider customer paths = do
+  settlementServiceCid <- createSettlementService operator provider customer paths
+  offerCid <- submit provider do exerciseByKeyCmd @Custodian.Role (operator, provider) Custodian.OfferBackToBackService with customer; settlementServiceCid
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid BackToBack.Accept
 
-createTradingService : Party -> Party -> Party -> ContractId Settlement.Factory -> Script (ContractId Trading.Service)
-createTradingService operator exchange customer settlementFactoryCid = do
-  offerCid <- submit exchange do exerciseByKeyCmd @Exchange.Role (operator, exchange) Exchange.OfferTradingService with customer; settlementFactoryCid
-  submit customer do exerciseCmd offerCid Trading.Accept
+createLifecycleService : Party -> Party -> Party -> Script (ContractId Lifecycle.I)
+createLifecycleService operator provider customer = do
+  let
+    observers = fromList [("Default", singleton customer)]
+    providers = singleton provider
+  distributionRuleCid <- toInterfaceContractId <$> submit provider do createCmd Distribution.Rule  with providers; lifecycler = customer; id = Id "DistributionRule"; description = ""; observers = singleton customer
+  replacementRuleCid  <- toInterfaceContractId <$> submit provider do createCmd Replacement.Rule   with providers; lifecycler = customer; id = Id "ReplacementRule"; description = ""; observers = singleton customer
+  genericRuleCid      <- toInterfaceContractId <$> submit provider do createCmd Generic.Rule       with providers; lifecycler = customer; id = Id "GenericRule"; description = ""; observers
+  dynamicRuleCid      <- toInterfaceContractId <$> submit provider do createCmd Dynamic.Rule       with providers; lifecycler = customer; id = Id "DynamicRule"; description = ""; observers
+  offerCid <- submit provider do exerciseByKeyCmd @Custodian.Role (operator, provider) Custodian.OfferLifecycleService with ..
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid Lifecycle.Accept
 
-createTradingAutoService : Party -> Party -> Party -> Script (ContractId TradingAuto.Service)
-createTradingAutoService operator exchange customer = do
-  offerCid <- submit exchange do exerciseByKeyCmd @Exchange.Role (operator, exchange) Exchange.OfferTradingAutoService with ..
-  submit customer do exerciseCmd offerCid TradingAuto.Accept
+createTradingService : Party -> Party -> Party -> Map Text Settlement.Hierarchy -> Script (ContractId Trading.I)
+createTradingService operator provider customer paths = do
+  settlementServiceCid <- createSettlementService operator provider customer paths
+  offerCid <- submit provider do exerciseByKeyCmd @Exchange.Role (operator, provider) Exchange.OfferTradingService with customer; settlementServiceCid
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid Trading.Accept
 
-createListingService : Party -> Party -> Party -> Script (ContractId Listing.Service)
-createListingService operator exchange customer = do
-  offerCid <- submit exchange do exerciseByKeyCmd @Exchange.Role (operator, exchange) Exchange.OfferListingService with ..
-  submit customer do exerciseCmd offerCid Listing.Accept
+createTradingAutoService : Party -> Party -> Party -> Script (ContractId TradingAuto.I)
+createTradingAutoService operator provider customer = do
+  offerCid <- submit provider do exerciseByKeyCmd @Exchange.Role (operator, provider) Exchange.OfferTradingAutoService with ..
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid TradingAuto.Accept
 
-createListingAutoService : Party -> Party -> Party -> Script (ContractId ListingAuto.Service)
-createListingAutoService operator exchange customer = do
-  offerCid <- submit exchange do exerciseByKeyCmd @Exchange.Role (operator, exchange) Exchange.OfferListingAutoService with ..
-  submit customer do exerciseCmd offerCid ListingAuto.Accept
+createListingService : Party -> Party -> Party -> Script (ContractId Listing.I)
+createListingService operator provider customer = do
+  offerCid <- submit provider do exerciseByKeyCmd @Exchange.Role (operator, provider) Exchange.OfferListingService with ..
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid Listing.Accept
 
-createAuctionService : Party -> Party -> Party -> Script (ContractId Auction.Service)
-createAuctionService operator distributor customer = do
-  offerCid <- submit distributor do exerciseByKeyCmd @Distributor.Role (operator, distributor) Distributor.OfferAuctionService with customer
-  submit customer do exerciseCmd offerCid Auction.Accept
+createListingAutoService : Party -> Party -> Party -> Script (ContractId ListingAuto.I)
+createListingAutoService operator provider customer = do
+  offerCid <- submit provider do exerciseByKeyCmd @Exchange.Role (operator, provider) Exchange.OfferListingAutoService with ..
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid ListingAuto.Accept
 
-createAuctionAutoService : Party -> Party -> Party -> Script (ContractId AuctionAuto.Service)
-createAuctionAutoService operator distributor customer = do
-  offerCid <- submit distributor do exerciseByKeyCmd @Distributor.Role (operator, distributor) Distributor.OfferAuctionAutoService with customer
-  submit customer do exerciseCmd offerCid AuctionAuto.Accept
+createAuctionService : Party -> Party -> Party -> Map Text Settlement.Hierarchy -> Script (ContractId Auction.I)
+createAuctionService operator provider customer paths = do
+  settlementServiceCid <- createSettlementService operator provider customer paths
+  offerCid <- submit provider do exerciseByKeyCmd @Distributor.Role (operator, provider) Distributor.OfferAuctionService with customer; settlementServiceCid
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid Auction.Accept
 
-createBiddingService : Party -> Party -> Party -> Script (ContractId Bidding.Service)
-createBiddingService operator distributor customer = do
-  offerCid <- submit distributor do exerciseByKeyCmd @Distributor.Role (operator, distributor) Distributor.OfferBiddingService with ..
-  submit customer do exerciseCmd offerCid Bidding.Accept
+createAuctionAutoService : Party -> Party -> Party -> Script (ContractId AuctionAuto.I)
+createAuctionAutoService operator provider customer = do
+  offerCid <- submit provider do exerciseByKeyCmd @Distributor.Role (operator, provider) Distributor.OfferAuctionAutoService with customer
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid AuctionAuto.Accept
 
-createBiddingAutoService : Party -> Party -> Party -> Script (ContractId BiddingAuto.Service)
-createBiddingAutoService operator distributor customer = do
-  offerCid <- submit distributor do exerciseByKeyCmd @Distributor.Role (operator, distributor) Distributor.OfferBiddingAutoService with ..
-  submit customer do exerciseCmd offerCid BiddingAuto.Accept
+createBiddingService : Party -> Party -> Party -> Script (ContractId Bidding.I)
+createBiddingService operator provider customer = do
+  offerCid <- submit provider do exerciseByKeyCmd @Distributor.Role (operator, provider) Distributor.OfferBiddingService with ..
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid Bidding.Accept
 
-createSubscriptionService : Party -> Party -> Party -> Party -> Script (ContractId Subscription.Service)
-createSubscriptionService operator distributor customer public = do
-  offerCid <- submit distributor do exerciseByKeyCmd @Distributor.Role (operator, distributor) Distributor.OfferSubscriptionService with customer; public
-  submit customer do exerciseCmd offerCid Subscription.Accept
+createBiddingAutoService : Party -> Party -> Party -> Script (ContractId BiddingAuto.I)
+createBiddingAutoService operator provider customer = do
+  offerCid <- submit provider do exerciseByKeyCmd @Distributor.Role (operator, provider) Distributor.OfferBiddingAutoService with ..
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid BiddingAuto.Accept
 
-createLendingService : Party -> Party -> Party -> Script (ContractId Lending.Service)
-createLendingService operator lender borrower = do
-  offerCid <- submit lender do exerciseByKeyCmd @Custodian.Role (operator, lender) Custodian.OfferLendingService with customer = borrower
-  submit borrower do exerciseCmd offerCid Lending.Accept
+createSubscriptionService : Party -> Party -> Party -> Map Text Settlement.Hierarchy -> Script (ContractId Subscription.I)
+createSubscriptionService operator provider customer paths = do
+  settlementServiceCid <- createSettlementService operator provider customer paths
+  offerCid <- submit provider do exerciseByKeyCmd @Distributor.Role (operator, provider) Distributor.OfferSubscriptionService with customer; settlementServiceCid
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid Subscription.Accept
 
-createSettlementService : Party -> Party -> Party -> Script (ContractId Settlement.Service)
-createSettlementService operator custodian customer = do
-  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferSettlementService with customer
-  submit customer do exerciseCmd offerCid Settlement.Accept
+createLendingService : Party -> Party -> Party -> Script (ContractId Lending.I)
+createLendingService operator provider customer = do
+  offerCid <- submit provider do exerciseByKeyCmd @Custodian.Role (operator, provider) Custodian.OfferLendingService with customer
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid Lending.Accept
 
-createInvestmentService : Party -> Party -> Party -> Script (ContractId Investment.Service)
+createSettlementService : Party -> Party -> Party -> Map Text Settlement.Hierarchy -> Script (ContractId Settlement.I)
+createSettlementService operator provider customer paths = do
+  routeProviderCid      <- toInterfaceContractId <$> submit provider do createCmd RouteProvider.IntermediatedStatic  with provider; observers = singleton customer; paths
+  settlementFactoryCid  <- toInterfaceContractId <$> submit provider do createCmd Settlement.Factory                 with provider; observers = singleton customer
+  offerCid <- submitMulti [operator, provider] [] do createCmd Settlement.Offer with operator; provider; customer; routeProviderCid; settlementFactoryCid
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid Settlement.Accept
+
+createInvestmentService : Party -> Party -> Party -> Script (ContractId Investment.I)
 createInvestmentService operator provider customer = do
   offerCid <- submit provider do exerciseByKeyCmd @Distributor.Role (operator, provider) Distributor.OfferInvestmentService with customer
-  submit customer do exerciseCmd offerCid Investment.Accept
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid Investment.Accept
 
-createFundService : Party -> Party -> Party -> Script (ContractId Fund.Service)
-createFundService operator provider customer = do
-  offerCid <- submit provider do exerciseByKeyCmd @Distributor.Role (operator, provider) Distributor.OfferFundService with customer
-  submit customer do exerciseCmd offerCid Fund.Accept
+createFundService : Party -> Party -> Party -> Map Text Settlement.Hierarchy -> Script (ContractId Fund.I)
+createFundService operator provider customer paths = do
+  settlementServiceCid <- createSettlementService operator provider customer paths
+  offerCid <- submit provider do exerciseByKeyCmd @Distributor.Role (operator, provider) Distributor.OfferFundService with customer; settlementServiceCid
+  toInterfaceContractId <$> submit customer do exerciseCmd offerCid Fund.Accept
 
-createDecentralizedExchangeService : Party -> Party -> Text -> Instrument.Q -> Instrument.Q -> Account.K -> ContractId Fungible.I -> Instrument.Q -> Account.K -> ContractId Fungible.I -> Script (ContractId DecentralizedExchange.Service)
-createDecentralizedExchangeService consortium public id shares quantity1 account1 fungible1Cid quantity2 account2 fungible2Cid = do
-  fungible1Cid <- coerceContractId <$> submit consortium do exerciseCmd (toInterfaceContractId @Disclosure.I fungible1Cid) Disclosure.AddObservers with disclosers = singleton consortium; observersToAdd = (id, singleton public)
-  fungible2Cid <- coerceContractId <$> submit consortium do exerciseCmd (toInterfaceContractId @Disclosure.I fungible2Cid) Disclosure.AddObservers with disclosers = singleton consortium; observersToAdd = (id, singleton public)
+createDecentralizedExchangeService : Party -> Parties -> Text -> InstrumentQuantity -> InstrumentQuantity -> AccountKey -> ContractId Fungible.I -> InstrumentQuantity -> AccountKey -> ContractId Fungible.I -> Script (ContractId DecentralizedExchange.I)
+createDecentralizedExchangeService consortium observers id shares quantity1 account1 fungible1Cid quantity2 account2 fungible2Cid = do
+  fungible1Cid <- coerceContractId <$> submit consortium do exerciseCmd (toInterfaceContractId @Disclosure.I fungible1Cid) Disclosure.AddObservers with disclosers = singleton consortium; observersToAdd = (id, observers)
+  fungible2Cid <- coerceContractId <$> submit consortium do exerciseCmd (toInterfaceContractId @Disclosure.I fungible2Cid) Disclosure.AddObservers with disclosers = singleton consortium; observersToAdd = (id, observers)
   let
-    p1 = DecentralizedExchange.Pool with quantity = quantity1; account = account1; fungibleCid = fungible1Cid
-    p2 = DecentralizedExchange.Pool with quantity = quantity2; account = account2; fungibleCid = fungible2Cid
-  submit consortium do createCmd DecentralizedExchange.Service with consortium; public; id = Id id; description = id; shares; p1; p2
-
+    p1 = Pool with quantity = quantity1; account = account1; fungibleCid = fungible1Cid
+    p2 = Pool with quantity = quantity2; account = account2; fungibleCid = fungible2Cid
+  toInterfaceContractId <$> submit consortium do createCmd DecentralizedExchange.Service with consortium; id = Id id; description = id; shares; p1; p2; observers

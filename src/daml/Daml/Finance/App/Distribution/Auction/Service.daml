@@ -11,94 +11,76 @@ import DA.Foldable (forA_)
 import DA.List (sortOn, mapAccumL)
 import DA.Optional (whenSome)
 import DA.Set (fromList, singleton)
-import Daml.Finance.Interface.Account.Account qualified as Account (K, R, exerciseInterfaceByKey)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K, Q)
-import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
-import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Account.Util (getAccount)
-import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I, RemoveObservers(..))
-import Daml.Finance.Interface.Types.Common (Parties)
-import Daml.Finance.Interface.Settlement.Factory qualified as Factory (I)
-import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
-import Daml.Finance.App.Distribution.Auction.Model (Auction(..), CreateAuctionRequest(..), Status(..))
+import Daml.Finance.App.Distribution.Auction.Model qualified as Model (Auction(..), CreateAuctionRequest(..))
 import Daml.Finance.App.Distribution.Auction.Utils (dutchAuction, splitList, generateSettlementInstruction)
-import Daml.Finance.App.Distribution.Bidding.Model qualified as Bidding (Allocation(..), Bid, SettleAllocation(..), Status(..))
-import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (RejectBid(..), S)
-import Daml.Finance.App.Util (fetchAndArchive)
+import Daml.Finance.App.Distribution.Bidding.Service qualified as BiddingService (T)
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
+import Daml.Finance.App.Interface.Common.Util (fetchAndRemove)
+import Daml.Finance.App.Interface.Distribution.Auction.Auction qualified as Auction (Status(..))
+import Daml.Finance.App.Interface.Distribution.Auction.CreateAuctionRequest qualified as CreateAuctionRequest (View(..))
+import Daml.Finance.App.Interface.Distribution.Auction.Service qualified as Service (CreateAuction(..), HasImplementation, I, ProcessAuction(..), RequestCreateAuction(..), View(..))
+import Daml.Finance.App.Interface.Distribution.Bidding.Bid qualified as Bid (Allocation(..), SettleAllocation(..), Status(..))
+import Daml.Finance.App.Interface.Distribution.Bidding.Service qualified as BiddingService (I, RejectBid(..))
+import Daml.Finance.App.Interface.Settlement.Service qualified as SettlementService (I)
+import Daml.Finance.Interface.Account.Account qualified as Account (R, exerciseInterfaceByKey)
+import Daml.Finance.Interface.Account.Util (getAccount)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
+import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I, RemoveObservers(..))
 
-type S = Service
+type T = Service
+
+instance Service.HasImplementation Service
 
 template Service
   with
     operator : Party
     provider : Party
     customer : Party
+    settlementServiceCid : ContractId SettlementService.I
   where
     signatory operator, provider, customer
 
     key (operator, provider, customer) : (Party, Party, Party)
     maintainer key._1
 
-    nonconsuming choice RequestCreateAuction : ContractId CreateAuctionRequest
-      with
-        id : Text
-        quantity : Instrument.Q
-        currency : Instrument.K
-        floor : Decimal
-        collateralCid : ContractId Fungible.I
-        receivableAccount : Account.K
-        observers : Parties
-      controller customer
-      do
+    interface instance Base.I for Service where
+      view = Base.View with operator; provider; customer
+
+      terminate = pure ()
+
+    interface instance Service.I for Service where
+      view = Service.View with settlementServiceCid
+
+      asBase = toInterface @Base.I this
+
+      requestCreateAuction Service.RequestCreateAuction{auctionId; description; quantity; currency; floor; collateralCid; receivableAccount; observers} = do
         -- Disclose holding
         collateral <- fetch collateralCid
-        collateralCid <- coerceContractId <$> exercise (coerceContractId collateralCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (id, fromList [provider])
+        collateralCid <- coerceContractId <$> exercise (coerceContractId collateralCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (show auctionId, fromList [provider])
 
         -- Disclose delivering securities account
         (_, delRef) <- fetchByKey @Account.R $ getAccount collateral
-        exercise (coerceContractId delRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (id, fromList [provider])
+        exercise (coerceContractId delRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (show auctionId, fromList [provider])
 
         -- Disclose receiving cash account
         (_, recRef) <- fetchByKey @Account.R receivableAccount
-        exercise (coerceContractId recRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (id, singleton provider)
+        exercise (coerceContractId recRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (show auctionId, singleton provider)
 
-        create CreateAuctionRequest with operator; provider; customer; id; quantity; currency; floor; collateralCid; receivableAccount; observers
+        toInterfaceContractId <$> create Model.CreateAuctionRequest with operator; provider; customer; auctionId; description; quantity; currency; floor; collateralCid; receivableAccount; observers
 
-    nonconsuming choice CancelAuctionRequest : ()
-      with
-        createAuctionRequestCid : ContractId CreateAuctionRequest
-      controller customer
-      do
-        archive createAuctionRequestCid
+      createAuction Service.CreateAuction{createAuctionRequestCid} = do
+        CreateAuctionRequest.View{auctionId; description; quantity; currency; floor; collateralCid; receivableAccount; observers} <- view <$> fetchAndRemove createAuctionRequestCid
+        collateralCid <- coerceContractId <$> exercise (toInterfaceContractId collateralCid : ContractId Holding.I) Holding.Acquire with newLockers = fromList [ provider ]; context = show auctionId; lockType = Holding.Semaphore
+        toInterfaceContractId <$> create Model.Auction with operator; provider; customer; id = auctionId; description; quantity; currency; floor; collateralCid; receivableAccount; status = Auction.Open; observers
 
-    nonconsuming choice CreateAuction : ContractId Auction
-      with
-        createAuctionRequestCid : ContractId CreateAuctionRequest
-      controller provider
-      do
-        CreateAuctionRequest{id; quantity; currency; floor; collateralCid; receivableAccount; observers} <- fetchAndArchive createAuctionRequestCid
-        collateralCid <- coerceContractId <$> exercise (toInterfaceContractId collateralCid : ContractId Holding.I) Holding.Acquire with newLockers = fromList [ provider ]; context = id; lockType = Holding.Semaphore
-        create Auction with operator; provider; customer; id; quantity; currency; floor; collateralCid; receivableAccount; status = Open; observers
-
-    nonconsuming choice RejectAuction : ()
-      with
-        createAuctionRequestCid : ContractId CreateAuctionRequest
-      controller provider
-      do
-        archive createAuctionRequestCid
-
-    nonconsuming choice ProcessAuction : ContractId Auction
-      with
-        settlementFactoryCid : ContractId Factory.I
-        auctionCid : ContractId Auction
-        bidCids : [ContractId Bidding.Bid]
-      controller provider
-      do
-        auction <- fetch auctionCid
+      processAuction Service.ProcessAuction{auctionCid; bidCids} = do
+        let auctionTCid = fromInterfaceContractId @Model.Auction auctionCid
+        auction <- fetch auctionTCid
         collateral <- fetch auction.collateralCid
-        bids <- zip bidCids <$> forA bidCids fetch
-        collaterals <- mapA (fetch . (.collateralCid) . snd) bids
-        assertMsg "Auction already successfully processed" (auction.status `elem` [Open, NoValidBids])
+        bids <- zip bidCids <$> forA bidCids (fmap view . fetch)
+        collaterals <- mapA (\(_, bidView) -> fetch bidView.collateralCid) bids
+        assertMsg "Auction already successfully processed" (auction.status `elem` [Auction.Open, Auction.NoValidBids])
 
         -- Split bids on those above / below the floor price -> Sort valid bids descendingly -> Execute Auction -> Split auction result on allocated / unallocated (ie, zero allocation)
         let
@@ -111,51 +93,50 @@ template Service
           (allocatedBids, unallocatedBids) = partitionEithers $ splitList (\allocation -> allocation.amount == 0.0) allocations
 
         -- Return assets of all invalid and unallocated bids. Also update their bid status accordingly
-        forA_ invalidBids (\(bidCid, bid) -> exerciseByKey @Bidding.S (bid.operator, bid.provider, bid.customer) Bidding.RejectBid with bidCid; newStatus = Bidding.Invalid)
-        forA_ unallocatedBids (\Bidding.Allocation{bidCid, bid} -> exerciseByKey @Bidding.S (bid.operator, bid.provider, bid.customer) Bidding.RejectBid with bidCid; newStatus = Bidding.NoAllocation)
+        forA_ invalidBids (\(bidCid, bid) -> do
+          (serviceCid, _) <- fetchByKey @BiddingService.T (bid.operator, bid.provider, bid.customer)
+          exercise (toInterfaceContractId @BiddingService.I serviceCid) BiddingService.RejectBid with bidCid; newStatus = Bid.Invalid)
+        forA_ unallocatedBids (\Bid.Allocation{bidCid, bid} -> do
+          (serviceCid, _) <- fetchByKey @BiddingService.T (bid.operator, bid.provider, bid.customer)
+          exercise (toInterfaceContractId @BiddingService.I serviceCid) BiddingService.RejectBid with bidCid; newStatus = Bid.NoAllocation)
 
         -- Unlock auction collateral
-        auctionCollateralClid <- coerceContractId <$> exercise (toInterfaceContractId auction.collateralCid : ContractId Holding.I) Holding.Release with context = auction.id
+        auctionCollateralClid <- coerceContractId <$> exercise (toInterfaceContractId auction.collateralCid : ContractId Holding.I) Holding.Release with context = show auction.id
 
         -- Generate Settlement instructions for allocated bids
-        let settleAllocations = (\allocation -> Bidding.SettleAllocation with allocation; price = finalPrice; issuer = customer) <$> allocatedBids
-        (remainingDepositCidOpt, batchCids) <- foldlA (generateSettlementInstruction settlementFactoryCid provider auction.receivableAccount) (Some auctionCollateralClid, []) settleAllocations
+        let
+          settleAllocations = (\allocation -> Bid.SettleAllocation with allocation; price = finalPrice; issuer = customer) <$> allocatedBids
+          folder = generateSettlementInstruction settlementServiceCid provider auction.receivableAccount
+        (remainingDepositCidOpt, batchCids) <- foldlA folder (Some auctionCollateralClid, []) settleAllocations
 
         -- Settle transfers
         forA_ batchCids (`exercise` Batch.Settle with actors = singleton provider)
 
         -- Undisclose unallocated deposit
         whenSome remainingDepositCidOpt \depositCid -> do
-          exercise (coerceContractId depositCid : ContractId Disclosure.I) Disclosure.RemoveObservers with disclosers = singleton customer; observersToRemove = (auction.id, singleton provider)
+          exercise (coerceContractId depositCid : ContractId Disclosure.I) Disclosure.RemoveObservers with disclosers = singleton customer; observersToRemove = (show auction.id, singleton provider)
           pure ()
 
         -- Undisclose accounts
-        Account.exerciseInterfaceByKey @Disclosure.I auction.receivableAccount provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (auction.id, singleton provider)
-        Account.exerciseInterfaceByKey @Disclosure.I collateralAccount provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (auction.id, singleton provider)
-        forA_ receivableAccounts (\a -> Account.exerciseInterfaceByKey @Disclosure.I a provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (auction.id, singleton provider))
-        forA_ collateralAccounts (\a -> Account.exerciseInterfaceByKey @Disclosure.I a provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (auction.id, singleton provider))
+        Account.exerciseInterfaceByKey @Disclosure.I auction.receivableAccount provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (show auction.id, singleton provider)
+        Account.exerciseInterfaceByKey @Disclosure.I collateralAccount provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (show auction.id, singleton provider)
+        forA_ receivableAccounts (\a -> Account.exerciseInterfaceByKey @Disclosure.I a provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (show auction.id, singleton provider))
+        forA_ collateralAccounts (\a -> Account.exerciseInterfaceByKey @Disclosure.I a provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (show auction.id, singleton provider))
 
         -- Update Auction contract with the outcome of the auction processing
         let newStatus = if
-              | remaining == auction.quantity.amount -> NoValidBids
-              | remaining > 0.0 -> PartiallyAllocated with finalPrice; remaining
-              | otherwise -> FullyAllocated with finalPrice
+              | remaining == auction.quantity.amount -> Auction.NoValidBids
+              | remaining > 0.0 -> Auction.PartiallyAllocated with finalPrice; remaining
+              | otherwise -> Auction.FullyAllocated with finalPrice
         archive auctionCid
-        create auction with status = newStatus
-
-    choice Terminate : ()
-      with
-        actor : Party
-      controller actor
-      do
-        assert $ actor == operator || actor == provider || actor == customer
-        pure ()
+        toInterfaceContractId <$> create auction with status = newStatus
 
 template Offer
   with
     operator : Party
     provider : Party
     customer : Party
+    settlementServiceCid : ContractId SettlementService.I
   where
     signatory operator, provider
     observer customer
@@ -163,7 +144,7 @@ template Offer
     choice Accept : ContractId Service
       controller customer
       do
-        create Service with ..
+        create Service with operator; provider; customer; settlementServiceCid
 
     choice Decline : ()
       controller customer
@@ -193,6 +174,7 @@ template Request
     choice Approve : ContractId Service
       with
         operator : Party
+        settlementServiceCid : ContractId SettlementService.I
       controller operator, provider
       do
-        create Service with ..
+        create Service with operator; provider; customer; settlementServiceCid

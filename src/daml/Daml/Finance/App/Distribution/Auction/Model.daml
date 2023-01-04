@@ -3,35 +3,28 @@
 
 module Daml.Finance.App.Distribution.Auction.Model where
 
-import Daml.Finance.Interface.Account.Account qualified as Account (K)
+import DA.Set (fromList)
+import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, View(..))
+import Daml.Finance.App.Interface.Distribution.Auction.Auction qualified as Auction (I, Status, View(..))
+import Daml.Finance.App.Interface.Distribution.Auction.CreateAuctionRequest qualified as CreateAuctionRequest (I, View(..))
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K, Q)
-import Daml.Finance.Interface.Types.Common (Parties)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentKey, InstrumentQuantity, Parties)
 
 type T = Auction
-
-data Status
-    = Open
-    | PartiallyAllocated with
-        finalPrice : Decimal
-        remaining : Decimal
-    | FullyAllocated with
-        finalPrice : Decimal
-    | NoValidBids
-  deriving (Eq, Show)
 
 template Auction
   with
     operator : Party
     provider : Party
     customer : Party
-    id : Text
-    quantity : Instrument.Q
-    currency : Instrument.K
+    id : Id
+    description : Text
+    quantity : InstrumentQuantity
+    currency : InstrumentKey
     floor : Decimal
     collateralCid : ContractId Fungible.I
-    receivableAccount : Account.K
-    status : Status
+    receivableAccount : AccountKey
+    status : Auction.Status
     observers : Parties
   where
     signatory operator, provider, customer
@@ -39,27 +32,36 @@ template Auction
 
     ensure quantity.amount > 0.0
 
-    key (operator, provider, id) : (Party, Party, Text)
+    key (operator, provider, id) : (Party, Party, Id)
     maintainer key._1
 
-    nonconsuming choice Fetch : Auction
-      with
-        actor : Party
-      controller actor
-      do
-        pure this
+    interface instance Removable.I for Auction where
+      view = Removable.View with removers = fromList [operator, provider, customer]
+
+    interface instance Auction.I for Auction where
+      view = Auction.View with operator; provider; customer; id; description; quantity; currency; floor; collateralCid; receivableAccount; status; observers
+      asRemovable = toInterface @Removable.I this
 
 template CreateAuctionRequest
   with
     operator : Party
     provider : Party
     customer : Party
-    id : Text
-    quantity : Instrument.Q
-    currency : Instrument.K
+    auctionId : Id
+    description : Text
+    quantity : InstrumentQuantity
+    currency : InstrumentKey
     floor : Decimal
     collateralCid : ContractId Fungible.I
-    receivableAccount : Account.K
+    receivableAccount : AccountKey
     observers : Parties
   where
     signatory operator, provider, customer
+
+    interface instance Removable.I for CreateAuctionRequest where
+      view = Removable.View with removers = fromList [operator, provider, customer]
+
+    interface instance CreateAuctionRequest.I for CreateAuctionRequest where
+      view = CreateAuctionRequest.View with operator; provider; customer; auctionId; description; quantity; currency; floor; collateralCid; receivableAccount; observers
+      asRemovable = toInterface @Removable.I this
+

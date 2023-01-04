@@ -3,10 +3,17 @@
 
 module Daml.Finance.App.Listing.Service where
 
-import Daml.Finance.App.Listing.Model (CreateListingRequest(..), DeleteListingRequest(..), Listing(..))
-import Daml.Finance.App.Util (fetchAndArchive)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K)
-import Daml.Finance.Interface.Types.Common (Parties)
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
+import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Remove(..))
+import Daml.Finance.App.Interface.Common.Util (fetchAndRemove)
+import Daml.Finance.App.Interface.Listing.ListingRequest qualified as ListingRequest (View(..))
+import Daml.Finance.App.Interface.Listing.DelistingRequest qualified as DelistingRequest (View(..))
+import Daml.Finance.App.Interface.Listing.Service qualified as Service (Delist(..), HasImplementation, I, List(..), RequestDelisting(..), RequestListing(..), View(..))
+import Daml.Finance.App.Listing.Model qualified as Model
+
+type T = Service
+
+instance Service.HasImplementation Service
 
 template Service
   with
@@ -19,46 +26,29 @@ template Service
     key (operator, provider, customer) : (Party, Party, Party)
     maintainer key._1
 
-    nonconsuming choice RequestCreateListing : ContractId CreateListingRequest
-      with
-        id : Text
-        tradedInstrument : Instrument.K
-        quotedInstrument : Instrument.K
-        observers : Parties
-      controller customer
-      do
-        create CreateListingRequest with operator; provider; customer; id; tradedInstrument; quotedInstrument; observers
+    interface instance Base.I for Service where
+      view = Base.View with operator; provider; customer
 
-    nonconsuming choice RequestDeleteListing : ContractId DeleteListingRequest
-      with
-        listingCid : ContractId Listing
-      controller customer
-      do
-        create DeleteListingRequest with operator; provider; customer; listingCid
+      terminate = pure ()
 
-    nonconsuming choice CreateListing : ContractId Listing
-      with
-        createListingRequestCid : ContractId CreateListingRequest
-      controller provider
-      do
-        CreateListingRequest{operator; provider; customer; id; tradedInstrument; quotedInstrument; observers} <- fetchAndArchive createListingRequestCid
-        create Listing with operator; provider; customer; id; tradedInstrument; quotedInstrument; observers
+    interface instance Service.I for Service where
+      view = Service.View
 
-    nonconsuming choice DeleteListing : ()
-      with
-        deleteListingRequestCid : ContractId DeleteListingRequest
-      controller provider
-      do
-        DeleteListingRequest{operator; provider; customer; listingCid} <- fetchAndArchive deleteListingRequestCid
-        archive listingCid
+      asBase = toInterface @Base.I this
 
-    choice Terminate : ()
-      with
-        actor : Party
-      controller actor
-      do
-        assert $ actor == operator || actor == provider || actor == customer
-        pure ()
+      requestListing Service.RequestListing{listingId; description; tradedInstrument; quotedInstrument; observers} = do
+        toInterfaceContractId <$> create Model.ListingRequest with operator; provider; customer; listingId; description; tradedInstrument; quotedInstrument; observers
+
+      requestDelisting Service.RequestDelisting{listingCid} = do
+        toInterfaceContractId <$> create Model.DelistingRequest with operator; provider; customer; listingCid
+
+      list Service.List{listingRequestCid} = do
+        ListingRequest.View{listingId; description; tradedInstrument; quotedInstrument; observers} <- view <$> fetchAndRemove listingRequestCid
+        toInterfaceContractId <$> create Model.Listing with operator; provider; customer; id = listingId; description; tradedInstrument; quotedInstrument; observers
+
+      delist Service.Delist{delistingRequestCid} = do
+        DelistingRequest.View{listingCid} <- view <$> fetchAndRemove delistingRequestCid
+        exercise (toInterfaceContractId @Removable.I listingCid) Removable.Remove
 
 template Offer
   with

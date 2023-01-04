@@ -1,0 +1,92 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Interface.Trading.Service where
+
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Implementation)
+import Daml.Finance.App.Interface.Settlement.Service qualified as SettlementService (I)
+import Daml.Finance.App.Interface.Trading.Order qualified as Order (I, Side, View)
+import Daml.Finance.App.Interface.Trading.CreateOrderRequest qualified as CreateOrderRequest (I)
+import Daml.Finance.App.Interface.Trading.CancelOrderRequest qualified as CancelOrderRequest (I)
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity, Parties)
+
+type I = Service
+
+type V = View
+
+data View = View
+  with
+    settlementServiceCid : ContractId SettlementService.I
+  deriving (Eq, Show)
+
+interface Service where
+  viewtype V
+
+  asBase : Base.I
+    -- ^ Conversion to base `Service` interface.
+
+  requestCreateOrder : RequestCreateOrder -> Update (ContractId CreateOrderRequest.I)
+    -- ^ Implementation of the `RequestCreateOrder` choice.
+
+  requestCancelOrder : RequestCancelOrder -> Update (ContractId CancelOrderRequest.I)
+    -- ^ Implementation of the `RequestCancelOrder` choice.
+
+  createOrder : ContractId Service -> CreateOrder -> Update (Optional (ContractId Order.I, Order.View))
+    -- ^ Implementation of the `CreateOrder` choice.
+
+  cancelOrder : CancelOrder -> Update ()
+    -- ^ Implementation of the `CancelOrder` choice.
+
+  executeOrder : ExecuteOrder -> Update (Optional (ContractId Order.I, Order.View))
+    -- ^ Implementation of the `ExecuteOrder` choice.
+
+  nonconsuming choice RequestCreateOrder : ContractId CreateOrderRequest.I
+    with
+      id : Id
+      listingId : Id
+      quantity : InstrumentQuantity
+      price : InstrumentQuantity
+      side : Order.Side
+      collateralCid : ContractId Fungible.I
+      account : AccountKey
+      orderCids : [ContractId Order.I]
+      observers : Parties
+    controller (view $ asBase this).customer
+    do
+      requestCreateOrder this arg
+
+  nonconsuming choice RequestCancelOrder : ContractId CancelOrderRequest.I
+    with
+      orderCid : ContractId Order.I
+    controller (view $ asBase this).customer
+    do
+      requestCancelOrder this arg
+
+  nonconsuming choice CreateOrder : Optional (ContractId Order.I, Order.View)
+    with
+      createOrderRequestCid : ContractId CreateOrderRequest.I
+    controller (view $ asBase this).provider
+    do
+      createOrder this self arg
+
+  nonconsuming choice CancelOrder : ()
+    with
+      cancelOrderRequestCid : ContractId CancelOrderRequest.I
+    controller (view $ asBase this).provider
+    do
+      cancelOrder this arg
+
+  nonconsuming choice ExecuteOrder : Optional (ContractId Order.I, Order.View)
+    with
+      orderCid : ContractId Order.I
+      orderCids : [ContractId Order.I]
+    controller (view $ asBase this).provider
+    do
+      executeOrder this arg
+
+-- | Type constraint for requiring templates to implement `Service`.
+type Implementation t = (HasToInterface t Service, Base.Implementation t)
+class (Implementation t) => HasImplementation t
+instance HasImplementation Service
+instance HasToInterface Service Base.I where _toInterface = asBase

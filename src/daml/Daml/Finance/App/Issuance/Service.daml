@@ -3,14 +3,20 @@
 
 module Daml.Finance.App.Issuance.Service where
 
-import Daml.Finance.Interface.Account.Account qualified as Account (Credit(..), Debit(..), K, R)
+import DA.Assert ((===))
+import Daml.Finance.App.Issuance.Model qualified as Model (DeissueRequest(..), Issuance(..), IssueRequest(..))
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
+import Daml.Finance.App.Interface.Common.Util (fetchAndRemove)
+import Daml.Finance.App.Interface.Issuance.IssueRequest qualified as IssueRequest (View(..))
+import Daml.Finance.App.Interface.Issuance.DeissueRequest qualified as DeissueRequest (View(..))
+import Daml.Finance.App.Interface.Issuance.Service qualified as Service
+import Daml.Finance.Interface.Account.Account qualified as Account (Credit(..), Debit(..), I, exerciseInterfaceByKey)
 import Daml.Finance.Interface.Account.Util (getAccount)
-import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Holding.Util (getAmount)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Types.Common (Id)
-import Daml.Finance.App.Issuance.Model (CreateIssuanceRequest(..), ReduceIssuanceRequest(..), Issuance(..))
-import Daml.Finance.App.Util (fetchAndArchive)
+
+type T = Service
+
+instance Service.HasImplementation Service
 
 template Service
   with
@@ -23,59 +29,36 @@ template Service
     key (operator, provider, customer) : (Party, Party, Party)
     maintainer key._1
 
-    nonconsuming choice RequestCreateIssuance : ContractId CreateIssuanceRequest
-      with
-        id : Id
-        description : Text
-        quantity : Instrument.Q
-        account : Account.K
-      controller customer
-      do
-        create CreateIssuanceRequest with ..
+    interface instance Base.I for Service where
+      view = Base.View with operator; provider; customer
+      terminate = pure ()
 
-    nonconsuming choice RequestReduceIssuance : ContractId ReduceIssuanceRequest
-      with
-        id : Id
-        holdingCid : ContractId Holding.I
-      controller customer
-      do
-        create ReduceIssuanceRequest with ..
-
-    nonconsuming choice CreateIssuance : (ContractId Issuance, ContractId Holding.I)
-      with
-        createIssuanceRequestCid : ContractId CreateIssuanceRequest
-      controller provider
-      do
-        CreateIssuanceRequest{id; description; account; quantity} <- fetchAndArchive createIssuanceRequestCid
-        issuanceCid <- create Issuance with operator; provider; customer; id; description; quantity
-
-        (_, ref) <- fetchByKey @Account.R account
-        transferableCid <- exercise ref.cid Account.Credit with quantity
-        pure (issuanceCid, transferableCid)
-
-    nonconsuming choice ReduceIssuance : ContractId Issuance
-      with
-        reduceIssuanceRequestCid : ContractId ReduceIssuanceRequest
-      controller provider
-      do
-        ReduceIssuanceRequest{id; holdingCid} <- fetchAndArchive reduceIssuanceRequestCid
+    interface instance Service.I for Service where
+      view = Service.View
+      asBase = toInterface @Base.I this
+      requestIssue Service.RequestIssue{issuanceId; description; quantity; account} = do
+        toInterfaceContractId <$> create Model.IssueRequest with operator; provider; customer; issuanceId; description; quantity; account
+      requestDeissue Service.RequestDeissue{issuanceId; holdingCid} = do
+        toInterfaceContractId <$> create Model.DeissueRequest with operator; provider; customer; issuanceId; holdingCid
+      issue Service.Issue{issueRequestCid} = do
+        IssueRequest.View{issuanceId; description; quantity; account} <- view <$> fetchAndRemove issueRequestCid
+        issuanceCid <- toInterfaceContractId <$> create Model.Issuance with operator; provider; customer; id = issuanceId; description; quantity
+        account.custodian === provider
+        account.owner === customer
+        holdingCid <- Account.exerciseInterfaceByKey @Account.I account provider Account.Credit with quantity
+        pure (issuanceCid, holdingCid)
+      deissue Service.Deissue{deissueRequestCid} = do
+        DeissueRequest.View{issuanceId; holdingCid} <- view <$> fetchAndRemove deissueRequestCid
         holding <- fetch holdingCid
         let
-          amount = getAmount holding
           account = getAccount holding
-        (_, ref) <- fetchByKey @Account.R account
-        exercise ref.cid Account.Debit with holdingCid
-        (issuanceCid, issuance) <- fetchByKey @Issuance (operator, provider, id)
+          amount = getAmount holding
+        account.custodian === provider
+        account.owner === customer
+        Account.exerciseInterfaceByKey @Account.I account provider Account.Debit with holdingCid
+        (issuanceCid, issuance) <- fetchByKey @Model.Issuance (operator, provider, issuanceId)
         archive issuanceCid
-        create issuance with quantity = (issuance.quantity with amount = issuance.quantity.amount - amount)
-
-    choice Terminate : ()
-      with
-        actor : Party
-      controller actor
-      do
-        assert $ actor == operator || actor == provider || actor == customer
-        pure ()
+        toInterfaceContractId <$> create issuance with quantity = (issuance.quantity with amount = issuance.quantity.amount - amount)
 
 template Offer
   with

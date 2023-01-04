@@ -6,8 +6,8 @@ import { useNavigate } from "react-router-dom";
 import { Table, TableBody, TableCell, TableRow, TableHead, Grid, Paper, Typography, IconButton } from "@mui/material";
 import { useStreamQueries } from "@daml/react";
 import useStyles from "../../styles";
-import { Auction } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Model";
-import { Bid } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Bidding/Model";
+import { Auction } from "@daml.js/daml-finance-app-interface-distribution/lib/Daml/Finance/App/Interface/Distribution/Auction/Auction";
+import { Bid } from "@daml.js/daml-finance-app-interface-distribution/lib/Daml/Finance/App/Interface/Distribution/Bidding/Bid";
 import { getBidAllocation } from "../Utils";
 import { KeyboardArrowRight } from "@mui/icons-material";
 import { Spinner } from "../../../components/Spinner/Spinner";
@@ -22,7 +22,7 @@ export const Auctions: React.FC = () => {
   const { contracts: auctions, loading: l1 } = useStreamQueries(Auction);
   const { contracts: bids, loading: l2 } = useStreamQueries(Bid);
   if (l1 || l2) return <Spinner />;
-
+  console.log(bids);
   return (
     <Grid container direction="column">
       <Grid container direction="row">
@@ -43,7 +43,7 @@ export const Auctions: React.FC = () => {
               <TableBody>
                 {auctions.map((c, i) =>
                   <TableRow key={i} className={classes.tableRow}>
-                    <TableCell key={0} className={classes.tableCell}>{c.payload.id}</TableCell>
+                    <TableCell key={0} className={classes.tableCell}>{c.payload.id.unpack}</TableCell>
                     <TableCell key={1} className={classes.tableCell}>{getName(c.payload.provider)}</TableCell>
                     <TableCell key={2} className={classes.tableCell}>{getName(c.payload.customer)}</TableCell>
                     <TableCell key={3} className={classes.tableCell}>{c.payload.quantity.unit.id.unpack}</TableCell>
@@ -77,7 +77,7 @@ export const Auctions: React.FC = () => {
               <TableBody>
                 {bids.map((c, i) => (
                   <TableRow key={i} className={classes.tableRow}>
-                    <TableCell key={0} className={classes.tableCell}>{c.payload.auctionId}</TableCell>
+                    <TableCell key={0} className={classes.tableCell}>{c.payload.auctionId.unpack}</TableCell>
                     <TableCell key={1} className={classes.tableCell}>{getName(c.payload.provider)}</TableCell>
                     <TableCell key={2} className={classes.tableCell}>{getName(c.payload.customer)}</TableCell>
                     <TableCell key={3} className={classes.tableCell}>{fmt(c.payload.details.quantity.amount)} {c.payload.details.quantity.unit.id.unpack}</TableCell>

@@ -3,11 +3,12 @@
 
 module Daml.Finance.App.Role.Exchange where
 
-import Daml.Finance.App.Listing.Auto.Service qualified as ListingAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
-import Daml.Finance.App.Listing.Service qualified as Listing (Approve(..), Offer(..), Request, Service, Terminate(..))
-import Daml.Finance.App.Trading.Auto.Service qualified as TradingAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
-import Daml.Finance.App.Trading.Service qualified as Trading (Approve(..), Offer(..), Request, Service, Terminate(..))
-import Daml.Finance.Interface.Settlement.Factory qualified as Factory (I)
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Terminate(..))
+import Daml.Finance.App.Interface.Settlement.Service qualified as SettlementService (I)
+import Daml.Finance.App.Listing.Auto qualified as ListingAuto (Approve(..), Offer(..), Request, Service)
+import Daml.Finance.App.Listing.Service qualified as Listing (Approve(..), Offer(..), Request, Service)
+import Daml.Finance.App.Trading.Auto qualified as TradingAuto (Approve(..), Offer(..), Request, Service)
+import Daml.Finance.App.Trading.Service qualified as Trading (Approve(..), Offer(..), Request, Service)
 
 template Role
   with
@@ -22,25 +23,26 @@ template Role
     nonconsuming choice OfferTradingService : ContractId Trading.Offer
       with
         customer : Party
-        settlementFactoryCid : ContractId Factory.I
+        settlementServiceCid : ContractId SettlementService.I
       controller provider
       do
-        create Trading.Offer with operator; provider; customer; settlementFactoryCid
+        create Trading.Offer with operator; provider; customer; settlementServiceCid
 
     nonconsuming choice ApproveTradingServiceRequest : ContractId Trading.Service
       with
         tradingRequestCid : ContractId Trading.Request
-        settlementFactoryCid : ContractId Factory.I
+        settlementServiceCid : ContractId SettlementService.I
       controller provider
       do
-        exercise tradingRequestCid Trading.Approve with operator; settlementFactoryCid
+        exercise tradingRequestCid Trading.Approve with operator; settlementServiceCid
 
     nonconsuming choice TerminateTradingService : ()
       with
         customer : Party
       controller provider
       do
-        exerciseByKey @Trading.Service (operator, provider, customer) Trading.Terminate with actor = provider
+        (serviceCid, _) <- fetchByKey @Trading.Service (operator, provider, customer)
+        exercise (toInterfaceContractId @Base.I serviceCid) Base.Terminate with actor = provider
 
     nonconsuming choice OfferTradingAutoService : ContractId TradingAuto.Offer
       with
@@ -61,7 +63,8 @@ template Role
         customer : Party
       controller provider
       do
-        exerciseByKey @TradingAuto.Service (operator, provider, customer) TradingAuto.Terminate with actor = provider
+        (serviceCid, _) <- fetchByKey @TradingAuto.Service (operator, provider, customer)
+        exercise (toInterfaceContractId @Base.I serviceCid) Base.Terminate with actor = provider
 
     nonconsuming choice OfferListingService : ContractId Listing.Offer
       with
@@ -82,7 +85,8 @@ template Role
         customer : Party
       controller provider
       do
-        exerciseByKey @Listing.Service (operator, provider, customer) Listing.Terminate with actor = provider
+        (serviceCid, _) <- fetchByKey @Listing.Service (operator, provider, customer)
+        exercise (toInterfaceContractId @Base.I serviceCid) Base.Terminate with actor = provider
 
     nonconsuming choice OfferListingAutoService : ContractId ListingAuto.Offer
       with
@@ -103,7 +107,8 @@ template Role
         customer : Party
       controller provider
       do
-        exerciseByKey @ListingAuto.Service (operator, provider, customer) ListingAuto.Terminate with actor = provider
+        (serviceCid, _) <- fetchByKey @ListingAuto.Service (operator, provider, customer)
+        exercise (toInterfaceContractId @Base.I serviceCid) Base.Terminate with actor = provider
 
     choice TerminateRole : ()
       controller operator

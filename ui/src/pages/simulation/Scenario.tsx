@@ -6,17 +6,16 @@ import { FormControl, Button, Grid, Paper, Typography, InputLabel, Select, MenuI
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { Service as Lifecycle} from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Service";
+import { Service as Lifecycle} from "@daml.js/daml-finance-app-interface-lifecycle/lib/Daml/Finance/App/Interface/Lifecycle/Service";
 import classnames from "classnames";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
 import { and, claimToNode, findObservables } from "../../components/Claims/util";
 import { render } from "../../components/Claims/renderScenario";
 import { ExpandMore } from "@mui/icons-material";
 import { dedup } from "../../util";
-import { useServices } from "../../context/ServiceContext";
+import { useServices } from "../../context/ServicesContext";
 import { useInstruments } from "../../context/InstrumentContext";
-import { Message } from "../../components/Message/Message";
-import { NumericObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/NumericObservable";
+import { NumericObservable } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Observable/NumericObservable";
 
 type Payout = {
   asset : string
@@ -56,13 +55,16 @@ export const Scenario : React.FC = () => {
 
   useEffect(() => {
     const setClaims = async () => {
-      if (!l1 && !l2 && !l3 && !!instrument && !!instrument.claim && lifecycle.length > 0) {
-        const [res, ] = await ledger.exercise(Lifecycle.GetCurrentClaims, lifecycle[0].contractId, { instrumentCid: instrument.claim.contractId, observableCids: observations.map(c => c.contractId) })
+      if (!l1 && !l2 && !l3 && !!instrument && !!instrument.claim) {
+        // TODO: Assumes single service
+        const svc = lifecycle.services[0]?.service;
+        if (!svc) throw new Error("No lifecycle service found for customer [" + party + "]");
+        const [res, ] = await ledger.exercise(Lifecycle.GetCurrentClaims, svc.contractId, { instrumentCid: instrument.claim.contractId, observableCids: observations.map(c => c.contractId) })
         const claims = res.length > 1 ? and(res.map(r => r.claim)) : res[0].claim;
-        const [exp, ] = await ledger.exercise(Lifecycle.Expiry, lifecycle[0].contractId, { claims });
-        const [und, ] = await ledger.exercise(Lifecycle.Underlying, lifecycle[0].contractId, { claims });
-        const [pay, ] = await ledger.exercise(Lifecycle.Payoffs, lifecycle[0].contractId, { claims });
-        const [fix, ] = await ledger.exercise(Lifecycle.Fixings, lifecycle[0].contractId, { claims });
+        const [exp, ] = await ledger.exercise(Lifecycle.Expiry, svc.contractId, { claims });
+        const [und, ] = await ledger.exercise(Lifecycle.Underlyings, svc.contractId, { claims });
+        const [pay, ] = await ledger.exercise(Lifecycle.Payoffs, svc.contractId, { claims });
+        const [fix, ] = await ledger.exercise(Lifecycle.Fixings, svc.contractId, { claims });
         const undLabels = und.map(c => c.id.unpack);
         const obsLabels = pay.flatMap(p => findObservables(p._1));
         setNode(claimToNode(claims));
@@ -101,14 +103,16 @@ export const Scenario : React.FC = () => {
   // }, [ledger, services, underlyings, asset]);
 
   if (l1 || l2 || l3) return <Spinner />;
-  if (lifecycle.length === 0) return <Message text="No lifecycle service found" />;
 
   const simulate = async () => {
     if (!instrument || !instrument.claim) return;
+    // TODO: Assumes single service
+    const svc = lifecycle.services[0]?.service;
+    if (!svc) throw new Error("No lifecycle service found for customer [" + party + "]");
     setSimulating(true);
     const prices = [];
     for (let fixing = min; fixing <= max; fixing += step) prices.push(fixing.toString());
-    const [ results, ] = await ledger.exercise(Lifecycle.SimulateLifecycle, lifecycle[0].contractId, { today: expiry, prices, instrumentCid: instrument.claim.contractId });
+    const [ results, ] = await ledger.exercise(Lifecycle.SimulateLifecycle, svc.contractId, { today: expiry, prices, instrumentCid: instrument.claim.contractId });
     const res = prices.map((p, i) => ({ fixing: parseFloat(p), payouts: results[i].map(r => ({ amount: parseFloat(r.amount), asset: r.asset.id.unpack }))}));
     setSimulating(false);
     setResults(res);

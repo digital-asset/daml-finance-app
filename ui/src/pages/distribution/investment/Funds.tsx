@@ -11,8 +11,8 @@ import { Spinner } from "../../../components/Spinner/Spinner";
 import { fmt } from "../../../util";
 import { useParties } from "../../../context/PartiesContext";
 import { Alignment, HorizontalTable } from "../../../components/Table/HorizontalTable";
-import { Fund } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Fund/Model";
-import { useServices } from "../../../context/ServiceContext";
+import { Fund } from "@daml.js/daml-finance-app-interface-distribution/lib/Daml/Finance/App/Interface/Distribution/Fund/Fund";
+import { useServices } from "../../../context/ServicesContext";
 
 export const Funds : React.FC = () => {
   const classes = useStyles();
@@ -23,7 +23,7 @@ export const Funds : React.FC = () => {
   const { loading: l1, investment } = useServices();
   const { loading: l2, contracts: requests } = useStreamQueries(Fund);
   if (l1 || l2) return <Spinner />;
-  const isInvestor = !!investment.find(c => c.payload.customer === party);
+  const isInvestor = !!investment.services.find(c => c.payload.customer === party);
 
   const createRow = (c : CreateEvent<Fund>) : any[] => {
     return [

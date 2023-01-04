@@ -9,12 +9,12 @@ import useStyles from "./styles";
 import { ClaimsTreeBuilder, ClaimTreeNode } from "../../components/Claims/ClaimsTreeBuilder";
 import { and, claimToNode } from "../../components/Claims/util";
 import { InstrumentAggregate } from "../../context/InstrumentContext";
-import { Service as Lifecycle } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Service";
+import { Service as Lifecycle } from "@daml.js/daml-finance-app-interface-lifecycle/lib/Daml/Finance/App/Interface/Lifecycle/Service";
 import { useParties } from "../../context/PartiesContext";
 import { shorten } from "../../util";
 import { Spinner } from "../Spinner/Spinner";
-import { useServices } from "../../context/ServiceContext";
-import { NumericObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/NumericObservable";
+import { useServices } from "../../context/ServicesContext";
+import { NumericObservable } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Observable/NumericObservable";
 import { VerticalTable } from "../Table/VerticalTable";
 
 type AggregateProps = {
@@ -32,17 +32,17 @@ export const Aggregate : React.FC<AggregateProps> = ({ instrument }) => {
   useEffect(() => {
     const setClaims = async () => {
       if (!l1 && !l2 && !!instrument.claim) {
-        const [res, ] = await ledger.exercise(Lifecycle.GetCurrentClaims, lifecycle[0].contractId, { instrumentCid: instrument.claim.contractId, observableCids: observables.map(c => c.contractId) })
+        const [res, ] = await ledger.exercise(Lifecycle.GetCurrentClaims, lifecycle.services[0].service.contractId, { instrumentCid: instrument.claim.contractId, observableCids: observables.map(c => c.contractId) })
         const claims = res.length > 1 ? and(res.map(r => r.claim)) : res[0].claim;
         setNode(claimToNode(claims));
       }
     }
-    setClaims();
+    if (lifecycle.services.length > 0) setClaims();
   }, [lifecycle, instrument, observables, l1, l2, ledger]);
 
   if (l1 || l2) return <Spinner />
 
-  const headers = ["Depository", "Issuer", "Id", "Description", "Version", "ValidAsOf"].concat(!!instrument.lifecycle ? ["Lifecycler"] : []);
+  const headers = ["Depository", "Issuer", "Id", "Description", "Version", "ValidAsOf"];
   const values : any[] = [
     getName(instrument.payload.depository),
     getName(instrument.payload.issuer),
@@ -50,7 +50,7 @@ export const Aggregate : React.FC<AggregateProps> = ({ instrument }) => {
     instrument.payload.description,
     shorten(instrument.payload.version),
     instrument.payload.validAsOf
-  ].concat(!!instrument.lifecycle ? [getName(instrument.lifecycle.payload.lifecycler)] : []);
+  ];
 
   return (
     <Grid container direction="column" spacing={2}>

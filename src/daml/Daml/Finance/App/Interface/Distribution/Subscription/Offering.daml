@@ -1,0 +1,56 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Interface.Distribution.Subscription.Offering where
+
+import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Implementation)
+import Daml.Finance.App.Interface.Distribution.Subscription.Subscription qualified as Subscription (I)
+import Daml.Finance.App.Interface.Distribution.Subscription.Types (BackToBack, Status)
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity, Parties)
+
+type I = Offering
+
+type V = View
+
+data View = View
+  with
+    operator : Party
+    provider : Party
+    issuer : Party
+    id : Id
+    description : Text
+    asset : InstrumentQuantity
+    price : InstrumentQuantity
+    issuerHoldingCid : ContractId Fungible.I
+    issuerAccount : AccountKey
+    backToBack : Optional BackToBack
+    status : Status
+    observers : Parties
+  deriving (Eq, Show)
+
+interface Offering where
+  viewtype View
+    -- ^ Interface view type.
+
+  asRemovable : Removable.I
+    -- ^ Conversion to the `Removable` interface.
+
+  subscribe : Subscribe -> Update (ContractId Subscription.I)
+    -- ^ Implementation of the `Subscribe` choice.
+
+  nonconsuming choice Subscribe : ContractId Subscription.I
+    with
+      investor : Party
+      quantity : Decimal
+      investorHoldingCid : ContractId Fungible.I
+      investorAccount : AccountKey
+    controller investor
+    do
+      subscribe this arg
+
+-- | Type constraint for requiring templates to implement `Offering`.
+type Implementation t = (HasToInterface t Offering, Removable.Implementation t)
+class (Implementation t) => HasImplementation t
+instance HasImplementation Offering
+instance HasToInterface Offering Removable.I where _toInterface = asRemovable

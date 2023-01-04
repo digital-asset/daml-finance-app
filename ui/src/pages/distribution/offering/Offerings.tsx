@@ -4,7 +4,7 @@
 import React from "react";
 import { useStreamQueries } from "@daml/react";
 import { Spinner } from "../../../components/Spinner/Spinner";
-import { Offering } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Subscription/Model";
+import { Offering } from "@daml.js/daml-finance-app-interface-distribution/lib/Daml/Finance/App/Interface/Distribution/Subscription/Offering";
 import { fmt } from "../../../util";
 import { useParties } from "../../../context/PartiesContext";
 import { CreateEvent } from "@daml/ledger";
@@ -18,7 +18,7 @@ export const Offerings : React.FC = () => {
 
   const createRow = (c : CreateEvent<Offering>) : any[] => {
     return [
-      c.payload.offeringId,
+      c.payload.id.unpack,
       getName(c.payload.provider),
       getName(c.payload.issuer),
       fmt(c.payload.asset.amount) + " " + c.payload.asset.unit.id.unpack,

@@ -1,0 +1,86 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Listing.Auto where
+
+import Daml.Finance.App.Listing.Service qualified as Service (T)
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
+import Daml.Finance.App.Interface.Listing.Auto qualified as Auto (HasImplementation, I, View(..), RequestAndDelist(..), RequestAndList(..))
+import Daml.Finance.App.Interface.Listing.Service qualified as Service (Delist(..), List(..), I, RequestDelisting(..), RequestListing(..))
+
+instance Auto.HasImplementation Service
+
+template Service
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, customer) : (Party, Party, Party)
+    maintainer key._1
+
+    interface instance Base.I for Service where
+      view = Base.View with operator; provider; customer
+      terminate = pure ()
+
+    interface instance Auto.I for Service where
+      view = Auto.View
+
+      asBase = toInterface @Base.I this
+
+      requestAndList Auto.RequestAndList{listingId; description; tradedInstrument; quotedInstrument; observers} = do
+        serviceCid <- toInterfaceContractId @Service.I . fst <$> fetchByKey @Service.T (operator, provider, customer)
+        listingRequestCid <- exercise serviceCid Service.RequestListing with listingId; description; tradedInstrument; quotedInstrument; observers
+        exercise serviceCid Service.List with listingRequestCid
+
+      requestAndDelist Auto.RequestAndDelist{listingCid} = do
+        serviceCid <- toInterfaceContractId @Service.I . fst <$> fetchByKey @Service.T (operator, provider, customer)
+        delistingRequestCid <- exercise serviceCid Service.RequestDelisting with listingCid
+        exercise serviceCid Service.Delist with delistingRequestCid
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider
+    observer customer
+
+    choice Accept : ContractId Service
+      controller customer
+      do
+        create Service with ..
+
+    choice Decline : ()
+      controller customer
+      do pure ()
+
+    choice Withdraw : ()
+      controller provider
+      do pure ()
+
+template Request
+  with
+    customer : Party
+    provider : Party
+  where
+    signatory customer
+    observer provider
+
+    choice Cancel : ()
+      controller customer
+      do pure ()
+
+    choice Reject : ()
+      controller provider
+      do pure ()
+
+    choice Approve : ContractId Service
+      with
+        operator : Party
+      controller operator, provider
+      do
+        create Service with ..

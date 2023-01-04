@@ -6,76 +6,101 @@ module Daml.Finance.Setup.Util.Workflow where
 import DA.Date (DayOfWeek, toGregorian)
 import DA.List (head)
 import DA.Map qualified as M (Map, fromList)
+import DA.Optional (fromSome)
 import DA.Set (fromList, singleton)
 import DA.Text (parseInt)
-import Daml.Finance.App.Custody.Service qualified as Custody (Deposit(..), OpenAccount(..), RequestDeposit(..), RequestOpenAccount(..), Service)
+import DA.Time (time)
+import Daml.Finance.App.Custody.Service qualified as CustodyService (T)
 import Daml.Finance.App.Data.AccountDirectory (AccountDirectory(..))
-import Daml.Finance.App.Distribution.Auction.Model qualified as Auction (T)
-import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (CreateAuction(..), ProcessAuction(..), RequestCreateAuction(..), S)
-import Daml.Finance.App.Distribution.Bidding.Model qualified as Bidding (Bid)
-import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (CreateBid(..), RequestCreateBid(..), S)
-import Daml.Finance.App.Distribution.Fund.Model qualified as Fund (PooledInvestmentRequest, T)
-import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (FulfillPooledInvestmentRequest(..), PoolInvestmentRequests(..), S)
-import Daml.Finance.App.Distribution.Investment.Model qualified as Investment (InvestmentRequest)
-import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (RequestInvestment(..), S)
-import Daml.Finance.App.Issuance.Model qualified as Issuance (T)
-import Daml.Finance.App.Issuance.Service qualified as Issuance (CreateIssuance(..), RequestCreateIssuance(..), Service)
-import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Service, DeclareDividend(..), DeclareStockSplit(..), DeclareReplacement(..))
+import Daml.Finance.App.Distribution.Auction.Service qualified as AuctionService (T)
+import Daml.Finance.App.Distribution.Bidding.Service qualified as BiddingService (T)
+import Daml.Finance.App.Distribution.Fund.Service qualified as FundService (T)
+import Daml.Finance.App.Distribution.Investment.Service qualified as InvestmentService (T)
+import Daml.Finance.App.Interface.Custody.Service qualified as CustodyService (Deposit(..), I, OpenAccount(..), RequestDeposit(..), RequestOpenAccount(..))
+import Daml.Finance.App.Interface.Distribution.Auction.Auction qualified as Auction (I)
+import Daml.Finance.App.Interface.Distribution.Auction.Service qualified as AuctionService (CreateAuction(..), I, ProcessAuction(..), RequestCreateAuction(..))
+import Daml.Finance.App.Interface.Distribution.Bidding.Bid qualified as Bid (I)
+import Daml.Finance.App.Interface.Distribution.Bidding.Service qualified as BiddingService (CreateBid(..), I, RequestCreateBid(..))
+import Daml.Finance.App.Interface.Distribution.Fund.Fund qualified as Fund (I)
+import Daml.Finance.App.Interface.Distribution.Fund.PooledInvestmentRequest qualified as PooledInvestmentRequest (I)
+import Daml.Finance.App.Interface.Distribution.Fund.Service qualified as FundService (FulfillPooledInvestmentRequest(..), I, PoolInvestmentRequests(..))
+import Daml.Finance.App.Interface.Distribution.Investment.InvestmentRequest qualified as InvestmentRequest (I)
+import Daml.Finance.App.Interface.Distribution.Investment.Service qualified as InvestmentService (I, RequestInvestment(..),)
+import Daml.Finance.App.Interface.Issuance.Issuance qualified as Issuance (I)
+import Daml.Finance.App.Interface.Issuance.Service qualified as IssuanceService (I, Issue(..), RequestIssue(..))
+import Daml.Finance.App.Interface.Lifecycle.Service qualified as LifecycleService (I, DeclareDividend(..), DeclareStockSplit(..), DeclareReplacement(..))
+import Daml.Finance.App.Interface.Listing.Listing qualified as Listing (I)
+import Daml.Finance.App.Interface.Listing.Service qualified as ListingService (I, List(..), RequestListing(..))
+import Daml.Finance.App.Interface.Trading.Order qualified as Order (I, Side(..), View)
+import Daml.Finance.App.Interface.Trading.Service qualified as TradingService (CreateOrder(..), I, RequestCreateOrder(..))
+import Daml.Finance.App.Issuance.Service qualified as IssuanceService (T)
+import Daml.Finance.App.Lifecycle.Service qualified as LifecycleService (T)
 import Daml.Finance.App.Listing.Model qualified as Listing (T)
-import Daml.Finance.App.Listing.Service qualified as Listing (CreateListing(..), RequestCreateListing(..), Service)
-import Daml.Finance.App.Trading.Model qualified as Trading (Order, Side(..))
-import Daml.Finance.App.Trading.Service qualified as Trading (CreateOrder(..), RequestCreateOrder(..), Service)
-import Daml.Finance.Data.Observable.Observation qualified as Data (Observation(..))
+import Daml.Finance.App.Listing.Service qualified as ListingService (T)
+import Daml.Finance.App.Trading.Model qualified as Trading (Order)
+import Daml.Finance.App.Trading.Service qualified as TradingService (T)
+import Daml.Finance.Data.Numeric.Observation qualified as Data (Observation(..))
 import Daml.Finance.Data.Reference.HolidayCalendar qualified as Data (HolidayCalendar(..))
 import Daml.Finance.Data.Time.DateClock qualified as Data (DateClock(..))
-import Daml.Finance.Instrument.Token.Instrument qualified as Token (Instrument(..))
-import Daml.Finance.Instrument.Equity.Instrument qualified as Equity (Instrument(..))
+import Daml.Finance.Data.Time.DateClockUpdate qualified as Data (DateClockUpdateEvent(..))
+import Daml.Finance.Data.Time.DateClock.Types (Unit(..))
 import Daml.Finance.Instrument.Bond.FixedRate.Instrument qualified as FixedRate (Instrument(..))
 import Daml.Finance.Instrument.Bond.FloatingRate.Instrument qualified as FloatingRate (Instrument(..))
 import Daml.Finance.Instrument.Bond.InflationLinked.Instrument qualified as InflationLinked (Instrument(..))
 import Daml.Finance.Instrument.Bond.ZeroCoupon.Instrument qualified as ZeroCoupon (Instrument(..))
+import Daml.Finance.Instrument.Equity.Instrument qualified as Equity (Instrument(..))
 import Daml.Finance.Instrument.Generic.Instrument qualified as Generic (Instrument(..))
 import Daml.Finance.Instrument.Swap.CreditDefault.Instrument qualified as CreditDefaultSwap (Instrument(..))
-import Daml.Finance.Interface.Account.Account qualified as Account (Controllers(..), K, R)
+import Daml.Finance.Instrument.Token.Instrument qualified as Token (Instrument(..))
+import Daml.Finance.Interface.Account.Account qualified as Account (Controllers(..), R)
 import Daml.Finance.Interface.Claims.Types (C)
-import Daml.Finance.Interface.Data.NumericObservable qualified as NumericObservable (I)
-import Daml.Finance.Interface.Data.TimeObservable qualified as TimeObservable (I)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I, Transfer(..))
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (GetView(..), I, K, Q, Reference(..))
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (GetView(..), I, Reference(..))
 import Daml.Finance.Interface.Lifecycle.Event qualified as Event (I)
 import Daml.Finance.Interface.Lifecycle.Effect qualified as Effect (I)
+import Daml.Finance.Interface.Lifecycle.Observable.NumericObservable qualified as NumericObservable (I)
+import Daml.Finance.Interface.Lifecycle.Observable.TimeObservable qualified as TimeObservable (I)
 import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Claim (ClaimEffect(..), ClaimResult(..))
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (I)
-import Daml.Finance.Interface.Settlement.Factory qualified as SettlementFactory (I)
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (I, Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Types qualified as Settlement (Allocation, Approval)
-import Daml.Finance.Interface.Types.Common (Id(..), Parties, PartiesMap)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id(..), InstrumentKey, InstrumentQuantity, Parties, PartiesMap)
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayAdjustment(..), BusinessDayConventionEnum, HolidayCalendarData(..))
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum, RollConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.Schedule (Frequency(..), PeriodicSchedule(..))
-import Daml.Finance.Lifecycle.Event.DateClock qualified as DateClock (Event(..))
-import Daml.Finance.Lifecycle.Types (Unit(..))
-import Daml.Finance.Settlement.Factory qualified as Settlement (Factory)
 import Daml.Finance.Settlement.Instruction qualified as Instruction (T)
 import Daml.Finance.Setup.Util.Common (getHolding)
 import Daml.Script
 
-createAccount : Party -> Party -> Party -> Party -> Text -> PartiesMap -> Script Account.K
-createAccount operator custodian owner public id observers = do
-  let controllers = Account.Controllers with instructors = singleton owner; approvers = singleton owner
-  openAccountRequestCid <- submit owner do exerciseByKeyCmd @Custody.Service (operator, custodian, owner) Custody.RequestOpenAccount with id = Id id; description = id; controllers; observers
-  submitMulti [custodian] [public] do exerciseByKeyCmd @Custody.Service (operator, custodian, owner) Custody.OpenAccount with openAccountRequestCid
+-- getService : forall t k . (Template t, TemplateKey t k) => Party -> k -> Script (ContractId t)
+-- getService actor k = do
+--   opt <- queryContractKey @t actor k
+--   case opt of
+--     Some (serviceCid, service) -> pure serviceCid
+--     None -> fail $ "Service not found"
 
-createAccountDirectory : Party -> [(Instrument.K, Account.K)] -> Parties -> Script (ContractId AccountDirectory)
+-- getServiceInterface : forall t k i . (Template t, TemplateKey t k, HasInterfaceTypeRep i) => Party -> (Party, Party, Party) -> Script (ContractId i)
+-- getServiceInterface actor k = do
+--   svc <- getService @t actor k
+--   pure $ toInterfaceContractId @i svc
+
+createAccount : Party -> Party -> Party -> Party -> Text -> PartiesMap -> Script AccountKey
+createAccount operator provider customer public id observers = do
+  let controllers = Account.Controllers with outgoing = singleton customer; incoming = singleton customer
+  serviceCid <- toInterfaceContractId @CustodyService.I . fst . fromSome <$> queryContractKey @CustodyService.T customer (operator, provider, customer)
+  openAccountRequestCid <- submit customer do exerciseCmd serviceCid CustodyService.RequestOpenAccount with id = Id id; description = id; controllers; observers
+  snd <$> submitMulti [provider] [public] do exerciseCmd serviceCid CustodyService.OpenAccount with openAccountRequestCid
+
+createAccountDirectory : Party -> [(InstrumentKey, AccountKey)] -> Parties -> Script (ContractId AccountDirectory)
 createAccountDirectory provider mapping observers = do
   submit provider do createCmd AccountDirectory with provider; accounts = M.fromList (map (\(i, a) -> (i.id, a)) mapping); observers
 
 -- | Create a `Reference` for an instrument.
 -- Note: This should only be called together with an instrument creation
-createReference : ContractId Instrument.I -> Party -> Party -> PartiesMap -> Script Instrument.K
+createReference : ContractId Instrument.I -> Party -> Party -> PartiesMap -> Script InstrumentKey
 createReference cid depository issuer observers = do
   instrumentView <- submitMulti [depository, issuer] [] do exerciseCmd cid Instrument.GetView with viewer = issuer
   let ref = Instrument.Reference with instrumentView; cid; observers
@@ -114,7 +139,7 @@ createClockAndEvent providers today observers = do
     date = Unit today
     clock = Data.DateClock with providers = fromList providers; date; id; description; observers
   clockCid <- toInterfaceContractId <$> submitMulti providers [] do createCmd clock
-  eventCid <- toInterfaceContractId <$> submitMulti providers [] do createCmd DateClock.Event with providers = fromList providers; id; description; date; observers
+  eventCid <- toInterfaceContractId <$> submitMulti providers [] do createCmd Data.DateClockUpdateEvent with providers = fromList providers; id; description; eventTime = time today 0 0 0; date = today; observers
   pure (clockCid, eventCid)
 
 createObservation : Party -> Text -> [(Time, Decimal)] -> M.Map Text Parties -> Script (ContractId NumericObservable.I)
@@ -123,29 +148,28 @@ createObservation provider id observations observers = do
 
 createCalendar : Party -> Text -> [DayOfWeek] -> [Date] -> M.Map Text Parties -> Script (ContractId Data.HolidayCalendar)
 createCalendar provider id weekend holidays observers = do
-  let
-    calendar = HolidayCalendarData with id; weekend; holidays
-  submit provider do createCmd Data.HolidayCalendar with agency = provider; entity = calendar.id; calendar; observers
+  let calendar = HolidayCalendarData with id; weekend; holidays
+  submit provider do createCmd Data.HolidayCalendar with provider; calendar; observers
 
-originateToken : Party -> Party -> PartiesMap -> Time -> Text -> Text -> Script Instrument.K
+originateToken : Party -> Party -> PartiesMap -> Time -> Text -> Text -> Script InstrumentKey
 originateToken depository issuer observers validAsOf id description = do
   cid <- coerceContractId <$> submitMulti [depository, issuer] [] do
     createCmd Token.Instrument with depository; issuer; id = Id id; version = "0"; observers; validAsOf; description
   createReference cid depository issuer observers
 
-originateEquity : Party -> Party -> PartiesMap -> Time -> Text -> Text -> Script Instrument.K
+originateEquity : Party -> Party -> PartiesMap -> Time -> Text -> Text -> Script InstrumentKey
 originateEquity depository issuer observers validAsOf id description = do
   cid <- coerceContractId <$> submitMulti [depository, issuer] [] do
     createCmd Equity.Instrument with depository; issuer; id = Id id; version = "0"; observers; validAsOf; description
   createReference cid depository issuer observers
 
-originateGeneric : Party -> Party -> PartiesMap -> Time -> Text -> Text -> C -> Script Instrument.K
+originateGeneric : Party -> Party -> PartiesMap -> Time -> Text -> Text -> C -> Script InstrumentKey
 originateGeneric depository issuer observers acquisitionTime id description claims = do
   cid <- coerceContractId <$> submitMulti [depository, issuer] [] do
     createCmd Generic.Instrument with depository; issuer; id = Id id; description; version = "0"; acquisitionTime; claims; observers; lastEventTimestamp = acquisitionTime
   createReference cid depository issuer observers
 
-originateFixedRateBond : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Date -> [Text] -> Party -> Date-> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> Instrument.K -> Script Instrument.K
+originateFixedRateBond : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Date -> [Text] -> Party -> Date-> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> InstrumentKey -> Script InstrumentKey
 originateFixedRateBond depository issuer id description observers lastEventTimestamp issueDate holidayCalendarIds calendarDataProvider firstCouponDate maturityDate dayCountConvention businessDayConvention couponRate couponPeriod couponPeriodMultiplier currency = do
   let
     periodicSchedule = createPaymentPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
@@ -153,13 +177,13 @@ originateFixedRateBond depository issuer id description observers lastEventTimes
     createCmd FixedRate.Instrument with depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp; periodicSchedule; holidayCalendarIds; calendarDataProvider; dayCountConvention; couponRate; currency
   createReference cid depository issuer observers
 
-originateZeroCouponBond : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Date -> Date -> Instrument.K -> Script Instrument.K
+originateZeroCouponBond : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Date -> Date -> InstrumentKey -> Script InstrumentKey
 originateZeroCouponBond depository issuer id description observers lastEventTimestamp issueDate maturityDate currency = do
   cid <- toInterfaceContractId <$> submitMulti [depository, issuer] [] do
     createCmd ZeroCoupon.Instrument with depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp; issueDate; maturityDate; currency
   createReference cid depository issuer observers
 
-originateFloatingRateBond : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Date -> [Text] -> Party -> Date -> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> Instrument.K -> Text -> Script Instrument.K
+originateFloatingRateBond : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Date -> [Text] -> Party -> Date -> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> InstrumentKey -> Text -> Script InstrumentKey
 originateFloatingRateBond depository issuer id description observers lastEventTimestamp issueDate holidayCalendarIds calendarDataProvider firstCouponDate maturityDate dayCountConvention businessDayConvention couponRate couponPeriod couponPeriodMultiplier currency referenceRateId = do
   let
     periodicSchedule = createPaymentPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
@@ -167,7 +191,7 @@ originateFloatingRateBond depository issuer id description observers lastEventTi
     createCmd FloatingRate.Instrument with depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp; periodicSchedule; holidayCalendarIds; calendarDataProvider; dayCountConvention; couponSpread=couponRate; referenceRateId; currency
   createReference cid depository issuer observers
 
-originateInflationLinkedBond : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Date -> [Text] -> Party -> Date -> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> Instrument.K -> Text -> Decimal -> Script Instrument.K
+originateInflationLinkedBond : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Date -> [Text] -> Party -> Date -> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> InstrumentKey -> Text -> Decimal -> Script InstrumentKey
 originateInflationLinkedBond depository issuer id description observers lastEventTimestamp issueDate holidayCalendarIds calendarDataProvider firstCouponDate maturityDate dayCountConvention businessDayConvention couponRate couponPeriod couponPeriodMultiplier currency inflationIndexId inflationIndexBaseValue = do
   let
     periodicSchedule = createPaymentPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
@@ -175,126 +199,121 @@ originateInflationLinkedBond depository issuer id description observers lastEven
     createCmd InflationLinked.Instrument with depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp; periodicSchedule; holidayCalendarIds; calendarDataProvider; dayCountConvention; couponRate; inflationIndexId; currency; inflationIndexBaseValue
   createReference cid depository issuer observers
 
-originateCreditDefaultSwap : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Date -> [Text] -> Party -> Date -> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> Instrument.K -> Text -> Text -> Bool -> Script Instrument.K
-originateCreditDefaultSwap depository issuer id description observers lastEventTimestamp issueDate holidayCalendarIds calendarDataProvider firstCouponDate maturityDate dayCountConvention businessDayConvention fixRate couponPeriod couponPeriodMultiplier currency defaultProbabilityReferenceId recoveryRateReferenceId issuerPaysFix = do
+originateCreditDefaultSwap : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Date -> [Text] -> Party -> Date -> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> InstrumentKey -> Text -> Text -> Bool -> Script InstrumentKey
+originateCreditDefaultSwap depository issuer id description observers lastEventTimestamp issueDate holidayCalendarIds calendarDataProvider firstCouponDate maturityDate dayCountConvention businessDayConvention fixRate couponPeriod couponPeriodMultiplier currency defaultProbabilityReferenceId recoveryRateReferenceId ownerReceivesFix = do
   let
     periodicSchedule = createPaymentPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
   cid <- toInterfaceContractId <$> submitMulti [depository, issuer] [] do
-    createCmd CreditDefaultSwap.Instrument with depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp; periodicSchedule; holidayCalendarIds; calendarDataProvider; dayCountConvention; currency; fixRate; defaultProbabilityReferenceId; recoveryRateReferenceId; issuerPaysFix
+    createCmd CreditDefaultSwap.Instrument with depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp; periodicSchedule; holidayCalendarIds; calendarDataProvider; dayCountConvention; currency; fixRate; defaultProbabilityReferenceId; recoveryRateReferenceId; ownerReceivesFix
   createReference cid depository issuer observers
 
-transfer : Party -> Account.K -> Party -> ContractId Transferable.I -> Script (ContractId Transferable.I)
+transfer : Party -> AccountKey -> Party -> ContractId Transferable.I -> Script (ContractId Transferable.I)
 transfer from toAccount public depositCid = do
   submitMulti [from, toAccount.owner] [public] do exerciseCmd depositCid Transferable.Transfer with actors = fromList [from, toAccount.owner]; newOwnerAccount = toAccount
 
-deposit : Party -> Party -> Party -> Party -> Instrument.Q -> Account.K -> Script (ContractId Holding.I)
+deposit : Party -> Party -> Party -> Party -> InstrumentQuantity -> AccountKey -> Script (ContractId Holding.I)
 deposit operator provider customer public quantity account = do
-  depositRequestCid <- submit customer do exerciseByKeyCmd @Custody.Service (operator, provider, customer) Custody.RequestDeposit with quantity; account
-  submitMulti [provider] [public] do exerciseByKeyCmd @Custody.Service (operator, provider, customer) Custody.Deposit with depositRequestCid
+  serviceCid <- toInterfaceContractId @CustodyService.I . fst . fromSome <$> queryContractKey @CustodyService.T customer (operator, provider, customer)
+  depositRequestCid <- submit customer do exerciseCmd serviceCid CustodyService.RequestDeposit with quantity; account
+  submitMulti [provider] [public] do exerciseCmd serviceCid CustodyService.Deposit with depositRequestCid
 
-issue : Party -> Party -> Party -> Party -> Instrument.Q -> Account.K -> Script (ContractId Issuance.T, ContractId Holding.I)
+issue : Party -> Party -> Party -> Party -> InstrumentQuantity -> AccountKey -> Script (ContractId Issuance.I, ContractId Holding.I)
 issue operator provider customer public quantity account = do
   let
-    id = Id $ "ISSUANCE-" <> show quantity.unit.id
+    issuanceId = Id $ "ISSUANCE-" <> show quantity.unit.id
     description = "Issuance of " <> show quantity.amount <> " " <> show quantity.unit.id
-  createIssuanceRequestCid <- submit customer do exerciseByKeyCmd @Issuance.Service (operator, provider, customer) Issuance.RequestCreateIssuance with id; description; quantity; account
-  submitMulti [provider] [public] do exerciseByKeyCmd @Issuance.Service (operator, provider, customer) Issuance.CreateIssuance with ..
+  serviceCid <- toInterfaceContractId @IssuanceService.I . fst . fromSome <$> queryContractKey @IssuanceService.T customer (operator, provider, customer)
+  issueRequestCid <- submit customer do exerciseCmd serviceCid IssuanceService.RequestIssue with issuanceId; description; quantity; account
+  submitMulti [provider] [public] do exerciseCmd serviceCid IssuanceService.Issue with issueRequestCid
 
-list : Party -> Party -> Party -> Text -> Instrument.K -> Instrument.K -> Parties -> Script (ContractId Listing.T)
-list operator provider customer id tradedInstrument quotedInstrument observers = do
-  createListingRequestCid <- submit customer do exerciseByKeyCmd @Listing.Service (operator, provider, customer) Listing.RequestCreateListing with id; tradedInstrument; quotedInstrument; observers
-  submit provider do exerciseByKeyCmd @Listing.Service (operator, provider, customer) Listing.CreateListing with createListingRequestCid
+list : Party -> Party -> Party -> Id -> Text -> InstrumentKey -> InstrumentKey -> Parties -> Script (ContractId Listing.I)
+list operator provider customer listingId description tradedInstrument quotedInstrument observers = do
+  serviceCid <- toInterfaceContractId @ListingService.I . fst . fromSome <$> queryContractKey @ListingService.T customer (operator, provider, customer)
+  listingRequestCid <- submit customer do exerciseCmd serviceCid ListingService.RequestListing with listingId; description; tradedInstrument; quotedInstrument; observers
+  submit provider do exerciseCmd serviceCid ListingService.List with listingRequestCid
 
-createOrder : Party -> Party -> Party -> Party -> Id -> Trading.Side -> Instrument.Q -> Instrument.Q -> Parties -> Script (Optional (ContractId Trading.Order, Trading.Order))
+createOrder : Party -> Party -> Party -> Party -> Id -> Order.Side -> InstrumentQuantity -> InstrumentQuantity -> Parties -> Script (Optional (ContractId Order.I, Order.View))
 createOrder operator provider customer public id side quantity price observers = do
   listingId <- (.id) . snd . head <$> queryFilter @Listing.T observers (\l -> l.tradedInstrument == quantity.unit && l.quotedInstrument == price.unit)
   let
-    depository = if side == Trading.Buy then quantity.unit.depository else price.unit.depository
-    requiredQuantity = if side == Trading.Buy then price with amount = price.amount * quantity.amount else quantity
+    depository = if side == Order.Buy then quantity.unit.depository else price.unit.depository
+    requiredQuantity = if side == Order.Buy then price with amount = price.amount * quantity.amount else quantity
   account <- key . snd . head <$> queryFilter @Account.R customer (\a -> a.accountView.custodian == depository)
   holdingCid <- coerceContractId <$> getHolding customer requiredQuantity
-  orderCids <- map fst <$> queryFilter @Trading.Order observers (\o -> o.listingId == listingId)
-  createOrderRequestCid <- submit customer do exerciseByKeyCmd @Trading.Service (operator, provider, customer) Trading.RequestCreateOrder with id; listingId; quantity; price; side; collateralCid = holdingCid; account; orderCids; observers
-  submitMulti [provider] [public] do exerciseByKeyCmd @Trading.Service (operator, provider, customer) Trading.CreateOrder with createOrderRequestCid
+  orderCids <- map (toInterfaceContractId @Order.I . fst) <$> queryFilter @Trading.Order observers (\o -> o.listingId == listingId)
+  serviceCid <- toInterfaceContractId @TradingService.I . fst . fromSome <$> queryContractKey @TradingService.T customer (operator, provider, customer)
+  createOrderRequestCid <- submit customer do exerciseCmd serviceCid TradingService.RequestCreateOrder with id; listingId; quantity; price; side; collateralCid = holdingCid; account; orderCids; observers
+  submitMulti [provider] [public] do exerciseCmd serviceCid TradingService.CreateOrder with createOrderRequestCid
 
-createBidOrder : Party -> Party -> Party -> Party -> Id -> Instrument.Q -> Instrument.Q -> Parties -> Script (Optional (ContractId Trading.Order, Trading.Order))
-createBidOrder operator provider customer public id = createOrder operator provider customer public id Trading.Buy
+createBidOrder : Party -> Party -> Party -> Party -> Id -> InstrumentQuantity -> InstrumentQuantity -> Parties -> Script (Optional (ContractId Order.I, Order.View))
+createBidOrder operator provider customer public id = createOrder operator provider customer public id Order.Buy
 
-createAskOrder : Party -> Party -> Party -> Party -> Id -> Instrument.Q -> Instrument.Q -> Parties -> Script (Optional (ContractId Trading.Order, Trading.Order))
-createAskOrder operator provider customer public id = createOrder operator provider customer public id Trading.Sell
+createAskOrder : Party -> Party -> Party -> Party -> Id -> InstrumentQuantity -> InstrumentQuantity -> Parties -> Script (Optional (ContractId Order.I, Order.View))
+createAskOrder operator provider customer public id = createOrder operator provider customer public id Order.Sell
 
-createAuction : Party -> Party -> Party -> Party -> Text -> Instrument.Q -> Instrument.K -> Decimal -> ContractId Fungible.I -> Account.K -> Script (ContractId Auction.T)
-createAuction operator provider customer public id quantity currency floor collateralCid receivableAccount = do
-  createAuctionRequestCid <- submit customer do exerciseByKeyCmd @Auction.S (operator, provider, customer) Auction.RequestCreateAuction with id; quantity; currency; floor; collateralCid; receivableAccount; observers = singleton public
-  submit provider do exerciseByKeyCmd @Auction.S (operator, provider, customer) Auction.CreateAuction with createAuctionRequestCid
+createAuction : Party -> Party -> Party -> Party -> Id -> Text -> InstrumentQuantity -> InstrumentKey -> Decimal -> ContractId Fungible.I -> AccountKey -> Script (ContractId Auction.I)
+createAuction operator provider customer public auctionId description quantity currency floor collateralCid receivableAccount = do
+  serviceCid <- toInterfaceContractId @AuctionService.I . fst . fromSome <$> queryContractKey @AuctionService.T customer (operator, provider, customer)
+  createAuctionRequestCid <- submit customer do exerciseCmd serviceCid AuctionService.RequestCreateAuction with auctionId; description; quantity; currency; floor; collateralCid; receivableAccount; observers = singleton public
+  submit provider do exerciseCmd serviceCid AuctionService.CreateAuction with createAuctionRequestCid
 
-createAuctionBid : Party -> Party -> Party -> Party -> ContractId Auction.T -> Decimal -> Decimal -> ContractId Fungible.I -> Account.K -> Script (ContractId Bidding.Bid)
+createAuctionBid : Party -> Party -> Party -> Party -> ContractId Auction.I -> Decimal -> Decimal -> ContractId Fungible.I -> AccountKey -> Script (ContractId Bid.I)
 createAuctionBid operator provider customer public auctionCid amount price collateralCid receivableAccount = do
-  createBidRequestCid <- submitMulti [customer] [public] do exerciseByKeyCmd @Bidding.S (operator, provider, customer) Bidding.RequestCreateBid with auctionCid; amount; price; collateralCid; receivableAccount
-  submit provider do exerciseByKeyCmd @Bidding.S (operator, provider, customer) Bidding.CreateBid with createBidRequestCid
+  serviceCid <- toInterfaceContractId @BiddingService.I . fst . fromSome <$> queryContractKey @BiddingService.T customer (operator, provider, customer)
+  createBidRequestCid <- submitMulti [customer] [public] do exerciseCmd serviceCid BiddingService.RequestCreateBid with auctionCid; amount; price; collateralCid; receivableAccount
+  submit provider do exerciseCmd serviceCid BiddingService.CreateBid with createBidRequestCid
 
-processAuction : Party -> Party -> Party -> Party -> ContractId Auction.T -> [ContractId Bidding.Bid] -> Script (ContractId Auction.T)
+processAuction : Party -> Party -> Party -> Party -> ContractId Auction.I -> [ContractId Bid.I] -> Script (ContractId Auction.I)
 processAuction operator provider customer public auctionCid bidCids = do
-  [(factoryCid, _)] <- query @Settlement.Factory provider
-  submitMulti [provider] [public] do
-    exerciseByKeyCmd @Auction.S (operator, provider, customer) Auction.ProcessAuction
-      with
-        settlementFactoryCid = toInterfaceContractId factoryCid
-        auctionCid
-        bidCids
+  serviceCid <- toInterfaceContractId @AuctionService.I . fst . fromSome <$> queryContractKey @AuctionService.T provider (operator, provider, customer)
+  submitMulti [provider] [public] do exerciseCmd serviceCid AuctionService.ProcessAuction with auctionCid; bidCids
 
-declareDividend : Party -> Party -> Party -> Party -> Instrument.K -> Date -> [Instrument.Q] -> Script (ContractId Effect.I)
-declareDividend operator provider issuer public equity effectiveDate perUnitDistribution = do
-  [(clockCid, _)] <- query @Data.DateClock public
+declareDividend : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> [InstrumentQuantity] -> Script (ContractId Effect.I)
+declareDividend operator provider issuer public equity effectiveTime perUnitDistribution = do
   let
     id = "Dividend-" <> show equity.id <> "-" <> equity.version
     Some version = parseInt equity.version
+  serviceCid <- toInterfaceContractId @LifecycleService.I . fst . fromSome <$> queryContractKey @LifecycleService.T provider (operator, provider, issuer)
   head <$> submitMulti [issuer] [public] do
-    exerciseByKeyCmd @Lifecycle.Service (operator, provider, issuer) Lifecycle.DeclareDividend
-      with
-        timeObservableCid = toInterfaceContractId clockCid
-        equity
-        newVersion = show (version + 1)
-        id = Id id
-        description = id
-        effectiveDate
-        perUnitDistribution
+    exerciseCmd serviceCid LifecycleService.DeclareDividend with
+      equity
+      newVersion = show (version + 1)
+      eventId = Id id
+      description = id
+      effectiveTime
+      perUnitDistribution
 
-declareReplacement : Party -> Party -> Party -> Party -> Instrument.K -> Date -> [Instrument.Q] -> Script (ContractId Effect.I)
-declareReplacement operator provider issuer public equity effectiveDate perUnitReplacement = do
-  [(clockCid, _)] <- query @Data.DateClock issuer
+declareReplacement : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> [InstrumentQuantity] -> Script (ContractId Effect.I)
+declareReplacement operator provider issuer public equity effectiveTime perUnitReplacement = do
   let id = "Replacement-" <> show equity.id <> "-" <> equity.version
+  serviceCid <- toInterfaceContractId @LifecycleService.I . fst . fromSome <$> queryContractKey @LifecycleService.T provider (operator, provider, issuer)
   head <$> submitMulti [issuer] [public] do
-    exerciseByKeyCmd @Lifecycle.Service (operator, provider, issuer) Lifecycle.DeclareReplacement
-      with
-        timeObservableCid = toInterfaceContractId clockCid
-        equity
-        id = Id id
-        description = id
-        effectiveDate
-        perUnitReplacement
+    exerciseCmd serviceCid LifecycleService.DeclareReplacement with
+      equity
+      eventId = Id id
+      description = id
+      effectiveTime
+      perUnitReplacement
 
-declareStockSplit : Party -> Party -> Party -> Party -> Instrument.K -> Date -> Decimal -> Script (ContractId Effect.I)
-declareStockSplit operator provider issuer public equity effectiveDate adjustmentFactor = do
-  [(clockCid, _)] <- query @Data.DateClock issuer
+declareStockSplit : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> Decimal -> Script (ContractId Effect.I)
+declareStockSplit operator provider issuer public equity effectiveTime adjustmentFactor = do
   let
     id = "StockSplit-" <> show equity.id <> "-" <> equity.version
     Some version = parseInt equity.version
+  serviceCid <- toInterfaceContractId @LifecycleService.I . fst . fromSome <$> queryContractKey @LifecycleService.T provider (operator, provider, issuer)
   head <$> submitMulti [issuer] [public] do
-    exerciseByKeyCmd @Lifecycle.Service (operator, provider, issuer) Lifecycle.DeclareStockSplit
-      with
-        timeObservableCid = toInterfaceContractId clockCid
-        equity
-        newVersion = show (version + 1)
-        id = Id id
-        description = id
-        effectiveDate
-        adjustmentFactor
+    exerciseCmd serviceCid LifecycleService.DeclareStockSplit with
+      equity
+      newVersion = show (version + 1)
+      eventId = Id id
+      description = id
+      effectiveTime
+      adjustmentFactor
 
 claimEffect : Party -> Party -> Party -> Party -> ContractId Effect.I -> [ContractId Holding.I] -> Id -> Script (ContractId Batch.I, [ContractId Instruction.I])
 claimEffect operator custodian owner public effectCid holdingCids batchId = do
-  Some (_, cs) <- queryContractKey @Custody.Service owner (operator, custodian, owner)
-  Claim.ClaimResult{batchCid; instructionCids} <- submitMulti [owner] [public] do exerciseCmd cs.claimRuleCid Claim.ClaimEffect with claimer = owner; effectCid; holdingCids; batchId
+  service <- snd . fromSome <$> queryContractKey @CustodyService.T owner (operator, custodian, owner)
+  Claim.ClaimResult{batchCid; instructionCids} <- submitMulti [owner] [public] do exerciseCmd service.claimRuleCid Claim.ClaimEffect with claimer = owner; effectCid; holdingCids; batchId
   pure (batchCid, instructionCids)
 
 allocateAndApprove : Party -> Party -> ContractId Instruction.I -> Settlement.Allocation -> Settlement.Approval -> Script (ContractId Instruction.I)
@@ -303,14 +322,17 @@ allocateAndApprove operator settler instructionCid allocation approval = do
   instructionCid <- fst <$> submit i.routedStep.sender do exerciseCmd instructionCid Instruction.Allocate with actors = singleton settler; allocation
   submit i.routedStep.receiver do exerciseCmd instructionCid Instruction.Approve with actors = singleton settler; approval
 
-createInvestmentRequest : Party -> Party -> Party -> Party -> Text -> Date -> ContractId Fund.T -> ContractId Transferable.I -> Script (ContractId Investment.InvestmentRequest)
-createInvestmentRequest operator provider customer public id asOfDate fundCid cashCid =
-  submitMulti [customer] [public] do exerciseByKeyCmd @Investment.S (operator, provider, customer) Investment.RequestInvestment with requestId = Id id; asOfDate; fundCid; cashCid
+createInvestmentRequest : Party -> Party -> Party -> Party -> Text -> Date -> ContractId Fund.I -> ContractId Transferable.I -> Script (ContractId InvestmentRequest.I)
+createInvestmentRequest operator provider customer public id asOfDate fundCid cashCid = do
+  serviceCid <- toInterfaceContractId @InvestmentService.I . fst . fromSome <$> queryContractKey @InvestmentService.T customer (operator, provider, customer)
+  submitMulti [customer] [public] do exerciseCmd serviceCid InvestmentService.RequestInvestment with requestId = Id id; asOfDate; fundCid; cashCid
 
-poolInvestmentRequests : Party -> Party -> Party -> Party -> Text -> Date -> ContractId Fund.T -> ContractId Transferable.I -> [ContractId Investment.InvestmentRequest] -> Script (ContractId Fund.PooledInvestmentRequest)
-poolInvestmentRequests operator provider customer public id asOfDate fundCid cashCid investmentRequestCids =
-  submitMulti [customer] [public] do exerciseByKeyCmd @Fund.S (operator, provider, customer) Fund.PoolInvestmentRequests with requestId = Id id; asOfDate; fundCid; cashCid; investmentRequestCids
+poolInvestmentRequests : Party -> Party -> Party -> Party -> Text -> Date -> ContractId Fund.I -> ContractId Transferable.I -> [ContractId InvestmentRequest.I] -> Script (ContractId PooledInvestmentRequest.I)
+poolInvestmentRequests operator provider customer public id asOfDate fundCid cashCid investmentRequestCids = do
+  serviceCid <- toInterfaceContractId @FundService.I . fst . fromSome <$> queryContractKey @FundService.T customer (operator, provider, customer)
+  submitMulti [customer] [public] do exerciseCmd serviceCid FundService.PoolInvestmentRequests with requestId = Id id; asOfDate; fundCid; cashCid; investmentRequestCids
 
-fulfillPooledInvestmentRequest : Party -> Party -> Party -> Party -> ContractId Fund.T -> ContractId Fund.PooledInvestmentRequest -> ContractId NumericObservable.I -> ContractId SettlementFactory.I -> Script [ContractId Holding.I]
-fulfillPooledInvestmentRequest operator provider customer public fundCid pooledInvestmentRequestCid navObservableCid settlementFactoryCid =
-  submitMulti [provider] [public] do exerciseByKeyCmd @Fund.S (operator, provider, customer) Fund.FulfillPooledInvestmentRequest with fundCid; pooledInvestmentRequestCid; navObservableCid; settlementFactoryCid
+fulfillPooledInvestmentRequest : Party -> Party -> Party -> Party -> ContractId Fund.I -> ContractId PooledInvestmentRequest.I -> ContractId NumericObservable.I -> Script [ContractId Holding.I]
+fulfillPooledInvestmentRequest operator provider customer public fundCid pooledInvestmentRequestCid navObservableCid = do
+  serviceCid <- toInterfaceContractId @FundService.I . fst . fromSome <$> queryContractKey @FundService.T customer (operator, provider, customer)
+  submitMulti [provider] [public] do exerciseCmd serviceCid FundService.FulfillPooledInvestmentRequest with fundCid; pooledInvestmentRequestCid; navObservableCid

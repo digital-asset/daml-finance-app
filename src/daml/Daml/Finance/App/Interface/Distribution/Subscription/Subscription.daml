@@ -1,0 +1,72 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Interface.Distribution.Subscription.Subscription where
+
+import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Implementation)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
+import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
+import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (I)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id)
+
+type I = Subscription
+
+type V = View
+
+data View = View
+  with
+    operator : Party
+    provider : Party
+    issuer : Party
+    investor : Party
+    offeringId : Id
+    quantity : Decimal
+    holdingCid : ContractId Fungible.I
+    account : AccountKey
+  deriving (Eq, Show)
+
+interface Subscription where
+  viewtype View
+    -- ^ Interface view type.
+
+  asRemovable : Removable.I
+    -- ^ Conversion to the `Removable` interface.
+
+  allocateInstruction : AllocateInstruction -> Update (ContractId Instruction.I)
+    -- ^ Implementation of the `AllocateInstruction` choice.
+
+  approveInstruction : ApproveInstruction -> Update (ContractId Instruction.I)
+    -- ^ Implementation of the `ApproveInstruction` choice.
+
+  unlockHolding : UnlockHolding -> Update (ContractId Holding.I)
+    -- ^ Implementation of the `UnlockHolding` choice.
+
+  nonconsuming choice AllocateInstruction : ContractId Instruction.I
+    with
+      instructionCid : ContractId Instruction.I
+      transferableCid : ContractId Transferable.I
+    controller (view this).provider
+    do
+      allocateInstruction this arg
+
+  nonconsuming choice ApproveInstruction : ContractId Instruction.I
+    with
+      instructionCid : ContractId Instruction.I
+      receiverAccount : AccountKey
+    controller (view this).provider
+    do
+      approveInstruction this arg
+
+  nonconsuming choice UnlockHolding : ContractId Holding.I
+    with
+      lockableCid : ContractId Holding.I
+    controller (view this).provider
+    do
+      unlockHolding this arg
+
+-- | Type constraint for requiring templates to implement `Subscription`.
+type Implementation t = (HasToInterface t Subscription, Removable.Implementation t)
+class (Implementation t) => HasImplementation t
+instance HasImplementation Subscription
+instance HasToInterface Subscription Removable.I where _toInterface = asRemovable

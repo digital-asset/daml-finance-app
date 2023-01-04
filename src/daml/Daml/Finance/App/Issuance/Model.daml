@@ -3,10 +3,13 @@
 
 module Daml.Finance.App.Issuance.Model where
 
-import Daml.Finance.Interface.Account.Account qualified as Account (K)
+import DA.Set (fromList)
+import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, View(..))
+import Daml.Finance.App.Interface.Issuance.DeissueRequest qualified as DeissueRequest (I, View(..))
+import Daml.Finance.App.Interface.Issuance.Issuance qualified as Issuance (I, View(..))
+import Daml.Finance.App.Interface.Issuance.IssueRequest qualified as IssueRequest (I, View(..))
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Types.Common (Id)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity)
 
 type T = Issuance
 
@@ -17,31 +20,53 @@ template Issuance
     customer : Party
     id : Id
     description : Text
-    quantity : Instrument.Q
+    quantity : InstrumentQuantity
   where
     signatory operator, provider, customer
 
     key (operator, provider, id) : (Party, Party, Id)
     maintainer key._1
 
-template CreateIssuanceRequest
+    interface instance Removable.I for Issuance where
+      view = Removable.View with removers = fromList [operator, provider, customer]
+
+    interface instance Issuance.I for Issuance where
+      view = Issuance.View with operator; provider; customer; id; description; quantity
+      asRemovable = toInterface @Removable.I this
+
+template IssueRequest
   with
     operator : Party
     provider : Party
     customer : Party
-    id : Id
+    issuanceId : Id
     description : Text
-    quantity : Instrument.Q
-    account : Account.K
+    quantity : InstrumentQuantity
+    account : AccountKey
   where
     signatory operator, provider, customer
 
-template ReduceIssuanceRequest
+    interface instance Removable.I for IssueRequest where
+      view = Removable.View with removers = fromList [operator, provider, customer]
+
+    interface instance IssueRequest.I for IssueRequest where
+      view = IssueRequest.View with operator; provider; customer; issuanceId; description; quantity; account
+      asRemovable = toInterface @Removable.I this
+
+template DeissueRequest
   with
     operator : Party
     provider : Party
     customer : Party
-    id : Id
+    issuanceId : Id
     holdingCid : ContractId Holding.I
   where
     signatory operator, provider, customer
+
+    interface instance Removable.I for DeissueRequest where
+      view = Removable.View with removers = fromList [operator, provider, customer]
+
+    interface instance DeissueRequest.I for DeissueRequest where
+      view = DeissueRequest.View with operator; provider; customer; issuanceId; holdingCid
+      asRemovable = toInterface @Removable.I this
+

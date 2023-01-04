@@ -3,18 +3,20 @@
 
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Table, TableBody, TableCell, TableRow, TableHead, Button, Grid, Paper, Typography } from "@mui/material";
-import { IconButton } from "@mui/material";
-import { KeyboardArrowRight } from "@mui/icons-material";
+import { Button } from "@mui/material";
 import { CreateEvent } from "@daml/ledger";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
-import { CreateIssuanceRequest, ReduceIssuanceRequest } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Model";
-import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Issuance/Service";
+import { Service } from "@daml.js/daml-finance-app-interface-issuance/lib/Daml/Finance/App/Interface/Issuance/Service";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
-import { useServices } from "../../context/ServiceContext";
-import { Message } from "../../components/Message/Message";
+import { useServices } from "../../context/ServicesContext";
+import { IssueRequest } from "@daml.js/daml-finance-app-interface-issuance/lib/Daml/Finance/App/Interface/Issuance/IssueRequest";
+import { DeissueRequest } from "@daml.js/daml-finance-app-interface-issuance/lib/Daml/Finance/App/Interface/Issuance/DeissueRequest";
+import { fmt } from "../../util";
+import { useHoldings } from "../../context/HoldingContext";
+import { Issuance } from "@daml.js/daml-finance-app-interface-issuance/lib/Daml/Finance/App/Interface/Issuance/Issuance";
+import { HorizontalTable } from "../../components/Table/HorizontalTable";
 
 export const Requests : React.FC = () => {
   const classes = useStyles();
@@ -23,114 +25,57 @@ export const Requests : React.FC = () => {
   const ledger = useLedger();
   const { getName } = useParties();
   const { loading: l1, issuance } = useServices();
-  const { loading: l2, contracts: createRequests } = useStreamQueries(CreateIssuanceRequest);
-  const { loading: l3, contracts: reduceRequests } = useStreamQueries(ReduceIssuanceRequest);
+  const { loading: l2, holdings } = useHoldings();
+  const { loading: l3, contracts: issuances } = useStreamQueries(Issuance);
+  const { loading: l4, contracts: issueRequests } = useStreamQueries(IssueRequest);
+  const { loading: l5, contracts: deissueRequests } = useStreamQueries(DeissueRequest);
+  if (l1 || l2 || l3 || l4 || l5) return <Spinner />;
 
-  const providerServices = issuance.filter(s => s.payload.provider === party);
-
-  if (l1 || l2 || l3) return <Spinner />;
-  if (providerServices.length === 0) return <Message text="No provider issuance service found" />
-
-  const createIssuance = async (c : CreateEvent<CreateIssuanceRequest>) => {
-    const service = providerServices.find(s => s.payload.customer === c.payload.customer);
-    if (!service) return;
-    await ledger.exercise(Service.CreateIssuance, service.contractId, { createIssuanceRequestCid: c.contractId });
+  const issue = async (c : CreateEvent<IssueRequest>) => {
+    const svc = issuance.getService(party, c.payload.customer);
+    if (!svc) throw new Error("No issuance service found for provider " + party + " and customer " + c.payload.customer);
+    await ledger.exercise(Service.Issue, svc.service.contractId, { issueRequestCid: c.contractId });
     navigate("/app/issuance/issuances");
   }
 
-  const deleteIssuance = async (c : CreateEvent<ReduceIssuanceRequest>) => {
-    const service = providerServices.find(s => s.payload.customer === c.payload.customer);
-    if (!service) return;
-    await ledger.exercise(Service.ReduceIssuance, service.contractId, { reduceIssuanceRequestCid: c.contractId });
+  const deissue = async (c : CreateEvent<DeissueRequest>) => {
+    const svc = issuance.getService(party, c.payload.customer);
+    if (!svc) throw new Error("No issuance service found for provider " + party + " and customer " + c.payload.customer);
+    await ledger.exercise(Service.Deissue, svc.service.contractId, { deissueRequestCid: c.contractId });
     navigate("/app/issuance/issuances");
   }
 
+  const headers = ["Provider", "Customer", "Id", "Description", "Instrument", "Amount", "Action"]
+  const createIssueRow = (c : CreateEvent<IssueRequest>) : any[] => {
+    return [
+      getName(c.payload.provider),
+      getName(c.payload.customer),
+      c.payload.issuanceId,
+      c.payload.description,
+      c.payload.quantity.unit.id.unpack,
+      fmt(c.payload.quantity.amount, 0),
+      <Button color="primary" size="small" className={classes.choiceButton} variant="contained" disabled={party !== c.payload.provider} onClick={() => issue(c)}>Issue</Button>
+    ];
+  };
+  const createDeissueRow = (c : CreateEvent<DeissueRequest>) : any[] => {
+    const issuance = issuances.find(i => i.payload.id.unpack === c.payload.issuanceId.unpack)!;
+    const holding = holdings.find(h => h.contractId === c.payload.holdingCid)!;
+    return [
+      getName(c.payload.provider),
+      getName(c.payload.customer),
+      c.payload.issuanceId,
+      issuance.payload.description,
+      holding.payload.instrument.id.unpack,
+      fmt(holding.payload.amount, 0),
+      <Button color="primary" size="small" className={classes.choiceButton} variant="contained" disabled={party !== c.payload.provider} onClick={() => deissue(c)}>Deissue</Button>
+    ];
+  };
+  const valuesIssuance : any[] = issueRequests.map(createIssueRow);
+  const valuesDeissuance : any[] = deissueRequests.map(createDeissueRow);
   return (
     <>
-      <Grid container direction="column">
-        <Grid container direction="row">
-          <Grid item xs={12}>
-            <Paper className={classes.paper}>
-              <Grid container direction="row" justifyContent="center" className={classes.paperHeading}><Typography variant="h2">Issuance Requests</Typography></Grid>
-              <Table size="small">
-                <TableHead>
-                  <TableRow className={classes.tableRow}>
-                    <TableCell key={0} className={classes.tableCell}><b>Issuing Agent</b></TableCell>
-                    <TableCell key={1} className={classes.tableCell}><b>Issuer</b></TableCell>
-                    <TableCell key={2} className={classes.tableCell}><b>Issuance ID</b></TableCell>
-                    <TableCell key={4} className={classes.tableCell}><b>Instrument</b></TableCell>
-                    <TableCell key={5} className={classes.tableCell}><b>Quantity</b></TableCell>
-                    <TableCell key={6} className={classes.tableCell}><b>Action</b></TableCell>
-                    <TableCell key={7} className={classes.tableCell}><b>Details</b></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {createRequests.map((c, i) => (
-                    <TableRow key={i} className={classes.tableRow}>
-                      <TableCell key={0} className={classes.tableCell}>{getName(c.payload.provider)}</TableCell>
-                      <TableCell key={1} className={classes.tableCell}>{getName(c.payload.customer)}</TableCell>
-                      <TableCell key={2} className={classes.tableCell}>{c.payload.id}</TableCell>
-                      <TableCell key={4} className={classes.tableCell}>{c.payload.quantity.unit.id.unpack}</TableCell>
-                      <TableCell key={5} className={classes.tableCell}>{c.payload.quantity.amount}</TableCell>
-                      <TableCell key={6} className={classes.tableCell}>
-                        {party === c.payload.provider && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => createIssuance(c)}>Issue</Button>}
-                        {/* {party === c.payload.client && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => cancelRequest(c)}>Cancel</Button>} */}
-                      </TableCell>
-                      <TableCell key={7} className={classes.tableCell}>
-                        <IconButton color="primary" size="small" component="span" onClick={() => navigate("/app/issuance/createrequest/" + c.contractId)}>
-                          <KeyboardArrowRight fontSize="small"/>
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Paper>
-          </Grid>
-          <Grid item xs={12}>
-            <Paper className={classes.paper}>
-              <Grid container direction="row" justifyContent="center" className={classes.paperHeading}><Typography variant="h2">Deissuance Requests</Typography></Grid>
-              <Table size="small">
-                <TableHead>
-                  <TableRow className={classes.tableRow}>
-                    <TableCell key={0} className={classes.tableCell}><b>Provider</b></TableCell>
-                    <TableCell key={1} className={classes.tableCell}><b>Client</b></TableCell>
-                    <TableCell key={2} className={classes.tableCell}><b>Role</b></TableCell>
-                    <TableCell key={3} className={classes.tableCell}><b>Issuance ID</b></TableCell>
-                    {/* <TableCell key={4} className={classes.tableCell}><b>Account</b></TableCell> */}
-                    {/* <TableCell key={5} className={classes.tableCell}><b>Asset</b></TableCell>
-                    <TableCell key={6} className={classes.tableCell}><b>Quantity</b></TableCell> */}
-                    <TableCell key={7} className={classes.tableCell}><b>Action</b></TableCell>
-                    <TableCell key={8} className={classes.tableCell}><b>Details</b></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {reduceRequests.map((c, i) => (
-                    <TableRow key={i} className={classes.tableRow}>
-                      <TableCell key={0} className={classes.tableCell}>{getName(c.payload.provider)}</TableCell>
-                      <TableCell key={1} className={classes.tableCell}>{getName(c.payload.customer)}</TableCell>
-                      <TableCell key={2} className={classes.tableCell}>{party === c.payload.provider ? "Provider" : "Client"}</TableCell>
-                      <TableCell key={3} className={classes.tableCell}>{c.payload.id}</TableCell>
-                      {/* <TableCell key={4} className={classes.tableCell}>{c.payload.accountId.label}</TableCell> */}
-                      {/* <TableCell key={5} className={classes.tableCell}>{c.payload.assetId.label}</TableCell>
-                      <TableCell key={6} className={classes.tableCell}>{c.payload.quotedAssetId.label}</TableCell> */}
-                      <TableCell key={7} className={classes.tableCell}>
-                        {party === c.payload.provider && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => deleteIssuance(c)}>Deissue</Button>}
-                        {/* {party === c.payload.client && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => cancelRequest(c)}>Cancel</Button>} */}
-                      </TableCell>
-                      <TableCell key={8} className={classes.tableCell}>
-                        <IconButton color="primary" size="small" component="span" onClick={() => navigate("/app/issuance/deleterequest/" + c.contractId)}>
-                          <KeyboardArrowRight fontSize="small"/>
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Paper>
-          </Grid>
-        </Grid>
-      </Grid>
+      <HorizontalTable title="Issuance Requests" variant={"h3"} headers={headers} values={valuesIssuance} />
+      <HorizontalTable title="Deissuance Requests" variant={"h3"} headers={headers} values={valuesDeissuance} />
     </>
   );
 };

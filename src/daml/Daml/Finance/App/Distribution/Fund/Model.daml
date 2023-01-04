@@ -3,18 +3,20 @@
 
 module Daml.Finance.App.Distribution.Fund.Model where
 
-import DA.Set (singleton)
-import Daml.Finance.App.Distribution.Investment.Model (InvestmentRequest)
-import Daml.Finance.App.Issuance.Model qualified as Issuance (T)
-import Daml.Finance.App.Issuance.Service qualified as Issuance (CreateIssuance(..), RequestCreateIssuance(..), Service)
-import Daml.Finance.Interface.Account.Account qualified as Account (K)
+import DA.Set (fromList, singleton)
+import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, View(..))
+import Daml.Finance.App.Interface.Distribution.Fund.Fund qualified as Fund (ApproveInstruction(..), HasImplementation, I, IssueUnits(..), View(..))
+import Daml.Finance.App.Interface.Distribution.Fund.PooledInvestmentRequest qualified as PooledInvestmentRequest (HasImplementation, I, View(..))
+import Daml.Finance.App.Interface.Distribution.Investment.InvestmentRequest qualified as InvestmentRequest (I)
+import Daml.Finance.Interface.Account.Account qualified as Account (Credit(..), I, exerciseInterfaceByKey)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K, Q)
-import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Approve(..), I)
+import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Approve(..))
 import Daml.Finance.Interface.Settlement.Types (Approval(TakeDelivery))
-import Daml.Finance.Interface.Types.Common (Id, Parties)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentKey, InstrumentQuantity, Parties)
 
 type T = Fund
+
+instance Fund.HasImplementation Fund
 
 template Fund
   with
@@ -23,10 +25,10 @@ template Fund
     manager : Party
     id : Id
     description : Text
-    instrument : Instrument.K
-    currency : Instrument.K
-    custodianCashAccount : Account.K
-    managerFundAccount : Account.K
+    instrument : InstrumentKey
+    currency : InstrumentKey
+    custodianCashAccount : AccountKey
+    managerFundAccount : AccountKey
     totalUnits : Decimal
     observers : Parties
   where
@@ -36,31 +38,24 @@ template Fund
     key (operator, custodian, id) : (Party, Party, Id)
     maintainer key._1
 
-    nonconsuming choice GetFund : Fund
-      with
-        actor : Party
-      controller actor
-      do
-        pure this
+    interface instance Removable.I for Fund where
+      view = Removable.View with removers = fromList [operator, custodian, manager]
 
-    choice IssueUnits : (ContractId Issuance.T, ContractId Transferable.I, ContractId Fund)
-      with
-        requestId : Id
-        quantity : Instrument.Q
-      controller manager
-      do
-        createIssuanceRequestCid <- exerciseByKey @Issuance.Service (operator, custodian, manager) Issuance.RequestCreateIssuance with id = requestId; description = "Issuance for request " <> show requestId; quantity; account = managerFundAccount
-        (iss, holdingCid) <- exerciseByKey @Issuance.Service (operator, custodian, manager) Issuance.CreateIssuance with createIssuanceRequestCid
-        newCid <- create this with totalUnits = totalUnits + quantity.amount
-        pure (iss, coerceContractId holdingCid, newCid)
+    interface instance Fund.I for Fund where
+      view = Fund.View with operator; custodian; manager; id; description; instrument; currency; custodianCashAccount; managerFundAccount; totalUnits; observers
 
-    nonconsuming choice ApproveInstruction : ContractId Instruction.I
-      with
-        instructionCid : ContractId Instruction.I
-      controller manager
-      do
+      asRemovable = toInterface @Removable.I this
+
+      issueUnits Fund.IssueUnits{requestId; quantity} = do
+        holdingCid <- Account.exerciseInterfaceByKey @Account.I managerFundAccount manager Account.Credit with quantity
+        newCid <- toInterfaceContractId <$> create this with totalUnits = totalUnits + quantity.amount
+        pure (coerceContractId holdingCid, newCid)
+
+      approveInstruction Fund.ApproveInstruction{instructionCid} = do
+        -- TODO: Assert instruction is the correct one
         exercise instructionCid Instruction.Approve with actors = singleton manager; approval = TakeDelivery custodianCashAccount
 
+instance PooledInvestmentRequest.HasImplementation PooledInvestmentRequest
 
 template PooledInvestmentRequest
   with
@@ -70,13 +65,18 @@ template PooledInvestmentRequest
     requestId : Id
     asOfDate : Date
     fundId : Id
-    quantity : Instrument.Q
+    quantity : InstrumentQuantity
     cashCid : ContractId Transferable.I
-    investmentRequestCids : [ContractId InvestmentRequest]
-    customerFundAccount : Account.K
+    investmentRequestCids : [ContractId InvestmentRequest.I]
+    customerFundAccount : AccountKey
   where
     signatory operator, provider, customer
 
-    choice Remove : ()
-      controller provider
-      do pure ()
+    interface instance Removable.I for PooledInvestmentRequest where
+      view = Removable.View with removers = fromList [operator, provider, customer]
+
+    interface instance PooledInvestmentRequest.I for PooledInvestmentRequest where
+      view = PooledInvestmentRequest.View with operator; provider; customer; requestId; asOfDate; fundId; quantity; cashCid; investmentRequestCids; customerFundAccount
+
+      asRemovable = toInterface @Removable.I this
+

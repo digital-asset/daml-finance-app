@@ -8,10 +8,10 @@ import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
-import { BorrowOffer } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lending/Model";
+import { BorrowOffer } from "@daml.js/daml-finance-app-interface-lending/lib/Daml/Finance/App/Interface/Lending/BorrowOffer";
 import { fmt } from "../../util";
-import { useServices } from "../../context/ServiceContext";
-import { Service as Lending } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lending/Service";
+import { useServices } from "../../context/ServicesContext";
+import { Service as Lending } from "@daml.js/daml-finance-app-interface-lending/lib/Daml/Finance/App/Interface/Lending/Service";
 import { Reference } from "@daml.js/daml-finance-interface-account/lib/Daml/Finance/Interface/Account/Account";
 import { CreateEvent } from "@daml/ledger";
 import { useHoldings } from "../../context/HoldingContext";
@@ -31,9 +31,6 @@ export const Offers : React.FC = () => {
   const { loading: l4, contracts: accounts } = useStreamQueries(Reference);
   if (l1 || l2 || l3 || l4) return <Spinner />;
 
-  const customerServices = lending.filter(c => c.payload.customer === party);
-  const isCustomer = customerServices.length > 0;
-
   const acceptBorrowOffer = async (offer : CreateEvent<BorrowOffer>) => {
     const borrowerAccount = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === offer.payload.borrowed.unit.depository)?.key;
     const collateralCid = await getFungible(party, offer.payload.collateral.amount, offer.payload.collateral.unit);
@@ -43,7 +40,9 @@ export const Offers : React.FC = () => {
       collateralCid: collateralCid as string as ContractId<Transferable>,
       account: borrowerAccount
     };
-    await ledger.exercise(Lending.AcceptBorrowOffer, lending[0].contractId, arg);
+    const svc = lending.getService(offer.payload.provider, party);
+    if (!svc) throw new Error("No lending service found for provider [" + offer.payload.provider + "] and customer [" + party + "]");
+    await ledger.exercise(Lending.AcceptBorrowOffer, svc.service.contractId, arg);
     navigate("/app/lending/trades");
   };
 
@@ -51,12 +50,12 @@ export const Offers : React.FC = () => {
     return [
       getName(c.payload.customer),
       getName(c.payload.provider),
-      c.payload.id,
+      c.payload.dealId.unpack,
       fmt(c.payload.borrowed.amount, 0) + " " + c.payload.borrowed.unit.id.unpack,
       c.payload.maturity,
       fmt(c.payload.interest.amount, 0) + " " + c.payload.interest.unit.id.unpack,
       fmt(c.payload.collateral.amount, 0) + " " + c.payload.collateral.unit.id.unpack,
-      isCustomer ? <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => acceptBorrowOffer(c)}>Accept</Button> : <></>
+      c.payload.customer === party ? <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => acceptBorrowOffer(c)}>Accept</Button> : <></>
     ];
   }
   const headers = ["Borrower", "Lender", "Id", "Borrowed", "Maturity", "Interest", "Collateral", "Action"]

@@ -1,13 +1,12 @@
 // Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { CreateEvent } from "@daml/ledger";
-import { dedup } from "../util";
-import { Edge, EdgeChange, MarkerType, Node, NodeChange, useEdgesState, useNodesState } from "react-flow-renderer";
 import { useEffect, useState } from "react";
+import { Edge, EdgeChange, MarkerType, Node, NodeChange, useEdgesState, useNodesState } from "react-flow-renderer";
 import { useParties } from "../context/PartiesContext";
 import { useScenario } from "../context/ScenarioContext";
-import { useServices } from "../context/ServiceContext";
+import { ServiceAggregate, useServices } from "../context/ServicesContext";
+import { dedup } from "../util";
 
 export type Network = {
   nodes : Node<any>[],
@@ -31,21 +30,21 @@ export const useNetwork = () : Network => {
   const { getName } = useParties();
   const scenario = useScenario();
   const svc = useServices();
-  const services : CreateEvent<any>[] = Array.prototype.concat.apply([], [
-    svc.auction,
-    svc.backToBack,
-    svc.custody,
-    svc.bidding,
-    svc.fund,
-    svc.investment,
-    svc.issuance,
-    svc.lending,
-    svc.lifecycle,
-    svc.settlement,
-    svc.structuring,
-    svc.subscription,
-    svc.listing,
-    svc.trading,
+  const services : ServiceAggregate<any>[] = Array.prototype.concat.apply([], [
+    svc.auction.services,
+    svc.backToBack.services,
+    svc.bidding.services,
+    svc.custody.services,
+    svc.fund.services,
+    svc.investment.services,
+    svc.issuance.services,
+    svc.lending.services,
+    svc.lifecycle.services,
+    svc.listing.services,
+    svc.settlement.services,
+    svc.structuring.services,
+    svc.subscription.services,
+    svc.trading.services,
   ]);
 
   const createNode = (p : string, i : number) => ({
@@ -82,10 +81,11 @@ export const useNetwork = () : Network => {
   useEffect(() => {
     if (!svc.loading) {
       const groupedServices : GroupedServices[] = [];
+      const getName = (s : ServiceAggregate<any>) => s.service.templateId.split(":")[1].replace("Daml.Finance.App.Interface.", "");
       services.forEach(c => {
         const elem = groupedServices.find(e => e.provider === c.payload.provider && e.customer === c.payload.customer);
-        if (!!elem) elem.services.push(c.templateId.split(":")[1].replace("Daml.Finance.App.", ""));
-        else groupedServices.push({ id: c.contractId, provider: c.payload.provider, customer: c.payload.customer, services: [c.templateId.split(":")[1].replace("Daml.Finance.App.", "")]});
+        if (!!elem) elem.services.push(getName(c));
+        else groupedServices.push({ id: c.contractId, provider: c.payload.provider, customer: c.payload.customer, services: [getName(c)]});
       });
       const parties = dedup(groupedServices.flatMap(s => [s.provider, s.customer]));
       setNodes(parties.map(createNode));

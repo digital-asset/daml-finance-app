@@ -8,17 +8,17 @@ import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Typography, Grid, Table, TableBody, TableCell, TableRow, TextField, Button, Paper, ToggleButtonGroup, ToggleButton } from "@mui/material";
 import { useParams } from "react-router-dom";
 import useStyles from "../styles";
-import { Listing } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Model";
-import { Order, Side } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Trading/Model";
-import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Trading/Service";
-import { Service as AutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Trading/Auto/Service";
+import { Listing } from "@daml.js/daml-finance-app-interface-listing/lib/Daml/Finance/App/Interface/Listing/Listing";
+import { Order, Side } from "@daml.js/daml-finance-app-interface-trading/lib/Daml/Finance/App/Interface/Trading/Order";
+import { Service } from "@daml.js/daml-finance-app-interface-trading/lib/Daml/Finance/App/Interface/Trading/Service";
+import { Service as Auto } from "@daml.js/daml-finance-app-interface-trading/lib/Daml/Finance/App/Interface/Trading/Auto";
 import { CreateEvent } from "@daml/ledger";
 import { createSet, fmt, keyEquals } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { Percentage } from "../../components/Slider/Percentage";
 import { Reference } from "@daml.js/daml-finance-interface-account/lib/Daml/Finance/Interface/Account/Account";
 import { useParties } from "../../context/PartiesContext";
-import { useServices } from "../../context/ServiceContext";
+import { useServices } from "../../context/ServicesContext";
 import { Message } from "../../components/Message/Message";
 import { useHoldings } from "../../context/HoldingContext";
 
@@ -72,14 +72,10 @@ export const Market : React.FC = () => {
   const { contractId } = useParams<any>();
   if (l1 || l2 || l3 || l4 || l5 || !contractId) return <Spinner />;
 
-  const myServices = trading.filter(s => s.payload.customer === party);
-  const myAutoServices = tradingAuto.filter(s => s.payload.customer === party);
   const listing = listings.find(c => c.contractId === contractId);
-
-  if (myServices.length === 0) return <Message text="No trading service found" />;
   if (!listing) return <Message text="Listing not found" />;
 
-  const limits = orders.filter(c => c.payload.listingId === listing.payload.id && parseFloat(c.payload.quantity.amount) !== 0);
+  const limits = orders.filter(c => c.payload.listingId.unpack === listing.payload.id.unpack && parseFloat(c.payload.quantity.amount) !== 0);
   const bids = limits.filter(c => c.payload.side === Side.Buy).sort((a, b) => parseFloat(b.payload.price.amount) - parseFloat(a.payload.price.amount));
   const asks = limits.filter(c => c.payload.side === Side.Sell).sort((a, b) => parseFloat(b.payload.price.amount) - parseFloat(a.payload.price.amount));
   const myOrders = limits.filter(c => c.payload.customer === party);
@@ -92,6 +88,10 @@ export const Market : React.FC = () => {
   const availableQuantity = isBuy ? fmt(quotedHoldingsTotal) + " " + listing.payload.quotedInstrument.id.unpack : fmt(tradedHoldingsTotal) + " " + listing.payload.tradedInstrument.id.unpack;
 
   const requestCreateOrder = async () => {
+    // TODO: Assumes single service
+    const svc = trading.services[0];
+    const auto = tradingAuto.services[0];
+    if (!svc) throw new Error("No trading service found for customer [" + party + "]");
     const collateralCid = isBuy ? await getFungible(party, price * amount, listing.payload.quotedInstrument) : await getFungible(party, amount, listing.payload.tradedInstrument);
     const account = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === (isBuy ? listing.payload.tradedInstrument : listing.payload.quotedInstrument).depository);
     const orderCids = isBuy ? asks.map(c => c.contractId) : bids.map(c => c.contractId);
@@ -107,11 +107,8 @@ export const Market : React.FC = () => {
       orderCids,
       observers: createSet([ getParty("Public") ])
     }
-    if (myAutoServices.length > 0) {
-      await ledger.exercise(AutoService.RequestAndCreateOrder, myAutoServices[0].contractId, arg);
-    } else {
-      await ledger.exercise(Service.RequestCreateOrder, myServices[0].contractId, arg);
-    }
+    if (!!auto) await ledger.exercise(Auto.RequestAndCreateOrder, auto.service.contractId, arg);
+    else await ledger.exercise(Service.RequestCreateOrder, svc.service.contractId, arg);
   };
 
   const getPrice = (c : CreateEvent<Order>) => {
@@ -133,7 +130,7 @@ export const Market : React.FC = () => {
   return (
     <Grid container direction="column" spacing={2}>
       <Grid item xs={12}>
-        <Typography variant="h3" className={classnames(cls.defaultHeading, cls.centered)}>{listing.payload.id}</Typography>
+        <Typography variant="h3" className={classnames(cls.defaultHeading, cls.centered)}>{listing.payload.description}</Typography>
       </Grid>
       <Grid item xs={12}>
         <Grid container spacing={4}>
@@ -210,7 +207,7 @@ export const Market : React.FC = () => {
                       </TableRow>
                       {myOrders.map((c, i) => (
                         <TableRow key={i+1} className={cls.tableRow}>
-                          <TableCell key={0} className={cls.tableCell}>{c.payload.listingId}</TableCell>
+                          <TableCell key={0} className={cls.tableCell}>{c.payload.listingId.unpack}</TableCell>
                           <TableCell key={1} className={cls.tableCell}>{c.payload.id.unpack}</TableCell>
                           <TableCell key={2} className={cls.tableCell}>Limit</TableCell>
                           <TableCell key={3} className={cls.tableCell} style={{ color: getColor(c)}}>{c.payload.side}</TableCell>
@@ -221,11 +218,6 @@ export const Market : React.FC = () => {
                       ))}
                     </TableBody>
                   </Table>
-            </Paper>
-          </Grid>
-          <Grid item xs={4}>
-            <Paper className={classnames(cls.fullWidth, cls.paper)}>
-              <Typography variant="h5" className={cls.heading}>Trades</Typography>
             </Paper>
           </Grid>
         </Grid>

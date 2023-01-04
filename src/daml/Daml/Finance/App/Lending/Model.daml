@@ -3,11 +3,15 @@
 
 module Daml.Finance.App.Lending.Model where
 
-import DA.Set (singleton)
-import Daml.Finance.Interface.Account.Account qualified as Account (K, exerciseInterfaceByKey)
+import DA.Set (fromList, singleton)
+import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, View(..))
+import Daml.Finance.App.Interface.Lending.BorrowAgreement qualified as BorrowAgreement (I, Repay(..), View(..))
+import Daml.Finance.App.Interface.Lending.BorrowOffer qualified as BorrowOffer (I, View(..))
+import Daml.Finance.App.Interface.Lending.BorrowOfferRequest qualified as BorrowOfferRequest (I, View(..))
+import Daml.Finance.Interface.Account.Account qualified as Account (exerciseInterfaceByKey)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I, Release(..))
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I, Transfer(..))
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, RemoveObservers(..))
 
 template BorrowOfferRequest
@@ -15,62 +19,84 @@ template BorrowOfferRequest
     operator : Party
     provider : Party
     customer : Party
-    id : Text
-    borrowed : Instrument.Q
+    dealId : Id
+    description : Text
+    borrowed : InstrumentQuantity
     maturity : Date
   where
     signatory operator, provider, customer
 
-    key (operator, provider, id) : (Party, Party, Text)
+    key (operator, provider, dealId) : (Party, Party, Id)
     maintainer key._1
+
+    interface instance Removable.I for BorrowOfferRequest where
+      view = Removable.View with removers = fromList [operator, provider, customer]
+
+    interface instance BorrowOfferRequest.I for BorrowOfferRequest where
+      view = BorrowOfferRequest.View with operator; provider; customer; dealId; description; borrowed; maturity
+
+      asRemovable = toInterface @Removable.I this
 
 template BorrowOffer
   with
     operator : Party
     provider : Party
     customer : Party
-    id : Text
-    borrowed : Instrument.Q
+    dealId : Id
+    description : Text
+    borrowed : InstrumentQuantity
     maturity : Date
-    interest : Instrument.Q
-    collateral : Instrument.Q
+    interest : InstrumentQuantity
+    collateral : InstrumentQuantity
     borrowedCid : ContractId Transferable.I
-    lenderBorrowedAccount : Account.K
-    lenderInterestAccount : Account.K
+    lenderBorrowedAccount : AccountKey
+    lenderInterestAccount : AccountKey
   where
     signatory operator, provider, customer
 
-    key (operator, provider, id) : (Party, Party, Text)
+    key (operator, provider, dealId) : (Party, Party, Id)
     maintainer key._1
+
+    interface instance Removable.I for BorrowOffer where
+      view = Removable.View with removers = fromList [operator, provider, customer]
+
+    interface instance BorrowOffer.I for BorrowOffer where
+      view = BorrowOffer.View with operator; provider; customer; dealId; description; borrowed; maturity; interest; collateral; borrowedCid; lenderBorrowedAccount; lenderInterestAccount
+
+      asRemovable = toInterface @Removable.I this
 
 template BorrowAgreement
   with
     operator : Party
     provider : Party
     customer : Party
-    id : Text
-    borrowed : Instrument.Q
+    dealId : Id
+    description : Text
+    borrowed : InstrumentQuantity
     maturity : Date
-    interest : Instrument.Q
-    collateral : Instrument.Q
+    interest : InstrumentQuantity
+    collateral : InstrumentQuantity
     collateralCid : ContractId Transferable.I
-    lenderBorrowedAccount : Account.K
-    lenderInterestAccount : Account.K
+    lenderBorrowedAccount : AccountKey
+    lenderInterestAccount : AccountKey
   where
     signatory operator, provider, customer
 
-    key (operator, provider, id) : (Party, Party, Text)
+    key (operator, provider, dealId) : (Party, Party, Id)
     maintainer key._1
 
-    choice Repay : (ContractId Transferable.I, ContractId Transferable.I, ContractId Transferable.I)
-      with
-        borrowedCid : ContractId Transferable.I
-        interestCid : ContractId Transferable.I
-      controller customer
-      do
+    interface instance Removable.I for BorrowAgreement where
+      view = Removable.View with removers = fromList [operator, provider, customer]
+
+    interface instance BorrowAgreement.I for BorrowAgreement where
+      view = BorrowAgreement.View with operator; provider; customer; dealId; description; borrowed; maturity; interest; collateral; collateralCid; lenderBorrowedAccount; lenderInterestAccount
+
+      asRemovable = toInterface @Removable.I this
+
+      repay BorrowAgreement.Repay{borrowedCid; interestCid} = do
         borrowedCid <- exercise borrowedCid Transferable.Transfer with actors = singleton customer; newOwnerAccount = lenderBorrowedAccount
         interestCid <- exercise interestCid Transferable.Transfer with actors = singleton customer; newOwnerAccount = lenderInterestAccount
-        unlockedCid <- coerceContractId <$> exercise (toInterfaceContractId collateralCid : ContractId Holding.I) Holding.Release with context = id
-        Account.exerciseInterfaceByKey @Disclosure.I lenderBorrowedAccount provider Disclosure.RemoveObservers with disclosers = singleton customer; observersToRemove = (id, singleton customer)
-        Account.exerciseInterfaceByKey @Disclosure.I lenderInterestAccount provider Disclosure.RemoveObservers with disclosers = singleton customer; observersToRemove = (id, singleton customer)
+        unlockedCid <- coerceContractId <$> exercise (toInterfaceContractId collateralCid : ContractId Holding.I) Holding.Release with context = show dealId
+        Account.exerciseInterfaceByKey @Disclosure.I lenderBorrowedAccount provider Disclosure.RemoveObservers with disclosers = singleton customer; observersToRemove = (show dealId, singleton customer)
+        Account.exerciseInterfaceByKey @Disclosure.I lenderInterestAccount provider Disclosure.RemoveObservers with disclosers = singleton customer; observersToRemove = (show dealId, singleton customer)
         pure (unlockedCid, borrowedCid, interestCid)

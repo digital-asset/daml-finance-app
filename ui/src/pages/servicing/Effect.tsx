@@ -15,7 +15,7 @@ import { Effect as EffectI } from "@daml.js/daml-finance-interface-lifecycle/lib
 import { useParties } from "../../context/PartiesContext";
 import { Message } from "../../components/Message/Message";
 import { Claim } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Rule/Claim";
-import { useServices } from "../../context/ServiceContext";
+import { useServices } from "../../context/ServicesContext";
 import { HoldingAggregate, useHoldings } from "../../context/HoldingContext";
 import { Batch } from "@daml.js/daml-finance-interface-settlement/lib/Daml/Finance/Interface/Settlement/Batch";
 
@@ -36,22 +36,22 @@ export const Effect : React.FC = () => {
 
   if (loading) return <Spinner />;
   if (!effect) return <Message text={"Effect [" + contractId + "] not found"} />;
-  if (custody.length === 0) return <Message text={"No custody service found"} />;
+  if (custody.services.length === 0) return <Message text={"No custody service found"} />;
 
   const filteredHoldings = holdings.filter(c => keyEquals(c.payload.instrument, effect.payload.targetInstrument));
   const filteredBatches = batches.filter(c => !!c.payload.contextId && c.payload.contextId.unpack === effect.payload.id.unpack);
 
   const claimEffect = async () => {
     const claimHolding = async (holding : HoldingAggregate) => {
-      const service = custody.find(c => c.payload.provider === holding.payload.account.custodian && c.payload.customer === holding.payload.account.owner);
-      if (!service) throw new Error("No custody service found with custodian [" + holding.payload.account.custodian + "] and owner [" + holding.payload.account.owner + "]");
+      const aggregate = custody.getService(holding.payload.account.custodian, holding.payload.account.owner);
+      if (!aggregate) throw new Error("No custody service found with custodian [" + holding.payload.account.custodian + "] and owner [" + holding.payload.account.owner + "]");
       const arg = {
         claimer: party,
         holdingCids: [holding.contractId],
         effectCid: effect.contractId,
         batchId: { unpack: uuidv4() }
       }
-      await ledger.exercise(Claim.ClaimEffect, service.payload.claimRuleCid, arg);
+      await ledger.exercise(Claim.ClaimEffect, aggregate.service.payload.claimRuleCid, arg);
     };
     await Promise.all(filteredHoldings.map(claimHolding));
   };

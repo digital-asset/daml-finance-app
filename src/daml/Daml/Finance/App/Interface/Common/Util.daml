@@ -1,0 +1,13 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Interface.Common.Util where
+
+import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Remove(..))
+
+-- | Fetches a contract, removes it and returns its value.
+fetchAndRemove : (HasFetch a, HasToInterface a Removable.I) => ContractId a -> Update a
+fetchAndRemove cid = do
+  c <- fetch cid
+  exercise (toInterfaceContractId @Removable.I cid) Removable.Remove
+  return c

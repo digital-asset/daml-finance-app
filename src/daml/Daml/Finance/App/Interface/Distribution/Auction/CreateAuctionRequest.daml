@@ -1,0 +1,40 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Interface.Distribution.Auction.CreateAuctionRequest where
+
+import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Implementation)
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentKey, InstrumentQuantity, Parties)
+
+type I = CreateAuctionRequest
+
+type V = View
+
+data View = View
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    auctionId : Id
+    description : Text
+    quantity : InstrumentQuantity
+    currency : InstrumentKey
+    floor : Decimal
+    collateralCid : ContractId Fungible.I
+    receivableAccount : AccountKey
+    observers : Parties
+  deriving (Eq, Show)
+
+interface CreateAuctionRequest where
+  viewtype View
+    -- ^ Interface view type.
+
+  asRemovable : Removable.I
+    -- ^ Conversion to the `Removable` interface.
+
+-- | Type constraint for requiring templates to implement `CreateAuctionRequest`.
+type Implementation t = (HasToInterface t CreateAuctionRequest, Removable.Implementation t)
+class (Implementation t) => HasImplementation t
+instance HasImplementation CreateAuctionRequest
+instance HasToInterface CreateAuctionRequest Removable.I where _toInterface = asRemovable

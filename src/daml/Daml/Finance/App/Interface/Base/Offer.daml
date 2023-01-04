@@ -1,0 +1,47 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Interface.Base.Offer where
+
+import Daml.Finance.App.Interface.Base.Service qualified as Service (I)
+
+type I = Offer
+
+type V = View
+
+data View = View
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  deriving (Eq, Show)
+
+interface Offer where
+  viewtype V
+
+  accept : Update (ContractId Service.I)
+    -- ^ Implementation of the `Accept` choice.
+  reject : Update ()
+    -- ^ Implementation of the `Reject` choice.
+  withdraw : Update ()
+    -- ^ Implementation of the `Withdraw` choice.
+
+  choice Accept : ContractId Service.I
+    controller (view this).customer
+    do
+      accept this
+
+  choice Reject : ()
+    controller (view this).customer
+    do
+      reject this
+
+  choice Withdraw : ()
+    controller (view this).provider
+    do
+      withdraw this
+
+-- | Type constraint for requiring templates to implement `Offer`.
+type Implementation t = HasToInterface t Offer
+class (Implementation t) => HasImplementation t
+instance HasImplementation Offer

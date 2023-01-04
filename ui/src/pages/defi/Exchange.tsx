@@ -10,8 +10,8 @@ import { Button, Grid, Paper, Table, TableBody, TableCell, TableRow, TextField, 
 import { Percentage } from "../../components/Slider/Percentage";
 import useStyles from "../styles";
 import { Bonding } from "../../components/Curve/Bonding";
-import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Decentralized/Exchange/Service";
-import { useServices } from "../../context/ServiceContext";
+import { Service } from "@daml.js/daml-finance-app-interface-decentralized/lib/Daml/Finance/App/Interface/Decentralized/Exchange/Service";
+import { useServices } from "../../context/ServicesContext";
 import { useHoldings } from "../../context/HoldingContext";
 import { useAccounts } from "../../context/AccountContext";
 import { Message } from "../../components/Message/Message";
@@ -32,7 +32,7 @@ export const Exchange : React.FC = () => {
   const { loading: l1, decentralizedExchange } = useServices();
   const { loading: l2, getFungible, holdings } = useHoldings();
   const { loading: l3, getAccount } = useAccounts();
-  const dex = decentralizedExchange.find(c => c.payload.id.unpack === dexId);
+  const dex = decentralizedExchange.services.find(c => c.service.payload.id.unpack === dexId)?.service;
 
   useEffect(() => {
     if (!dex) return;

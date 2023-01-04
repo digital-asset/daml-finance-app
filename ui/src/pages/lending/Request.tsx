@@ -7,14 +7,14 @@ import classnames from "classnames";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Grid, Paper, Typography, Table, TableRow, TableCell, TableBody, Button } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
-import { Service as Lending } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lending/Service";
+import { Service as Lending } from "@daml.js/daml-finance-app-interface-lending/lib/Daml/Finance/App/Interface/Lending/Service";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { Reference } from "@daml.js/daml-finance-interface-account/lib/Daml/Finance/Interface/Account/Account";
 import { Message } from "../../components/Message/Message";
 import { useParties } from "../../context/PartiesContext";
 import { useInstruments } from "../../context/InstrumentContext";
-import { useServices } from "../../context/ServiceContext";
-import { BorrowOfferRequest } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lending/Model";
+import { useServices } from "../../context/ServicesContext";
+import { BorrowOfferRequest } from "@daml.js/daml-finance-app-interface-lending/lib/Daml/Finance/App/Interface/Lending/BorrowOfferRequest";
 import { fmt } from "../../util";
 import { useHoldings } from "../../context/HoldingContext";
 import { ContractId } from "@daml/types";
@@ -48,13 +48,6 @@ export const Request : React.FC = () => {
 
   if (l1 || l2 || l3 || l4 || l5) return <Spinner />;
 
-  const providerServices = lending.filter(c => c.payload.provider === party);
-  const customerServices = lending.filter(c => c.payload.customer === party);
-  const isProvider = providerServices.length > 0;
-  const isCustomer = customerServices.length > 0;
-
-
-  if (!isProvider && !isCustomer) return <Message text="No lending service found" />
   if (!request) return <Message text="Borrow request not found" />
   if (!borrowedInstrument) return <Message text="Borrowed instrument not found" />
   const canRequest = !!interestInstrument && !!collateralInstrument && !!interestAmount && !!collateralAmount;
@@ -73,14 +66,16 @@ export const Request : React.FC = () => {
       lenderBorrowedAccount,
       lenderInterestAccount
     };
-    await ledger.exercise(Lending.CreateBorrowOffer, lending[0].contractId, arg);
+    const svc = lending.getService(party, request.payload.customer);
+    if (!svc) throw new Error("No lending service found for provider [" + party + "] and customer [" + request.payload.customer + "]");
+    await ledger.exercise(Lending.CreateBorrowOffer, svc.service.contractId, arg);
     navigate("/app/lending/offers");
   };
 
   return (
     <Grid container direction="column">
       <Grid item xs={12}>
-        <Typography variant="h3" className={cls.heading}>{request.payload.id}</Typography>
+        <Typography variant="h3" className={cls.heading}>{request.payload.dealId.unpack}</Typography>
       </Grid>
       <Grid item xs={12}>
         <Grid container spacing={4}>
@@ -101,7 +96,7 @@ export const Request : React.FC = () => {
                       </TableRow>
                       <TableRow key={2} className={cls.tableRow}>
                         <TableCell key={0} className={classnames(cls.tableCell, cls.width50)}><b>Id</b></TableCell>
-                        <TableCell key={1} className={classnames(cls.tableCell, cls.width50)}>{request.payload.id}</TableCell>
+                        <TableCell key={1} className={classnames(cls.tableCell, cls.width50)}>{request.payload.dealId.unpack}</TableCell>
                       </TableRow>
                       <TableRow key={3} className={cls.tableRow}>
                         <TableCell key={0} className={classnames(cls.tableCell, cls.width50)}><b>Borrowed</b></TableCell>
@@ -114,7 +109,7 @@ export const Request : React.FC = () => {
                     </TableBody>
                   </Table>
                 </Paper>
-                {isProvider &&
+                {request.payload.provider === party &&
                   <Paper className={classnames(cls.fullWidth, cls.paper)}>
                     <Typography variant="h5" className={cls.heading}>Offer Details</Typography>
                     <SelectInput  label="Interest Instrument"     value={interestInstrumentLabel}   setValue={setInterestInstrumentLabel} values={toValues(tokens)} />

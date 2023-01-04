@@ -7,7 +7,7 @@ import { Card, CardActionArea, CardContent, Grid, Table, TableBody, TableCell, T
 import { Box } from "@mui/system";
 import useStyles from "./styles";
 import { fmt } from "../../util";
-import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Decentralized/Exchange/Service";
+import { Service } from "@daml.js/daml-finance-app-interface-decentralized/lib/Daml/Finance/App/Interface/Decentralized/Exchange/Service";
 import { useParties } from "../../context/PartiesContext";
 
 type DexProps = {

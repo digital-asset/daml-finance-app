@@ -1,0 +1,24 @@
+# Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+sdk-version: 2.6.0-snapshot.20221218.11169.0.9d007b31
+name: daml-finance-app-interface-structuring
+version: 0.0.1
+source: daml
+dependencies:
+  - daml-prim
+  - daml-stdlib
+data-dependencies:
+  - .lib/daml-finance/Daml.Finance.Interface.Claims/1.0.0/daml-finance-interface-claims-1.0.0.dar
+  - .lib/daml-finance/Daml.Finance.Interface.Instrument.Base/1.0.0/daml-finance-interface-instrument-base-1.0.0.dar
+  - .lib/daml-finance/Daml.Finance.Interface.Instrument.Bond/0.2.0/daml-finance-interface-instrument-bond-0.2.0.dar
+  - .lib/daml-finance/Daml.Finance.Interface.Instrument.Equity/0.2.0/daml-finance-interface-instrument-equity-0.2.0.dar
+  - .lib/daml-finance/Daml.Finance.Interface.Instrument.Generic/1.0.0/daml-finance-interface-instrument-generic-1.0.0.dar
+  - .lib/daml-finance/Daml.Finance.Interface.Instrument.Swap/0.2.0/daml-finance-interface-instrument-swap-0.2.0.dar
+  - .lib/daml-finance/Daml.Finance.Interface.Instrument.Token/1.0.0/daml-finance-interface-instrument-token-1.0.0.dar
+  - .lib/daml-finance/Daml.Finance.Interface.Types.Common/1.0.0/daml-finance-interface-types-common-1.0.0.dar
+  - .lib/daml-finance/Daml.Finance.Interface.Types.Date/1.0.0/daml-finance-interface-types-date-1.0.0.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Interface.Base/0.0.1/daml-finance-app-interface-base-0.0.1.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Interface.Common/0.0.1/daml-finance-app-interface-common-0.0.1.dar
+build-options:
+  - --target=1.15

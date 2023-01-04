@@ -3,7 +3,7 @@
 
 import React from "react";
 import { useParty, useStreamQueries } from "@daml/react";
-import { Auction } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Model";
+import { Auction } from "@daml.js/daml-finance-app-interface-distribution/lib/Daml/Finance/App/Interface/Distribution/Auction/Auction";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { fmt } from "../../../util";
 import { useParties } from "../../../context/PartiesContext";
@@ -20,7 +20,7 @@ export const Auctions : React.FC = () => {
   const createRow = (c : CreateEvent<Auction>) : any[] => {
     const path = (party === c.payload.provider || party === c.payload.customer ? "/app/distribution/auctions/" : "/app/distribution/auction/") + c.contractId;
     return [
-      c.payload.id,
+      c.payload.id.unpack,
       getName(c.payload.provider),
       getName(c.payload.customer),
       fmt(c.payload.quantity.amount) + " " + c.payload.quantity.unit.id.unpack,

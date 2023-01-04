@@ -1,0 +1,106 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Custody.Auto where
+
+import Daml.Finance.App.Custody.Service qualified as Service (T)
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
+import Daml.Finance.App.Interface.Custody.Auto qualified as Auto (HasImplementation, I, View(..), RequestAndCloseAccount(..), RequestAndDeposit(..), RequestAndOpenAccount(..), RequestAndWithdraw(..))
+import Daml.Finance.App.Interface.Custody.Service qualified as Service (CloseAccount(..), Deposit(..), I, OpenAccount(..), RequestCloseAccount(..), RequestDeposit(..), RequestOpenAccount(..), RequestWithdraw(..), Withdraw(..))
+import Daml.Finance.Interface.Account.Factory qualified as Account (F)
+import Daml.Finance.Interface.Holding.Factory qualified as Holding (F)
+
+type T = Service
+
+instance Auto.HasImplementation Service
+
+template Service
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    accountFactoryCid : ContractId Account.F
+    holdingFactoryCid : ContractId Holding.F
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, customer) : (Party, Party, Party)
+    maintainer key._1
+
+    interface instance Base.I for Service where
+      view = Base.View with operator; provider; customer
+      terminate = pure ()
+
+    interface instance Auto.I for Service where
+      view = Auto.View
+
+      asBase = toInterface @Base.I this
+
+      requestAndOpenAccount Auto.RequestAndOpenAccount{id; description; controllers; observers} = do
+        serviceCid <- toInterfaceContractId @Service.I . fst <$> fetchByKey @Service.T (operator, provider, customer)
+        openAccountRequestCid <- exercise serviceCid Service.RequestOpenAccount with id; description; controllers; observers
+        exercise serviceCid Service.OpenAccount with openAccountRequestCid
+
+      requestAndCloseAccount Auto.RequestAndCloseAccount{account} = do
+        serviceCid <- toInterfaceContractId @Service.I . fst <$> fetchByKey @Service.T (operator, provider, customer)
+        closeAccountRequestCid <- exercise serviceCid Service.RequestCloseAccount with account
+        exercise serviceCid Service.CloseAccount with closeAccountRequestCid
+
+      requestAndDeposit Auto.RequestAndDeposit{account; quantity} = do
+        serviceCid <- toInterfaceContractId @Service.I . fst <$> fetchByKey @Service.T (operator, provider, customer)
+        depositRequestCid <- exercise serviceCid Service.RequestDeposit with quantity; account
+        exercise serviceCid Service.Deposit with depositRequestCid
+
+      requestAndWithdraw Auto.RequestAndWithdraw{holdingCid} = do
+        serviceCid <- toInterfaceContractId @Service.I . fst <$> fetchByKey @Service.T (operator, provider, customer)
+        withdrawRequestCid <- exercise serviceCid Service.RequestWithdraw with holdingCid
+        exercise serviceCid Service.Withdraw with withdrawRequestCid
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    accountFactoryCid : ContractId Account.F
+    holdingFactoryCid : ContractId Holding.F
+  where
+    signatory operator, provider
+    observer customer
+
+    choice Accept : ContractId Service
+      controller customer
+      do
+        create Service with operator; provider; customer; accountFactoryCid; holdingFactoryCid
+
+    choice Decline : ()
+      controller customer
+      do pure ()
+
+    choice Withdraw : ()
+      controller provider
+      do pure ()
+
+template Request
+  with
+    customer : Party
+    provider : Party
+  where
+    signatory customer
+    observer provider
+
+    choice Cancel : ()
+      controller customer
+      do pure ()
+
+    choice Reject : ()
+      controller provider
+      do pure ()
+
+    choice Approve : ContractId Service
+      with
+        operator : Party
+        accountFactoryCid : ContractId Account.F
+        holdingFactoryCid : ContractId Holding.F
+      controller operator, provider
+      do
+        create Service with operator; provider; customer; accountFactoryCid; holdingFactoryCid

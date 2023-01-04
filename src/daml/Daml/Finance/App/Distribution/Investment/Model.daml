@@ -3,13 +3,15 @@
 
 module Daml.Finance.App.Distribution.Investment.Model where
 
-import DA.Set (singleton)
-import Daml.Finance.Interface.Account.Account qualified as Account (K)
+import DA.Set (fromList, singleton)
+import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, View(..))
+import Daml.Finance.App.Interface.Distribution.Investment.InvestmentRequest qualified as InvestmentRequest (AllocateInstruction(..), ApproveInstruction(..), HasImplementation, I, View(..))
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..), I)
+import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Types (Allocation(Pledge), Approval(TakeDelivery))
-import Daml.Finance.Interface.Types.Common (Id)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity)
+
+instance InvestmentRequest.HasImplementation InvestmentRequest
 
 template InvestmentRequest
   with
@@ -20,27 +22,23 @@ template InvestmentRequest
     requestId : Id
     asOfDate : Date
     fundId : Id
-    quantity : Instrument.Q
+    quantity : InstrumentQuantity
     cashCid : ContractId Transferable.I
-    customerFundAccount : Account.K
+    customerFundAccount : AccountKey
   where
     signatory operator, provider, customer
     observer manager
 
-    nonconsuming choice AllocateInstruction : ContractId Instruction.I
-      with
-        instructionCid : ContractId Instruction.I
-      controller manager
-      do
+    interface instance Removable.I for InvestmentRequest where
+      view = Removable.View with removers = fromList [operator, provider, customer]
+
+    interface instance InvestmentRequest.I for InvestmentRequest where
+      view = InvestmentRequest.View with operator; provider; customer; manager; requestId; asOfDate; fundId; quantity; cashCid; customerFundAccount
+
+      asRemovable = toInterface @Removable.I this
+
+      allocateInstruction InvestmentRequest.AllocateInstruction{instructionCid} = do
         fst <$> exercise instructionCid Instruction.Allocate with actors = singleton manager; allocation = Pledge $ toInterfaceContractId cashCid
 
-    nonconsuming choice ApproveInstruction : ContractId Instruction.I
-      with
-        instructionCid : ContractId Instruction.I
-      controller manager
-      do
-        exercise instructionCid Instruction.Approve with actors = singleton manager; approval = TakeDelivery customerFundAccount
-
-    choice Delete : ()
-      controller manager
-      do pure ()
+      approveInstruction InvestmentRequest.ApproveInstruction{instructionCid} = do
+          exercise instructionCid Instruction.Approve with actors = singleton manager; approval = TakeDelivery customerFundAccount

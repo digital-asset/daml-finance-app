@@ -1,0 +1,73 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Interface.Custody.Auto where
+
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I)
+import Daml.Finance.Interface.Account.Account qualified as Account (Controllers, I)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentKey, InstrumentQuantity, PartiesMap)
+
+type I = Service
+
+type V = View
+
+data View = View {}
+  deriving (Eq, Show)
+
+interface Service where
+  viewtype V
+
+  asBase : Base.I
+    -- ^ Conversion to base `Service` interface.
+
+  requestAndOpenAccount : RequestAndOpenAccount -> Update (ContractId Account.I, AccountKey)
+    -- ^ Implementation of the `RequestOpenAccount` choice.
+
+  requestAndCloseAccount : RequestAndCloseAccount -> Update ()
+    -- ^ Implementation of the `RequestCloseAccount` choice.
+
+  requestAndDeposit : RequestAndDeposit -> Update (ContractId Holding.I)
+    -- ^ Implementation of the `RequestDeposit` choice.
+
+  requestAndWithdraw : RequestAndWithdraw -> Update ()
+    -- ^ Implementation of the `RequestAndWithdraw` choice.
+
+  nonconsuming choice RequestAndOpenAccount : (ContractId Account.I, AccountKey)
+    with
+      id : Id
+      description : Text
+      controllers : Account.Controllers
+      observers : PartiesMap
+    controller (view $ asBase this).customer
+    do
+      requestAndOpenAccount this arg
+
+  nonconsuming choice RequestAndCloseAccount : ()
+    with
+      account : AccountKey
+    controller (view $ asBase this).customer
+    do
+      requestAndCloseAccount this arg
+
+  nonconsuming choice RequestAndDeposit : (ContractId Holding.I)
+    with
+      quantity : InstrumentQuantity
+      account : AccountKey
+    controller (view $ asBase this).customer
+    do
+      requestAndDeposit this arg
+
+  nonconsuming choice RequestAndWithdraw : ()
+    with
+      instrument : InstrumentKey
+      holdingCid : ContractId Holding.I
+    controller (view $ asBase this).customer
+    do
+      requestAndWithdraw this arg
+
+-- | Type constraint for requiring templates to implement `Service`.
+type Implementation t = HasToInterface t Service
+class (Implementation t) => HasImplementation t
+instance HasImplementation Service
+instance HasToInterface Service Base.I where _toInterface = asBase

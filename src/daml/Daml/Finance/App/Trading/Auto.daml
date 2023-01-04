@@ -1,0 +1,88 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Trading.Auto where
+
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
+import Daml.Finance.App.Interface.Trading.Auto qualified as Auto (HasImplementation, I, RequestAndCancelOrder(..), RequestAndCreateOrder(..), View(..))
+import Daml.Finance.App.Interface.Trading.Service qualified as Service (CancelOrder(..), CreateOrder(..), I, RequestCancelOrder(..), RequestCreateOrder(..))
+import Daml.Finance.App.Trading.Service qualified as Service (T)
+
+type T = Service
+
+instance Auto.HasImplementation Service
+
+template Service
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, customer) : (Party, Party, Party)
+    maintainer key._1
+
+    interface instance Base.I for Service where
+      view = Base.View with operator; provider; customer
+      terminate = pure ()
+
+    interface instance Auto.I for Service where
+      view = Auto.View
+
+      asBase = toInterface @Base.I this
+
+      requestAndCreateOrder Auto.RequestAndCreateOrder{id; listingId; quantity; price; side; collateralCid; account; orderCids; observers} = do
+        serviceCid <- toInterfaceContractId @Service.I . fst <$> fetchByKey @Service.T (operator, provider, customer)
+        createOrderRequestCid <- exercise serviceCid Service.RequestCreateOrder with id; listingId; quantity; price; side; collateralCid; account; orderCids; observers
+        exercise serviceCid Service.CreateOrder with createOrderRequestCid
+
+      requestAndCancelOrder Auto.RequestAndCancelOrder{orderCid} = do
+        serviceCid <- toInterfaceContractId @Service.I . fst <$> fetchByKey @Service.T (operator, provider, customer)
+        cancelOrderRequestCid <- exercise serviceCid Service.RequestCancelOrder with orderCid
+        exercise serviceCid Service.CancelOrder with cancelOrderRequestCid
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider
+    observer customer
+
+    choice Accept : ContractId Service
+      controller customer
+      do
+        create Service with ..
+
+    choice Decline : ()
+      controller customer
+      do
+        return ()
+
+    choice Withdraw : ()
+      controller provider
+      do pure ()
+
+template Request
+  with
+    customer : Party
+    provider : Party
+  where
+    signatory customer
+
+    choice Cancel : ()
+      controller customer
+      do pure ()
+
+    choice Reject : ()
+      controller provider
+      do pure ()
+
+    choice Approve : ContractId Service
+      with
+        operator : Party
+      controller operator, provider
+      do
+        create Service with ..

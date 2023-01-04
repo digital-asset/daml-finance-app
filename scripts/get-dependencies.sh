@@ -2,48 +2,87 @@
 # Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-set -eu
+set -euo pipefail
 
-# Create .lib directory if it doesn't exist
-if [[ ! -d .lib ]]; then
-  mkdir .lib
+daml_yaml_file=$1
+project_name=$(yq e '.name' ${daml_yaml_file})
+
+# Use absolute paths to allow this script to be called from any location
+root_dir=$(cd "$(dirname $0)"; cd ..; pwd -P)
+cache_dir="${root_dir}/.cache"
+dars_dir="${root_dir}/.dars"
+package_root_dir="${root_dir}/package/*/daml"
+project_root_dir=$(cd "$(dirname "${daml_yaml_file}")"; pwd -P)
+project_lib_dir="${project_root_dir}/.lib"
+
+red='\033[0;31m'
+colour_off='\033[0m'
+
+dependencies=($(yq e '.data-dependencies[]' ${daml_yaml_file}))
+if [[ -z ${dependencies:-} ]]; then
+  echo "Project ${project_name} has no dependencies. Ignoring..."
+else
+  for dependency_path in "${dependencies[@]}"; do
+
+    echo "Processing dependency ${dependency_path}"
+
+    isValidPath=`awk '{ match($0, /^.lib\/[a-zA-Z\-]*\/([a-zA-Z\.]*\/v?[0-9\.]*|v?[0-9\.]*)\/[a-zA-Z0-9\.\-]*\.dar$/); print RLENGTH }' <<< ${dependency_path}`
+    if [[ ${isValidPath} -eq -1 ]]; then
+      echo -e "${red}ERROR: Dependency ${dependency_path} does not match the expected format.
+
+              Dependency syntax :
+                .lib/<repo_name>/<tag>/<file_name>
+              <tag> syntax :
+                <version> | <project_name>/<version>
+
+              Regex format : ^\.lib\/[a-zA-Z\-]*\/([a-zA-Z\.]*\/v?[0-9\.]*|v?[0-9\.]*)\/[a-zA-Z0-9\.\-]*\.dar$ ${colour_off}"
+      exit 1
+    fi
+
+    if [[ -a ${project_root_dir}/${dependency_path} ]]; then
+      echo -e "Dependency ${dependency_path} already setup. Skipping.\n"
+    else
+      # Extract the dependency details from dependency path
+      read repo_name file_name tag <<<$(awk '{
+          n = split($0,array,"/");
+          repo = array[2];
+          file = array[n];
+          for (i = 3; i < n; i++) {
+            tag = sprintf("%s%s", tag, array[i]);
+            if (i != n - 1)
+              tag = sprintf("%s/", tag);
+            }
+          }
+          END { print repo, file, tag }' <<< ${dependency_path})
+
+      # Check if the dependency exists in the following order :
+      # 1 - cache
+      # 2 - GitHub
+      # 3 - local build
+      cache_dependency_path=${cache_dir}/${repo_name}/${tag}
+
+      if [[ -a ${cache_dependency_path}/${file_name} ]]; then
+        echo "Using cached dependency at ${cache_dependency_path}/${file_name}"
+        mkdir -p ${project_lib_dir}/${repo_name}/${tag} && cp ${cache_dependency_path}/${file_name} ${project_root_dir}/${dependency_path}
+      elif [[ `curl -L -o /dev/null --silent -I -w '%{http_code}' https://github.com/digital-asset/${repo_name}/releases/download/${tag}/${file_name}` == "200" ]]; then
+        echo "Downloading ${file_name} from Github repository at https://github.com/digital-asset/${repo_name}/releases/download/${tag}/${file_name}..."
+        curl -Lf# https://github.com/digital-asset/${repo_name}/releases/download/${tag}/${file_name} --create-dirs -o ${project_root_dir}/${dependency_path}
+
+        echo -e "\nAdding ${file_name} to the cache..."
+        mkdir -p ${cache_dependency_path} && cp ${project_root_dir}/${dependency_path} ${cache_dependency_path}/${file_name}
+      else
+        echo "Attempting to get dependency ${file_name} locally..."
+        package_name=$(echo ${tag} | cut -f1 -d/)
+        if ( ls ${package_root_dir}/${package_name}/.daml/dist/${file_name} 1> /dev/null 2>&1 ); then
+          mkdir -p ${project_lib_dir}/${repo_name}/${tag} && cp ${package_root_dir}/${package_name}/.daml/dist/${file_name} ${project_root_dir}/${dependency_path}
+        else
+          echo -e "${red}ERROR: Unable to locally locate dependency ${file_name}. Ensure this dependency has been successfully built.${colour_off}"
+          exit 1
+        fi
+      fi
+
+      echo -e "Dependency ${file_name} installed successfully and saved to ${project_root_dir}/${dependency_path}.\n"
+    fi
+
+  done
 fi
-
-get_dependency () {
-  local package_name=$1
-  local module_name=$2
-  local version=$3
-  local url="https://github.com/digital-asset/daml-finance/releases/download/${module_name}/${version}/${package_name}-${version}.dar"
-  echo "Getting dependency ${package_name} v${version}"
-  if [[ ! -a ".lib/${package_name}-${version}.dar" ]]; then curl -Lf# $url -o .lib/$package_name-$version.dar; fi
-}
-
-get_dependency contingent-claims-core                     ContingentClaims.Core                     0.1.0
-get_dependency contingent-claims-lifecycle                ContingentClaims.Lifecycle                0.1.0
-get_dependency contingent-claims-valuation                ContingentClaims.Valuation                0.1.0
-get_dependency daml-finance-account                       Daml.Finance.Account                      0.1.2
-get_dependency daml-finance-claims                        Daml.Finance.Claims                       0.1.3
-get_dependency daml-finance-data                          Daml.Finance.Data                         0.1.7
-get_dependency daml-finance-holding                       Daml.Finance.Holding                      0.1.7
-get_dependency daml-finance-instrument-bond               Daml.Finance.Instrument.Bond              0.1.8
-get_dependency daml-finance-instrument-equity             Daml.Finance.Instrument.Equity            0.1.9
-get_dependency daml-finance-instrument-generic            Daml.Finance.Instrument.Generic           0.1.8
-get_dependency daml-finance-instrument-swap               Daml.Finance.Instrument.Swap              0.1.8
-get_dependency daml-finance-instrument-token              Daml.Finance.Instrument.Token             0.1.7
-get_dependency daml-finance-interface-account             Daml.Finance.Interface.Account            0.1.2
-get_dependency daml-finance-interface-claims              Daml.Finance.Interface.Claims             0.1.7
-get_dependency daml-finance-interface-data                Daml.Finance.Interface.Data               0.1.6
-get_dependency daml-finance-interface-holding             Daml.Finance.Interface.Holding            0.1.7
-get_dependency daml-finance-interface-instrument-base     Daml.Finance.Interface.Instrument.Base    0.1.7
-get_dependency daml-finance-interface-instrument-bond     Daml.Finance.Interface.Instrument.Bond    0.1.7
-get_dependency daml-finance-interface-instrument-equity   Daml.Finance.Interface.Instrument.Equity  0.1.8
-get_dependency daml-finance-interface-instrument-generic  Daml.Finance.Interface.Instrument.Generic 0.1.8
-get_dependency daml-finance-interface-instrument-swap     Daml.Finance.Interface.Instrument.Swap    0.1.8
-get_dependency daml-finance-interface-instrument-token    Daml.Finance.Interface.Instrument.Token   0.1.7
-get_dependency daml-finance-interface-lifecycle           Daml.Finance.Interface.Lifecycle          0.1.8
-get_dependency daml-finance-interface-settlement          Daml.Finance.Interface.Settlement         0.1.8
-get_dependency daml-finance-interface-types               Daml.Finance.Interface.Types              0.1.6
-get_dependency daml-finance-interface-util                Daml.Finance.Interface.Util               0.1.6
-get_dependency daml-finance-lifecycle                     Daml.Finance.Lifecycle                    0.1.9
-get_dependency daml-finance-settlement                    Daml.Finance.Settlement                   0.1.8
-get_dependency daml-finance-util                          Daml.Finance.Util                         0.1.6

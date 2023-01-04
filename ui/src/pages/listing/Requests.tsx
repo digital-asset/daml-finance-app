@@ -3,17 +3,18 @@
 
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Table, TableBody, TableCell, TableRow, TableHead, Button, Grid, Paper, Typography } from "@mui/material";
-import { IconButton } from "@mui/material";
-import { KeyboardArrowRight } from "@mui/icons-material";
+import { Button } from "@mui/material";
 import { CreateEvent } from "@daml/ledger";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
-import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Service";
-import { CreateListingRequest, DeleteListingRequest, Listing } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Model";
+import { Service } from "@daml.js/daml-finance-app-interface-listing/lib/Daml/Finance/App/Interface/Listing/Service";
+import { Listing } from "@daml.js/daml-finance-app-interface-listing/lib/Daml/Finance/App/Interface/Listing/Listing";
+import { ListingRequest } from "@daml.js/daml-finance-app-interface-listing/lib/Daml/Finance/App/Interface/Listing/ListingRequest";
+import { DelistingRequest } from "@daml.js/daml-finance-app-interface-listing/lib/Daml/Finance/App/Interface/Listing/DelistingRequest";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
-import { useServices } from "../../context/ServiceContext";
+import { useServices } from "../../context/ServicesContext";
+import { HorizontalTable } from "../../components/Table/HorizontalTable";
 
 export const Requests : React.FC = () => {
   const classes = useStyles();
@@ -23,113 +24,55 @@ export const Requests : React.FC = () => {
   const { getName } = useParties();
 
   const { loading: l1, listing } = useServices();
-  const { loading: l2, contracts: createRequests } = useStreamQueries(CreateListingRequest);
-  const { loading: l3, contracts: disableRequests } = useStreamQueries(DeleteListingRequest);
+  const { loading: l2, contracts: listingRequests } = useStreamQueries(ListingRequest);
+  const { loading: l3, contracts: delistingRequests } = useStreamQueries(DelistingRequest);
   const { loading: l4, contracts: listings } = useStreamQueries(Listing);
   if (l1 || l2 || l3 || l4) return <Spinner />;
 
-  const providerServices = listing.filter(s => s.payload.provider === party);
-  const deleteEntries = disableRequests.map(dr => ({ request: dr, listing: listings.find(l => l.contractId === dr.payload.listingCid)?.payload }));
-  const createListing = async (c : CreateEvent<CreateListingRequest>) => {
-    const service = providerServices.find(s => s.payload.customer === c.payload.customer);
-    if (!service) throw new Error("No listing service found");
-    await ledger.exercise(Service.CreateListing, service.contractId, { createListingRequestCid: c.contractId });
+  const list = async (c : CreateEvent<ListingRequest>) => {
+    const svc = listing.getService(party, c.payload.customer);
+    if (!svc) throw new Error("No listing service found for provider " + party + " and customer " + c.payload.customer);
+    await ledger.exercise(Service.List, svc.service.contractId, { listingRequestCid: c.contractId });
     navigate("/app/listing/listings");
   }
 
-  const deleteListing = async (c : CreateEvent<DeleteListingRequest>) => {
-    const service = providerServices.find(s => s.payload.customer === c.payload.customer);
-    if (!service) throw new Error("No listing service found");
-    await ledger.exercise(Service.DeleteListing, service.contractId, { deleteListingRequestCid: c.contractId });
+  const delist = async (c : CreateEvent<DelistingRequest>) => {
+    const svc = listing.getService(party, c.payload.customer);
+    if (!svc) throw new Error("No listing service found for provider " + party + " and customer " + c.payload.customer);
+    await ledger.exercise(Service.Delist, svc.service.contractId, { delistingRequestCid: c.contractId });
     navigate("/app/listing/listings");
   }
 
+  const headers = ["Provider", "Customer", "Id", "Description", "Traded Instrument", "Quoted Instrument", "Action"]
+  const createListingRow = (c : CreateEvent<ListingRequest>) : any[] => {
+    return [
+      getName(c.payload.provider),
+      getName(c.payload.customer),
+      c.payload.listingId.unpack,
+      c.payload.description,
+      c.payload.tradedInstrument.id.unpack,
+      c.payload.quotedInstrument.id.unpack,
+      <Button color="primary" size="small" className={classes.choiceButton} variant="contained" disabled={party !== c.payload.provider} onClick={() => list(c)}>List</Button>
+    ];
+  };
+  const createDelistingRow = (c : CreateEvent<DelistingRequest>) : any[] => {
+    const listing = listings.find(l => l.contractId === c.payload.listingCid)!;
+    return [
+      getName(c.payload.provider),
+      getName(c.payload.customer),
+      listing.payload.id.unpack,
+      listing.payload.description,
+      listing.payload.tradedInstrument.id.unpack,
+      listing.payload.quotedInstrument.id.unpack,
+      <Button color="primary" size="small" className={classes.choiceButton} variant="contained" disabled={party !== c.payload.provider} onClick={() => delist(c)}>Delist</Button>
+    ];
+  };
+  const valuesListing : any[] = listingRequests.map(createListingRow);
+  const valuesDelisting : any[] = delistingRequests.map(createDelistingRow);
   return (
     <>
-      <Grid container direction="column">
-        <Grid container direction="row">
-          <Grid item xs={12}>
-            <Paper className={classes.paper}>
-              <Grid container direction="row" justifyContent="center" className={classes.paperHeading}><Typography variant="h2">Listing Requests</Typography></Grid>
-              <Table size="small">
-                <TableHead>
-                  <TableRow className={classes.tableRow}>
-                    <TableCell key={0} className={classes.tableCell}><b>Provider</b></TableCell>
-                    <TableCell key={1} className={classes.tableCell}><b>Customer</b></TableCell>
-                    <TableCell key={2} className={classes.tableCell}><b>Role</b></TableCell>
-                    <TableCell key={3} className={classes.tableCell}><b>Id</b></TableCell>
-                    <TableCell key={4} className={classes.tableCell}><b>Traded Instrument</b></TableCell>
-                    <TableCell key={5} className={classes.tableCell}><b>Quoted Instrument</b></TableCell>
-                    <TableCell key={6} className={classes.tableCell}><b>Action</b></TableCell>
-                    <TableCell key={7} className={classes.tableCell}><b>Details</b></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {createRequests.map((c, i) => (
-                    <TableRow key={i} className={classes.tableRow}>
-                      <TableCell key={0} className={classes.tableCell}>{getName(c.payload.provider)}</TableCell>
-                      <TableCell key={1} className={classes.tableCell}>{getName(c.payload.customer)}</TableCell>
-                      <TableCell key={2} className={classes.tableCell}>{party === c.payload.provider ? "Provider" : "Client"}</TableCell>
-                      <TableCell key={3} className={classes.tableCell}>{c.payload.id}</TableCell>
-                      <TableCell key={4} className={classes.tableCell}>{c.payload.tradedInstrument.id.unpack}</TableCell>
-                      <TableCell key={5} className={classes.tableCell}>{c.payload.quotedInstrument.id.unpack}</TableCell>
-                      <TableCell key={6} className={classes.tableCell}>
-                        {party === c.payload.provider && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => createListing(c)}>List</Button>}
-                        {/* {party === c.payload.client && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => cancelRequest(c)}>Cancel</Button>} */}
-                      </TableCell>
-                      <TableCell key={7} className={classes.tableCell}>
-                        <IconButton color="primary" size="small" component="span" onClick={() => navigate("/app/listing/createrequest/" + c.contractId)}>
-                          <KeyboardArrowRight fontSize="small"/>
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Paper>
-          </Grid>
-          <Grid item xs={12}>
-            <Paper className={classes.paper}>
-              <Grid container direction="row" justifyContent="center" className={classes.paperHeading}><Typography variant="h2">Delisting Requests</Typography></Grid>
-              <Table size="small">
-                <TableHead>
-                  <TableRow className={classes.tableRow}>
-                    <TableCell key={0} className={classes.tableCell}><b>Provider</b></TableCell>
-                    <TableCell key={1} className={classes.tableCell}><b>Customer</b></TableCell>
-                    <TableCell key={2} className={classes.tableCell}><b>Role</b></TableCell>
-                    <TableCell key={3} className={classes.tableCell}><b>Id</b></TableCell>
-                    <TableCell key={4} className={classes.tableCell}><b>Traded Instrument</b></TableCell>
-                    <TableCell key={5} className={classes.tableCell}><b>Quoted Instrument</b></TableCell>
-                    <TableCell key={6} className={classes.tableCell}><b>Action</b></TableCell>
-                    <TableCell key={7} className={classes.tableCell}><b>Details</b></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {deleteEntries.map((c, i) => (
-                    <TableRow key={i} className={classes.tableRow}>
-                      <TableCell key={0} className={classes.tableCell}>{getName(c.request.payload.provider)}</TableCell>
-                      <TableCell key={1} className={classes.tableCell}>{getName(c.request.payload.customer)}</TableCell>
-                      <TableCell key={2} className={classes.tableCell}>{party === c.request.payload.provider ? "Provider" : "Client"}</TableCell>
-                      <TableCell key={3} className={classes.tableCell}>{c.listing?.id}</TableCell>
-                      <TableCell key={4} className={classes.tableCell}>{c.listing?.tradedInstrument.id.unpack}</TableCell>
-                      <TableCell key={5} className={classes.tableCell}>{c.listing?.quotedInstrument.id.unpack}</TableCell>
-                      <TableCell key={6} className={classes.tableCell}>
-                        {party === c.request.payload.provider && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => deleteListing(c.request)}>Delist</Button>}
-                        {/* {party === c.payload.client && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => cancelRequest(c)}>Cancel</Button>} */}
-                      </TableCell>
-                      <TableCell key={7} className={classes.tableCell}>
-                        <IconButton color="primary" size="small" component="span" onClick={() => navigate("/app/listing/deleterequest/" + c.request.contractId)}>
-                          <KeyboardArrowRight fontSize="small"/>
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Paper>
-          </Grid>
-        </Grid>
-      </Grid>
+      <HorizontalTable title="Listing Requests" variant={"h3"} headers={headers} values={valuesListing} />
+      <HorizontalTable title="Delisting Requests" variant={"h3"} headers={headers} values={valuesDelisting} />
     </>
   );
 };

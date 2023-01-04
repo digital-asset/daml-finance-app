@@ -7,16 +7,18 @@ import DA.Map qualified as M (lookup)
 import DA.Optional (fromSome)
 import DA.Set (singleton)
 import Daml.Finance.App.Data.AccountDirectory (AccountDirectory)
-import Daml.Finance.App.Distribution.Fund.Model (GetFund(..), Fund)
 import Daml.Finance.App.Distribution.Investment.Model (InvestmentRequest(..))
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
+import Daml.Finance.App.Interface.Distribution.Fund.Fund qualified as Fund (GetView(..))
+import Daml.Finance.App.Interface.Distribution.Investment.Service qualified as Service (HasImplementation, I, RequestInvestment(..), View(..))
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
--- import Daml.Finance.Interface.Holding.Lockable qualified as Lockable (Acquire(..), I, LockType(..))
 import Daml.Finance.Interface.Holding.Util (getAmount, getInstrument)
-import Daml.Finance.Interface.Types.Common (Id)
+import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
 
-type S = Service
+type T = Service
+
+instance Service.HasImplementation Service
 
 template Service
   with
@@ -29,33 +31,27 @@ template Service
     key (operator, provider, customer) : (Party, Party, Party)
     maintainer key._1
 
-    nonconsuming choice RequestInvestment : ContractId InvestmentRequest
-      with
-        requestId : Id
-        asOfDate : Date
-        fundCid : ContractId Fund
-        cashCid : ContractId Transferable.I
-      controller customer
-      do
+    interface instance Base.I for Service where
+      view = Base.View with operator; provider; customer
 
+      terminate = pure ()
+
+    interface instance Service.I for Service where
+      view = Service.View
+
+      asBase = toInterface @Base.I this
+
+      requestInvestment Service.RequestInvestment{requestId; asOfDate; fundCid; cashCid} = do
         -- Disclose holding
-        fund <- exercise fundCid GetFund with actor = customer
+        fund <- exercise fundCid Fund.GetView with actor = customer
         cashCid : ContractId Transferable.I <- coerceContractId <$> exercise (coerceContractId cashCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (show requestId, singleton fund.manager)
         cash <- fetch cashCid
 
         (_, dir) <- fetchByKey @AccountDirectory customer
         let
-          quantity = Instrument.qty (getAmount cash) (getInstrument cash)
+          quantity = qty (getAmount cash) (getInstrument cash)
           customerFundAccount = fromSome $ M.lookup fund.instrument.id dir.accounts
-        create InvestmentRequest with operator; provider; customer; manager = fund.manager; requestId; asOfDate; quantity; fundId = fund.id; cashCid = toInterfaceContractId cashCid; customerFundAccount
-
-    choice Terminate : ()
-      with
-        actor : Party
-      controller actor
-      do
-        assert $ actor == operator || actor == provider || actor == customer
-        pure ()
+        toInterfaceContractId <$> create InvestmentRequest with operator; provider; customer; manager = fund.manager; requestId; asOfDate; quantity; fundId = fund.id; cashCid = toInterfaceContractId cashCid; customerFundAccount
 
 template Offer
   with

@@ -1,0 +1,51 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Interface.Structuring.CreateFloatingRateBondRequest where
+
+import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Implementation)
+import Daml.Finance.Interface.Types.Common.Types (Id, InstrumentKey, PartiesMap)
+import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum)
+import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
+import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum)
+
+type I = CreateFloatingRateBondRequest
+
+type V = View
+
+data View = View
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Id
+    description : Text
+    version : Text
+    referenceRateId : Text
+    couponSpread : Decimal
+    issueDate : Date
+    firstCouponDate : Date
+    maturityDate : Date
+    holidayCalendarIds : [Text]
+    calendarDataProvider : Party
+    dayCountConvention : DayCountConventionEnum
+    businessDayConvention : BusinessDayConventionEnum
+    couponPeriod : PeriodEnum
+    couponPeriodMultiplier : Int
+    currency : InstrumentKey
+    observers : PartiesMap
+    lastEventTimestamp : Time
+  deriving (Eq, Show)
+
+interface CreateFloatingRateBondRequest where
+  viewtype View
+    -- ^ Interface view type.
+
+  asRemovable : Removable.I
+    -- ^ Conversion to the `Removable` interface.
+
+-- | Type constraint for requiring templates to implement `CreateFloatingRateBondRequest`.
+type Implementation t = (HasToInterface t CreateFloatingRateBondRequest, Removable.Implementation t)
+class (Implementation t) => HasImplementation t
+instance HasImplementation CreateFloatingRateBondRequest
+instance HasToInterface CreateFloatingRateBondRequest Removable.I where _toInterface = asRemovable

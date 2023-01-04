@@ -1,0 +1,123 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Interface.Custody.Service where
+
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, Implementation)
+import Daml.Finance.App.Interface.Custody.OpenAccountRequest qualified as OpenAccountRequest (I)
+import Daml.Finance.App.Interface.Custody.CloseAccountRequest qualified as CloseAccountRequest (I)
+import Daml.Finance.App.Interface.Custody.DepositRequest qualified as DepositRequest (I)
+import Daml.Finance.App.Interface.Custody.WithdrawRequest qualified as WithdrawRequest (I)
+import Daml.Finance.Interface.Account.Account qualified as Account (Controllers, I)
+import Daml.Finance.Interface.Account.Factory qualified as Account (F)
+import Daml.Finance.Interface.Holding.Factory qualified as Holding (F)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Lifecycle (Claim)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity, PartiesMap)
+
+type I = Service
+
+type V = View
+
+data View = View
+  with
+    accountFactoryCid : ContractId Account.F
+    holdingFactoryCid : ContractId Holding.F
+    claimRuleCid : ContractId Lifecycle.Claim
+  deriving (Eq, Show)
+
+interface Service where
+  viewtype V
+
+  asBase : Base.I
+    -- ^ Conversion to base `Service` interface.
+
+  requestOpenAccount : RequestOpenAccount -> Update (ContractId OpenAccountRequest.I)
+    -- ^ Implementation of the `RequestOpenAccount` choice.
+
+  requestCloseAccount : RequestCloseAccount -> Update (ContractId CloseAccountRequest.I)
+    -- ^ Implementation of the `RequestCloseAccount` choice.
+
+  requestDeposit : RequestDeposit -> Update (ContractId DepositRequest.I)
+    -- ^ Implementation of the `RequestDeposit` choice.
+
+  requestWithdraw : RequestWithdraw -> Update (ContractId WithdrawRequest.I)
+    -- ^ Implementation of the `RequestWithdraw` choice.
+
+  openAccount : OpenAccount -> Update (ContractId Account.I, AccountKey)
+    -- ^ Implementation of the `OpenAccount` choice.
+
+  closeAccount : CloseAccount -> Update ()
+    -- ^ Implementation of the `CloseAccount` choice.
+
+  deposit : Deposit -> Update (ContractId Holding.I)
+    -- ^ Implementation of the `Deposit` choice.
+
+  withdraw : Withdraw -> Update ()
+    -- ^ Implementation of the `Withdraw` choice.
+
+  nonconsuming choice RequestOpenAccount : ContractId OpenAccountRequest.I
+    with
+      id : Id
+      description : Text
+      controllers : Account.Controllers
+      observers : PartiesMap
+    controller (view $ asBase this).customer
+    do
+      requestOpenAccount this arg
+
+  nonconsuming choice RequestCloseAccount : ContractId CloseAccountRequest.I
+    with
+      account : AccountKey
+    controller (view $ asBase this).customer
+    do
+      requestCloseAccount this arg
+
+  nonconsuming choice RequestDeposit : ContractId DepositRequest.I
+    with
+      quantity : InstrumentQuantity
+      account : AccountKey
+    controller (view $ asBase this).customer
+    do
+      requestDeposit this arg
+
+  nonconsuming choice RequestWithdraw : ContractId WithdrawRequest.I
+    with
+      holdingCid : ContractId Holding.I
+    controller (view $ asBase this).customer
+    do
+      requestWithdraw this arg
+
+  nonconsuming choice OpenAccount : (ContractId Account.I, AccountKey)
+    with
+      openAccountRequestCid : ContractId OpenAccountRequest.I
+    controller (view $ asBase this).provider
+    do
+      openAccount this arg
+
+  nonconsuming choice CloseAccount : ()
+    with
+      closeAccountRequestCid : ContractId CloseAccountRequest.I
+    controller (view $ asBase this).provider
+    do
+      closeAccount this arg
+
+  nonconsuming choice Deposit : ContractId Holding.I
+    with
+      depositRequestCid : ContractId DepositRequest.I
+    controller (view $ asBase this).provider
+    do
+      deposit this arg
+
+  nonconsuming choice Withdraw : ()
+    with
+      withdrawRequestCid : ContractId WithdrawRequest.I
+    controller (view $ asBase this).provider
+    do
+      withdraw this arg
+
+-- | Type constraint for requiring templates to implement `Service`.
+type Implementation t = (HasToInterface t Service, Base.Implementation t)
+class (Implementation t) => HasImplementation t
+instance HasImplementation Service
+instance HasToInterface Service Base.I where _toInterface = asBase

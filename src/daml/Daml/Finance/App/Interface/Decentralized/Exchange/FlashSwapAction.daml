@@ -1,0 +1,50 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Interface.Decentralized.Exchange.FlashSwapAction where
+
+import DA.Assert ((===))
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+-- import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..), SplitResult(..))
+import Daml.Finance.Interface.Types.Common.Types (InstrumentQuantity, Parties)
+
+type I = FlashSwapAction
+
+data View = View {}
+  deriving (Eq, Show)
+
+interface FlashSwapAction where
+  viewtype View
+
+  executeAction : ContractId Holding.I -> Update (ContractId Holding.I, [ContractId Holding.I])
+
+  choice ExecuteAction: (ContractId Holding.I, [ContractId Holding.I])
+    with
+      actors : Parties
+      consumedQuantity : InstrumentQuantity
+      producedQuantity: InstrumentQuantity
+      holdingCid: ContractId Holding.I
+    controller actors
+    do
+      -- pre check
+      -- TODO: we assume that the exact required quantity is passed in
+      -- Fungible.SplitResult{splitCids = [fungibleCid], rest = consumedHoldingRest} <- exercise (coerceContractId holdingCid : Fungible.I) Fungible.Split with amounts = [ consumedQuantity.amount ]
+      -- let holdingCid : Holding.I = toInterfaceContractId fungibleCid
+      holding <- view <$> fetch holdingCid
+      holding.instrument === consumedQuantity.unit
+      holding.amount === consumedQuantity.amount
+
+      -- body
+      -- asserting that the sole authorizers are the choice controllers
+      -- (S.fromList (signatory this) === choiceControllers)
+      (producedHoldingCid, extraHoldingCids) <- executeAction this holdingCid
+
+      -- post check
+      -- making sure that at least tokenOut is returned
+      -- TODO: we assume that the exact required quantity is returned
+      -- Fungible.SplitResult{splitCids = [producedFungibleCid], rest = producedHoldingRest} <- exercise (coerceContractId producedHoldingCid : Fungible.I) Fungible.Split with amounts = [ producedQuantity.amount ]
+      -- let producedHoldingCid : Holding.I = toInterfaceContractId producedFungibleCid
+      producedHolding <- view <$> fetch producedHoldingCid
+      producedHolding.instrument === producedQuantity.unit
+      producedHolding.amount === producedQuantity.amount
+      return (producedHoldingCid, extraHoldingCids) -- <> optionalToList consumedHoldingRest <> optionalToList producedHoldingRest)

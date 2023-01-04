@@ -10,43 +10,50 @@ import DA.Optional (fromSome)
 import DA.Set (singleton)
 import DA.Time (time)
 import Daml.Finance.App.Data.AccountDirectory (AccountDirectory)
-import Daml.Finance.App.Distribution.Fund.Model qualified as Fund (ApproveInstruction(..), GetFund(..), IssueUnits(..), PooledInvestmentRequest(..), Remove(..), T)
-import Daml.Finance.App.Distribution.Investment.Model (AllocateInstruction(..), ApproveInstruction(..), Delete(..), InvestmentRequest(..))
-import Daml.Finance.Interface.Data.NumericObservable qualified as NumericObservable (I, Observe(..))
-import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.App.Distribution.Fund.Model qualified as Model (PooledInvestmentRequest(..))
+import Daml.Finance.App.Interface.Common.Removable qualified as Removable (I, Remove(..))
+import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
+import Daml.Finance.App.Interface.Distribution.Fund.Fund qualified as Fund (ApproveInstruction(..), GetView(..), IssueUnits(..))
+import Daml.Finance.App.Interface.Distribution.Fund.Service qualified as Service (FulfillPooledInvestmentRequest(..), HasImplementation, I, PoolInvestmentRequests(..), View(..))
+import Daml.Finance.App.Interface.Distribution.Investment.InvestmentRequest qualified as InvestmentRequest (AllocateInstruction(..), ApproveInstruction(..))
+import Daml.Finance.App.Interface.Settlement.Service qualified as SettlementService (DiscoverAndInstruct(..), I)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
+import Daml.Finance.Interface.Lifecycle.Observable.NumericObservable qualified as NumericObservable (Observe(..))
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
-import Daml.Finance.Interface.Settlement.Factory qualified as Settlement (Factory, Instruct(..))
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Types (Allocation(..), Approval(..), Step(..))
-import Daml.Finance.Interface.Types.Common (Id)
+import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
 
-type S = Service
+type T = Service
+
+instance Service.HasImplementation Service
 
 template Service
   with
     operator : Party
     provider : Party
     customer : Party
+    settlementServiceCid : ContractId SettlementService.I
   where
     signatory operator, provider, customer
 
     key (operator, provider, customer) : (Party, Party, Party)
     maintainer key._1
 
-    nonconsuming choice PoolInvestmentRequests : ContractId Fund.PooledInvestmentRequest
-      with
-        requestId : Id
-        asOfDate : Date
-        fundCid : ContractId Fund.T
-        cashCid : ContractId Transferable.I
-        investmentRequestCids : [ContractId InvestmentRequest]
-      controller customer
-      do
-        fund <- exercise fundCid Fund.GetFund with actor = customer
-        irs <- mapA fetch investmentRequestCids
+    interface instance Base.I for Service where
+      view = Base.View with operator; provider; customer
+
+      terminate = pure ()
+
+    interface instance Service.I for Service where
+      view = Service.View with settlementServiceCid
+
+      asBase = toInterface @Base.I this
+
+      poolInvestmentRequests Service.PoolInvestmentRequests{requestId; asOfDate; fundCid; cashCid; investmentRequestCids} = do
+        fund <- exercise fundCid Fund.GetView with actor = customer
+        irs <- mapA (fmap view . fetch) investmentRequestCids
         (_, dir) <- fetchByKey @AccountDirectory customer
 
         -- Disclose cash to provider
@@ -59,41 +66,41 @@ template Service
           [fundId] = dedup $ map (.fundId) irs
           [asOfDate] = dedup $ map (.asOfDate) irs
           total = sum $ map (.quantity.amount) irs
-          quantity = Instrument.qty total currency
+          quantity = qty total currency
           customerFundAccount = fromSome $ M.lookup fund.instrument.id dir.accounts
-        create Fund.PooledInvestmentRequest with operator; provider; customer; requestId; asOfDate; fundId; quantity; cashCid; investmentRequestCids; customerFundAccount
+        toInterfaceContractId <$> create Model.PooledInvestmentRequest with operator; provider; customer; requestId; asOfDate; fundId; quantity; cashCid; investmentRequestCids; customerFundAccount
 
-    nonconsuming choice FulfillPooledInvestmentRequest : [ContractId Holding.I]
-      with
-        pooledInvestmentRequestCid : ContractId Fund.PooledInvestmentRequest
-        fundCid : ContractId Fund.T
-        navObservableCid : ContractId NumericObservable.I
-        settlementFactoryCid : ContractId Settlement.Factory
-      controller provider
-      do
-        pir <- fetch pooledInvestmentRequestCid
-        fund <- fetch fundCid
+      fulfillPooledInvestmentRequest Service.FulfillPooledInvestmentRequest{pooledInvestmentRequestCid; fundCid; navObservableCid} = do
+        pir <- view <$> fetch pooledInvestmentRequestCid
+        fund <- view <$> fetch fundCid
 
         -- Calculate nr of units to issue
         nav <- exercise navObservableCid NumericObservable.Observe with actors = singleton customer; t = time pir.asOfDate 0 0 0
         let
           unitValue = nav / fund.totalUnits
           nrUnits = pir.quantity.amount / unitValue
-          fundQty = Instrument.qty nrUnits fund.instrument
+          fundQty = qty nrUnits fund.instrument
 
         -- Issue units
-        (_, fundUnitsCid, fundCid) <- exercise fundCid Fund.IssueUnits with requestId = pir.requestId; quantity = fundQty
+        (fundUnitsCid, fundCid) <- exercise fundCid Fund.IssueUnits with requestId = pir.requestId; quantity = fundQty
 
         -- Instruct settlement
-        irs <- mapA fetch pir.investmentRequestCids
+        irs <- mapA (fmap view . fetch) pir.investmentRequestCids
         let
           createInvestorCashStep ir = Step with sender = ir.customer; receiver = ir.provider; quantity = ir.quantity
-          createInvestorFundStep ir = Step with sender = ir.provider; receiver = ir.customer; quantity = Instrument.qty (ir.quantity.amount / unitValue) fund.instrument
+          createInvestorFundStep ir = Step with sender = ir.provider; receiver = ir.customer; quantity = qty (ir.quantity.amount / unitValue) fund.instrument
           custodianCashStep = Step with sender = pir.customer; receiver = fund.custodian; quantity = pir.quantity
           managerFundStep = Step with sender = provider; receiver = pir.customer; quantity = fundQty
           steps = custodianCashStep :: managerFundStep :: map createInvestorCashStep irs <> map createInvestorFundStep irs
-        (batchCid, custodianCashInstructionCid :: managerFundInstructionCid :: investorInstructionCids) <-
-          exercise settlementFactoryCid Settlement.Instruct with instructors = singleton provider; settlers = singleton provider; id = pir.requestId; description = "Settlement for " <> show pir.requestId; contextId = Some pir.requestId; steps
+        (batchCid, custodianCashInstructionCid :: managerFundInstructionCid :: investorInstructionCids) <- exercise settlementServiceCid SettlementService.DiscoverAndInstruct with
+          actor = provider
+          settlers = singleton provider
+          id = pir.requestId
+          description = "Settlement for " <> show pir.requestId
+          contextId = Some pir.requestId
+          settlementTime = None
+          steps
+
         let
           reqInst = zip (pir.investmentRequestCids <> pir.investmentRequestCids) investorInstructionCids
           (reqInstCash, reqInstFund) = splitAt (length irs) reqInst
@@ -109,31 +116,24 @@ template Service
         -- Allocate and approve investor instructions
         let
           processCash (irCid, iCid) = do
-            iCid <- exercise irCid AllocateInstruction with instructionCid = iCid
+            iCid <- exercise irCid InvestmentRequest.AllocateInstruction with instructionCid = iCid
             exercise iCid Instruction.Approve with actors = singleton provider; approval = DebitSender
           processFund (irCid, iCid) = do
             (iCid, _) <- exercise iCid Instruction.Allocate with actors = singleton provider; allocation = CreditReceiver
-            exercise irCid ApproveInstruction with instructionCid = iCid
+            exercise irCid InvestmentRequest.ApproveInstruction with instructionCid = iCid
         mapA_ processCash reqInstCash
         mapA_ processFund reqInstFund
 
-        mapA_ (\cid -> exercise cid Delete) pir.investmentRequestCids
-        exercise pooledInvestmentRequestCid Fund.Remove
+        mapA_ (\cid -> exercise (toInterfaceContractId @Removable.I cid) Removable.Remove) pir.investmentRequestCids
+        exercise (toInterfaceContractId @Removable.I pooledInvestmentRequestCid) Removable.Remove
         exercise batchCid Batch.Settle with actors = singleton provider
-
-    choice Terminate : ()
-      with
-        actor : Party
-      controller actor
-      do
-        assert $ actor == operator || actor == provider || actor == customer
-        pure ()
 
 template Offer
   with
     operator : Party
     provider : Party
     customer : Party
+    settlementServiceCid : ContractId SettlementService.I
   where
     signatory operator, provider
     observer customer
@@ -141,7 +141,7 @@ template Offer
     choice Accept : ContractId Service
       controller customer
       do
-        create Service with ..
+        create Service with operator; provider; customer; settlementServiceCid
 
     choice Decline : ()
       controller customer
@@ -171,6 +171,7 @@ template Request
     choice Approve : ContractId Service
       with
         operator : Party
+        settlementServiceCid : ContractId SettlementService.I
       controller operator, provider
       do
-        create Service with ..
+        create Service with operator; provider; customer; settlementServiceCid

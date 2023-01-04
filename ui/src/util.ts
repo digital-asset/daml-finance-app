@@ -3,7 +3,7 @@
 
 import { Set } from "@daml.js/97b883cd8a2b7f49f90d5d39c981cf6e110cf1f1c64427a28a6d58ec88c43657/lib/DA/Set/Types"
 import { Instrument } from "@daml.js/daml-finance-interface-instrument-base/lib/Daml/Finance/Interface/Instrument/Base/Instrument";
-import { InstrumentKey } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Common";
+import { InstrumentKey } from "@daml.js/daml-finance-interface-types-common/lib/Daml/Finance/Interface/Types/Common/Types";
 import { CreateEvent } from "@daml/ledger";
 import { emptyMap } from "@daml/types";
 
@@ -36,6 +36,8 @@ export const singleton = <T>(value: T) : Set<T> => {
 };
 
 export const parseDate = (d : Date | null) => (!!d && d.toString() !== "Invalid Date" && new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10)) || "";
+
+export const parseDateAsTime = (d : Date | null) => (!!d && d.toString() !== "Invalid Date" && new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString()) || "";
 
 export const keyEquals = (k1 : InstrumentKey, k2 : InstrumentKey) : boolean => {
   return k1.depository === k2.depository && k1.issuer === k2.issuer && k1.id.unpack === k2.id.unpack && k1.version === k2.version;
