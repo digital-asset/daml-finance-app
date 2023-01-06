@@ -76,9 +76,9 @@ generateSettlementInstruction settlementFactoryCid settler issuerAccount (Some i
     id = bid.auctionId <> "-" <> partyToText buyer
 
   (batchCid, [deliveryCid, paymentCid]) <- exercise settlementFactoryCid Instruct with instructors = singleton settler; settlers = singleton settler; id = Id id; description = "Settlement of auction " <> id; contextId = Some $ Id id; steps = [delivery, payment]
-  deliveryCid <- fst <$> exercise deliveryCid Allocate with actors = singleton settler; allocation = Pledge $ toInterfaceContractId allocatedDepositCid
+  deliveryCid <- fst <$> exercise deliveryCid Allocate with actors = singleton issuer; allocation = Pledge $ toInterfaceContractId allocatedDepositCid
   exercise bidCid Bidding.ApproveInstruction with instructionCid = deliveryCid; account = bid.receivableAccount
   paymentCid <- exercise bidCid Bidding.AllocateInstruction with instructionCid = paymentCid; transferableCid = toInterfaceContractId bidDepositCid
-  exercise paymentCid Approve with actors = singleton settler; approval = TakeDelivery issuerAccount
+  exercise paymentCid Approve with actors = singleton issuer; approval = TakeDelivery issuerAccount
 
   pure (splitResult.rest, batchCid :: batchCids)

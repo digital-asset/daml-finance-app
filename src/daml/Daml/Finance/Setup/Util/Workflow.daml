@@ -58,7 +58,7 @@ import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum, RollConvent
 import Daml.Finance.Interface.Types.Date.Schedule (Frequency(..), PeriodicSchedule(..))
 import Daml.Finance.Lifecycle.Event.DateClock qualified as DateClock (Event(..))
 import Daml.Finance.Lifecycle.Types (Unit(..))
-import Daml.Finance.Settlement.Factory qualified as Settlement (Factory)
+import Daml.Finance.Settlement.Factory qualified as Settlement (FactoryWithIntermediaries)
 import Daml.Finance.Settlement.Instruction qualified as Instruction (T)
 import Daml.Finance.Setup.Util.Common (getHolding)
 import Daml.Script
@@ -235,7 +235,7 @@ createAuctionBid operator provider customer public auctionCid amount price colla
 
 processAuction : Party -> Party -> Party -> Party -> ContractId Auction.T -> [ContractId Bidding.Bid] -> Script (ContractId Auction.T)
 processAuction operator provider customer public auctionCid bidCids = do
-  [(factoryCid, _)] <- query @Settlement.Factory provider
+  [(factoryCid, _)] <- query @Settlement.FactoryWithIntermediaries public
   submitMulti [provider] [public] do
     exerciseByKeyCmd @Auction.S (operator, provider, customer) Auction.ProcessAuction
       with
