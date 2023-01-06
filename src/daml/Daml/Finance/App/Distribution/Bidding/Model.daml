@@ -86,7 +86,7 @@ template Bid
         account : Account.K
       controller provider
       do
-        exercise instructionCid Instruction.Approve with actors = singleton provider; approval = T.TakeDelivery account
+        exercise instructionCid Instruction.Approve with actors = singleton customer; approval = T.TakeDelivery account
 
     nonconsuming choice AllocateInstruction : ContractId Instruction.I
       with
@@ -94,4 +94,4 @@ template Bid
         transferableCid : ContractId Transferable.I
       controller provider
       do
-        fst <$> exercise instructionCid Instruction.Allocate with actors = singleton provider; allocation = T.Pledge $ toInterfaceContractId transferableCid
+        fst <$> exercise instructionCid Instruction.Allocate with actors = singleton customer; allocation = T.Pledge $ toInterfaceContractId transferableCid
