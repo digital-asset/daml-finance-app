@@ -19,6 +19,8 @@ test: build
 .PHONY: clean
 clean:
 	-rm -rf .lib/
+	-rm -rf ui/build
+	-rm -rf ui/daml.js
 	daml clean
 
 #########################
@@ -30,16 +32,20 @@ clean-packages:
 	./$(SCRIPTS_DIR)/clean-packages.sh
 
 .PHONY: build-packages
-build-packages: clean-packages
+build-packages:
 	./$(SCRIPTS_DIR)/build-packages.sh
 
-.PHONY: build-java-packages
-build-java-packages: build-packages
-	daml codegen java -o .dars/.java .dars/*
+# .PHONY: build-java-packages
+# build-java-packages: build-packages
+# 	daml codegen java -o .dars/.java .dars/*
 
 .PHONY: build-js-packages
 build-js-packages: build-packages
-	daml codegen js -o .dars/.js .dars/*
+	daml codegen js -o ui/daml.js .dars/*
+
+.PHONY: build-ui
+build-ui: build-js-packages
+	cd ui && npm install && npm run build
 
 .PHONY: test-packages
 test-packages: build-packages
@@ -49,17 +55,17 @@ test-packages: build-packages
 validate-packages: build-packages
 	./$(SCRIPTS_DIR)/validate-packages.sh
 
-.PHONY: update-data-dependencies-packages
-update-data-dependencies-packages:
-	packell data-dependencies update -f
-	make headers-update
+# .PHONY: update-data-dependencies-packages
+# update-data-dependencies-packages:
+# 	packell data-dependencies update -f
+# 	make headers-update
 
 ###############################
 # Project Source and Packages #
 ###############################
 
 .PHONY: build-all
-build-all: build build-packages
+build-all: build build-ui
 
 .PHONY: test-all
 test-all: test test-packages
@@ -78,19 +84,19 @@ clean-all: clean clean-packages
 ci-build:
 	@nix-shell \
 		--pure \
-		--run 'make build; ./$(SCRIPTS_DIR)/build-packages.sh'
+		--run 'make build-all'
 
-.PHONY: ci-build-java
-ci-build-java:
-	@nix-shell \
-		--pure \
-		--run 'daml codegen java -o .dars/.java .dars/*'
+# .PHONY: ci-build-java
+# ci-build-java:
+# 	@nix-shell \
+# 		--pure \
+# 		--run 'daml codegen java -o .dars/.java .dars/*'
 
-.PHONY: ci-build-js
-ci-build-js:
-	@nix-shell \
-		--pure \
-		--run 'daml codegen js -o ui/daml.js .dars/*'
+# .PHONY: ci-build-js
+# ci-build-js:
+# 	@nix-shell \
+# 		--pure \
+# 		--run 'daml codegen js -o ui/daml.js .dars/*'
 
 .PHONY: ci-test
 ci-test:
@@ -129,8 +135,7 @@ ci-data-dependencies:
 		--run 'export LANG=C.UTF-8; packell data-dependencies validate'
 
 .PHONY: ci-local
-ci-local: clean-all ci-headers-check ci-build ci-validate ci-build-js
-# ci-local: clean-all ci-headers-check ci-data-dependencies ci-build ci-validate ci-build-java ci-build-js ci-test ci-docs
+ci-local: clean-all ci-headers-check ci-build ci-validate ci-test
 
 #########
 # Cache #
