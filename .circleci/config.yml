@@ -189,6 +189,7 @@ jobs:
       - setup_nix
       - import_gpg_key
       - run_release
+      - run_release_ui
 
 workflows:
   version: 2
