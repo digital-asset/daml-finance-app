@@ -3,13 +3,13 @@
 
 module Daml.Finance.App.Distribution.Subscription.Model where
 
-import DA.Set (singleton)
-import Daml.Finance.Interface.Holding.Account qualified as Account (K, R)
+import DA.Set (fromList, singleton)
+import Daml.Finance.Interface.Account.Account qualified as Account (K, R)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Holding.Lockable qualified as Lockable (Acquire(..), I, LockType(..), Release(..))
+import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
-import Daml.Finance.Interface.Holding.Util (getAccount)
+import Daml.Finance.Interface.Account.Util (getAccount)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..), I)
 import Daml.Finance.Interface.Settlement.Types (Allocation(Pledge), Approval(TakeDelivery))
@@ -68,7 +68,7 @@ template Offering
         (_, recRef) <- fetchByKey @Account.R investorAccount
         exercise (coerceContractId recRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton investor; observersToAdd = (offeringId, singleton issuer)
         -- Lock holding
-        investorHoldingCid <- coerceContractId <$> exercise (coerceContractId investorHoldingCid : ContractId Lockable.I) Lockable.Acquire with newLocker = singleton issuer; context = offeringId; lockType = Lockable.Semaphore
+        investorHoldingCid <- coerceContractId <$> exercise (toInterfaceContractId investorHoldingCid : ContractId Holding.I) Holding.Acquire with newLockers = singleton issuer; context = offeringId; lockType = Holding.Semaphore
         create Subscription with holdingCid = investorHoldingCid; accountKey = investorAccount; ..
 
 template Subscription
@@ -90,7 +90,7 @@ template Subscription
         receiverAccount : Account.K
       controller provider
       do
-        exercise instructionCid Instruction.Approve with approval = TakeDelivery receiverAccount
+        exercise instructionCid Instruction.Approve with actors = fromList [provider, investor]; approval = TakeDelivery receiverAccount
 
     nonconsuming choice AllocateInstruction : ContractId Instruction.I
       with
@@ -98,11 +98,11 @@ template Subscription
         transferableCid : ContractId Transferable.I
       controller provider
       do
-        fst <$> exercise instructionCid Instruction.Allocate with allocation = Pledge transferableCid
+        fst <$> exercise instructionCid Instruction.Allocate with actors = fromList [provider, investor]; allocation = Pledge $ toInterfaceContractId transferableCid
 
-    nonconsuming choice UnlockHolding : ContractId Lockable.I
+    nonconsuming choice UnlockHolding : ContractId Holding.I
       with
-        lockableCid : ContractId Lockable.I
+        lockableCid : ContractId Holding.I
       controller provider
       do
-        exercise lockableCid Lockable.Release with context = offeringId
+        exercise lockableCid Holding.Release with context = offeringId

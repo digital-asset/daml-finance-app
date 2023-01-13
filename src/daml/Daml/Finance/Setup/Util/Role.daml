@@ -3,8 +3,6 @@
 
 module Daml.Finance.Setup.Util.Role where
 
-import DA.Set (empty)
-import Daml.Finance.Settlement.Factory (Factory(..))
 import Daml.Script
 import Daml.Finance.App.Role.Operator qualified as Operator (OfferCustodianRole(..), OfferDistributorRole(..), OfferExchangeRole(..), Role(..))
 import Daml.Finance.App.Role.Custodian qualified as Custodian (Accept(..), Role)
@@ -29,7 +27,6 @@ createDistributorRole : Party -> Party -> Script (ContractId Distributor.Role)
 createDistributorRole operator distributor = do
   offerCid    <- submit operator    do exerciseByKeyCmd @Operator.Role operator Operator.OfferDistributorRole with provider = distributor
   roleCid     <- submit distributor do exerciseCmd offerCid Distributor.Accept
-  submit distributor do createCmd Factory with provider = distributor; observers = empty
   pure roleCid
 
 -- createLeadArrangerRole : Party -> Party -> Script (ContractId Distributor.Role)

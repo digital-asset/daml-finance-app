@@ -8,11 +8,12 @@ import DA.Map (empty, fromList)
 import DA.Set (singleton)
 import DA.Time (time)
 import Daml.Finance.Data.Observable.Observation (Observation(..))
-import Daml.Finance.Holding.Account qualified as Account (Factory(..))
+import Daml.Finance.Account.Account qualified as Account (Factory(..))
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
 import Daml.Finance.Interface.Types.Common (Id(..))
-import Daml.Finance.Settlement.Factory qualified as Settlement (Factory(..))
+import Daml.Finance.Settlement.Factory qualified as Settlement (FactoryWithIntermediaries(..))
+import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
 import Daml.Finance.Setup.Payoff
 import Daml.Finance.Setup.Util.Common
 import Daml.Finance.Setup.Util.Role
@@ -28,9 +29,15 @@ run  = do
     pub = fromList [("Public", singleton public)]
 
   -- Factories
-  accountFactoryCid    <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
-  holdingFactoryCid    <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
-  settlementFactoryCid <- toInterfaceContractId <$> submit operator do createCmd Settlement.Factory with provider = operator; observers = singleton public
+  let
+    assets = ["Z4200L", "Z4GEN", "Z4300L", "NATGAS1", "NATGAS2", "NATGAS3", "NATGAS4"]
+    settlementPaths = [[buyer], [seller]]
+    cashRoute = Settlement.Hierarchy with rootCustodian = cashProvider; pathsToRootCustodian = settlementPaths
+    secRoute = Settlement.Hierarchy with rootCustodian = seller; pathsToRootCustodian = settlementPaths
+    paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
+  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
+  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
+  settlementFactoryCid      <- toInterfaceContractId <$> submit operator do createCmd Settlement.FactoryWithIntermediaries with provider = operator; paths; observers = singleton public
 
   -- Roles
   createOperatorRole  operator
@@ -45,9 +52,9 @@ run  = do
   createLifecycleService  operator seller       seller  public
 
   -- Accounts
-  sellerCashAccount   <- createAccount operator cashProvider  seller  public (Id "Seller@CashProvider") "Seller@CashProvider" empty
-  buyerCashAccount    <- createAccount operator cashProvider  buyer   public (Id "Buyer@CashProvider")  "Buyer@CashProvider"  empty
-  buyerSecAccount     <- createAccount operator seller        buyer   public (Id "Buyer@Seller")        "Buyer@Seller"        empty
+  sellerCashAccount   <- createAccount operator cashProvider  seller  public "Seller@CashProvider" empty
+  buyerCashAccount    <- createAccount operator cashProvider  buyer   public "Buyer@CashProvider"  empty
+  buyerSecAccount     <- createAccount operator seller        buyer   public "Buyer@Seller"        empty
 
   -- Time
   t <- getTime
@@ -60,10 +67,10 @@ run  = do
   createClockAndEvent all today (singleton public)
 
   -- Base Instruments
-  usd     <- originate cashProvider cashProvider pub todayTime "USD" "United States Dollar"
-  z4200L  <- originate seller      seller      pub todayTime "Z4200L" "Z4200L"
-  z4GEN   <- originate seller      seller      pub todayTime "Z4GEN" "Z4GEN"
-  z4300L  <- originate seller      seller      pub todayTime "Z4300L" "Z4300L"
+  usd     <- originateToken cashProvider cashProvider pub todayTime "USD" "United States Dollar"
+  z4200L  <- originateToken seller      seller      pub todayTime "Z4200L" "Z4200L"
+  z4GEN   <- originateToken seller      seller      pub todayTime "Z4GEN" "Z4GEN"
+  z4300L  <- originateToken seller      seller      pub todayTime "Z4300L" "Z4300L"
 
   -- Structured Instruments
   let

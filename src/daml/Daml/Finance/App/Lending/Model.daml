@@ -4,8 +4,8 @@
 module Daml.Finance.App.Lending.Model where
 
 import DA.Set (singleton)
-import Daml.Finance.Interface.Holding.Account qualified as Account (K, exerciseInterfaceByKey)
-import Daml.Finance.Interface.Holding.Lockable qualified as Lockable (I, Release(..))
+import Daml.Finance.Interface.Account.Account qualified as Account (K, exerciseInterfaceByKey)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I, Release(..))
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I, Transfer(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, RemoveObservers(..))
@@ -68,9 +68,9 @@ template BorrowAgreement
         interestCid : ContractId Transferable.I
       controller customer
       do
-        borrowedCid <- exercise borrowedCid Transferable.Transfer with newOwnerAccount = lenderBorrowedAccount
-        interestCid <- exercise interestCid Transferable.Transfer with newOwnerAccount = lenderInterestAccount
-        unlockedCid <- coerceContractId <$> exercise (coerceContractId collateralCid : ContractId Lockable.I) Lockable.Release with context = id
+        borrowedCid <- exercise borrowedCid Transferable.Transfer with actors = singleton customer; newOwnerAccount = lenderBorrowedAccount
+        interestCid <- exercise interestCid Transferable.Transfer with actors = singleton customer; newOwnerAccount = lenderInterestAccount
+        unlockedCid <- coerceContractId <$> exercise (toInterfaceContractId collateralCid : ContractId Holding.I) Holding.Release with context = id
         Account.exerciseInterfaceByKey @Disclosure.I lenderBorrowedAccount provider Disclosure.RemoveObservers with disclosers = singleton customer; observersToRemove = (id, singleton customer)
         Account.exerciseInterfaceByKey @Disclosure.I lenderInterestAccount provider Disclosure.RemoveObservers with disclosers = singleton customer; observersToRemove = (id, singleton customer)
         pure (unlockedCid, borrowedCid, interestCid)

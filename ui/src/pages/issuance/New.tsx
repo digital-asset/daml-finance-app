@@ -8,7 +8,7 @@ import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Typography, Grid, Paper, Button, Checkbox, FormGroup, FormControlLabel } from "@mui/material";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { Reference as AccountReference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
+import { Reference } from "@daml.js/daml-finance-interface-account/lib/Daml/Finance/Interface/Account/Account";
 import { useServices } from "../../context/ServiceContext";
 import { useInstruments } from "../../context/InstrumentContext";
 import { Service as BackToBack } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/BackToBack/Service";
@@ -31,7 +31,7 @@ export const New : React.FC = () => {
   const party = useParty();
   const { loading: l1, backToBack, issuance, issuanceAuto } = useServices();
   const { loading: l2, latests } = useInstruments();
-  const { contracts: accounts, loading: l3 } = useStreamQueries(AccountReference);
+  const { contracts: accounts, loading: l3 } = useStreamQueries(Reference);
 
   const aggregates = latests.filter(c => c.payload.issuer === party);
   const aggregate = aggregates.find(c => c.payload.id.unpack === instrumentLabel);

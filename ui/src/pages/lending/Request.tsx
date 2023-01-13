@@ -5,11 +5,11 @@ import React, { useState } from "react";
 import useStyles from "../styles";
 import classnames from "classnames";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
-import { Grid, Paper, Typography, Table, TableRow, TableCell, TableBody, TextField, Button, FormControl, InputLabel, Select, MenuItem, MenuProps } from "@mui/material";
+import { Grid, Paper, Typography, Table, TableRow, TableCell, TableBody, Button } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
 import { Service as Lending } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lending/Service";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { Reference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
+import { Reference } from "@daml.js/daml-finance-interface-account/lib/Daml/Finance/Interface/Account/Account";
 import { Message } from "../../components/Message/Message";
 import { useParties } from "../../context/PartiesContext";
 import { useInstruments } from "../../context/InstrumentContext";
@@ -19,9 +19,11 @@ import { fmt } from "../../util";
 import { useHoldings } from "../../context/HoldingContext";
 import { ContractId } from "@daml/types";
 import { Transferable } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Transferable";
+import { SelectInput, toValues } from "../../components/Form/SelectInput";
+import { TextInput } from "../../components/Form/TextInput";
 
 export const Request : React.FC = () => {
-  const classes = useStyles();
+  const cls = useStyles();
   const navigate = useNavigate();
 
   const [ interestInstrumentLabel, setInterestInstrumentLabel ] = useState("");
@@ -75,62 +77,51 @@ export const Request : React.FC = () => {
     navigate("/app/lending/offers");
   };
 
-  const menuProps : Partial<MenuProps> = { anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" } };
   return (
     <Grid container direction="column">
       <Grid item xs={12}>
-        <Typography variant="h3" className={classes.heading}>{request.payload.id}</Typography>
+        <Typography variant="h3" className={cls.heading}>{request.payload.id}</Typography>
       </Grid>
       <Grid item xs={12}>
         <Grid container spacing={4}>
           <Grid item xs={4}>
             <Grid container direction="column">
               <Grid xs={12}>
-                <Paper className={classnames(classes.fullWidth, classes.paper)}>
-                  <Typography variant="h5" className={classes.heading}>Borrow Request Details</Typography>
+                <Paper className={classnames(cls.fullWidth, cls.paper)}>
+                  <Typography variant="h5" className={cls.heading}>Borrow Request</Typography>
                   <Table size="small">
                     <TableBody>
-                      <TableRow key={0} className={classes.tableRow}>
-                        <TableCell key={0} className={classnames(classes.tableCell, classes.width50)}><b>Borrower</b></TableCell>
-                        <TableCell key={1} className={classnames(classes.tableCell, classes.width50)}>{getName(request.payload.customer)}</TableCell>
+                      <TableRow key={0} className={cls.tableRow}>
+                        <TableCell key={0} className={classnames(cls.tableCell, cls.width50)}><b>Borrower</b></TableCell>
+                        <TableCell key={1} className={classnames(cls.tableCell, cls.width50)}>{getName(request.payload.customer)}</TableCell>
                       </TableRow>
-                      <TableRow key={1} className={classes.tableRow}>
-                        <TableCell key={0} className={classnames(classes.tableCell, classes.width50)}><b>Lender</b></TableCell>
-                        <TableCell key={1} className={classnames(classes.tableCell, classes.width50)}>{getName(request.payload.provider)}</TableCell>
+                      <TableRow key={1} className={cls.tableRow}>
+                        <TableCell key={0} className={classnames(cls.tableCell, cls.width50)}><b>Lender</b></TableCell>
+                        <TableCell key={1} className={classnames(cls.tableCell, cls.width50)}>{getName(request.payload.provider)}</TableCell>
                       </TableRow>
-                      <TableRow key={2} className={classes.tableRow}>
-                        <TableCell key={0} className={classnames(classes.tableCell, classes.width50)}><b>Id</b></TableCell>
-                        <TableCell key={1} className={classnames(classes.tableCell, classes.width50)}>{request.payload.id}</TableCell>
+                      <TableRow key={2} className={cls.tableRow}>
+                        <TableCell key={0} className={classnames(cls.tableCell, cls.width50)}><b>Id</b></TableCell>
+                        <TableCell key={1} className={classnames(cls.tableCell, cls.width50)}>{request.payload.id}</TableCell>
                       </TableRow>
-                      <TableRow key={3} className={classes.tableRow}>
-                        <TableCell key={0} className={classnames(classes.tableCell, classes.width50)}><b>Borrowed</b></TableCell>
-                        <TableCell key={1} className={classnames(classes.tableCell, classes.width50)}>{fmt(request.payload.borrowed.amount)} {request.payload.borrowed.unit.id.unpack}</TableCell>
+                      <TableRow key={3} className={cls.tableRow}>
+                        <TableCell key={0} className={classnames(cls.tableCell, cls.width50)}><b>Borrowed</b></TableCell>
+                        <TableCell key={1} className={classnames(cls.tableCell, cls.width50)}>{fmt(request.payload.borrowed.amount)} {request.payload.borrowed.unit.id.unpack}</TableCell>
                       </TableRow>
-                      <TableRow key={4} className={classes.tableRow}>
-                        <TableCell key={0} className={classnames(classes.tableCell, classes.width50)}><b>Maturity</b></TableCell>
-                        <TableCell key={1} className={classnames(classes.tableCell, classes.width50)}>{request.payload.maturity}</TableCell>
+                      <TableRow key={4} className={cls.tableRow}>
+                        <TableCell key={0} className={classnames(cls.tableCell, cls.width50)}><b>Maturity</b></TableCell>
+                        <TableCell key={1} className={classnames(cls.tableCell, cls.width50)}>{request.payload.maturity}</TableCell>
                       </TableRow>
                     </TableBody>
                   </Table>
                 </Paper>
                 {isProvider &&
-                  <Paper className={classnames(classes.fullWidth, classes.paper)}>
-                    <Typography variant="h5" className={classes.heading}>Borrow Request Details</Typography>
-                    <FormControl className={classes.inputField} fullWidth>
-                      <InputLabel className={classes.selectLabel}>Interest Instrument</InputLabel>
-                      <Select fullWidth value={interestInstrumentLabel} onChange={e => setInterestInstrumentLabel(e.target.value as string)} MenuProps={menuProps}>
-                        {tokens.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
-                      </Select>
-                    </FormControl>
-                    <TextField className={classes.inputField} fullWidth label="Interest Amount" type="number" value={interestAmount} onChange={e => setInterestAmount(e.target.value as string)} />
-                    <FormControl className={classes.inputField} fullWidth>
-                      <InputLabel className={classes.selectLabel}>Collateral Instrument</InputLabel>
-                      <Select fullWidth value={collateralInstrumentLabel} onChange={e => setCollateralInstrumentLabel(e.target.value as string)} MenuProps={menuProps}>
-                        {tokens.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack}</MenuItem>))}
-                      </Select>
-                    </FormControl>
-                    <TextField className={classes.inputField} fullWidth label="Collateral Amount" type="number" value={collateralAmount} onChange={e => setCollateralAmount(e.target.value as string)} />
-                    <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={createBorrowOffer}>Create Offer</Button>
+                  <Paper className={classnames(cls.fullWidth, cls.paper)}>
+                    <Typography variant="h5" className={cls.heading}>Offer Details</Typography>
+                    <SelectInput  label="Interest Instrument"     value={interestInstrumentLabel}   setValue={setInterestInstrumentLabel} values={toValues(tokens)} />
+                    <TextInput    label="Interest Amount"         value={interestAmount}            setValue={setInterestAmount} />
+                    <SelectInput  label="Collateral Instrument"   value={collateralInstrumentLabel} setValue={setCollateralInstrumentLabel} values={toValues(tokens)} />
+                    <TextInput    label="Collateral Amount"       value={collateralAmount}          setValue={setCollateralAmount} />
+                    <Button className={classnames(cls.fullWidth, cls.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={createBorrowOffer}>Create Offer</Button>
                   </Paper>
                 }
               </Grid>

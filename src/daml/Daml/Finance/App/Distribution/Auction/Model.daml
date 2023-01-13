@@ -3,7 +3,7 @@
 
 module Daml.Finance.App.Distribution.Auction.Model where
 
-import Daml.Finance.Interface.Holding.Account qualified as Account (K)
+import Daml.Finance.Interface.Account.Account qualified as Account (K)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K, Q)
 import Daml.Finance.Interface.Types.Common (Parties)

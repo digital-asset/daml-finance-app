@@ -3,7 +3,8 @@
 
 module Daml.Finance.App.Distribution.Bidding.Model where
 
-import Daml.Finance.Interface.Holding.Account qualified as Account (K)
+import DA.Set (singleton)
+import Daml.Finance.Interface.Account.Account qualified as Account (K)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
@@ -85,7 +86,7 @@ template Bid
         account : Account.K
       controller provider
       do
-        exercise instructionCid Instruction.Approve with approval = T.TakeDelivery account
+        exercise instructionCid Instruction.Approve with actors = singleton customer; approval = T.TakeDelivery account
 
     nonconsuming choice AllocateInstruction : ContractId Instruction.I
       with
@@ -93,4 +94,4 @@ template Bid
         transferableCid : ContractId Transferable.I
       controller provider
       do
-        fst <$> exercise instructionCid Instruction.Allocate with allocation = T.Pledge transferableCid
+        fst <$> exercise instructionCid Instruction.Allocate with actors = singleton customer; allocation = T.Pledge $ toInterfaceContractId transferableCid

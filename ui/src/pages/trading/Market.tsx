@@ -16,7 +16,7 @@ import { CreateEvent } from "@daml/ledger";
 import { createSet, fmt, keyEquals } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { Percentage } from "../../components/Slider/Percentage";
-import { Reference } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Account";
+import { Reference } from "@daml.js/daml-finance-interface-account/lib/Daml/Finance/Interface/Account/Account";
 import { useParties } from "../../context/PartiesContext";
 import { useServices } from "../../context/ServiceContext";
 import { Message } from "../../components/Message/Message";
@@ -70,7 +70,6 @@ export const Market : React.FC = () => {
   const { loading: l4, contracts: accounts } = useStreamQueries(Reference);
   const { loading: l5, contracts: orders } = useStreamQueries(Order);
   const { contractId } = useParams<any>();
-  console.log(contractId);
   if (l1 || l2 || l3 || l4 || l5 || !contractId) return <Spinner />;
 
   const myServices = trading.filter(s => s.payload.customer === party);
@@ -85,7 +84,7 @@ export const Market : React.FC = () => {
   const asks = limits.filter(c => c.payload.side === Side.Sell).sort((a, b) => parseFloat(b.payload.price.amount) - parseFloat(a.payload.price.amount));
   const myOrders = limits.filter(c => c.payload.customer === party);
 
-  const available = holdings.filter(c => !c.lockable || !c.lockable.payload.lock);
+  const available = holdings.filter(c => !c.payload.lock);
   const tradedHoldings = available.filter(c => keyEquals(c.payload.instrument, listing.payload.tradedInstrument));
   const quotedHoldings = available.filter(c => keyEquals(c.payload.instrument, listing.payload.quotedInstrument));
   const tradedHoldingsTotal = tradedHoldings.reduce((acc, c) => acc + parseFloat(c.payload.amount), 0);

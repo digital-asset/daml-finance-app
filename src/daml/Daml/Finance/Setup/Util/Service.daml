@@ -6,6 +6,8 @@ module Daml.Finance.Setup.Util.Service where
 import DA.Map qualified as M (fromList)
 import DA.Set (fromList, singleton)
 import Daml.Finance.App.Custody.Service qualified as Custody (Accept(..), Service)
+import Daml.Finance.App.Decentralized.Exchange.Model qualified as DecentralizedExchange (Pool(..))
+import Daml.Finance.App.Decentralized.Exchange.Service qualified as DecentralizedExchange (Service(..))
 import Daml.Finance.App.Issuance.Auto.Service qualified as IssuanceAuto (Accept(..), Service)
 import Daml.Finance.App.Issuance.Service qualified as Issuance (Accept(..), Service)
 import Daml.Finance.App.BackToBack.Service qualified as BackToBack (Accept(..), Service)
@@ -19,6 +21,8 @@ import Daml.Finance.App.Distribution.Auction.Auto.Service qualified as AuctionAu
 import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (Accept(..), Service)
 import Daml.Finance.App.Distribution.Bidding.Auto.Service qualified as BiddingAuto (Accept(..), Service)
 import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Accept(..), Service)
+import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (Accept(..), Service)
+import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (Accept(..), Service)
 import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Accept(..), Service)
 import Daml.Finance.App.Role.Custodian qualified as Custodian
 import Daml.Finance.App.Role.Distributor qualified as Distributor
@@ -33,9 +37,14 @@ import Daml.Finance.Instrument.Bond.ZeroCoupon.Factory qualified as ZeroCouponBo
 import Daml.Finance.Instrument.Equity.Factory qualified as Equity (Factory(..))
 import Daml.Finance.Instrument.Generic.Factory qualified as Generic (Factory(..))
 import Daml.Finance.Instrument.Token.Factory qualified as Token (Factory(..))
-import Daml.Finance.Interface.Holding.Factory.Account qualified as Account (F)
-import Daml.Finance.Interface.Holding.Factory.Holding qualified as Holding (F)
+import Daml.Finance.Interface.Account.Account qualified as Account (K)
+import Daml.Finance.Interface.Account.Factory qualified as Account (F)
+import Daml.Finance.Interface.Holding.Factory qualified as Holding (F)
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 import Daml.Finance.Interface.Settlement.Factory qualified as Settlement (Factory)
+import Daml.Finance.Interface.Types.Common (Id(..))
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, AddObservers(..))
 import Daml.Finance.Lifecycle.Rule.Claim qualified as Claim (Rule(..))
 import Daml.Finance.Lifecycle.Rule.Distribution qualified as Distribution (Rule(..))
 import Daml.Finance.Lifecycle.Rule.Replacement qualified as Replacement (Rule(..))
@@ -44,7 +53,7 @@ import Daml.Script
 createCustodyService : Party -> Party -> Party -> ContractId Settlement.Factory -> ContractId Account.F -> ContractId Holding.F -> Script (ContractId Custody.Service)
 createCustodyService operator custodian customer settlementFactoryCid accountFactoryCid holdingFactoryCid = do
   let providers = fromList [custodian, customer]
-  claimRuleCid <- toInterfaceContractId <$> submitMulti [custodian, customer] [] do createCmd Claim.Rule with providers = fromList [custodian, customer]; claimers = providers; settlers = providers; settlementFactoryCid
+  claimRuleCid <- toInterfaceContractId <$> submitMulti [custodian, customer] [] do createCmd Claim.Rule with providers = fromList [custodian, customer]; claimers = providers; settlers = providers; settlementFactoryCid; netInstructions = False
   offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferCustodyService with customer; claimRuleCid; accountFactoryCid; holdingFactoryCid
   submit customer do exerciseCmd offerCid Custody.Accept
 
@@ -83,7 +92,7 @@ createBackToBackIssuanceService operator custodian customer public = do
 
 createLifecycleService : Party -> Party -> Party -> Party -> Script (ContractId Lifecycle.Service)
 createLifecycleService operator custodian customer public = do
-  distributionRuleCid <- toInterfaceContractId <$> submit custodian do createCmd Distribution.Rule with provider = singleton custodian; lifecycler = customer; observers = singleton public
+  distributionRuleCid <- toInterfaceContractId <$> submit custodian do createCmd Distribution.Rule with providers = singleton custodian; lifecycler = customer; observers = singleton public
   replacementRuleCid <- toInterfaceContractId <$> submit custodian do createCmd Replacement.Rule with providers = singleton custodian; lifecycler = customer; observers = singleton public
   offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferLifecycleService with ..
   submit customer do exerciseCmd offerCid Lifecycle.Accept
@@ -142,3 +151,23 @@ createSettlementService : Party -> Party -> Party -> Script (ContractId Settleme
 createSettlementService operator custodian customer = do
   offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferSettlementService with customer
   submit customer do exerciseCmd offerCid Settlement.Accept
+
+createInvestmentService : Party -> Party -> Party -> Script (ContractId Investment.Service)
+createInvestmentService operator provider customer = do
+  offerCid <- submit provider do exerciseByKeyCmd @Distributor.Role (operator, provider) Distributor.OfferInvestmentService with customer
+  submit customer do exerciseCmd offerCid Investment.Accept
+
+createFundService : Party -> Party -> Party -> Script (ContractId Fund.Service)
+createFundService operator provider customer = do
+  offerCid <- submit provider do exerciseByKeyCmd @Distributor.Role (operator, provider) Distributor.OfferFundService with customer
+  submit customer do exerciseCmd offerCid Fund.Accept
+
+createDecentralizedExchangeService : Party -> Party -> Text -> Instrument.Q -> Instrument.Q -> Account.K -> ContractId Fungible.I -> Instrument.Q -> Account.K -> ContractId Fungible.I -> Script (ContractId DecentralizedExchange.Service)
+createDecentralizedExchangeService consortium public id shares quantity1 account1 fungible1Cid quantity2 account2 fungible2Cid = do
+  fungible1Cid <- coerceContractId <$> submit consortium do exerciseCmd (toInterfaceContractId @Disclosure.I fungible1Cid) Disclosure.AddObservers with disclosers = singleton consortium; observersToAdd = (id, singleton public)
+  fungible2Cid <- coerceContractId <$> submit consortium do exerciseCmd (toInterfaceContractId @Disclosure.I fungible2Cid) Disclosure.AddObservers with disclosers = singleton consortium; observersToAdd = (id, singleton public)
+  let
+    p1 = DecentralizedExchange.Pool with quantity = quantity1; account = account1; fungibleCid = fungible1Cid
+    p2 = DecentralizedExchange.Pool with quantity = quantity2; account = account2; fungibleCid = fungible2Cid
+  submit consortium do createCmd DecentralizedExchange.Service with consortium; public; id = Id id; description = id; shares; p1; p2
+

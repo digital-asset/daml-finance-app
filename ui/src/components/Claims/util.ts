@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { v4 as uuidv4 } from "uuid";
-import { Claim, Inequality } from "@daml.js/contingent-claims/lib/ContingentClaims/Internal/Claim";
-import { Observation } from "@daml.js/contingent-claims/lib/ContingentClaims/Observation";
+import { Claim, Inequality } from "@daml.js/contingent-claims-core/lib/ContingentClaims/Core/Internal/Claim";
+import { Observation } from "@daml.js/contingent-claims-core/lib/ContingentClaims/Core/Observation";
 import { Decimal, Time } from "@daml/types";
 import { ClaimTreeNode } from "./ClaimsTreeBuilder";
 import { InstrumentKey } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Common";
@@ -102,6 +102,8 @@ export const inequalityToNode = (ineq : I) : ClaimTreeNode => {
   switch (ineq.tag) {
     case "TimeGte":
       return { id: uuidv4(), tag: ineq.tag, type: "Inequality", children: [ createDate(ineq.value) ], text: "Date >=" };
+    case "TimeLte":
+      return { id: uuidv4(), tag: ineq.tag, type: "Inequality", children: [ createDate(ineq.value) ], text: "Date <=" };
     case "Lte":
       return { id: uuidv4(), tag: ineq.tag, type: "Inequality", children: [ observationToNode(ineq.value._1), observationToNode(ineq.value._2) ], text: "<=" };
   }

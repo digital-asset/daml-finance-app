@@ -6,7 +6,7 @@ module Daml.Finance.App.Distribution.Auction.Utils where
 import DA.Set (singleton)
 import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding
 import Daml.Finance.App.Distribution.Bidding.Model qualified as Bidding (AllocateInstruction(..), Allocation(..), ApproveInstruction(..), Bid(..), SettleAllocation(..))
-import Daml.Finance.Interface.Holding.Account qualified as Account (K)
+import Daml.Finance.Interface.Account.Account qualified as Account (K)
 import Daml.Finance.Interface.Holding.Fungible (Fungible, Split(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
 import Daml.Finance.Interface.Holding.Util (getAmount, getInstrument)
@@ -76,9 +76,9 @@ generateSettlementInstruction settlementFactoryCid settler issuerAccount (Some i
     id = bid.auctionId <> "-" <> partyToText buyer
 
   (batchCid, [deliveryCid, paymentCid]) <- exercise settlementFactoryCid Instruct with instructors = singleton settler; settlers = singleton settler; id = Id id; description = "Settlement of auction " <> id; contextId = Some $ Id id; steps = [delivery, payment]
-  deliveryCid <- fst <$> exercise deliveryCid Allocate with allocation = Pledge $ toInterfaceContractId allocatedDepositCid
+  deliveryCid <- fst <$> exercise deliveryCid Allocate with actors = singleton issuer; allocation = Pledge $ toInterfaceContractId allocatedDepositCid
   exercise bidCid Bidding.ApproveInstruction with instructionCid = deliveryCid; account = bid.receivableAccount
   paymentCid <- exercise bidCid Bidding.AllocateInstruction with instructionCid = paymentCid; transferableCid = toInterfaceContractId bidDepositCid
-  exercise paymentCid Approve with approval = TakeDelivery issuerAccount
+  exercise paymentCid Approve with actors = singleton issuer; approval = TakeDelivery issuerAccount
 
   pure (splitResult.rest, batchCid :: batchCids)

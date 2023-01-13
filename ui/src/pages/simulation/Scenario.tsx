@@ -16,7 +16,7 @@ import { dedup } from "../../util";
 import { useServices } from "../../context/ServiceContext";
 import { useInstruments } from "../../context/InstrumentContext";
 import { Message } from "../../components/Message/Message";
-import { Observable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/Observable";
+import { NumericObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/NumericObservable";
 
 type Payout = {
   asset : string
@@ -49,7 +49,7 @@ export const Scenario : React.FC = () => {
   const ledger = useLedger();
   const { loading: l1, lifecycle } = useServices();
   const { loading: l2, latests } = useInstruments();
-  const { loading: l3, contracts: observations } = useStreamQueries(Observable);
+  const { loading: l3, contracts: observations } = useStreamQueries(NumericObservable);
 
   const hasClaims = latests.filter(a => !!a.claim);
   const instrument = hasClaims.find(a => a.payload.id.unpack === instrumentId);
@@ -95,7 +95,6 @@ export const Scenario : React.FC = () => {
   //     if (services.length === 0 || underlyings.length === 0 || !asset) return;
   //     const claims = mapToText(asset.payload.claims);
   //     const [ { _2: formulaText }, ] = await ledger.exercise(Service.PreviewPricing, services[0].contractId, { ccy: "USD", claims })
-  //     console.log(formulaText);
   //     setMath(formulaText);
   //   }
   //   getFormula();

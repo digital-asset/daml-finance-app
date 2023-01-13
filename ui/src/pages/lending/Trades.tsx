@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
-import { Table, TableBody, TableCell, TableRow, TableHead, Grid, Paper, Typography, Button } from "@mui/material";
+import { Button } from "@mui/material";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
 import { Spinner } from "../../components/Spinner/Spinner";
@@ -14,6 +14,7 @@ import { CreateEvent } from "@daml/ledger";
 import { useHoldings } from "../../context/HoldingContext";
 import { ContractId } from "@daml/types";
 import { Transferable } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Transferable";
+import { HorizontalTable } from "../../components/Table/HorizontalTable";
 
 export const Trades : React.FC = () => {
   const classes = useStyles();
@@ -38,47 +39,21 @@ export const Trades : React.FC = () => {
     await ledger.exercise(BorrowAgreement.Repay, trade.contractId, arg);
   };
 
+  const createRow = (c : CreateEvent<BorrowAgreement>) : any[] => {
+    return [
+      getName(c.payload.customer),
+      getName(c.payload.provider),
+      c.payload.id,
+      fmt(c.payload.borrowed.amount, 0) + " " + c.payload.borrowed.unit.id.unpack,
+      c.payload.maturity,
+      fmt(c.payload.interest.amount, 0) + " " + c.payload.interest.unit.id.unpack,
+      fmt(c.payload.collateral.amount, 0) + " " + c.payload.collateral.unit.id.unpack,
+      isCustomer ? <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => repay(c)}>Repay</Button> : <></>
+    ];
+  }
+  const headers = ["Borrower", "Lender", "Id", "Borrowed", "Maturity", "Interest", "Collateral", "Action"]
+  const values : any[] = trades.map(createRow);
   return (
-    <>
-      <Grid container direction="column">
-        <Grid container direction="row">
-          <Grid item xs={12}>
-            <Paper className={classes.paper}>
-              <Grid container direction="row" justifyContent="center" className={classes.paperHeading}><Typography variant="h2">Live Trades</Typography></Grid>
-              <Table size="small">
-                <TableHead>
-                  <TableRow className={classes.tableRow}>
-                    <TableCell key={1} className={classes.tableCell}><b>Borrower</b></TableCell>
-                    <TableCell key={2} className={classes.tableCell}><b>Lender</b></TableCell>
-                    <TableCell key={3} className={classes.tableCell}><b>Id</b></TableCell>
-                    <TableCell key={4} className={classes.tableCell}><b>Borrowed</b></TableCell>
-                    <TableCell key={5} className={classes.tableCell}><b>Maturity</b></TableCell>
-                    <TableCell key={6} className={classes.tableCell}><b>Interest</b></TableCell>
-                    <TableCell key={7} className={classes.tableCell}><b>Collateral</b></TableCell>
-                    <TableCell key={8} className={classes.tableCell}><b>Action</b></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {trades.map((c, i) => (
-                    <TableRow key={i} className={classes.tableRow}>
-                      <TableCell key={1} className={classes.tableCell}>{getName(c.payload.customer)}</TableCell>
-                      <TableCell key={1} className={classes.tableCell}>{getName(c.payload.provider)}</TableCell>
-                      <TableCell key={2} className={classes.tableCell}>{c.payload.id}</TableCell>
-                      <TableCell key={4} className={classes.tableCell}>{fmt(c.payload.borrowed.amount, 0)} {c.payload.borrowed.unit.id.unpack}</TableCell>
-                      <TableCell key={5} className={classes.tableCell}>{c.payload.maturity}</TableCell>
-                      <TableCell key={6} className={classes.tableCell}>{fmt(c.payload.interest.amount, 0)} {c.payload.interest.unit.id.unpack}</TableCell>
-                      <TableCell key={7} className={classes.tableCell}>{fmt(c.payload.collateral.amount, 0)} {c.payload.collateral.unit.id.unpack}</TableCell>
-                      <TableCell key={8} className={classes.tableCell}>
-                        {isCustomer && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => repay(c)}>Repay</Button>}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Paper>
-          </Grid>
-        </Grid>
-      </Grid>
-    </>
+    <HorizontalTable title="Live Trades" variant={"h3"} headers={headers} values={values} />
   );
 };

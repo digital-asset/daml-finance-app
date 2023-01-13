@@ -3,8 +3,9 @@
 
 import React, { useEffect, useState } from "react";
 import classnames from "classnames";
+import { v4 as uuidv4 } from "uuid";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
-import { Typography, Grid, Table, TableBody, TableCell, TableRow, Paper, Button, TableHead, Accordion, AccordionSummary, AccordionDetails, TextField, FormControl, InputLabel, Select, MenuItem, TextFieldProps, MenuProps } from "@mui/material";
+import { Typography, Grid, Table, TableBody, TableCell, TableRow, Paper, Button, TableHead, Accordion, AccordionSummary, AccordionDetails } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
 import useStyles from "../styles";
 import { Service as Lifecycle } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Service";
@@ -15,13 +16,15 @@ import { useParties } from "../../context/PartiesContext";
 import { useInstruments } from "../../context/InstrumentContext";
 import { useServices } from "../../context/ServiceContext";
 import { Message } from "../../components/Message/Message";
-import { Observable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/Observable";
+import { NumericObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/NumericObservable";
+import { TimeObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/TimeObservable";
 import { Event } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Event";
-import { Clock } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Clock";
 import { parseDate, shorten } from "../../util";
 import { Pending } from "@daml.js/daml-finance-interface-claims/lib/Daml/Finance/Interface/Claims/Types";
 import { ExpandMore } from "@mui/icons-material";
-import { DatePicker } from "@mui/lab";
+import { TextInput } from "../../components/Form/TextInput";
+import { DateInput } from "../../components/Form/DateInput";
+import { SelectInput, toValues } from "../../components/Form/SelectInput";
 
 export const Instrument : React.FC = () => {
   const classes = useStyles();
@@ -32,7 +35,6 @@ export const Instrument : React.FC = () => {
   const [ node1, setNode1 ] = useState<ClaimTreeNode | undefined>();
   const [ node2, setNode2 ] = useState<ClaimTreeNode | undefined>();
   const [ expanded, setExpanded ] = useState("");
-  const [ id, setId ] = useState("");
   const [ description, setDescription ] = useState("");
   const [ effectiveDate, setEffectiveDate ] = useState<Date | null>(null);
   const [ currency, setCurrency ] = useState("");
@@ -43,9 +45,9 @@ export const Instrument : React.FC = () => {
   const ledger = useLedger();
   const { loading: l1, lifecycle } = useServices();
   const { loading: l2, tokens, equities, getByCid } = useInstruments();
-  const { loading: l3, contracts: observables } = useStreamQueries(Observable);
+  const { loading: l3, contracts: numericObservables } = useStreamQueries(NumericObservable);
   const { loading: l4, contracts: events } = useStreamQueries(Event);
-  const { loading: l5, contracts: clocks } = useStreamQueries(Clock);
+  const { loading: l5, contracts: timeObservables } = useStreamQueries(TimeObservable);
   const { contractId } = useParams<any>();
   const loading = l1 || l2 || l3 || l4 || l5;
   const instrument = getByCid(contractId || "");
@@ -53,13 +55,13 @@ export const Instrument : React.FC = () => {
   useEffect(() => {
     const setClaims = async () => {
       if (loading || !lifecycle || !instrument.claim) return;
-      const observableCids = observables.map(c => c.contractId);
+      const observableCids = numericObservables.map(c => c.contractId);
       const [res, ] = await ledger.exercise(Lifecycle.GetCurrentClaims, lifecycle[0].contractId, { instrumentCid: instrument.claim.contractId, observableCids })
       const claims = res.length > 1 ? and(res.map(r => r.claim)) : res[0].claim;
       setNode1(claimToNode(claims));
     };
     setClaims();
-  }, [ledger, party, instrument, observables, lifecycle, loading]);
+  }, [ledger, party, instrument, numericObservables, lifecycle, loading]);
 
   useEffect(() => {
     if (!!remaining) setNode2(claimToNode(remaining));
@@ -68,24 +70,24 @@ export const Instrument : React.FC = () => {
   if (loading) return <Spinner />;
   if (lifecycle.length === 0) return <Message text={"No lifecycle service found"} />;
 
-  const canDeclareDividend = !!id && !!description && !!effectiveDate && !!currency && !!amount;
-  const canDeclareStockSplit = !!id && !!description && !!effectiveDate && !!amount;
-  const canDeclareReplacement = !!id && !!description && !!effectiveDate && !!currency && !!amount;
+  const canDeclareDividend = !!description && !!effectiveDate && !!currency && !!amount;
+  const canDeclareStockSplit = !!description && !!effectiveDate && !!amount;
+  const canDeclareReplacement = !!description && !!effectiveDate && !!currency && !!amount;
 
   const previewLifecycle = async () => {
-    const observableCids = observables.map(c => c.contractId);
-    const [ res, ] = await ledger.exercise(Lifecycle.PreviewLifecycle, lifecycle[0].contractId, { today: clocks[0].payload.clockTime, observableCids, instrumentCid: instrument.claim!.contractId });
+    const observableCids = numericObservables.map(c => c.contractId);
+    const [ res, ] = await ledger.exercise(Lifecycle.PreviewLifecycle, lifecycle[0].contractId, { today: timeObservables[0].payload.time, observableCids, instrumentCid: instrument.claim!.contractId });
     const claims = res._1.length > 1 ? and(res._1.map(r => r.claim)) : res._1[0].claim;
     setRemaining(claims);
     setPending(res._2);
   };
 
   const executeLifecycle = async () => {
-    const observableCids = observables.map(c => c.contractId);
+    const observableCids = numericObservables.map(c => c.contractId);
     const arg = {
       ruleName: "Time",
       eventCid: events[0].contractId,
-      clockCid: clocks[0].contractId,
+      timeObservableCid: timeObservables[0].contractId,
       observableCids,
       lifecyclableCid: instrument.lifecycle!.contractId
     }
@@ -102,10 +104,10 @@ export const Instrument : React.FC = () => {
     const ccy = tokens.find(c => c.payload.id.unpack === currency);
     if (!lifecycle || !instrument.equity || !ccy) throw new Error("Cannot declare dividend on non-equity instrument");
     const arg = {
-      clockCid: clocks[0].contractId,
+      timeObservableCid: timeObservables[0].contractId,
       equity: instrument.key,
       newVersion: (parseInt(instrument.payload.version) + 1).toString(),
-      id: { unpack: id },
+      id: { unpack: uuidv4() },
       description,
       effectiveDate: parseDate(effectiveDate),
       perUnitDistribution: [ { amount, unit: ccy.key } ]
@@ -117,10 +119,10 @@ export const Instrument : React.FC = () => {
   const declareStockSplit = async () => {
     if (!lifecycle || !instrument.equity) throw new Error("Cannot declare stock split on non-equity instrument");
     const arg = {
-      clockCid: clocks[0].contractId,
+      timeObservableCid: timeObservables[0].contractId,
       equity: instrument.key,
       newVersion: (parseInt(instrument.payload.version) + 1).toString(),
-      id: { unpack: id },
+      id: { unpack: uuidv4() },
       description,
       effectiveDate: parseDate(effectiveDate),
       adjustmentFactor: amount
@@ -133,10 +135,10 @@ export const Instrument : React.FC = () => {
     const ccy = tokens.find(c => c.payload.id.unpack === currency);
     if (!lifecycle || !instrument.equity || !ccy) throw new Error("Cannot declare replacement on non-equity instrument");
     const arg = {
-      clockCid: clocks[0].contractId,
+      timeObservableCid: timeObservables[0].contractId,
       equity: instrument.key,
       newVersion: (parseInt(instrument.payload.version) + 1).toString(),
-      id: { unpack: id },
+      id: { unpack: uuidv4() },
       description,
       effectiveDate: parseDate(effectiveDate),
       perUnitReplacement: [ { amount, unit: ccy.key } ]
@@ -145,7 +147,6 @@ export const Instrument : React.FC = () => {
     navigate("/app/servicing/effects");
   };
 
-  const menuProps : Partial<MenuProps> = { anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" } };
   return (
     <Grid container direction="column" spacing={0}>
       <Grid item xs={12}>
@@ -246,16 +247,10 @@ export const Instrument : React.FC = () => {
                     <Typography gutterBottom variant="h5" component="h2">Dividend</Typography>
                   </AccordionSummary>
                   <AccordionDetails>
-                    <TextField className={classes.inputField} fullWidth label="Id" type="text" value={id} onChange={e => setId(e.target.value as string)} />
-                    <TextField className={classes.inputField} fullWidth label="Description" type="text" value={description} onChange={e => setDescription(e.target.value as string)} />
-                    <DatePicker className={classes.inputField} inputFormat="yyyy-MM-dd" label="Effective Date" value={effectiveDate} onChange={setEffectiveDate} renderInput={(props : TextFieldProps) => <TextField {...props} fullWidth />} />
-                    <FormControl className={classes.inputField} fullWidth>
-                      <InputLabel className={classes.selectLabel}>Currency</InputLabel>
-                      <Select value={currency} onChange={e => setCurrency(e.target.value as string)} MenuProps={menuProps}>
-                        {tokens.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack} - {c.payload.description}</MenuItem>))}
-                      </Select>
-                    </FormControl>
-                    <TextField className={classes.inputField} fullWidth label="Amount" type="number" value={amount} onChange={e => setAmount(e.target.value as string)} />
+                    <TextInput    label="Description"     value={description}   setValue={setDescription} />
+                    <DateInput    label="Effective Date"  value={effectiveDate} setValue={setEffectiveDate} />
+                    <SelectInput  label="Currency"        value={currency}      setValue={setCurrency} values={toValues(tokens)} />
+                    <TextInput    label="Amount"          value={amount}        setValue={setAmount} />
                     <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canDeclareDividend} onClick={declareDividend}>Declare Dividend</Button>
                   </AccordionDetails>
                 </Accordion>
@@ -264,10 +259,9 @@ export const Instrument : React.FC = () => {
                     <Typography gutterBottom variant="h5" component="h2">Stock Split</Typography>
                   </AccordionSummary>
                   <AccordionDetails>
-                    <TextField className={classes.inputField} fullWidth label="Id" type="text" value={id} onChange={e => setId(e.target.value as string)} />
-                    <TextField className={classes.inputField} fullWidth label="Description" type="text" value={description} onChange={e => setDescription(e.target.value as string)} />
-                    <DatePicker className={classes.inputField} inputFormat="yyyy-MM-dd" label="Effective Date" value={effectiveDate} onChange={setEffectiveDate} renderInput={(props : TextFieldProps) => <TextField {...props} fullWidth />} />
-                    <TextField className={classes.inputField} fullWidth label="Adjustment Factor" type="number" value={amount} onChange={e => setAmount(e.target.value as string)} />
+                    <TextInput    label="Description"       value={description}   setValue={setDescription} />
+                    <DateInput    label="Effective Date"    value={effectiveDate} setValue={setEffectiveDate} />
+                    <TextInput    label="Adjustment Factor" value={amount}        setValue={setAmount} />
                     <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canDeclareStockSplit} onClick={declareStockSplit}>Declare StockSplit</Button>
                   </AccordionDetails>
                 </Accordion>
@@ -276,16 +270,10 @@ export const Instrument : React.FC = () => {
                     <Typography gutterBottom variant="h5" component="h2">Replacement</Typography>
                   </AccordionSummary>
                   <AccordionDetails>
-                    <TextField className={classes.inputField} fullWidth label="Id" type="text" value={id} onChange={e => setId(e.target.value as string)} />
-                    <TextField className={classes.inputField} fullWidth label="Description" type="text" value={description} onChange={e => setDescription(e.target.value as string)} />
-                    <DatePicker className={classes.inputField} inputFormat="yyyy-MM-dd" label="Effective Date" value={effectiveDate} onChange={setEffectiveDate} renderInput={(props : TextFieldProps) => <TextField {...props} fullWidth />} />
-                    <FormControl className={classes.inputField} fullWidth>
-                      <InputLabel className={classes.selectLabel}>Replacement Asset</InputLabel>
-                      <Select value={currency} onChange={e => setCurrency(e.target.value as string)} MenuProps={menuProps}>
-                        {equities.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack} - {c.payload.description}</MenuItem>))}
-                      </Select>
-                    </FormControl>
-                    <TextField className={classes.inputField} fullWidth label="Per Unit Replacement" type="number" value={amount} onChange={e => setAmount(e.target.value as string)} />
+                    <TextInput    label="Description"       value={description}   setValue={setDescription} />
+                    <DateInput    label="Effective Date"    value={effectiveDate} setValue={setEffectiveDate} />
+                    <SelectInput  label="Replacement Asset" value={currency}      setValue={setCurrency} values={toValues(equities)} />
+                    <TextInput    label="Per Unit Amount"   value={amount}        setValue={setAmount} />
                     <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canDeclareReplacement} onClick={declareReplacement}>Declare Replacement</Button>
                   </AccordionDetails>
                 </Accordion>

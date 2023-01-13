@@ -9,11 +9,11 @@ import DA.Set (singleton)
 import DA.Time (time)
 import Daml.Finance.App.Lending.Model qualified as Lending (Repay(..))
 import Daml.Finance.App.Lending.Service qualified as Lending (AcceptBorrowOffer(..), CreateBorrowOffer(..), RequestBorrowOffer(..), Service)
-import Daml.Finance.Holding.Account qualified as Account (Factory(..))
+import Daml.Finance.Account.Account qualified as Account (Factory(..))
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
-import Daml.Finance.Interface.Types.Common (Id(..))
-import Daml.Finance.Settlement.Factory qualified as Settlement (Factory(..))
+import Daml.Finance.Settlement.Factory qualified as Settlement (FactoryWithIntermediaries(..))
+import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
 import Daml.Finance.Setup.Payoff
 import Daml.Finance.Setup.Util.Common
 import Daml.Finance.Setup.Util.Role
@@ -30,9 +30,15 @@ run  = do
     pub = fromList [("Public", singleton public)]
 
   -- Factories
-  accountFactoryCid    <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
-  holdingFactoryCid    <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
-  settlementFactoryCid <- toInterfaceContractId <$> submit operator do createCmd Settlement.Factory with provider = operator; observers = singleton public
+  let
+    assets = ["TSLA", "DEAL1"]
+    settlementPaths = [[borrower], [lender]]
+    cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = settlementPaths
+    secRoute = Settlement.Hierarchy with rootCustodian = registry; pathsToRootCustodian = settlementPaths
+    paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
+  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
+  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
+  settlementFactoryCid      <- toInterfaceContractId <$> submit operator do createCmd Settlement.FactoryWithIntermediaries with provider = operator; paths; observers = singleton public
 
   -- Roles
   createOperatorRole  operator
@@ -51,11 +57,11 @@ run  = do
   createLifecycleService    operator registry     lender    public
 
   -- Accounts
-  borrowerLenderAccount <- createAccount operator lender      borrower  public (Id "Borrower@Lender")       "Borrower@Lender"       empty
-  borrowerCashAccount   <- createAccount operator centralBank borrower  public (Id "Borrower@CentralBank")  "Borrower@CentralBank"  empty
-  lenderCashAccount     <- createAccount operator centralBank lender    public (Id "Lender@CentralBank")    "Lender@CentralBank"    empty
-  lenderSecAccount      <- createAccount operator registry    lender    public (Id "Lender@Registry")       "Lender@Registry"       empty
-  borrowerSecAccount    <- createAccount operator registry    borrower  public (Id "Borrower@Registry")     "Borrower@Registry"     empty
+  borrowerLenderAccount <- createAccount operator lender      borrower  public "Borrower@Lender"       empty
+  borrowerCashAccount   <- createAccount operator centralBank borrower  public "Borrower@CentralBank"  empty
+  lenderCashAccount     <- createAccount operator centralBank lender    public "Lender@CentralBank"    empty
+  lenderSecAccount      <- createAccount operator registry    lender    public "Lender@Registry"       empty
+  borrowerSecAccount    <- createAccount operator registry    borrower  public "Borrower@Registry"     empty
 
   -- Time
   t <- getTime
@@ -66,7 +72,7 @@ run  = do
   createClockAndEvent all today (singleton public)
 
   -- Instruments
-  usd   <- originate        centralBank centralBank pub todayTime "USD" "United States Dollar"
+  usd   <- originateToken   centralBank centralBank pub todayTime "USD" "United States Dollar"
   tsla  <- originateEquity  registry    registry    pub todayTime "TSLA" "Tesla, Inc. Common Stock"
   deal1 <- originateGeneric registry    lender      pub todayTime "DEAL1" "Loan of TSLA @ 0.2%" $ loan today (addDays today 28) tsla 0.002 usd [addDays today 7, addDays today 14, addDays today 21, addDays today 28]
 

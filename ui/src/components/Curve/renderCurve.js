@@ -105,6 +105,7 @@ export const render = (el, xAsset, yAsset, a1, a2, a1New, a2New, f, h) => {
     .attr("x", margin.left - 15)
     .attr("y", margin.top - 10)
     .attr("text-anchor", "start")
+    .attr("fill", "white")
     .attr("font-size", 10)
     .attr("font-weight", "bold")
     .text(yAsset);
@@ -113,6 +114,7 @@ export const render = (el, xAsset, yAsset, a1, a2, a1New, a2New, f, h) => {
       .attr("x", width - margin.right + 5)
       .attr("y", height - margin.bottom + 3)
       .attr("text-anchor", "start")
+      .attr("fill", "white")
       .attr("font-size", 10)
       .attr("font-weight", "bold")
       .text(xAsset);
@@ -131,7 +133,7 @@ export const render = (el, xAsset, yAsset, a1, a2, a1New, a2New, f, h) => {
     .append("path")
       .datum(data)
       .attr("fill", "none")
-      .attr("stroke", "green")
+      .attr("stroke", "#A7F6FF")
       .attr("stroke-width", 1)
       .attr("stroke-linejoin", "round")
       .attr("stroke-linecap", "round")
@@ -145,7 +147,7 @@ export const render = (el, xAsset, yAsset, a1, a2, a1New, a2New, f, h) => {
     .append("path")
       .attr("d", circle)
       .attr("fill", "none")
-      .attr("stroke", "black")
+      .attr("stroke", "white")
       .attr("stroke-width", 1)
     .call(transformSymbol, xScale, yScale, a1, a2);
 
@@ -154,7 +156,7 @@ export const render = (el, xAsset, yAsset, a1, a2, a1New, a2New, f, h) => {
   .append("path")
     .attr("d", circle)
     .attr("fill", "none")
-    .attr("stroke", "black")
+    .attr("stroke", "white")
     .attr("stroke-width", 1)
   .call(transformSymbol, xScale, yScale, a1New, a2New);
 
@@ -164,7 +166,7 @@ export const render = (el, xAsset, yAsset, a1, a2, a1New, a2New, f, h) => {
       .attr("clip-path", "url(#clip)")
     .append("path")
       .attr("fill", "none")
-      .attr("stroke", "black")
+      .attr("stroke", "white")
       .attr("stroke-width", 1)
       .attr("stroke-linejoin", "round")
       .attr("stroke-linecap", "round")

@@ -3,10 +3,11 @@
 
 module Daml.Finance.App.Issuance.Service where
 
-import Daml.Finance.Interface.Holding.Account qualified as Account (Credit(..), Debit(..), K, R)
+import Daml.Finance.Interface.Account.Account qualified as Account (Credit(..), Debit(..), K, R)
+import Daml.Finance.Interface.Account.Util (getAccount)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Holding.Util (getAmount)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Holding.Util (getAccount, getAmount)
 import Daml.Finance.Interface.Types.Common (Id)
 import Daml.Finance.App.Issuance.Model (CreateIssuanceRequest(..), ReduceIssuanceRequest(..), Issuance(..))
 import Daml.Finance.App.Util (fetchAndArchive)
