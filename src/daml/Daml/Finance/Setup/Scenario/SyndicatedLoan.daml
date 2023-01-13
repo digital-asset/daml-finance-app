@@ -21,6 +21,21 @@ import Daml.Finance.Setup.Util.Service
 import Daml.Finance.Setup.Util.Workflow
 import Daml.Script
 
+
+-- LeadArranger - issue the loan tokens
+-- Borrower - borrows money, issues tokens
+-- Lenders
+
+-- PROCESS OVERVIEW
+  -- Onboard the borrower and the agent
+  -- Borrower requests loan from agent
+  -- Agent invites sydicate participants
+  -- Syndicate participants accept
+  -- Syndicate partcipants pledge (lock?) cash
+  -- Agent finalises syndicate after participants respond
+  -- Borrower issues tokens and distributes to syndicate, atomic swap for cash
+
+
 run : Script [PartyInfo]
 run  = do
   let scenario = "Syndicated Loans"
@@ -52,9 +67,6 @@ run  = do
 
   -- Services
   createCustodyService          operator centralBank issuer settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator centralBank inv1   settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator centralBank inv2   settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator centralBank inv3   settlementFactoryCid accountFactoryCid holdingFactoryCid
   createCustodyService          operator centralBank borrower   settlementFactoryCid accountFactoryCid holdingFactoryCid
   createCustodyService          operator centralBank syndicateLender1   settlementFactoryCid accountFactoryCid holdingFactoryCid
   createCustodyService          operator centralBank syndicateLender2   settlementFactoryCid accountFactoryCid holdingFactoryCid
@@ -63,9 +75,6 @@ run  = do
   createCustodyService          operator centralBank syndicateLender5   settlementFactoryCid accountFactoryCid holdingFactoryCid
   createCustodyService          operator centralBank syndicateLender6   settlementFactoryCid accountFactoryCid holdingFactoryCid
   createCustodyService          operator registry    issuer settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator registry    inv1   settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator registry    inv2   settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator registry    inv3   settlementFactoryCid accountFactoryCid holdingFactoryCid
   createIssuanceService         operator registry    issuer
   createIssuanceAutoService     operator registry    issuer
   createStructuringService      operator registry    issuer
@@ -91,12 +100,12 @@ run  = do
   createBiddingAutoService      operator agent       inv3
 
   -- Accounts
-  issuerCashAccount <- createAccount operator centralBank  issuer public     "Issuer@CentralBank"    empty
+  --issuerCashAccount <- createAccount operator centralBank  issuer public     "Issuer@CentralBank"    empty
   inv1CashAccount   <- createAccount operator centralBank  inv1   public   "Investor1@CentralBank" empty
   inv2CashAccount   <- createAccount operator centralBank  inv2   public    "Investor2@CentralBank" empty
   inv3CashAccount   <- createAccount operator centralBank  inv3   public  "Investor3@CentralBank" empty
   borrowerCashAccount   <- createAccount operator centralBank  borrower   public   "Borrower@CentralBank" empty
-  issuerSecAccount  <- createAccount operator registry     issuer public        "Issuer@Registry"       empty
+  borrowerSecAccount  <- createAccount operator registry     issuer public        "Borrower@Registry"       empty
   inv1SecAccount    <- createAccount operator registry     inv1   public       "Investor1@Registry"    empty
   inv2SecAccount    <- createAccount operator registry     inv2   public     "Investor2@Registry"    empty
   inv3SecAccount    <- createAccount operator registry     inv3   public      "Investor3@Registry"    empty
