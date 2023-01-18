@@ -1,17 +1,16 @@
 // Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import ReactFlow, { Node } from "react-flow-renderer";
 import { IconButton, Typography } from "@mui/material";
 import useStyles from "./styles";
 import { Box } from "@mui/system";
 import { useNetwork } from "../../hooks/Network";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { loginUser, useUserDispatch } from "../../context/UserContext";
+import { useUser } from "../../context/UserContext";
 import { useNavigate } from "react-router-dom";
 import { FloatingEdge } from "../../components/Network/FloatingEdge";
-import { useParties } from "../../context/PartiesContext";
 import ExitToApp from "@mui/icons-material/ExitToApp";
 import "./index.css"
 import { useBranding } from "../../context/BrandingContext";
@@ -19,16 +18,14 @@ import { useBranding } from "../../context/BrandingContext";
 export const Network : React.FC = () => {
   const classes = useStyles();
   const branding = useBranding();
-  const userDispatch = useUserDispatch();
   const navigate = useNavigate();
-  const [, setError] = useState(false);
-  const { getParty, getToken } = useParties();
+  const { login } = useUser();
   const network = useNetwork();
 
   const onNodeClick = async (event: any, node: Node) => {
-    const party = getParty(node.data.label);
-    const token = getToken(party);
-    await loginUser(userDispatch, node.data.label, party, token, navigate, setError);
+    const user = node.data.label;
+    login(user);
+    navigate("/app");
   };
 
   const edgeTypes = useMemo(() => ({
@@ -61,7 +58,7 @@ export const Network : React.FC = () => {
           edgeTypes={edgeTypes}>
         </ReactFlow>
       </Box>
-      <IconButton size="large" color="inherit" onClick={() => navigate("/login")} style={{ position: "absolute", top: "1%", left: "98%", transform: "translate(-50%, 0%)" }}>
+      <IconButton size="large" color="inherit" onClick={() => navigate("/login/portal")} style={{ position: "absolute", top: "1%", left: "98%", transform: "translate(-50%, 0%)" }}>
         <ExitToApp fontSize="large" />
       </IconButton>
     </>

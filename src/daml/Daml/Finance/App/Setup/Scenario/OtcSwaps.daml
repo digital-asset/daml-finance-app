@@ -1,7 +1,7 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module Daml.Finance.Setup.Scenario.OtcSwaps where
+module Daml.Finance.App.Setup.Scenario.OtcSwaps where
 
 import DA.Date (Month(..), date, toDateUTC, toGregorian)
 import DA.Map (empty, fromList)
@@ -11,10 +11,10 @@ import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum(..)
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum(..))
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
-import Daml.Finance.Setup.Util.Common
-import Daml.Finance.Setup.Util.Role
-import Daml.Finance.Setup.Util.Service
-import Daml.Finance.Setup.Util.Workflow
+import Daml.Finance.App.Setup.Util.Common
+import Daml.Finance.App.Setup.Util.Role
+import Daml.Finance.App.Setup.Util.Service
+import Daml.Finance.App.Setup.Util.Workflow
 import Daml.Script
 
 run : Script [PartyInfo]

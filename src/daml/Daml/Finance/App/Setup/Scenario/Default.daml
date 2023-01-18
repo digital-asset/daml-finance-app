@@ -1,0 +1,249 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Setup.Scenario.Default where
+
+import ContingentClaims.Core.Builders (unrollDates)
+import DA.Date (DayOfWeek(Saturday, Sunday), addDays, date, toDateUTC, toGregorian)
+import DA.Map (empty, fromList)
+import DA.Set (singleton)
+import DA.Time (time)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id(..), InstrumentKey)
+import Daml.Finance.Interface.Util.Common (qty)
+import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
+import Daml.Finance.App.Setup.Payoff
+import Daml.Finance.App.Setup.Util.Common
+import Daml.Finance.App.Setup.Util2.Role
+import Daml.Finance.App.Setup.Util2.Service
+import Daml.Finance.App.Setup.Util2.Workflow
+import Daml.Finance.App.Setup.Util.Workflow qualified as Test
+import Daml.Script
+import Prelude hiding (Scenario)
+
+data Instruments = Instruments
+  with
+    usd : InstrumentKey
+    tsla : InstrumentKey
+    nflx : InstrumentKey
+    fwd : InstrumentKey
+    bnd : InstrumentKey
+    swp : InstrumentKey
+    bswp : InstrumentKey
+    opt : InstrumentKey
+    opt2 : InstrumentKey
+  deriving (Eq, Show)
+
+data Accounts = Accounts
+  with
+    issuerCashAccount : AccountKey
+    inv1CashAccount : AccountKey
+    inv2CashAccount : AccountKey
+    inv3CashAccount : AccountKey
+    issuerSecAccount : AccountKey
+    inv1SecAccount : AccountKey
+    inv2SecAccount : AccountKey
+    inv3SecAccount : AccountKey
+  deriving (Eq, Show)
+
+data Holdings = Holdings
+  with
+    inv1CashCid : ContractId Holding.I
+    inv2CashCid : ContractId Holding.I
+    inv3CashCid : ContractId Holding.I
+    issuerFwdCid : ContractId Holding.I
+    issuerBondCid : ContractId Holding.I
+    issuerSwapCid : ContractId Holding.I
+    issuerBasisSwapCid : ContractId Holding.I
+  deriving (Eq, Show)
+
+data Fixture = Fixture
+  with
+    instruments : Instruments
+    accounts : Accounts
+    holdings : Holdings
+  deriving (Eq, Show)
+
+template Scenario
+  with
+    operator : Party
+    public : Party
+    centralBank : Party
+    registry : Party
+    exchange : Party
+    agent : Party
+    issuer : Party
+    inv1 : Party
+    inv2 : Party
+    inv3 : Party
+    signed : [Party]
+  where
+    signatory signed
+
+    choice Setup : Fixture
+      controller operator
+      do
+        -- Roles
+        createOperatorRole    operator
+        createCustodianRole   operator centralBank
+        createCustodianRole   operator registry
+        createExchangeRole    operator exchange
+        createDistributorRole operator agent
+
+        -- Services
+        let
+          assets = ["TSLA", "NFLX", "FWD1", "BOND1", "SWAP1", "BSWAP1", "OPT1", "OPT2"]
+          custodianPaths = [[issuer], [inv1], [inv2], [inv3]]
+          cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = custodianPaths
+          secRoute = Settlement.Hierarchy with rootCustodian = registry; pathsToRootCustodian = custodianPaths
+          paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
+        createCustodyService          operator centralBank issuer public paths
+        createCustodyService          operator centralBank inv1   public paths
+        createCustodyService          operator centralBank inv2   public paths
+        createCustodyService          operator centralBank inv3   public paths
+        createCustodyService          operator registry    issuer public paths
+        createCustodyService          operator registry    inv1   public paths
+        createCustodyService          operator registry    inv2   public paths
+        createCustodyService          operator registry    inv3   public paths
+        createIssuanceService         operator registry    issuer
+        createIssuanceAutoService     operator registry    issuer
+        createStructuringService      operator registry    issuer
+        createStructuringAutoService  operator registry    issuer
+        createLifecycleService        operator registry    issuer
+        createListingService          operator exchange    issuer
+        createListingAutoService      operator exchange    issuer
+        createTradingService          operator exchange    issuer paths
+        createTradingAutoService      operator exchange    issuer
+        createTradingService          operator exchange    inv1 paths
+        createTradingAutoService      operator exchange    inv1
+        createTradingService          operator exchange    inv2 paths
+        createTradingAutoService      operator exchange    inv2
+        createTradingService          operator exchange    inv3 paths
+        createTradingAutoService      operator exchange    inv3
+        createAuctionService          operator agent       issuer paths
+        createAuctionAutoService      operator agent       issuer
+        createBiddingService          operator agent       inv1
+        createBiddingAutoService      operator agent       inv1
+        createBiddingService          operator agent       inv2
+        createBiddingAutoService      operator agent       inv2
+        createBiddingService          operator agent       inv3
+        createBiddingAutoService      operator agent       inv3
+
+        -- Accounts
+        issuerCashAccount <- createAccount operator centralBank  issuer public "Issuer@CentralBank"    empty
+        inv1CashAccount   <- createAccount operator centralBank  inv1   public "Investor1@CentralBank" empty
+        inv2CashAccount   <- createAccount operator centralBank  inv2   public "Investor2@CentralBank" empty
+        inv3CashAccount   <- createAccount operator centralBank  inv3   public "Investor3@CentralBank" empty
+        issuerSecAccount  <- createAccount operator registry     issuer public "Issuer@Registry"       empty
+        inv1SecAccount    <- createAccount operator registry     inv1   public "Investor1@Registry"    empty
+        inv2SecAccount    <- createAccount operator registry     inv2   public "Investor2@Registry"    empty
+        inv3SecAccount    <- createAccount operator registry     inv3   public "Investor3@Registry"    empty
+
+        -- Time
+        t <- getTime
+        let
+          today = toDateUTC t
+          todayTime = time today 0 0 0
+          yday = time (addDays today (-1)) 0 0 0
+          (todayYear, todayMonth, todayDay) = toGregorian today
+        createClockAndEvent signed today (singleton public)
+
+        -- Observables
+        let
+          pub = fromList [("Public", singleton public)]
+          libor3M = "USD-LIBOR-3M"
+          libor6M = "USD-LIBOR-6M"
+          tslaObs = "TSLA"
+
+        -- Instruments
+        usd     <- originateToken    centralBank centralBank pub yday "USD"     "United States Dollar"
+        tsla    <- originateEquity   registry    issuer      pub yday "TSLA"    "Tesla, Inc. Common Stock"
+        nflx    <- originateEquity   registry    issuer      pub yday "NFLX"    "Netflix, Inc. Common Stock"
+        fwd     <- originateGeneric  registry    issuer      pub yday "FWD1"    "Forward on TSLA"                 $ futureDvp tsla 20.0 usd 10_000.0 today
+        bnd     <- originateGeneric  registry    issuer      pub yday "BOND1"   "Bond 5Y @ 4.875%"                $ bond usd 1.0 0.04875 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
+        swp     <- originateGeneric  registry    issuer      pub yday "SWAP1"   "Swap LIBOR-6M vs 0.25%"          $ interestRateSwap libor6M 0.0025 usd $ unrollDates todayYear (todayYear + 2) [todayMonth] todayDay
+        bswp    <- originateGeneric  registry    issuer      pub yday "BSWAP1"  "Basis Swap LIBOR-6M vs 3M+0.15%" $ basisSwap libor3M libor6M 0.0015 usd $ unrollDates todayYear (todayYear + 2) [todayMonth] todayDay
+        opt     <- originateGeneric  registry    issuer      pub yday "OPT1"    "Call on TSLA @ 500.0 (physical)" $ callOptionPhysical tsla 20.0 usd 10_000.0 (date (todayYear + 1) todayMonth todayDay)
+        opt2    <- originateGeneric  registry    issuer      pub yday "OPT2"    "Call on TSLA @ 700.0 (cash)"     $ callOptionCash tslaObs usd 700.0 (date (todayYear + 1) todayMonth todayDay)
+        let securities = [tsla, nflx, fwd, bnd, swp, bswp, opt, opt2 ]
+
+        -- Data
+        createObservation issuer libor3M [(todayTime, 0.0018825)] pub
+        createObservation issuer libor6M [(todayTime, 0.0022363)] pub
+        createCalendar issuer "FED" [Saturday, Sunday] [] pub
+        createAccountDirectory issuer ([(usd, issuerCashAccount)] <> map (\s -> (s, issuerSecAccount)) securities)  $ singleton public
+        createAccountDirectory inv1   ([(usd, inv1CashAccount)] <> map (\s -> (s, inv1SecAccount)) securities)      $ singleton public
+        createAccountDirectory inv2   ([(usd, inv2CashAccount)] <> map (\s -> (s, inv2SecAccount)) securities)      $ singleton public
+        createAccountDirectory inv3   ([(usd, inv3CashAccount)] <> map (\s -> (s, inv3SecAccount)) securities)      $ singleton public
+
+        -- Distribution
+        inv1CashCid <- coerceContractId <$> deposit operator centralBank inv1 public (qty 1_000_000.0 usd) inv1CashAccount
+        inv2CashCid <- coerceContractId <$> deposit operator centralBank inv2 public (qty 1_000_000.0 usd) inv2CashAccount
+        inv3CashCid <- coerceContractId <$> deposit operator centralBank inv3 public (qty 1_000_000.0 usd) inv3CashAccount
+
+        (_, issuerFwdCid)       <- issue operator registry issuer public (qty 1.0 fwd)           issuerSecAccount
+        (_, issuerBondCid)      <- issue operator registry issuer public (qty 1_000_000.0 bnd)   issuerSecAccount
+        (_, issuerSwapCid)      <- issue operator registry issuer public (qty 10_000_000.0 swp)  issuerSecAccount
+        (_, issuerBasisSwapCid) <- issue operator registry issuer public (qty 10_000_000.0 bswp) issuerSecAccount
+
+        create this
+        let
+          instruments = Instruments with ..
+          accounts = Accounts with ..
+          holdings = Holdings with ..
+        pure Fixture with instruments; accounts; holdings
+
+run : Script [PartyInfo]
+run = do
+  let scenario = "Default"
+  parties <- allocateParties scenario ["Operator", "Public", "CentralBank", "Registry", "Exchange", "Agent", "Issuer", "Investor1", "Investor2", "Investor3"]
+  let all@[operator, public, centralBank, registry, exchange, agent, issuer, inv1, inv2, inv3] = map (.id) parties
+  scenarioCid <- submitMulti all [] do createCmd Scenario with operator; public; centralBank; registry; exchange; agent; issuer; inv1; inv2; inv3; signed = all
+  submitMulti all [] do exerciseCmd scenarioCid Setup
+  pure parties
+
+testAuction : Script ()
+testAuction = do
+  -- Fixture
+  let scenario = "Default"
+  parties <- allocateParties scenario ["Operator", "Public", "CentralBank", "Registry", "Exchange", "Agent", "Issuer", "Investor1", "Investor2", "Investor3"]
+  let all@[operator, public, centralBank, registry, exchange, agent, issuer, inv1, inv2, inv3] = map (.id) parties
+  scenarioCid <- submitMulti all [] do createCmd Scenario with operator; public; centralBank; registry; exchange; agent; issuer; inv1; inv2; inv3; signed = all
+  Fixture{instruments; accounts; holdings} <- submitMulti all [] do exerciseCmd scenarioCid Setup
+
+  -- Workflow
+  let
+    Instruments{bnd, usd} = instruments
+    Accounts{issuerCashAccount; inv1SecAccount; inv2SecAccount; inv3SecAccount} = accounts
+    Holdings{issuerBondCid} = holdings
+  auctionCid        <- Test.createAuction operator agent issuer public (Id "AUCTION1") "AUCTION1" (qty 1_000_000.0 bnd) usd 0.95 (coerceContractId issuerBondCid) issuerCashAccount
+  inv1CollateralCid <- coerceContractId <$> getHolding inv1 (qty 500_000.0 usd)
+  inv2CollateralCid <- coerceContractId <$> getHolding inv2 (qty 392_000.0 usd)
+  inv3CollateralCid <- coerceContractId <$> getHolding inv3 (qty 297_000.0 usd)
+  inv1BidCid        <- Test.createAuctionBid operator agent inv1 public auctionCid 500_000.0 1.0  inv1CollateralCid inv1SecAccount
+  inv2BidCid        <- Test.createAuctionBid operator agent inv2 public auctionCid 400_000.0 0.98 inv2CollateralCid inv2SecAccount
+  inv3BidCid        <- Test.createAuctionBid operator agent inv3 public auctionCid 300_000.0 0.99 inv3CollateralCid inv3SecAccount
+  Test.processAuction operator agent issuer public auctionCid [inv1BidCid, inv2BidCid, inv3BidCid]
+  pure ()
+
+testTrading : Script ()
+testTrading = do
+
+  let scenario = "Default"
+  parties <- allocateParties scenario ["Operator", "Public", "CentralBank", "Registry", "Exchange", "Agent", "Issuer", "Investor1", "Investor2", "Investor3"]
+  let all@[operator, public, centralBank, registry, exchange, agent, issuer, inv1, inv2, inv3] = map (.id) parties
+
+  -- Scenario
+  scenarioCid <- submitMulti all [] do createCmd Scenario with operator; public; centralBank; registry; exchange; agent; issuer; inv1; inv2; inv3; signed = all
+  Fixture{instruments; accounts} <- submitMulti all [] do exerciseCmd scenarioCid Setup
+
+  -- Workflows
+  let
+    Instruments{swp, usd} = instruments
+    listingId = Id "SWAP/USD"
+  Test.list operator exchange issuer listingId "SWAP vs USD" swp usd $ singleton public
+  Test.createAskOrder operator exchange issuer public (Id "1") (qty 250_000.0 swp) (qty 1.00 usd) $ singleton public
+  Test.createAskOrder operator exchange issuer public (Id "2") (qty 250_000.0 swp) (qty 1.00 usd) $ singleton public
+  Test.createBidOrder operator exchange inv1   public (Id "3") (qty 400_000.0 swp) (qty 1.00 usd) $ singleton public
+  pure ()
+

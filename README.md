@@ -25,7 +25,7 @@ We currently don't support running the app on Windows natively, but you can use 
 
 On Linux or MacOS run the following command:
 ```
-DAML_PROJECT=package/main/daml/Daml.Finance.Setup/ daml start
+DAML_PROJECT=package/main/daml/Daml.Finance.App.Setup/ daml start
 ```
 
 Wait until the sandbox is up and running, indicated by the following output:

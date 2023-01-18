@@ -1,28 +1,37 @@
 // Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import React, { useEffect } from "react";
-import { Grid, Typography } from "@mui/material";
-import { Box } from "@mui/system";
-import { Scenario } from "../../components/Card/Scenario";
+import React, { useEffect, useState } from "react";
+import { LinearProgress, Typography } from "@mui/material";
 import { useScenario } from "../../context/ScenarioContext";
 import { useBranding } from "../../context/BrandingContext";
+import { useNavigate } from "react-router-dom";
+import { PartyInfo, useAdmin } from "../../context/AdminContext";
 import useStyles from "./styles";
-import { useAdmin } from "../../context/AdminContext";
 
-export const Portal : React.FC = () => {
+export const Init : React.FC = () => {
   const cls = useStyles();
+  const navigate = useNavigate();
   const branding = useBranding();
-  // const { ledgerId, parties } = useAdmin();
-  const { scenarios } = useScenario();
+  const admin = useAdmin();
+  const { scenarios, initialize } = useScenario();
+
+  const [ scenario, setScenario ] = useState("Default");
+  const [ progress, setProgress ] = useState(0);
+
   // useEffect(() => {
-  //   if (!ledgerId) return;
+  //   if (!admin.ledgerId) return;
   //   const initParties = async () => {
-  //     const key = ledgerId + ".scenarios";
+  //     const key = admin.ledgerId + ".partyInfo";
   //     const partyInfoString = localStorage.getItem(key);
   //     if (!partyInfoString) {
-  //       if (parties.length > 1) throw new Error("No parties found in local storage, but ledger has some");
+  //       if (admin.parties.length > 1) throw new Error("No parties found in local storage, but ledger has some");
   //       console.log("No parties found for ledger id [" + admin.ledgerId + "]. Initializing parties...");
+  //       const partyInfos : PartyInfo[] = [];
+  //       for (var i = 0; i < scenarios.length; i++) {
+  //         const s = scenarios[i];
+  //         setScenario(s.label);
+  //       };
   //       localStorage.setItem(key, JSON.stringify(partyInfos));
   //       setParties(partyInfos);
   //     } else {
@@ -39,14 +48,8 @@ export const Portal : React.FC = () => {
     <>
       {branding.background}
       <Typography variant="h1" className={cls.header}>Daml Finance</Typography>
-      <Typography variant="h6" className={cls.subHeader}>Select a scenario to start</Typography>
-      <Box className={cls.loginContainer} style={{ position: "absolute", top: "35%", left: "50%", transform: "translate(-50%, 0%)", width: "1600px", height: "600px" }}>
-        <Grid container direction="column" spacing={4}>
-          <Grid item xs={12}>
-            {scenarios.map((s, i) => (<Scenario key={i} scenario={s}/>))}
-          </Grid>
-        </Grid>
-      </Box>
+      <Typography variant="h6" className={cls.subHeader}>Initializing scenario [{scenario}]...</Typography>
+      <LinearProgress variant="determinate" value={progress} className={cls.progressBar} />
     </>
   );
 }

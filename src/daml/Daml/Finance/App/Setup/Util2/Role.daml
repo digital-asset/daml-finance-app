@@ -1,0 +1,28 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Setup.Util2.Role where
+
+import Daml.Finance.App.Role.Operator qualified as Operator (OfferCustodianRole(..), OfferDistributorRole(..), OfferExchangeRole(..), Role(..))
+import Daml.Finance.App.Role.Custodian qualified as Custodian (Accept(..), Role)
+import Daml.Finance.App.Role.Distributor qualified as Distributor (Accept(..), Role)
+import Daml.Finance.App.Role.Exchange qualified as Exchange (Accept(..), Role)
+
+createOperatorRole : Party -> Update (ContractId Operator.Role)
+createOperatorRole operator = do
+  create Operator.Role with operator
+
+createCustodianRole : Party -> Party -> Update (ContractId Custodian.Role)
+createCustodianRole operator custodian = do
+  offerCid <- exerciseByKey @Operator.Role operator Operator.OfferCustodianRole with provider = custodian
+  exercise offerCid Custodian.Accept
+
+createExchangeRole : Party -> Party -> Update (ContractId Exchange.Role)
+createExchangeRole operator exchange = do
+  offerCid <- exerciseByKey @Operator.Role operator Operator.OfferExchangeRole with provider = exchange
+  exercise offerCid Exchange.Accept
+
+createDistributorRole : Party -> Party -> Update (ContractId Distributor.Role)
+createDistributorRole operator distributor = do
+  offerCid    <- exerciseByKey @Operator.Role operator Operator.OfferDistributorRole with provider = distributor
+  exercise offerCid Distributor.Accept

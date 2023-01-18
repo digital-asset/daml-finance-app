@@ -4,6 +4,27 @@
 import { makeStyles, createStyles } from "@mui/styles";
 
 export default makeStyles((theme : any) => createStyles({
+  header: {
+    textAlign: "center",
+    position: "absolute",
+    top: "5%",
+    left: "50%",
+    transform: "translate(-50%, 0%)"
+  },
+  subHeader: {
+    textAlign: "center",
+    position: "absolute",
+    top: "20%",
+    left: "50%",
+    transform: "translate(-50%, 0%)"
+  },
+  progressBar: {
+    position: "absolute",
+    top: "30%",
+    left: "50%",
+    transform: "translate(-50%, 0%)",
+    width: "50%"
+  },
   loginContainer: {
     // height: "100vh",
     width: "300px",
@@ -19,16 +40,4 @@ export default makeStyles((theme : any) => createStyles({
     width: "300px",
     borderRadius: "5px"
   },
-  // loginInput: {
-  //   color: "#BBB!important",
-  //   borderColor: "#BBB!important",
-  //   borderWidth: "1px!important",
-  //   borderRadius: "0px!important"
-  // },
-  // loginInputFocused: {
-  //   color: theme.palette.text.primary + "!important",
-  //   borderColor: theme.palette.text.primary + "!important",
-  //   borderWidth: "1px!important",
-  //   borderRadius: "0px!important"
-  // },
 }));

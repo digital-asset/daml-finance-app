@@ -1,7 +1,7 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module Daml.Finance.Setup.Payoff where
+module Daml.Finance.App.Setup.Payoff where
 
 import ContingentClaims.Core.Claim (Claim, and, anytime, at, cond, give, one, or, scale, until, when, zero, (<=))
 import ContingentClaims.Core.Internal.Claim (Claim(And))

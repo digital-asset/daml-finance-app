@@ -1,0 +1,225 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Setup.Util2.Service where
+
+import DA.Map (Map, fromList)
+import DA.Set (singleton)
+import Daml.Finance.App.Custody.Auto qualified as CustodyAuto (Accept(..))
+import Daml.Finance.App.Custody.Service qualified as Custody (Accept(..))
+import Daml.Finance.App.Decentralized.Exchange.Service qualified as DecentralizedExchange (Service(..))
+import Daml.Finance.App.Distribution.Auction.Auto qualified as AuctionAuto (Accept(..))
+import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (Accept(..))
+import Daml.Finance.App.Distribution.Bidding.Auto qualified as BiddingAuto (Accept(..))
+import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Accept(..))
+import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (Accept(..))
+import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (Accept(..))
+import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Accept(..))
+import Daml.Finance.App.Interface.Custody.Auto qualified as CustodyAuto (I)
+import Daml.Finance.App.Interface.Custody.Service qualified as Custody (I)
+import Daml.Finance.App.Interface.Decentralized.Exchange.Service qualified as DecentralizedExchange (I)
+import Daml.Finance.App.Interface.Decentralized.Exchange.Types (Pool(..))
+import Daml.Finance.App.Interface.Distribution.Auction.Auto qualified as AuctionAuto (I)
+import Daml.Finance.App.Interface.Distribution.Auction.Service qualified as Auction (I)
+import Daml.Finance.App.Interface.Distribution.Bidding.Auto qualified as BiddingAuto (I)
+import Daml.Finance.App.Interface.Distribution.Bidding.Service qualified as Bidding (I)
+import Daml.Finance.App.Interface.Distribution.Fund.Service qualified as Fund (I)
+import Daml.Finance.App.Interface.Distribution.Investment.Service qualified as Investment (I)
+import Daml.Finance.App.Interface.Distribution.Subscription.Service qualified as Subscription (I)
+import Daml.Finance.App.Interface.Issuance.Auto qualified as IssuanceAuto (I)
+import Daml.Finance.App.Interface.Issuance.BackToBack qualified as BackToBack (I)
+import Daml.Finance.App.Interface.Issuance.Service qualified as Issuance (I)
+import Daml.Finance.App.Interface.Lending.Service qualified as Lending (I)
+import Daml.Finance.App.Interface.Lifecycle.Service qualified as Lifecycle (I)
+import Daml.Finance.App.Interface.Listing.Auto qualified as ListingAuto (I)
+import Daml.Finance.App.Interface.Listing.Service qualified as Listing (I)
+import Daml.Finance.App.Interface.Settlement.Service qualified as Settlement (I)
+import Daml.Finance.App.Interface.Structuring.Auto qualified as StructuringAuto (I)
+import Daml.Finance.App.Interface.Structuring.Service qualified as Structuring (I)
+import Daml.Finance.App.Interface.Trading.Auto qualified as TradingAuto (I)
+import Daml.Finance.App.Interface.Trading.Service qualified as Trading (I)
+import Daml.Finance.App.Issuance.Auto qualified as IssuanceAuto (Accept(..))
+import Daml.Finance.App.Issuance.BackToBack qualified as BackToBack (Accept(..))
+import Daml.Finance.App.Issuance.Service qualified as Issuance (Accept(..))
+import Daml.Finance.App.Lending.Service qualified as Lending (Accept(..))
+import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Accept(..))
+import Daml.Finance.App.Listing.Auto qualified as ListingAuto (Accept(..))
+import Daml.Finance.App.Listing.Service qualified as Listing (Accept(..))
+import Daml.Finance.App.Role.Custodian qualified as Custodian
+import Daml.Finance.App.Role.Distributor qualified as Distributor
+import Daml.Finance.App.Role.Exchange qualified as Exchange
+import Daml.Finance.App.Settlement.Service qualified as Settlement (Accept(..), Offer(..))
+import Daml.Finance.App.Structuring.Auto qualified as StructuringAuto (Accept(..))
+import Daml.Finance.App.Structuring.Service qualified as Structuring (Accept(..))
+import Daml.Finance.App.Trading.Auto qualified as TradingAuto (Accept(..))
+import Daml.Finance.App.Trading.Service qualified as Trading (Accept(..))
+import Daml.Finance.Account.Account qualified as Account (Factory(..))
+import Daml.Finance.Claims.Lifecycle.Rule qualified as Dynamic (Rule(..))
+import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
+import Daml.Finance.Instrument.Bond.FixedRate.Factory qualified as FixedRateBond (Factory(..))
+import Daml.Finance.Instrument.Bond.FloatingRate.Factory qualified as FloatingRateBond (Factory(..))
+import Daml.Finance.Instrument.Bond.InflationLinked.Factory qualified as InflationLinkedBond (Factory(..))
+import Daml.Finance.Instrument.Bond.ZeroCoupon.Factory qualified as ZeroCouponBond (Factory(..))
+import Daml.Finance.Instrument.Equity.Factory qualified as Equity (Factory(..))
+import Daml.Finance.Instrument.Generic.Factory qualified as Generic (Factory(..))
+import Daml.Finance.Instrument.Generic.Lifecycle.Rule qualified as Generic (Rule(..))
+import Daml.Finance.Instrument.Swap.Fpml.Factory qualified as FpmlSwap (Factory(..))
+import Daml.Finance.Instrument.Token.Factory qualified as Token (Factory(..))
+import Daml.Finance.Interface.Account.Factory qualified as Account (F)
+import Daml.Finance.Interface.Holding.Factory qualified as Holding (F)
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id(..), InstrumentQuantity, Parties)
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, AddObservers(..))
+import Daml.Finance.Lifecycle.Rule.Claim qualified as Claim (Rule(..))
+import Daml.Finance.Lifecycle.Rule.Distribution qualified as Distribution (Rule(..))
+import Daml.Finance.Lifecycle.Rule.Replacement qualified as Replacement (Rule(..))
+import Daml.Finance.Settlement.Factory qualified as Settlement (Factory(..))
+import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
+import Daml.Finance.Settlement.RouteProvider.IntermediatedStatic qualified as RouteProvider (IntermediatedStatic(..))
+
+createCustodyService : Party -> Party -> Party -> Party -> Map Text Settlement.Hierarchy -> Update (ContractId Custody.I)
+createCustodyService operator provider customer public paths = do
+  -- NOTE: Holding factory needs public visibility, as eg. the exchange has to fetch it to credit/debit a trade
+  let
+    publicObs = fromList [("Default", singleton public)]
+    observers = singleton customer
+    providers = singleton provider
+  accountFactoryCid         <- toInterfaceContractId <$> create Account.Factory                    with provider; observers = fromList [("Default", observers)]
+  holdingFactoryCid         <- toInterfaceContractId <$> create Fungible.Factory                   with provider; observers = publicObs
+  routeProviderCid          <- toInterfaceContractId <$> create RouteProvider.IntermediatedStatic  with provider; observers; paths
+  settlementFactoryCid      <- toInterfaceContractId <$> create Settlement.Factory                 with provider; observers
+  claimRuleCid              <- toInterfaceContractId <$> create Claim.Rule                         with providers; claimers = providers; settlers = providers; routeProviderCid; settlementFactoryCid; netInstructions = False
+  offerCid <- exerciseByKey @Custodian.Role (operator, provider) Custodian.OfferCustodyService with customer; accountFactoryCid; holdingFactoryCid; claimRuleCid
+  toInterfaceContractId <$> exercise offerCid Custody.Accept
+
+createCustodyAutoService : Party -> Party -> Party -> ContractId Account.F -> ContractId Holding.F -> Update (ContractId CustodyAuto.I)
+createCustodyAutoService operator provider customer accountFactoryCid holdingFactoryCid = do
+  offerCid <- exerciseByKey @Custodian.Role (operator, provider) Custodian.OfferCustodyAutoService with customer; accountFactoryCid; holdingFactoryCid
+  toInterfaceContractId <$> exercise offerCid CustodyAuto.Accept
+
+createIssuanceService : Party -> Party -> Party -> Update (ContractId Issuance.I)
+createIssuanceService operator provider customer = do
+  offerCid <- exerciseByKey @Custodian.Role (operator, provider) Custodian.OfferIssuanceService with ..
+  toInterfaceContractId <$> exercise offerCid Issuance.Accept
+
+createIssuanceAutoService : Party -> Party -> Party -> Update (ContractId IssuanceAuto.I)
+createIssuanceAutoService operator provider customer = do
+  offerCid <- exerciseByKey @Custodian.Role (operator, provider) Custodian.OfferIssuanceAutoService with ..
+  toInterfaceContractId <$> exercise offerCid IssuanceAuto.Accept
+
+createStructuringService : Party -> Party -> Party -> Update (ContractId Structuring.I)
+createStructuringService operator provider customer = do
+  let observers = fromList [("Default", singleton customer)]
+  token               <- toInterfaceContractId <$> create Token.Factory                with provider; observers
+  equity              <- toInterfaceContractId <$> create Equity.Factory               with provider; observers
+  generic             <- toInterfaceContractId <$> create Generic.Factory              with provider; observers
+  fixedRateBond       <- toInterfaceContractId <$> create FixedRateBond.Factory        with provider; observers
+  floatingRateBond    <- toInterfaceContractId <$> create FloatingRateBond.Factory     with provider; observers
+  inflationLinkedBond <- toInterfaceContractId <$> create InflationLinkedBond.Factory  with provider; observers
+  zeroCouponBond      <- toInterfaceContractId <$> create ZeroCouponBond.Factory       with provider; observers
+  fpmlSwap            <- toInterfaceContractId <$> create FpmlSwap.Factory             with provider; observers
+  offerCid <- exerciseByKey @Custodian.Role (operator, provider) Custodian.OfferStructuringService with ..
+  toInterfaceContractId <$> exercise offerCid Structuring.Accept
+
+createStructuringAutoService : Party -> Party -> Party -> Update (ContractId StructuringAuto.I)
+createStructuringAutoService operator provider customer = do
+  offerCid <- exerciseByKey @Custodian.Role (operator, provider) Custodian.OfferStructuringAutoService with ..
+  toInterfaceContractId <$> exercise offerCid StructuringAuto.Accept
+
+createBackToBackIssuanceService : Party -> Party -> Party -> Map Text Settlement.Hierarchy -> Update (ContractId BackToBack.I)
+createBackToBackIssuanceService operator provider customer paths = do
+  settlementServiceCid <- createSettlementService operator provider customer paths
+  offerCid <- exerciseByKey @Custodian.Role (operator, provider) Custodian.OfferBackToBackService with customer; settlementServiceCid
+  toInterfaceContractId <$> exercise offerCid BackToBack.Accept
+
+createLifecycleService : Party -> Party -> Party -> Update (ContractId Lifecycle.I)
+createLifecycleService operator provider customer = do
+  let
+    observers = fromList [("Default", singleton customer)]
+    providers = singleton provider
+  distributionRuleCid <- toInterfaceContractId <$> create Distribution.Rule  with providers; lifecycler = customer; id = Id "DistributionRule"; description = ""; observers = singleton customer
+  replacementRuleCid  <- toInterfaceContractId <$> create Replacement.Rule   with providers; lifecycler = customer; id = Id "ReplacementRule"; description = ""; observers = singleton customer
+  genericRuleCid      <- toInterfaceContractId <$> create Generic.Rule       with providers; lifecycler = customer; id = Id "GenericRule"; description = ""; observers
+  dynamicRuleCid      <- toInterfaceContractId <$> create Dynamic.Rule       with providers; lifecycler = customer; id = Id "DynamicRule"; description = ""; observers
+  offerCid <- exerciseByKey @Custodian.Role (operator, provider) Custodian.OfferLifecycleService with ..
+  toInterfaceContractId <$> exercise offerCid Lifecycle.Accept
+
+createTradingService : Party -> Party -> Party -> Map Text Settlement.Hierarchy -> Update (ContractId Trading.I)
+createTradingService operator provider customer paths = do
+  settlementServiceCid <- createSettlementService operator provider customer paths
+  offerCid <- exerciseByKey @Exchange.Role (operator, provider) Exchange.OfferTradingService with customer; settlementServiceCid
+  toInterfaceContractId <$> exercise offerCid Trading.Accept
+
+createTradingAutoService : Party -> Party -> Party -> Update (ContractId TradingAuto.I)
+createTradingAutoService operator provider customer = do
+  offerCid <- exerciseByKey @Exchange.Role (operator, provider) Exchange.OfferTradingAutoService with ..
+  toInterfaceContractId <$> exercise offerCid TradingAuto.Accept
+
+createListingService : Party -> Party -> Party -> Update (ContractId Listing.I)
+createListingService operator provider customer = do
+  offerCid <- exerciseByKey @Exchange.Role (operator, provider) Exchange.OfferListingService with ..
+  toInterfaceContractId <$> exercise offerCid Listing.Accept
+
+createListingAutoService : Party -> Party -> Party -> Update (ContractId ListingAuto.I)
+createListingAutoService operator provider customer = do
+  offerCid <- exerciseByKey @Exchange.Role (operator, provider) Exchange.OfferListingAutoService with ..
+  toInterfaceContractId <$> exercise offerCid ListingAuto.Accept
+
+createAuctionService : Party -> Party -> Party -> Map Text Settlement.Hierarchy -> Update (ContractId Auction.I)
+createAuctionService operator provider customer paths = do
+  settlementServiceCid <- createSettlementService operator provider customer paths
+  offerCid <- exerciseByKey @Distributor.Role (operator, provider) Distributor.OfferAuctionService with customer; settlementServiceCid
+  toInterfaceContractId <$> exercise offerCid Auction.Accept
+
+createAuctionAutoService : Party -> Party -> Party -> Update (ContractId AuctionAuto.I)
+createAuctionAutoService operator provider customer = do
+  offerCid <- exerciseByKey @Distributor.Role (operator, provider) Distributor.OfferAuctionAutoService with customer
+  toInterfaceContractId <$> exercise offerCid AuctionAuto.Accept
+
+createBiddingService : Party -> Party -> Party -> Update (ContractId Bidding.I)
+createBiddingService operator provider customer = do
+  offerCid <- exerciseByKey @Distributor.Role (operator, provider) Distributor.OfferBiddingService with ..
+  toInterfaceContractId <$> exercise offerCid Bidding.Accept
+
+createBiddingAutoService : Party -> Party -> Party -> Update (ContractId BiddingAuto.I)
+createBiddingAutoService operator provider customer = do
+  offerCid <- exerciseByKey @Distributor.Role (operator, provider) Distributor.OfferBiddingAutoService with ..
+  toInterfaceContractId <$> exercise offerCid BiddingAuto.Accept
+
+createSubscriptionService : Party -> Party -> Party -> Map Text Settlement.Hierarchy -> Update (ContractId Subscription.I)
+createSubscriptionService operator provider customer paths = do
+  settlementServiceCid <- createSettlementService operator provider customer paths
+  offerCid <- exerciseByKey @Distributor.Role (operator, provider) Distributor.OfferSubscriptionService with customer; settlementServiceCid
+  toInterfaceContractId <$> exercise offerCid Subscription.Accept
+
+createLendingService : Party -> Party -> Party -> Update (ContractId Lending.I)
+createLendingService operator provider customer = do
+  offerCid <- exerciseByKey @Custodian.Role (operator, provider) Custodian.OfferLendingService with customer
+  toInterfaceContractId <$> exercise offerCid Lending.Accept
+
+createSettlementService : Party -> Party -> Party -> Map Text Settlement.Hierarchy -> Update (ContractId Settlement.I)
+createSettlementService operator provider customer paths = do
+  routeProviderCid      <- toInterfaceContractId <$> create RouteProvider.IntermediatedStatic  with provider; observers = singleton customer; paths
+  settlementFactoryCid  <- toInterfaceContractId <$> create Settlement.Factory                 with provider; observers = singleton customer
+  offerCid <- create Settlement.Offer with operator; provider; customer; routeProviderCid; settlementFactoryCid
+  toInterfaceContractId <$> exercise offerCid Settlement.Accept
+
+createInvestmentService : Party -> Party -> Party -> Update (ContractId Investment.I)
+createInvestmentService operator provider customer = do
+  offerCid <- exerciseByKey @Distributor.Role (operator, provider) Distributor.OfferInvestmentService with customer
+  toInterfaceContractId <$> exercise offerCid Investment.Accept
+
+createFundService : Party -> Party -> Party -> Map Text Settlement.Hierarchy -> Update (ContractId Fund.I)
+createFundService operator provider customer paths = do
+  settlementServiceCid <- createSettlementService operator provider customer paths
+  offerCid <- exerciseByKey @Distributor.Role (operator, provider) Distributor.OfferFundService with customer; settlementServiceCid
+  toInterfaceContractId <$> exercise offerCid Fund.Accept
+
+createDecentralizedExchangeService : Party -> Parties -> Text -> InstrumentQuantity -> InstrumentQuantity -> AccountKey -> ContractId Fungible.I -> InstrumentQuantity -> AccountKey -> ContractId Fungible.I -> Update (ContractId DecentralizedExchange.I)
+createDecentralizedExchangeService consortium observers id shares quantity1 account1 fungible1Cid quantity2 account2 fungible2Cid = do
+  fungible1Cid <- coerceContractId <$> exercise (toInterfaceContractId @Disclosure.I fungible1Cid) Disclosure.AddObservers with disclosers = singleton consortium; observersToAdd = (id, observers)
+  fungible2Cid <- coerceContractId <$> exercise (toInterfaceContractId @Disclosure.I fungible2Cid) Disclosure.AddObservers with disclosers = singleton consortium; observersToAdd = (id, observers)
+  let
+    p1 = Pool with quantity = quantity1; account = account1; fungibleCid = fungible1Cid
+    p2 = Pool with quantity = quantity2; account = account2; fungibleCid = fungible2Cid
+  toInterfaceContractId <$> create DecentralizedExchange.Service with consortium; id = Id id; description = id; shares; p1; p2; observers

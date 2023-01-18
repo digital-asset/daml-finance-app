@@ -1,7 +1,7 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module Daml.Finance.Setup.Util.Workflow where
+module Daml.Finance.App.Setup.Util.Workflow where
 
 import DA.Date (DayOfWeek, toGregorian)
 import DA.List (head)
@@ -72,7 +72,7 @@ import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum, RollConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.Schedule (Frequency(..), PeriodicSchedule(..))
 import Daml.Finance.Settlement.Instruction qualified as Instruction (T)
-import Daml.Finance.Setup.Util.Common (getHolding)
+import Daml.Finance.App.Setup.Util.Common (getHolding)
 import Daml.Script
 
 -- getService : forall t k . (Template t, TemplateKey t k) => Party -> k -> Script (ContractId t)
@@ -233,7 +233,7 @@ list operator provider customer listingId description tradedInstrument quotedIns
   submit provider do exerciseCmd serviceCid ListingService.List with listingRequestCid
 
 createOrder : Party -> Party -> Party -> Party -> Id -> Order.Side -> InstrumentQuantity -> InstrumentQuantity -> Parties -> Script (Optional (ContractId Order.I, Order.View))
-createOrder operator provider customer public id side quantity price observers = do
+createOrder operator provider customer public orderId side quantity price observers = do
   listingId <- (.id) . snd . head <$> queryFilter @Listing.T observers (\l -> l.tradedInstrument == quantity.unit && l.quotedInstrument == price.unit)
   let
     depository = if side == Order.Buy then quantity.unit.depository else price.unit.depository
@@ -242,14 +242,14 @@ createOrder operator provider customer public id side quantity price observers =
   holdingCid <- coerceContractId <$> getHolding customer requiredQuantity
   orderCids <- map (toInterfaceContractId @Order.I . fst) <$> queryFilter @Trading.Order observers (\o -> o.listingId == listingId)
   serviceCid <- toInterfaceContractId @TradingService.I . fst . fromSome <$> queryContractKey @TradingService.T customer (operator, provider, customer)
-  createOrderRequestCid <- submit customer do exerciseCmd serviceCid TradingService.RequestCreateOrder with id; listingId; quantity; price; side; collateralCid = holdingCid; account; orderCids; observers
+  createOrderRequestCid <- submit customer do exerciseCmd serviceCid TradingService.RequestCreateOrder with id = orderId; listingId; quantity; price; side; collateralCid = holdingCid; account; orderCids; observers
   submitMulti [provider] [public] do exerciseCmd serviceCid TradingService.CreateOrder with createOrderRequestCid
 
 createBidOrder : Party -> Party -> Party -> Party -> Id -> InstrumentQuantity -> InstrumentQuantity -> Parties -> Script (Optional (ContractId Order.I, Order.View))
-createBidOrder operator provider customer public id = createOrder operator provider customer public id Order.Buy
+createBidOrder operator provider customer public orderId = createOrder operator provider customer public orderId Order.Buy
 
 createAskOrder : Party -> Party -> Party -> Party -> Id -> InstrumentQuantity -> InstrumentQuantity -> Parties -> Script (Optional (ContractId Order.I, Order.View))
-createAskOrder operator provider customer public id = createOrder operator provider customer public id Order.Sell
+createAskOrder operator provider customer public orderId = createOrder operator provider customer public orderId Order.Sell
 
 createAuction : Party -> Party -> Party -> Party -> Id -> Text -> InstrumentQuantity -> InstrumentKey -> Decimal -> ContractId Fungible.I -> AccountKey -> Script (ContractId Auction.I)
 createAuction operator provider customer public auctionId description quantity currency floor collateralCid receivableAccount = do

@@ -1,12 +1,12 @@
 // Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import React, { useMemo, useState } from 'react';
-import { encode } from 'jwt-simple';
-import { useScenario } from './ScenarioContext';
-import parties from "../parties.json";
+import React, { useMemo, useState } from "react";
+import { encode } from "jwt-simple";
+import { useScenario } from "./ScenarioContext";
 import { Set } from "@daml.js/97b883cd8a2b7f49f90d5d39c981cf6e110cf1f1c64427a28a6d58ec88c43657/lib/DA/Set/Types"
-import { values } from '../util';
+import { values } from "../util";
+import { PartyInfo } from "./AdminContext";
 
 const createToken = (party : string, pub : string) => {
   const payload = {
@@ -33,27 +33,27 @@ const empty = {
   getName: (id : string) => "",
   getNames: (ids : Set<string>) => "",
   getToken: (id : string) => ""
-}
+};
 const PartyContext = React.createContext<PartyState>(empty);
 
 export const PartyProvider : React.FC = ({ children }) => {
-  const scenario = useScenario();
+  const { selected } = useScenario();
   const [partyIds, setPartyIds] = useState<any>({});
   const [partyNames, setPartyNames] = useState<any>({});
   const [partyTokens, setPartyTokens] = useState<any>({});
 
   useMemo(() => {
-    const filtered = parties.filter(p => p.scenario === scenario.selected.label);
+    const filtered : PartyInfo[] = selected.parties.map(p => p.party);
     const pIds : any = {};
     const pNames : any = {};
     const pTokens : any = {};
-    filtered.forEach((p : any) => pIds[p.name] = p.id);
-    filtered.forEach((p : any) => pNames[p.id] = p.name);
-    filtered.forEach((p : any) => pTokens[p.id] = createToken(p.id, pIds["Public"]));
+    filtered.forEach(p => pIds[p.displayName] = p.identifier);
+    filtered.forEach(p => pNames[p.identifier] = p.displayName);
+    filtered.forEach(p => pTokens[p.identifier] = createToken(p.identifier, pIds["Public"]));
     setPartyIds(pIds);
     setPartyNames(pNames);
     setPartyTokens(pTokens);
-  }, [scenario]);
+  }, [selected]);
 
   const getParty = (name : string) => (partyIds[name] || "") as string;
   const getName = (id : string) => (partyNames[id] || "") as string;

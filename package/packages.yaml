@@ -162,7 +162,7 @@ local:
         base-module: Daml.Finance.App.Role
         increment-version: patch
     - package:
-        name: Daml.Finance.Setup
-        path: main/daml/Daml.Finance.Setup
-        base-module: Daml.Finance.Setup
+        name: Daml.Finance.App.Setup
+        path: main/daml/Daml.Finance.App.Setup
+        base-module: Daml.Finance.App.Setup
         increment-version: patch

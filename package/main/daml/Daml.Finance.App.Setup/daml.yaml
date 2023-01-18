@@ -2,10 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 sdk-version: 2.6.0-snapshot.20221218.11169.0.9d007b31
-name: daml-finance-setup
+name: daml-finance-app-setup
 version: 0.0.1
 source: daml
-init-script: Daml.Finance.Setup.Demo:demo
 dependencies:
   - daml-prim
   - daml-stdlib
@@ -66,8 +65,6 @@ data-dependencies:
 start-navigator: no
 sandbox-options:
   - -c=canton.conf
-script-options:
-  - --output-file=../../../../ui/src/parties.json
 json-api-options:
   - --config=json-api.conf
 build-options:

@@ -1,0 +1,27 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Setup.Demo where
+
+import Daml.Finance.App.Setup.Scenario.BondIssuance         qualified as BondIssuance
+import Daml.Finance.App.Setup.Scenario.CorporateActions     qualified as CorporateActions
+import Daml.Finance.App.Setup.Scenario.DecentralizedFinance qualified as DecentralizedFinance
+import Daml.Finance.App.Setup.Scenario.Default              qualified as Default
+import Daml.Finance.App.Setup.Scenario.FundTokenization     qualified as FundTokenization
+import Daml.Finance.App.Setup.Scenario.NaturalGas           qualified as NaturalGas
+import Daml.Finance.App.Setup.Scenario.SecuritiesLending    qualified as SecuritiesLending
+import Daml.Finance.App.Setup.Scenario.StructuredNotes      qualified as StructuredNotes
+import Daml.Finance.App.Setup.Util.Common (PartyInfo)
+import Daml.Script
+
+demo : Script [PartyInfo]
+demo = do
+  p1 <- BondIssuance.run
+  p2 <- CorporateActions.run
+  p3 <- Default.run
+  p4 <- NaturalGas.run
+  p5 <- SecuritiesLending.run
+  p6 <- StructuredNotes.run
+  p7 <- FundTokenization.run
+  p8 <- DecentralizedFinance.run
+  pure $ p1 <> p2 <> p3 <> p4 <> p5 <> p6 <> p7 <> p8

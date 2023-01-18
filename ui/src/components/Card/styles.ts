@@ -42,6 +42,16 @@ export default makeStyles((theme : Theme) => createStyles({
     color: theme.palette.text.primary,
     fontSize: 12
   },
+  scenarioBox: {
+    margin: 0,
+    "&:hover": {
+      background: "#ffffff33",
+    }
+  },
+  scenarioItem: {
+    margin: 0,
+    paddingTop: "0!important"
+  },
   tableRow: {
     height: "auto"
   },

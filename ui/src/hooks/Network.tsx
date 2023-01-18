@@ -50,7 +50,7 @@ export const useNetwork = () : Network => {
   const createNode = (p : string, i : number) => ({
       id: p,
       data: { label: getName(p) },
-      position: scenario.selected.positions.get(getName(p)) || { x: 0, y: 0 },
+      position: scenario.selected.parties.find(pi => pi.party.displayName === getName(p))?.position || { x: 0, y: 0 },
       style: { zIndex: 0, width: 160, cursor: "pointer" },
       zIndex: 0
   });

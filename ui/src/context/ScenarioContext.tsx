@@ -3,14 +3,6 @@
 
 import React, { useState } from "react";
 import { App } from "../components/Card/App";
-import scenarioBondIssuance from "../images/scenario/bondIssuance.png";
-import scenarioCorporateActions from "../images/scenario/corporateActions.png";
-import scenarioDefault from "../images/scenario/default.png";
-import scenarioDecentralizedFinance from "../images/scenario/decentralizedFinance.png";
-import scenarioFundTokenization from "../images/scenario/fundTokenization.png";
-import scenarioSecuritiesLending from "../images/scenario/securitiesLending.png";
-import scenarioStructuredNotes from "../images/scenario/structuredNotes.png";
-import scenarioNaturalGas from "../images/scenario/naturalGas.png";
 import appStructuring from "../images/app/structuring.png";
 import appIssuance from "../images/app/issuance.png";
 import appLending from "../images/app/lending.jpg";
@@ -22,24 +14,32 @@ import appSimulation from "../images/app/simulation.png";
 import appListing from "../images/app/listing.png";
 import appTrading from "../images/app/trading.png";
 import appNetwork from "../images/app/network.png";
+import { PartyInfo, useAdmin } from "./AdminContext";
 
 type Position = {
   x : number
   y : number
 };
 
+type PartyPosition = {
+  party : PartyInfo
+  position : Position
+};
+
 export type Scenario = {
   label : string,
   description : string,
   apps: AppInfo[],
-  image : string,
-  positions : Map<string, Position>,
-  useNetworkLogin: boolean
+  parties : PartyPosition[],
+  useNetworkLogin: boolean,
+  isInitialized: boolean
 };
 
 export type ScenarioState = {
   selected : Scenario
+  scenarios : Scenario[]
   select : (name : string) => Scenario
+  initialize : (scenario : Scenario) => void
 }
 
 type AppInfo = {
@@ -61,165 +61,185 @@ const trading       = { name: "Trading",      path: "trading",      elem: <App k
 const network       = { name: "Network",      path: "network",      elem: <App key={10} label="Network"       description="Explore the distributed ledger network"  image={appNetwork}      path="/app/network/overview" /> };
 const settlement    = { name: "Settlement",   path: "settlement",   elem: <App key={11} label="Settlement"    description="Settle instructions in batches"          image={appSimulation}   path="/app/settlement/batches" /> };
 
-export const scenarios : Scenario[] = [
+const createParty = (name: string, x: number, y: number) : PartyPosition => {
+  return { party: { displayName: name, identifier: "", isLocal: true, scenario: "" }, position: { x, y }};
+};
+
+const defaultScenarios : Scenario[] = [
   {
     label: "Default",
     description: "Primary and secondary markets workflows",
-    image: scenarioDefault,
     apps: [ structuring, issuance, custody, distribution, servicing, simulation, listing, trading, network ],
-    positions: new Map([
-      [ "Operator",     { x:    0, y:   0 } ],
-      [ "Public",       { x:    0, y:   0 } ],
-      [ "CentralBank",  { x:  400, y:   0 } ],
-      [ "Registry",     { x:  800, y:  50 } ],
-      [ "Exchange",     { x:  800, y: 550 } ],
-      [ "Agent",        { x:  400, y: 600 } ],
-      [ "Issuer",       { x: 1200, y: 300 } ],
-      [ "Investor1",    { x:    0, y: 300 } ],
-      [ "Investor2",    { x:  400, y: 300 } ],
-      [ "Investor3",    { x:  800, y: 300 } ]
-    ]),
-    useNetworkLogin: true
+    parties: [
+      createParty("Operator",        0,   0),
+      createParty("Public",          0,   0),
+      createParty("CentralBank",   400,   0),
+      createParty("Registry",      800,  50),
+      createParty("Exchange",      800, 550),
+      createParty("Agent",         400, 600),
+      createParty("Issuer",       1200, 300),
+      createParty("Investor1",       0, 300),
+      createParty("Investor2",     400, 300),
+      createParty("Investor3",     800, 300)
+    ],
+    useNetworkLogin: true,
+    isInitialized: false
   },
   {
     label: "Bond Issuance",
     description: "Simple bond issuance custody scenario",
-    image: scenarioBondIssuance,
     apps: [ structuring, issuance, custody, distribution, servicing, listing, trading, settlement, network ],
-    positions: new Map([
-      [ "Operator",     { x:    0, y:   0 } ],
-      [ "Public",       { x:    0, y:   0 } ],
-      [ "CentralBank",  { x:  400, y:   0 } ],
-      [ "Registry",     { x:  800, y:   0 } ],
-      [ "Custodian",    { x:  400, y: 300 } ],
-      [ "Issuer",       { x:  800, y: 300 } ],
-      [ "Investor1",    { x:    0, y: 600 } ],
-      [ "Investor2",    { x:  400, y: 600 } ],
-      [ "Investor3",    { x:  800, y: 600 } ]
-    ]),
-    useNetworkLogin: true
+    parties: [
+      createParty("Operator",        0,   0),
+      createParty("Public",          0,   0),
+      createParty("CentralBank",   400,   0),
+      createParty("Registry",      800,   0),
+      createParty("Custodian",     400, 300),
+      createParty("Issuer",        800, 300),
+      createParty("Investor1",       0, 600),
+      createParty("Investor2",     400, 600),
+      createParty("Investor3",     800, 600)
+    ],
+    useNetworkLogin: true,
+    isInitialized: false
   },
   {
     label: "Corporate Actions",
     description: "Equity workflows for corporate actions",
-    image: scenarioCorporateActions,
     apps: [ structuring, issuance, custody, distribution, servicing, listing, trading, settlement, network ],
-    positions: new Map([
-      [ "Operator",     { x:    0, y:   0 } ],
-      [ "Public",       { x:    0, y:   0 } ],
-      [ "CentralBank",  { x:  400, y:   0 } ],
-      [ "Registry",     { x:  800, y:   0 } ],
-      [ "Custodian",    { x:  400, y: 300 } ],
-      [ "Issuer",       { x:  800, y: 300 } ],
-      [ "Investor1",    { x:    0, y: 600 } ],
-      [ "Investor2",    { x:  400, y: 600 } ],
-      [ "Investor3",    { x:  800, y: 600 } ]
-    ]),
-    useNetworkLogin: true
+    parties: [
+      createParty("Operator",        0,   0),
+      createParty("Public",          0,   0),
+      createParty("CentralBank",   400,   0),
+      createParty("Registry",      800,   0),
+      createParty("Custodian",     400, 300),
+      createParty("Issuer",        800, 300),
+      createParty("Investor1",       0, 600),
+      createParty("Investor2",     400, 600),
+      createParty("Investor3",     800, 600)
+    ],
+    useNetworkLogin: true,
+    isInitialized: false
   },
   {
     label: "Securities Lending",
     description: "Stock borrowing and lending scenario",
-    image: scenarioSecuritiesLending,
     apps: [ structuring, issuance, custody, lending, servicing, settlement, network ],
-    positions: new Map([
-      [ "Operator",     { x:    0, y:   0 } ],
-      [ "Public",       { x:    0, y:   0 } ],
-      [ "CentralBank",  { x:  400, y:   0 } ],
-      [ "Registry",     { x:  800, y:   0 } ],
-      [ "Borrower",     { x:  400, y: 400 } ],
-      [ "Lender",       { x:  800, y: 200 } ]
-    ]),
-    useNetworkLogin: true
+    parties: [
+      createParty("Operator",        0,   0),
+      createParty("Public",          0,   0),
+      createParty("CentralBank",   400,   0),
+      createParty("Registry",      800,   0),
+      createParty("Borrower",      400, 400),
+      createParty("Lender",        800, 200)
+    ],
+    useNetworkLogin: true,
+    isInitialized: false
   },
   {
     label: "Natural Gas",
     description: "Modeling complex commodity trades",
-    image: scenarioNaturalGas,
     apps: [ structuring, issuance, custody, servicing, network ],
-    positions: new Map([
-      [ "Operator",     { x:    0, y:   0 } ],
-      [ "Public",       { x:    0, y:   0 } ],
-      [ "CentralBank",  { x:  200, y:   0 } ],
-      [ "Seller",       { x:  400, y: 200 } ],
-      [ "Buyer",        { x:    0, y: 400 } ]
-    ]),
-    useNetworkLogin: true
+    parties: [
+      createParty("Operator",        0,   0),
+      createParty("Public",          0,   0),
+      createParty("CentralBank",   200,   0),
+      createParty("Seller",        400, 200),
+      createParty("Buyer",           0, 400)
+    ],
+    useNetworkLogin: true,
+    isInitialized: false
   },
   {
     label: "Structured Notes",
     description: "Synchronized issuance for structured products",
     apps: [ structuring, issuance, custody, distribution, servicing, listing, trading, settlement, network ],
-    image: scenarioStructuredNotes,
-    positions: new Map([
-      [ "Operator",     { x:    0, y:   0 } ],
-      [ "Public",       { x:    0, y:   0 } ],
-      [ "Depository",   { x:    0, y:   0 } ],
-      [ "CentralBank",  { x:  200, y:   0 } ],
-      [ "Issuer",       { x:  100, y: 300 } ],
-      [ "RiskTaker",    { x:    0, y: 150 } ],
-      [ "Investor1",    { x:  200, y: 450 } ],
-      [ "Investor2",    { x:  400, y: 450 } ],
-      [ "Investor3",    { x:  600, y: 450 } ]
-    ]),
-    useNetworkLogin: true
+    parties: [
+      createParty("Operator",        0,   0),
+      createParty("Public",          0,   0),
+      createParty("Depository",      0,   0),
+      createParty("CentralBank",   200,   0),
+      createParty("Issuer",        100, 300),
+      createParty("RiskTaker",       0, 150),
+      createParty("Investor1",     200, 450),
+      createParty("Investor2",     400, 450),
+      createParty("Investor3",     600, 450)
+    ],
+    useNetworkLogin: true,
+    isInitialized: false
   },
   {
     label: "Fund Tokenization",
     description: "Issuance and distribution of funds",
     apps: [ structuring, issuance, custody, distribution, servicing, listing, trading, settlement, network ],
-    image: scenarioFundTokenization,
-    positions: new Map([
-      [ "Operator",         { x:    0, y:   0 } ],
-      [ "Public",           { x:    0, y:   0 } ],
-      [ "CashProvider",     { x:  300, y:   0 } ],
-      [ "AssetManager",     { x:  300, y: 300 } ],
-      [ "PortfolioManager", { x:    0, y: 300 } ],
-      [ "Custodian",        { x:    0, y: 150 } ],
-      [ "Investor1",        { x:    0, y: 450 } ],
-      [ "Investor2",        { x:  300, y: 525 } ],
-      [ "Investor3",        { x:  600, y: 450 } ]
-    ]),
-    useNetworkLogin: true
+    parties: [
+      createParty("Operator",             0,   0),
+      createParty("Public",               0,   0),
+      createParty("CashProvider",       300,   0),
+      createParty("AssetManager",       300, 300),
+      createParty("PortfolioManager",     0, 300),
+      createParty("Custodian",            0, 150),
+      createParty("Investor1",            0, 450),
+      createParty("Investor2",          300, 525),
+      createParty("Investor3",          600, 450)
+    ],
+    useNetworkLogin: true,
+    isInitialized: false
   },
   {
     label: "Decentralized Finance",
     description: "Experimental Decentralized Financial protocols",
     apps: [ custody, defi, network ],
-    image: scenarioDecentralizedFinance,
-    positions: new Map([
-      [ "Operator",   { x:    0, y:   0 } ],
-      [ "Public",     { x:    0, y:   0 } ],
-      [ "FED",        { x:    0, y:   0 } ],
-      [ "ECB",        { x:  200, y:   0 } ],
-      [ "SNB",        { x:  400, y:   0 } ],
-      [ "BOE",        { x:  600, y:   0 } ],
-      [ "Consortium", { x:  200, y: 300 } ],
-      [ "Trader",     { x:  400, y: 300 } ],
-    ]),
-    useNetworkLogin: true
+    parties: [
+      createParty("Operator",       0,   0),
+      createParty("Public",         0,   0),
+      createParty("FED",            0,   0),
+      createParty("ECB",          200,   0),
+      createParty("SNB",          400,   0),
+      createParty("BOE",          600,   0),
+      createParty("Consortium",   200, 300),
+      createParty("Trader",       400, 300),
+    ],
+    useNetworkLogin: true,
+    isInitialized: false
   }
 ];
 
-const ScenarioContext = React.createContext<ScenarioState>({ selected: scenarios[0], select: _ => scenarios[0] });
+const ScenarioContext = React.createContext<ScenarioState>({ selected: defaultScenarios[0], scenarios: defaultScenarios, select: _ => defaultScenarios[0], initialize: _ => null });
 
 export const ScenarioProvider : React.FC = ({ children }) => {
-  const scenarioName = localStorage.getItem("daml.scenario") || "Default";
-  const scenario = scenarios.find(s => s.label === scenarioName) || scenarios.find(s => s.label === "Default");
-  if (!scenario) throw new Error("Couldn't find scenario " + scenarioName);
+  const { ledgerId } = useAdmin();
+  const scenarioKey = ledgerId + ".scenario";
+  const scenariosKey = ledgerId + ".scenarios";
 
-  const [ selected, setSelected ] = useState(scenario);
+  const storedScenariosString = localStorage.getItem(scenariosKey);
+  console.log(scenariosKey);
+  const storedScenarios : Scenario[] = !!storedScenariosString ? JSON.parse(storedScenariosString) : defaultScenarios;
+  const storedScenario = localStorage.getItem(scenarioKey) || "Default";
+  const scenario = storedScenarios.find(s => s.label === storedScenario);
+  if (!scenario) throw new Error("Couldn't find scenario " + storedScenario);
+
+  const [ selected, setSelected ] = useState<Scenario>(scenario);
+  const [ scenarios, setScenarios ] = useState<Scenario[]>(storedScenarios);
 
   const select = (name : string) : Scenario => {
     const s = scenarios.find(s => s.label === name);
     if (!s) throw new Error("Couldn't find scenario " + name);
-    localStorage.setItem("daml.scenario", name);
+    localStorage.setItem(scenarioKey, name);
     setSelected(s);
     return s;
   }
 
+  const initialize = (scenario : Scenario) => {
+    const newScenarios = scenarios.map(s => s.label === scenario.label ? scenario : s);
+    console.log("Storing scenarios for " + scenariosKey);
+    localStorage.setItem(scenariosKey, JSON.stringify(newScenarios));
+    setScenarios(newScenarios);
+    if (selected.label === scenario.label) setSelected(scenario);
+  };
+
   return (
-    <ScenarioContext.Provider value={{ selected, select }}>
+    <ScenarioContext.Provider value={{ selected, scenarios, select, initialize }}>
         {children}
     </ScenarioContext.Provider>
   );

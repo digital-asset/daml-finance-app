@@ -1,7 +1,7 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module Daml.Finance.Setup.Scenario.StructuredNotes where
+module Daml.Finance.App.Setup.Scenario.StructuredNotes where
 
 import ContingentClaims.Core.Builders (unrollDates)
 import DA.Date (Month(..), addDays, date, toDateUTC, toGregorian)
@@ -18,11 +18,11 @@ import Daml.Finance.App.Interface.Issuance.BackToBack qualified as BackToBackSer
 import Daml.Finance.Interface.Types.Common.Types (Id(..))
 import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
-import Daml.Finance.Setup.Payoff
-import Daml.Finance.Setup.Util.Common
-import Daml.Finance.Setup.Util.Role
-import Daml.Finance.Setup.Util.Service
-import Daml.Finance.Setup.Util.Workflow
+import Daml.Finance.App.Setup.Payoff
+import Daml.Finance.App.Setup.Util.Common
+import Daml.Finance.App.Setup.Util.Role
+import Daml.Finance.App.Setup.Util.Service
+import Daml.Finance.App.Setup.Util.Workflow
 import Daml.Script
 
 run : Script [PartyInfo]

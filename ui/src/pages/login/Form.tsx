@@ -4,42 +4,35 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, IconButton, TextField, Typography } from "@mui/material";
-import useStyles from "./styles";
-import { useUserDispatch, loginUser } from "../../context/UserContext";
-import { useBranding } from "../../context/BrandingContext";
 import { Box } from "@mui/system";
-import { useParties } from "../../context/PartiesContext";
 import ExitToApp from "@mui/icons-material/ExitToApp";
+import { useUser } from "../../context/UserContext";
+import { useBranding } from "../../context/BrandingContext";
+import useStyles from "./styles";
 
 export const Form : React.FC = () => {
-  const classes = useStyles();
-  const branding = useBranding();
-  const { getParty, getToken } = useParties();
-
-  const userDispatch = useUserDispatch();
+  const cls = useStyles();
   const navigate = useNavigate();
-
-  const [, setError] = useState(false);
+  const branding = useBranding();
+  const { login } = useUser();
   const [name, setName] = useState("");
 
   const loginKey = async (e : any) => {
-    if (e.key === "Enter") await login();
+    if (e.key === "Enter") await loginUser();
   }
 
-  const login = async () => {
-    const party = getParty(name);
-    const token = getToken(party);
-    await loginUser(userDispatch, name, party, token, navigate, setError);
+  const loginUser = async () => {
+    login(name);
+    navigate("/app");
   }
 
   return (
     <>
       {branding.background}
-      {branding.loginLogo}
-      <Typography variant="h2" style={{ textAlign: "center", marginTop: 20 }}>Daml Finance</Typography>
-      <Box className={classes.loginContainer} style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, 0%)" }}>
+      <Typography variant="h1" className={cls.header}>Daml Finance</Typography>
+      <Box className={cls.loginContainer} style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, 0%)" }}>
         <TextField
-          className={classes.loginField}
+          className={cls.loginField}
           // InputProps={{ style: { color: "white" } }}
           value={name}
           onChange={e => setName(e.target.value)}
@@ -49,9 +42,9 @@ export const Form : React.FC = () => {
           fullWidth
         />
         <Button
-          className={classes.loginButton}
+          className={cls.loginButton}
           disabled={name.length === 0}
-          onClick={login}
+          onClick={loginUser}
           variant="contained"
           color="primary"
           size="large"
@@ -61,7 +54,7 @@ export const Form : React.FC = () => {
           Login
         </Button>
       </Box>
-      <IconButton size="large" color="inherit" onClick={() => navigate("/login")} style={{ position: "absolute", top: "1%", left: "98%", transform: "translate(-50%, 0%)" }}>
+      <IconButton size="large" color="inherit" onClick={() => navigate("/login/portal")} style={{ position: "absolute", top: "1%", left: "98%", transform: "translate(-50%, 0%)" }}>
         <ExitToApp fontSize="large" />
       </IconButton>
     </>
