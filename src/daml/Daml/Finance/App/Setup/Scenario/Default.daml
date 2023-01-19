@@ -66,23 +66,16 @@ data Fixture = Fixture
 
 template Scenario
   with
-    operator : Party
-    public : Party
-    centralBank : Party
-    registry : Party
-    exchange : Party
-    agent : Party
-    issuer : Party
-    inv1 : Party
-    inv2 : Party
-    inv3 : Party
-    signed : [Party]
+    parties : [Party]
   where
-    signatory signed
+    signatory parties
 
-    choice Setup : Fixture
-      controller operator
+    nonconsuming choice Setup : Fixture
+      controller parties
       do
+        -- Parties
+        let [ operator, public, centralBank, registry, exchange, agent, issuer, inv1, inv2, inv3 ] = parties
+
         -- Roles
         createOperatorRole    operator
         createCustodianRole   operator centralBank
@@ -146,7 +139,7 @@ template Scenario
           todayTime = time today 0 0 0
           yday = time (addDays today (-1)) 0 0 0
           (todayYear, todayMonth, todayDay) = toGregorian today
-        createClockAndEvent signed today (singleton public)
+        createClockAndEvent parties today (singleton public)
 
         -- Observables
         let
@@ -193,23 +186,22 @@ template Scenario
           holdings = Holdings with ..
         pure Fixture with instruments; accounts; holdings
 
-run : Script [PartyInfo]
+run : Script Fixture
 run = do
   let scenario = "Default"
-  parties <- allocateParties scenario ["Operator", "Public", "CentralBank", "Registry", "Exchange", "Agent", "Issuer", "Investor1", "Investor2", "Investor3"]
-  let all@[operator, public, centralBank, registry, exchange, agent, issuer, inv1, inv2, inv3] = map (.id) parties
-  scenarioCid <- submitMulti all [] do createCmd Scenario with operator; public; centralBank; registry; exchange; agent; issuer; inv1; inv2; inv3; signed = all
-  submitMulti all [] do exerciseCmd scenarioCid Setup
-  pure parties
+  partyInfos <- allocateParties scenario ["Operator", "Public", "CentralBank", "Registry", "Exchange", "Agent", "Issuer", "Investor1", "Investor2", "Investor3"]
+  let parties@[operator, public, centralBank, registry, exchange, agent, issuer, inv1, inv2, inv3] = map (.id) partyInfos
+  scenarioCid <- submitMulti parties [] do createCmd Scenario with parties
+  submitMulti parties [] do exerciseCmd scenarioCid Setup
 
 testAuction : Script ()
 testAuction = do
   -- Fixture
   let scenario = "Default"
-  parties <- allocateParties scenario ["Operator", "Public", "CentralBank", "Registry", "Exchange", "Agent", "Issuer", "Investor1", "Investor2", "Investor3"]
-  let all@[operator, public, centralBank, registry, exchange, agent, issuer, inv1, inv2, inv3] = map (.id) parties
-  scenarioCid <- submitMulti all [] do createCmd Scenario with operator; public; centralBank; registry; exchange; agent; issuer; inv1; inv2; inv3; signed = all
-  Fixture{instruments; accounts; holdings} <- submitMulti all [] do exerciseCmd scenarioCid Setup
+  partyInfos <- allocateParties scenario ["Operator", "Public", "CentralBank", "Registry", "Exchange", "Agent", "Issuer", "Investor1", "Investor2", "Investor3"]
+  let parties@[operator, public, centralBank, registry, exchange, agent, issuer, inv1, inv2, inv3] = map (.id) partyInfos
+  scenarioCid <- submitMulti parties [] do createCmd Scenario with parties
+  Fixture{instruments; accounts; holdings} <- submitMulti parties [] do exerciseCmd scenarioCid Setup
 
   -- Workflow
   let
@@ -228,14 +220,12 @@ testAuction = do
 
 testTrading : Script ()
 testTrading = do
-
+  -- Fixture
   let scenario = "Default"
-  parties <- allocateParties scenario ["Operator", "Public", "CentralBank", "Registry", "Exchange", "Agent", "Issuer", "Investor1", "Investor2", "Investor3"]
-  let all@[operator, public, centralBank, registry, exchange, agent, issuer, inv1, inv2, inv3] = map (.id) parties
-
-  -- Scenario
-  scenarioCid <- submitMulti all [] do createCmd Scenario with operator; public; centralBank; registry; exchange; agent; issuer; inv1; inv2; inv3; signed = all
-  Fixture{instruments; accounts} <- submitMulti all [] do exerciseCmd scenarioCid Setup
+  partyInfos <- allocateParties scenario ["Operator", "Public", "CentralBank", "Registry", "Exchange", "Agent", "Issuer", "Investor1", "Investor2", "Investor3"]
+  let parties@[operator, public, centralBank, registry, exchange, agent, issuer, inv1, inv2, inv3] = map (.id) partyInfos
+  scenarioCid <- submitMulti parties [] do createCmd Scenario with parties
+  Fixture{instruments; accounts} <- submitMulti parties [] do exerciseCmd scenarioCid Setup
 
   -- Workflows
   let

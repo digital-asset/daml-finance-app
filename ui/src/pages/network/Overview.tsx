@@ -5,10 +5,12 @@ import React, { useMemo } from "react";
 import ReactFlow, { Background } from "react-flow-renderer";
 import { FloatingEdge } from "../../components/Network/FloatingEdge";
 import { Spinner } from "../../components/Spinner/Spinner";
+import { useScenarios } from "../../context/ScenarioContext";
 import { useNetwork } from "../../hooks/Network";
 
 export const Overview : React.FC = () => {
-  const network = useNetwork();
+  const { selected } = useScenarios();
+  const network = useNetwork(selected);
 
   const edgeTypes = useMemo(() => ({
     floating: FloatingEdge,

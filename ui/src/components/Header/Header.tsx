@@ -12,7 +12,7 @@ import { useParty } from "@daml/react";
 import useStyles from "./styles";
 import { useBranding } from "../../context/BrandingContext";
 import { useParties } from "../../context/PartiesContext";
-import { useScenario } from "../../context/ScenarioContext";
+import { useScenarios } from "../../context/ScenarioContext";
 import { ActionSelect } from "../Form/ActionSelect";
 import Home from "../../images/home.svg";
 import Logout from "../../images/logout.svg";
@@ -23,13 +23,13 @@ export const Header : React.FC = () => {
   const navigate = useNavigate();
   const { login, logout } = useUser();
   const branding = useBranding();
-  const { getName, users } = useParties();
+  const { getName, names } = useParties();
   const party = useParty();
-  const scenario = useScenario();
+  const { selected } = useScenarios();
 
   const logoutUser = () => {
     logout();
-    if (scenario.selected.useNetworkLogin) navigate("/login/network");
+    if (selected.useNetworkLogin) navigate("/login/network");
     else navigate("/login/form");
   };
 
@@ -47,7 +47,7 @@ export const Header : React.FC = () => {
         <div className={classes.grow} />
         <Box className={classes.userBox}>
           <Typography variant="body1" display="inline">User: </Typography>
-          <ActionSelect value={getName(party)} setValue={changeUser} values={users} />
+          <ActionSelect value={getName(party)} setValue={changeUser} values={names} />
         </Box>
         <Button className={classes.headerButton} size="large" variant="text" startIcon={homeIcon} onClick={() => navigate("/app")}>Home</Button>
         <Button className={classes.headerButton} size="large" variant="text" startIcon={logoutIcon} onClick={logoutUser}>Log out</Button>

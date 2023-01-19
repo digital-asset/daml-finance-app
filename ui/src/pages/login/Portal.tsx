@@ -1,39 +1,21 @@
 // Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import React, { useEffect } from "react";
+import React from "react";
 import { Grid, Typography } from "@mui/material";
 import { Box } from "@mui/system";
 import { Scenario } from "../../components/Card/Scenario";
-import { useScenario } from "../../context/ScenarioContext";
+import { useScenarios } from "../../context/ScenarioContext";
 import { useBranding } from "../../context/BrandingContext";
 import useStyles from "./styles";
-import { useAdmin } from "../../context/AdminContext";
+import { Spinner } from "../../components/Spinner/Spinner";
 
 export const Portal : React.FC = () => {
   const cls = useStyles();
   const branding = useBranding();
-  // const { ledgerId, parties } = useAdmin();
-  const { scenarios } = useScenario();
-  // useEffect(() => {
-  //   if (!ledgerId) return;
-  //   const initParties = async () => {
-  //     const key = ledgerId + ".scenarios";
-  //     const partyInfoString = localStorage.getItem(key);
-  //     if (!partyInfoString) {
-  //       if (parties.length > 1) throw new Error("No parties found in local storage, but ledger has some");
-  //       console.log("No parties found for ledger id [" + admin.ledgerId + "]. Initializing parties...");
-  //       localStorage.setItem(key, JSON.stringify(partyInfos));
-  //       setParties(partyInfos);
-  //     } else {
-  //       if (admin.parties.length === 1) throw new Error("Parties found in local storage, but ledger has none");
-  //       console.log("Parties found for ledger id [" + admin.ledgerId + "]. Retrieving parties...");
-  //       setParties(JSON.parse(partyInfoString));
-  //     };
-  //     navigate("/login/portal");
-  //   };
-  //   initParties();
-  // }, [admin, setParties, scenarios, navigate]);
+  const { scenarios, loading } = useScenarios();
+
+  if (loading) return <Spinner />;
 
   return (
     <>

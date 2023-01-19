@@ -2,25 +2,33 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import DamlLedger from "@daml/react";
-import React, { useEffect } from "react";
-import { Route, Routes, useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Route, Routes } from "react-router-dom";
+import { Spinner } from "../../components/Spinner/Spinner";
 import { httpBaseUrl, wsBaseUrl } from "../../config";
+import { useAdmin } from "../../context/AdminContext";
 import { useParties } from "../../context/PartiesContext";
 import { ServicesProvider } from "../../context/ServicesContext";
 import { Form } from "./Form";
 import { Network } from "./Network";
 
 export const Login : React.FC = () => {
-  const navigate = useNavigate();
-  const { getParty, getToken } = useParties();
+  const { getMultiPartyToken } = useAdmin();
+  const { parties, getParty } = useParties();
+  const [ token, setToken ] = useState("");
+
   const operator = getParty("Operator");
-  const token = getToken(operator);
 
   useEffect(() => {
-    if (!operator) navigate("init");
-  }, [operator, navigate]);
+    const loadToken = async () => {
+      const token = await getMultiPartyToken(parties);
+      setToken(token);
+    };
+    loadToken();
+  }, [getParty, getMultiPartyToken]);
 
-  if (!operator) return (<></>);
+  if (!token) return <Spinner />;
+
   return (
     <DamlLedger party={operator} token={token} httpBaseUrl={httpBaseUrl} wsBaseUrl={wsBaseUrl}>
       <ServicesProvider>

@@ -1,12 +1,13 @@
 // Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAdmin } from "./AdminContext";
 import { useParties } from "./PartiesContext";
 
 type UserState = {
-  isLoggedIn : boolean
+  loading : boolean
+  loggedIn : boolean
   user : string
   party : string
   token : string
@@ -14,35 +15,39 @@ type UserState = {
   logout : () => void
 }
 
-const UserContext = React.createContext<UserState>({ isLoggedIn: false, user: "", party: "", token: "", login: _ => null, logout: () => null });
+const defaultState : UserState = { loading: true, loggedIn: false, user: "", party: "", token: "", login: _ => null, logout: () => null };
+const UserContext = React.createContext<UserState>(defaultState);
 
 export const UserProvider : React.FC = ({ children }) => {
-  const { getParty, getToken } = useParties();
-  const { ledgerId } = useAdmin();
-  const key = ledgerId + ".user";
-  const storedUser = localStorage.getItem(key) || "";
-  const storedParty = getParty(storedUser);
-  const storedToken = getToken(storedParty)
-
-  const [user, setUser] = useState(storedUser);
-  const [party, setParty] = useState(storedParty);
-  const [token, setToken] = useState(storedToken);
+  const { loading: l1, getParty, getToken } = useParties();
+  const { loading: l2, ledgerId } = useAdmin();
+  const [state, setState] = useState<UserState>(defaultState);
 
   const login = (loginUser : string) => {
-    localStorage.setItem(key, loginUser);
+    if (l1 || l2) throw new Error("Trying to login while still loading");
+    localStorage.setItem(ledgerId + ".user", loginUser);
     const loginParty = getParty(loginUser);
     const loginToken = getToken(loginParty)
-    setUser(loginUser);
-    setParty(loginParty);
-    setToken(loginToken);
+    setState(s => ({ ...s, loggedIn: true, user: loginUser, party: loginParty, token: loginToken }));
   };
 
   const logout = () => {
-    localStorage.removeItem(key);
+    if (l1 || l2) throw new Error("Trying to logout while still loading");
+    localStorage.removeItem(ledgerId + ".user");
+    setState(s => ({ ...s, loggedIn: false, user: "", party: "", token: "" }));
   };
 
+  useEffect(() => {
+    if (l1 || l2) return;
+    const key = ledgerId + ".user";
+    const user = localStorage.getItem(key) || "";
+    const party = getParty(user);
+    const token = getToken(party)
+    setState(s => ({ ...s, loading: false, loggedIn: !!user, user, party, token }))
+  }, [l1, l2, ledgerId]);
+
   return (
-    <UserContext.Provider value={{ isLoggedIn: !!token, user, party, token, login, logout }}>
+    <UserContext.Provider value={{ ...state, login, logout }}>
       {children}
     </UserContext.Provider>
   );

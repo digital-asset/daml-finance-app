@@ -46,6 +46,7 @@ export default makeStyles((theme : Theme) => createStyles({
     margin: 0,
     "&:hover": {
       background: "#ffffff33",
+      cursor: "pointer"
     }
   },
   scenarioItem: {

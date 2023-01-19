@@ -14,13 +14,17 @@ import ErrorComponent from "./pages/error/Error";
 import { httpBaseUrl, wsBaseUrl } from "./config";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import { CssBaseline } from "@mui/material";
-import { Init } from "./pages/login/Init";
 import { useUser } from "./context/UserContext";
+import { useScenarios } from "./context/ScenarioContext";
+import { Spinner } from "./components/Spinner/Spinner";
 
 export const Main : React.FC = () => {
-  const { party, token, isLoggedIn } = useUser();
+  const { loading: l1, party, token, loggedIn } = useUser();
+  const { loading: l2, selected } = useScenarios();
   const branding = useBranding();
   const theme = React.useMemo(() => createTheme(branding.options), [branding]);
+
+  if (l1 || l2) return <Spinner />;
 
   return (
     <ThemeProvider theme={theme}>
@@ -30,7 +34,6 @@ export const Main : React.FC = () => {
           <HashRouter>
             <Routes>
               <Route path="/" element={<Navigate to="/app" />} />
-              <Route path="/login/init" element={<Init />} />
               <Route path="/login/portal" element={<Portal />} />
               <Route path="/login/*" element={<Login />} />
               <Route path="/app/*" element={<Private><Root /></Private>} />
@@ -43,6 +46,7 @@ export const Main : React.FC = () => {
   );
 
   function Private({ children } : any) {
-    return isLoggedIn ? children : <Navigate to="/login/init" />;
-  }
+    const path = selected.useNetworkLogin ? "/login/network" : "/login/form";
+    return loggedIn ? children : <Navigate to={path} />;
+  };
 }

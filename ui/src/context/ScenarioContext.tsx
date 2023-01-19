@@ -1,7 +1,7 @@
 // Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { App } from "../components/Card/App";
 import appStructuring from "../images/app/structuring.png";
 import appIssuance from "../images/app/issuance.png";
@@ -32,7 +32,7 @@ export type Scenario = {
   apps: AppInfo[],
   parties : PartyPosition[],
   useNetworkLogin: boolean,
-  isInitialized: boolean
+  isInitialized: boolean,
 };
 
 export type ScenarioState = {
@@ -40,13 +40,14 @@ export type ScenarioState = {
   scenarios : Scenario[]
   select : (name : string) => Scenario
   initialize : (scenario : Scenario) => void
-}
+  loading : boolean
+};
 
 type AppInfo = {
   name : string
   path : string
   elem : JSX.Element
-}
+};
 
 const structuring   = { name: "Structuring",  path: "structuring",  elem: <App key={0}  label="Structuring"   description="Structure and design new assets"         image={appStructuring}  path="/app/structuring/instruments" /> };
 const issuance      = { name: "Issuance",     path: "issuance",     elem: <App key={1}  label="Issuance"      description="Issue new assets"                        image={appIssuance}     path="/app/issuance/issuances" /> };
@@ -83,7 +84,7 @@ const defaultScenarios : Scenario[] = [
       createParty("Investor3",     800, 300)
     ],
     useNetworkLogin: true,
-    isInitialized: false
+    isInitialized: false,
   },
   {
     label: "Bond Issuance",
@@ -205,46 +206,57 @@ const defaultScenarios : Scenario[] = [
   }
 ];
 
-const ScenarioContext = React.createContext<ScenarioState>({ selected: defaultScenarios[0], scenarios: defaultScenarios, select: _ => defaultScenarios[0], initialize: _ => null });
+const defaultState : ScenarioState = { selected: defaultScenarios[0], scenarios: defaultScenarios, select: _ => defaultScenarios[0], initialize: _ => null, loading: true };
+const ScenarioContext = React.createContext<ScenarioState>(defaultState);
 
 export const ScenarioProvider : React.FC = ({ children }) => {
-  const { ledgerId } = useAdmin();
-  const scenarioKey = ledgerId + ".scenario";
-  const scenariosKey = ledgerId + ".scenarios";
+  const { loading, ledgerId } = useAdmin();
+  const [ state, setState ] = useState<ScenarioState>(defaultState);
 
-  const storedScenariosString = localStorage.getItem(scenariosKey);
-  console.log(scenariosKey);
-  const storedScenarios : Scenario[] = !!storedScenariosString ? JSON.parse(storedScenariosString) : defaultScenarios;
-  const storedScenario = localStorage.getItem(scenarioKey) || "Default";
-  const scenario = storedScenarios.find(s => s.label === storedScenario);
-  if (!scenario) throw new Error("Couldn't find scenario " + storedScenario);
-
-  const [ selected, setSelected ] = useState<Scenario>(scenario);
-  const [ scenarios, setScenarios ] = useState<Scenario[]>(storedScenarios);
-
-  const select = (name : string) : Scenario => {
-    const s = scenarios.find(s => s.label === name);
-    if (!s) throw new Error("Couldn't find scenario " + name);
-    localStorage.setItem(scenarioKey, name);
-    setSelected(s);
-    return s;
-  }
-
+  // TODO: Check if this could be racy
   const initialize = (scenario : Scenario) => {
-    const newScenarios = scenarios.map(s => s.label === scenario.label ? scenario : s);
+    if (loading) throw new Error("Trying to initialize scenario but still loading");
+    const scenariosKey = ledgerId + ".scenarios";
+    const newScenarios = state.scenarios.map(s => s.label === scenario.label ? scenario : s);
     console.log("Storing scenarios for " + scenariosKey);
     localStorage.setItem(scenariosKey, JSON.stringify(newScenarios));
-    setScenarios(newScenarios);
-    if (selected.label === scenario.label) setSelected(scenario);
+    if (state.selected.label === scenario.label) setState({ ...state, scenarios: newScenarios, selected: scenario });
+    else setState(s => ({ ...s, scenarios: newScenarios }));
   };
 
+  const select = (name : string) : Scenario => {
+    if (loading) throw new Error("Trying to select scenario but still loading");
+    const scenarioKey = ledgerId + ".scenario";
+    const selected = state.scenarios.find(s => s.label === name);
+    if (!selected) throw new Error("Couldn't find scenario " + name);
+    localStorage.setItem(scenarioKey, name);
+    setState(s => ({ ...s, selected }));
+    return selected;
+  }
+
+  useEffect(() => {
+    if (loading) return;
+
+    const scenariosKey = ledgerId + ".scenarios";
+    const storedScenariosString = localStorage.getItem(scenariosKey);
+    const scenarios : Scenario[] = !!storedScenariosString ? JSON.parse(storedScenariosString) : defaultScenarios;
+
+    const scenarioKey = ledgerId + ".scenario";
+    const scenarioName = localStorage.getItem(scenarioKey) || "Default";
+    const selected = scenarios.find(s => s.label === scenarioName);
+    if (!selected) throw new Error("Couldn't find scenario " + scenarioName);
+
+    console.log("Scenario: " + scenarioName);
+    setState(s => ({ ...s, loading: false , selected, scenarios}));
+  }, [loading, ledgerId]);
+
   return (
-    <ScenarioContext.Provider value={{ selected, scenarios, select, initialize }}>
+    <ScenarioContext.Provider value={{ ...state, select, initialize }}>
         {children}
     </ScenarioContext.Provider>
   );
 }
 
-export const useScenario = () => {
+export const useScenarios = () => {
   return React.useContext(ScenarioContext);
 }

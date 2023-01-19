@@ -13,15 +13,24 @@ export type PartyInfo = {
 };
 
 type AdminState = {
-  isDeployed : boolean
+  loading : boolean
   ledgerId : string
-  parties : PartyInfo[]
+  ledgerParties : PartyInfo[]
   createParty : (displayName : string, identifierHint: string) => Promise<PartyInfo>
+  getMultiPartyToken : (parties : string[]) => Promise<string>
 };
 
-const AdminContext = React.createContext<AdminState>({ isDeployed: false, ledgerId: "", parties: [], createParty: (a, b) => { throw new Error("Not implemented") } });
+const defaultState : AdminState = {
+  loading: true,
+  ledgerId: "",
+  ledgerParties: [],
+  createParty: (a, b) => { throw new Error("Not implemented") },
+  getMultiPartyToken: (parties) => { throw new Error("Not implemented") }
+};
+const AdminContext = React.createContext<AdminState>(defaultState);
 
 export const AdminProvider : React.FC = ({ children }) => {
+  const [state, setState] = useState<AdminState>(defaultState);
 
   const createParty = async (displayName: string, identifierHint: string) => {
     const payload = { ledgerId: "sandbox", applicationId: "daml-finance-app", admin: true };
@@ -32,7 +41,11 @@ export const AdminProvider : React.FC = ({ children }) => {
     return data.result as PartyInfo;
   };
 
-  const [state, setState] = useState<AdminState>({ isDeployed: false, ledgerId: "", parties: [], createParty });
+  const getMultiPartyToken = (parties: string[]) => {
+    const payload = { ledgerId: "sandbox", applicationId: "daml-finance-app", admin: true, actAs: parties };
+    const token = encode({ "https://daml.com/ledger-api": payload }, "secret", "HS256");
+    return Promise.resolve(token);
+  };
 
   useMemo(() => {
     const initialize = async () => {
@@ -43,16 +56,16 @@ export const AdminProvider : React.FC = ({ children }) => {
       const ledgerParties : PartyInfo[] = data.result;
       const sandboxParty = ledgerParties.find(p => p.identifier.startsWith("sandbox::"));
       if (!sandboxParty) throw new Error("Couldn't find sandbox party");
-      const impliedLedgerId = sandboxParty.identifier.split("::")[1];
-      console.log("LedgerId: " + impliedLedgerId);
+      const ledgerId = sandboxParty.identifier.split("::")[1];
+      console.log("LedgerId: " + ledgerId);
       console.log("Parties: " + ledgerParties.length);
-      setState({ isDeployed: false, ledgerId: impliedLedgerId, parties: ledgerParties, createParty });
+      setState(s => ({ ...s, loading: false, ledgerId, ledgerParties }));
     };
     initialize();
   }, []);
 
   return (
-    <AdminContext.Provider value={state}>
+    <AdminContext.Provider value={{ ...state, createParty, getMultiPartyToken }}>
         {children}
     </AdminContext.Provider>
   );

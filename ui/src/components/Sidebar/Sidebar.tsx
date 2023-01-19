@@ -9,7 +9,7 @@ import { Entry } from "./Route";
 import useStyles from "./styles";
 import { Button, Divider } from "@mui/material";
 import { ActionSelect } from "../Form/ActionSelect";
-import { useScenario } from "../../context/ScenarioContext";
+import { useScenarios } from "../../context/ScenarioContext";
 import { useNavigate } from "react-router-dom";
 
 type SidebarProps = {
@@ -20,7 +20,7 @@ type SidebarProps = {
 export const Sidebar : React.FC<SidebarProps> = ({ app, entries } : SidebarProps) => {
   const classes = useStyles();
   const navigate = useNavigate();
-  const scenario = useScenario();
+  const { selected } = useScenarios();
 
   const links = entries.filter(e => !e.action);
   const actions = entries.filter(e => !!e.action);
@@ -30,7 +30,7 @@ export const Sidebar : React.FC<SidebarProps> = ({ app, entries } : SidebarProps
       <div className={classes.toolbar} />
       <List>
         <Button variant="outlined" disableRipple className={classes.actionButton}>
-          <ActionSelect value={app} setValue={v => navigate("/app/" + v.toLowerCase())} values={scenario.selected.apps.map(a => a.name)} />
+          <ActionSelect value={app} setValue={v => navigate("/app/" + v.toLowerCase())} values={selected.apps.map(a => a.name)} />
         </Button>
         <Divider style={{ marginBottom: 20 }} />
         {links.map(e => <SidebarLink key={e.label} label={e.label} path={e.path} action={e.action} /> )}
