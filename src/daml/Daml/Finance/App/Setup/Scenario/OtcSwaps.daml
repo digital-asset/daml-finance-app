@@ -7,63 +7,78 @@ import DA.Date (Month(..), date, toDateUTC, toGregorian)
 import DA.Map (empty, fromList)
 import DA.Set (singleton)
 import DA.Time (time)
+import Daml.Finance.App.Setup.Types (Fixture(..))
+import Daml.Finance.App.Setup.Util.Update.Role (createOperatorRole, createCustodianRole)
+import Daml.Finance.App.Setup.Util.Update.Service (createCustodyService, createIssuanceService, createIssuanceAutoService, createLifecycleService, createStructuringService, createStructuringAutoService)
+import Daml.Finance.App.Setup.Util.Update.Workflow (createAccount, createClockAndEvent, originateCreditDefaultSwap, originateToken)
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum(..))
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
-import Daml.Finance.App.Setup.Util.Script.Common
-import Daml.Finance.App.Setup.Util.Script.Role
-import Daml.Finance.App.Setup.Util.Script.Service
-import Daml.Finance.App.Setup.Util.Script.Workflow
 import Daml.Script
+import Prelude hiding (Scenario)
 
-run : Script [PartyInfo]
+template Scenario
+  with
+    parties : [Party]
+  where
+    signatory parties
+
+    nonconsuming choice Setup : Fixture
+      controller parties
+      do
+        -- Parties
+        let [operator, public, centralBank, seller, buyer] = parties
+
+        -- Roles
+        createOperatorRole operator
+        createCustodianRole operator centralBank
+        createCustodianRole operator seller
+
+        -- Services
+        let
+          settlementPaths = [[buyer], [seller]]
+          cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = settlementPaths
+          secRoute = Settlement.Hierarchy with rootCustodian = seller; pathsToRootCustodian = settlementPaths
+          paths = fromList [("USD", cashRoute), ("CDS1", secRoute)]
+        createCustodyService          operator centralBank  seller  public paths
+        createCustodyService          operator centralBank  buyer   public paths
+        createCustodyService          operator seller       buyer   public paths
+        createIssuanceService         operator seller       seller
+        createIssuanceAutoService     operator seller       seller
+        createStructuringService      operator seller       seller
+        createStructuringAutoService  operator seller       seller
+        createLifecycleService        operator seller       seller  public
+
+        -- Accounts
+        sellerCashAccount <- createAccount operator centralBank seller  public "Seller@CentralBank/Cash" empty
+        buyerCashAccount  <- createAccount operator centralBank buyer   public "Buyer@CentralBank/Cash"  empty
+        buyerSecAccount   <- createAccount operator seller      buyer   public "Buyer@Seller/Securties"  empty
+
+        -- Time
+        t <- getTime
+        let
+          today = toDateUTC t
+          todayTime = time today 0 0 0
+          tt d = time d 0 0 0
+          epoch = tt $ date 1970 Jan 1
+          (ty, tm, td) = toGregorian today
+          pub = fromList [("Public", singleton public)]
+        createClockAndEvent parties (date 2021 tm td) (singleton public)
+
+        -- Instruments
+        usd   <- originateToken               centralBank centralBank pub epoch "USD"   "United States Dollar"
+        swap1 <- originateCreditDefaultSwap   seller      seller                "CDS1"  "Credit Default Swap 5Y"  pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] seller (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.011 M 12 usd "DefaultProbability" "RecoveryRate" True
+
+        let
+          instruments = [usd, swap1]
+          accounts = [sellerCashAccount, buyerCashAccount, buyerSecAccount]
+          holdings = []
+          services = []
+        pure Fixture with instruments; accounts; holdings; services
+
+run : Script Fixture
 run = do
-  let scenario = "OTC Swaps"
-  parties <- allocateParties scenario ["Operator", "Public", "CentralBank", "Seller", "Buyer"]
-  let
-    all@[operator, public, centralBank, seller, buyer] = map (.id) parties
-    pub = fromList [("Public", singleton public)]
-
-  -- Factories
-  let
-    settlementPaths = [[buyer], [seller]]
-    cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = settlementPaths
-    secRoute = Settlement.Hierarchy with rootCustodian = seller; pathsToRootCustodian = settlementPaths
-    paths = fromList [("USD", cashRoute), ("CDS1", secRoute)]
-
-  -- Roles
-  createOperatorRole operator
-  createCustodianRole operator centralBank
-  createCustodianRole operator seller
-
-  -- Services
-  createCustodyService          operator centralBank  seller  public paths
-  createCustodyService          operator centralBank  buyer   public paths
-  createCustodyService          operator seller       buyer   public paths
-  createIssuanceService         operator seller       seller
-  createIssuanceAutoService     operator seller       seller
-  createStructuringService      operator seller       seller
-  createStructuringAutoService  operator seller       seller
-  createLifecycleService        operator seller       seller
-
-  -- Accounts
-  sellerCashAccount <- createAccount operator centralBank seller  public "Seller@CentralBank/Cash" empty
-  buyerCashAccount  <- createAccount operator centralBank buyer   public "Buyer@CentralBank/Cash"  empty
-  buyerSecAccount   <- createAccount operator seller      buyer   public "Buyer@Seller/Securties"  empty
-
-  -- Time
-  t <- getTime
-  let
-    today = toDateUTC t
-    todayTime = time today 0 0 0
-    tt d = time d 0 0 0
-    epoch = tt $ date 1970 Jan 1
-    (ty, tm, td) = toGregorian today
-  (clockCid, eventCid) <- createClockAndEvent all (date 2021 tm td) (singleton public)
-
-  -- Instruments
-  usd   <- originateToken               centralBank centralBank pub epoch "USD"   "United States Dollar"
-  swap1 <- originateCreditDefaultSwap   seller      seller                "CDS1"  "Credit Default Swap 5Y"  pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] seller (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.011 M 12 usd "DefaultProbability" "RecoveryRate" True
-
-  pure parties
+  parties@[operator, public, centralBank, seller, buyer] <-
+    mapA allocateParty ["Operator", "Public", "CentralBank", "Seller", "Buyer"]
+  submitMulti parties [] do createAndExerciseCmd (Scenario with parties) Setup

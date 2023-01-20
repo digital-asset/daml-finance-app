@@ -7,16 +7,15 @@ import DA.Date (Month(..), date, toDateUTC, toGregorian)
 import DA.Map (empty, fromList)
 import DA.Set (singleton)
 import DA.Time (time)
--- import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
--- import Daml.Finance.Interface.Settlement.Types (Allocation(..), Approval(..))
--- import Daml.Finance.Interface.Types.Common.Types (Id(..))
+import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
+import Daml.Finance.Interface.Settlement.Types (Allocation(..), Approval(..))
+import Daml.Finance.Interface.Types.Common.Types (Id(..))
 import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
-import Daml.Finance.App.Setup.Types
-import Daml.Finance.App.Setup.Util.Script.Workflow (declareDividend)
--- import Daml.Finance.App.Setup.Util.Script.Workflow (allocateAndApprove, claimEffect, declareDividend)
-import Daml.Finance.App.Setup.Util.Update.Role
-import Daml.Finance.App.Setup.Util.Update.Service
+import Daml.Finance.App.Setup.Types (Fixture(..))
+import Daml.Finance.App.Setup.Util.Script.Workflow (allocateAndApprove, claimEffect, declareDividend)
+import Daml.Finance.App.Setup.Util.Update.Role (createOperatorRole, createCustodianRole)
+import Daml.Finance.App.Setup.Util.Update.Service (createCustodyService, createIssuanceService, createIssuanceAutoService, createLifecycleService, createSettlementService, createStructuringService, createStructuringAutoService)
 import Daml.Finance.App.Setup.Util.Update.Workflow (createAccount, createAccountDirectory, createClockAndEvent, deposit, issue, originateEquity, originateToken, transfer)
 import Daml.Script
 import Prelude hiding (Scenario)
@@ -42,10 +41,11 @@ template Scenario
 
         -- Services
         let
-          assets = ["NewCo", "Acme"]
-          settlementPaths = [[issuer], [registry], [custodian], [inv1, custodian], [inv2, custodian], [inv3, custodian]]
-          cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = settlementPaths
-          secRoute = Settlement.Hierarchy with rootCustodian = issuer; pathsToRootCustodian = settlementPaths
+          assets = ["AcmePref", "AcmeCommon"]
+          cashSettlementPaths = [[issuer], [registry], [custodian], [inv1, custodian], [inv2, custodian], [inv3, custodian]]
+          secSettlementPaths = [[registry], [custodian, registry], [inv1, custodian, registry], [inv2, custodian, registry], [inv3, custodian, registry]]
+          cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = cashSettlementPaths
+          secRoute = Settlement.Hierarchy with rootCustodian = issuer; pathsToRootCustodian = secSettlementPaths
           paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
         createCustodyService          operator centralBank  issuer    public paths
         createCustodyService          operator centralBank  registry  public paths
@@ -60,7 +60,7 @@ template Scenario
         createIssuanceAutoService     operator registry     issuer
         createStructuringService      operator registry     issuer
         createStructuringAutoService  operator registry     issuer
-        createLifecycleService        operator registry     issuer
+        createLifecycleService        operator registry     issuer    public
         createSettlementService       operator issuer       registry  paths
         createSettlementService       operator registry     custodian paths
         createSettlementService       operator custodian    inv1      paths
@@ -68,14 +68,14 @@ template Scenario
         createSettlementService       operator custodian    inv3      paths
 
         -- Accounts
-        issuerCashAccount     <- createAccount operator centralBank issuer    public "Issuer@CentralBank|Cash"         empty
         registryCashAccount   <- createAccount operator centralBank registry  public "Registry@CentralBank|Cash"       empty
+        issuerCashAccount     <- createAccount operator centralBank issuer    public "Issuer@CentralBank|Cash"         empty
         custodianCashAccount  <- createAccount operator centralBank custodian public "Custodian@CentralBank|Cash"      empty
         inv1CashAccount       <- createAccount operator custodian   inv1      public "Investor1@Custodian|Cash"        empty
         inv2CashAccount       <- createAccount operator custodian   inv2      public "Investor2@Custodian|Cash"        empty
         inv3CashAccount       <- createAccount operator custodian   inv3      public "Investor3@Custodian|Cash"        empty
-        registrySecAccount    <- createAccount operator issuer      registry  public "Issuer@Registry|Securities"      empty
-        issuerSecAccount      <- createAccount operator registry    issuer    public "Registry@Issuer|Securities"      empty
+        registrySecAccount    <- createAccount operator issuer      registry  public "Registry@Issuer|Securities"      empty
+        issuerSecAccount      <- createAccount operator registry    issuer    public "Issuer@Registry|Securities"      empty
         custodianSecAccount   <- createAccount operator registry    custodian public "Custodian@Registry|Securities"   empty
         inv1SecAccount        <- createAccount operator custodian   inv1      public "Investor1@Custodian|Securities"  empty
         inv2SecAccount        <- createAccount operator custodian   inv2      public "Investor2@Custodian|Securities"  empty
@@ -93,9 +93,9 @@ template Scenario
         (clockCid, eventCid) <- createClockAndEvent parties today (singleton public)
 
         -- Instruments
-        usd     <- originateToken  centralBank centralBank pub epoch "USD"    "United States Dollar"
-        equity  <- originateEquity registry    issuer      pub epoch "NewCo"  "NewCo, Inc. Common Stock"
-        equity2 <- originateEquity registry    issuer      pub epoch "Acme"   "Acme, Inc. Common Stock"
+        usd     <- originateToken  centralBank centralBank pub epoch "USD"        "United States Dollar"
+        equity  <- originateEquity registry    issuer      pub epoch "AcmePref"   "Acme, Inc. Preferred Stock"
+        equity2 <- originateEquity registry    issuer      pub epoch "AcmeCommon" "Acme, Inc. Common Stock"
 
         -- Data
         createAccountDirectory issuer     [(usd, issuerCashAccount), (equity, issuerSecAccount)]        $ singleton public
@@ -105,7 +105,7 @@ template Scenario
         createAccountDirectory inv2       [(usd, inv2CashAccount), (equity, inv2SecAccount)]            $ singleton public
         createAccountDirectory inv3       [(usd, inv3CashAccount), (equity, inv3SecAccount)]            $ singleton public
 
-        -- Distribution
+        -- Holdings
         registryEquityCid     <- deposit  operator issuer   registry    public (qty 1_000_000.0 equity) registrySecAccount
         (_, issuerEquityCid)  <- issue    operator registry issuer      public (qty 1_000_000.0 equity) issuerSecAccount
         custodianEquityCid    <- transfer issuer   custodianSecAccount  public $ coerceContractId issuerEquityCid
@@ -118,7 +118,7 @@ template Scenario
 
         let
           instruments = [usd, equity, equity2]
-          accounts = [registryCashAccount, issuerCashAccount, custodianCashAccount, inv1CashAccount, inv2CashAccount, inv3CashAccount, issuerSecAccount, custodianSecAccount, inv1SecAccount, inv2SecAccount, inv3SecAccount]
+          accounts = [registryCashAccount, issuerCashAccount, custodianCashAccount, inv1CashAccount, inv2CashAccount, inv3CashAccount, registrySecAccount, issuerSecAccount, custodianSecAccount, inv1SecAccount, inv2SecAccount, inv3SecAccount]
           holdings = [registryEquityCid, issuerEquityCid, toInterfaceContractId custodianEquityCid, inv1EquityCid, inv2EquityCid, inv3EquityCid, issuerCashCid, registryCashCid]
           services = []
         pure Fixture with instruments; accounts; holdings; services
@@ -141,35 +141,42 @@ testDividend = do
   t <- getTime
   let
     [usd, equity, _] = instruments
-    [registryCashAccount, _, custodianCashAccount, inv1CashAccount, inv2CashAccount, inv3CashAccount, _, _, _, _, _] = accounts
-    [registryEquityCid, _, custodianEquityCid, inv1EquityCid, inv2EquityCid, inv3EquityCid, issuerCashCid, registryCashCid] = holdings
+    [registryCashAccount, issuerCashAccount, custodianCashAccount, inv1CashAccount, inv2CashAccount, inv3CashAccount, registrySecAccount, issuerSecAccount, custodianSecAccount, inv1SecAccount, inv2SecAccount, inv3SecAccount] = accounts
+    [registryEquityCid, issuerEquityCid, custodianEquityCid, inv1EquityCid, inv2EquityCid, inv3EquityCid, issuerCashCid, registryCashCid] = holdings
     today = toDateUTC t
     todayTime = time today 0 0 0
 
-  effectCid <- declareDividend operator registry issuer public equity todayTime [qty 0.5 usd]
+  (newEquity, effectCid) <- declareDividend operator registry issuer public equity todayTime [qty 0.5 usd]
 
-  -- -- TODO: We don't create new instrument versions yet
-  -- -- Claim registry holding
-  -- (batchCid, [oldCid, newCid, cashCid]) <- claimEffect operator issuer registry public effectCid [registryEquityCid] (Id "Registry-Settlement")
-  -- allocateAndApprove operator issuer oldCid (Pledge issuerCashCid) (TakeDelivery registryCashAccount)
-  -- allocateAndApprove operator issuer newCid (Pledge issuerCashCid) (TakeDelivery registryCashAccount)
-  -- allocateAndApprove operator issuer cashCid (Pledge issuerCashCid) (TakeDelivery registryCashAccount)
-  -- submitMulti [issuer] [public] do exerciseCmd batchCid Batch.Settle with actors = singleton issuer
+  -- Claim registry holding
+  (batchCid, [oldCid, newCid, cashCid]) <- claimEffect operator issuer registry public effectCid [registryEquityCid] (Id "Registry-Settlement")
+  allocateAndApprove operator issuer oldCid (Pledge registryEquityCid) DebitSender
+  allocateAndApprove operator issuer newCid CreditReceiver (TakeDelivery registrySecAccount)
+  allocateAndApprove operator issuer cashCid (Pledge issuerCashCid) (TakeDelivery registryCashAccount)
+  submitMulti [issuer] [public] do exerciseCmd batchCid Batch.Settle with actors = singleton issuer
 
-  -- -- Claim custodian holding
-  -- (batchCid, instructionCids) <- claimEffect operator registry custodian public effectCid [toInterfaceContractId custodianEquityCid] (Id "Custodian-Settlement")
-  -- allocateAndApprove operator registry (head instructionCids) (Pledge registryCashCid) (TakeDelivery custodianCashAccount)
-  -- submitMulti [registry] [public] do exerciseCmd batchCid Batch.Settle with actors = singleton registry
+  -- Claim custodian holding
+  (batchCid, [oldCid, newCid, cashCid]) <- claimEffect operator registry custodian public effectCid [toInterfaceContractId custodianEquityCid] (Id "Custodian-Settlement")
+  allocateAndApprove operator registry oldCid (Pledge custodianEquityCid) DebitSender
+  allocateAndApprove operator registry newCid CreditReceiver (TakeDelivery custodianSecAccount)
+  allocateAndApprove operator registry cashCid (Pledge registryCashCid) (TakeDelivery custodianCashAccount)
+  submitMulti [registry] [public] do exerciseCmd batchCid Batch.Settle with actors = singleton registry
 
-  -- -- Claim investor holdings
-  -- (batchCid, instructionCids) <- claimEffect operator custodian inv1 public effectCid [toInterfaceContractId inv1EquityCid] (Id "Investor1-Settlement")
-  -- allocateAndApprove operator custodian (head instructionCids) CreditReceiver (TakeDelivery inv1CashAccount)
-  -- submitMulti [custodian] [public] do exerciseCmd batchCid Batch.Settle with actors = singleton custodian
-  -- (batchCid, instructionCids) <- claimEffect operator custodian inv2 public effectCid [toInterfaceContractId inv2EquityCid] (Id "Investor2-Settlement")
-  -- allocateAndApprove operator custodian (head instructionCids) CreditReceiver (TakeDelivery inv2CashAccount)
-  -- submitMulti [custodian] [public] do exerciseCmd batchCid Batch.Settle with actors = singleton custodian
-  -- (batchCid, instructionCids) <- claimEffect operator custodian inv3 public effectCid [toInterfaceContractId inv3EquityCid] (Id "Investor3-Settlement")
-  -- allocateAndApprove operator custodian (head instructionCids) CreditReceiver (TakeDelivery inv3CashAccount)
-  -- submitMulti [custodian] [public] do exerciseCmd batchCid Batch.Settle with actors = singleton custodian
+  -- Claim investor holdings
+  (batchCid, [oldCid, newCid, cashCid]) <- claimEffect operator custodian inv1 public effectCid [toInterfaceContractId inv1EquityCid] (Id "Investor1-Settlement")
+  allocateAndApprove operator custodian oldCid (Pledge inv1EquityCid) DebitSender
+  allocateAndApprove operator custodian newCid CreditReceiver (TakeDelivery inv1SecAccount)
+  allocateAndApprove operator custodian cashCid CreditReceiver (TakeDelivery inv1CashAccount)
+  submitMulti [custodian] [public] do exerciseCmd batchCid Batch.Settle with actors = singleton custodian
+  (batchCid, [oldCid, newCid, cashCid]) <- claimEffect operator custodian inv2 public effectCid [toInterfaceContractId inv2EquityCid] (Id "Investor2-Settlement")
+  allocateAndApprove operator custodian oldCid (Pledge inv2EquityCid) DebitSender
+  allocateAndApprove operator custodian newCid CreditReceiver (TakeDelivery inv2SecAccount)
+  allocateAndApprove operator custodian cashCid CreditReceiver (TakeDelivery inv2CashAccount)
+  submitMulti [custodian] [public] do exerciseCmd batchCid Batch.Settle with actors = singleton custodian
+  (batchCid, [oldCid, newCid, cashCid]) <- claimEffect operator custodian inv3 public effectCid [toInterfaceContractId inv3EquityCid] (Id "Investor3-Settlement")
+  allocateAndApprove operator custodian oldCid (Pledge inv3EquityCid) DebitSender
+  allocateAndApprove operator custodian newCid CreditReceiver (TakeDelivery inv3SecAccount)
+  allocateAndApprove operator custodian cashCid CreditReceiver (TakeDelivery inv3CashAccount)
+  submitMulti [custodian] [public] do exerciseCmd batchCid Batch.Settle with actors = singleton custodian
 
   pure ()

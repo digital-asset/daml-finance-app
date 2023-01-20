@@ -58,11 +58,13 @@ template Service
         createEquityRequestCid <- exercise serviceCid Structuring.RequestCreateEquity with id = iv.id; description = iv.description; version = newVersion; validAsOf = now; observers = disclosure.observers
         (_, newInstrument) <- exercise serviceCid Structuring.CreateEquity with createEquityRequestCid
         eventCid <- Instrument.exerciseInterfaceByKey @Equity.I equity customer Equity.DeclareDividend with id = eventId; description; effectiveTime; newInstrument; perUnitDistribution
-        snd <$> exercise distributionRuleCid Lifecycle.Evolve with eventCid; instrument = equity; observableCids = []
+        effectCids <- snd <$> exercise distributionRuleCid Lifecycle.Evolve with eventCid; instrument = equity; observableCids = []
+        pure (newInstrument, effectCids)
 
       declareReplacement Service.DeclareReplacement{equity; eventId; description; effectiveTime; perUnitReplacement} = do
         eventCid <- Instrument.exerciseInterfaceByKey @Equity.I equity customer Equity.DeclareReplacement with id = eventId; description; effectiveTime; perUnitReplacement
-        snd <$> exercise replacementRuleCid Lifecycle.Evolve with eventCid; instrument = equity; observableCids = []
+        effectCids <- snd <$> exercise replacementRuleCid Lifecycle.Evolve with eventCid; instrument = equity; observableCids = []
+        pure effectCids
 
       declareStockSplit Service.DeclareStockSplit{equity; newVersion; eventId; description; effectiveTime; adjustmentFactor} = do
         now <- getTime
@@ -74,7 +76,8 @@ template Service
         createEquityRequestCid <- exercise serviceCid Structuring.RequestCreateEquity with id = iv.id; description = iv.description; version = newVersion; validAsOf = now; observers = disclosure.observers
         (_, newInstrument) <- exercise serviceCid Structuring.CreateEquity with createEquityRequestCid
         eventCid <- Instrument.exerciseInterfaceByKey @Equity.I equity customer Equity.DeclareStockSplit with id = eventId; description; effectiveTime; newInstrument; adjustmentFactor
-        snd <$> exercise replacementRuleCid Lifecycle.Evolve with eventCid; instrument = equity; observableCids = []
+        effectCids <- snd <$> exercise replacementRuleCid Lifecycle.Evolve with eventCid; instrument = equity; observableCids = []
+        pure (newInstrument, effectCids)
 
       previewLifecycle Service.PreviewLifecycle{today; observableCids; instrumentCid} = do
         hasClaims <- fetch instrumentCid

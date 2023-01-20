@@ -3,7 +3,7 @@
 
 sdk-version: 2.6.0-snapshot.20221218.11169.0.9d007b31
 name: daml-finance-app-interface-distribution
-version: 0.0.1
+version: 0.0.2
 source: daml
 dependencies:
   - daml-prim
@@ -13,8 +13,8 @@ data-dependencies:
   - .lib/daml-finance/Daml.Finance.Interface.Lifecycle/1.0.0/daml-finance-interface-lifecycle-1.0.0.dar
   - .lib/daml-finance/Daml.Finance.Interface.Settlement/1.0.0/daml-finance-interface-settlement-1.0.0.dar
   - .lib/daml-finance/Daml.Finance.Interface.Types.Common/1.0.0/daml-finance-interface-types-common-1.0.0.dar
-  - .lib/daml-finance-app/Daml.Finance.App.Interface.Base/0.0.1/daml-finance-app-interface-base-0.0.1.dar
-  - .lib/daml-finance-app/Daml.Finance.App.Interface.Common/0.0.1/daml-finance-app-interface-common-0.0.1.dar
-  - .lib/daml-finance-app/Daml.Finance.App.Interface.Settlement/0.0.1/daml-finance-app-interface-settlement-0.0.1.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Interface.Base/0.0.1/daml-finance-app-interface-base-0.0.2.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Interface.Common/0.0.1/daml-finance-app-interface-common-0.0.2.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Interface.Settlement/0.0.1/daml-finance-app-interface-settlement-0.0.2.dar
 build-options:
   - --target=1.15

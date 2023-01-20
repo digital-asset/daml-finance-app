@@ -23,6 +23,16 @@ clean:
 	-rm -rf ui/daml.js
 	daml clean
 
+.PHONY: codegen
+codegen:
+	daml codegen js -o ui/daml.js .dars/*
+
+.PHONY: setup
+setup:
+	DAML_PROJECT=package/main/daml/Daml.Finance.App.Setup/ daml build
+	cp package/main/daml/Daml.Finance.App.Setup/.daml/dist/*.dar .dars/
+	make codegen
+
 #########################
 # Packages (./packages) #
 #########################
@@ -38,10 +48,6 @@ build-packages:
 # .PHONY: build-java-packages
 # build-java-packages: build-packages
 # 	daml codegen java -o .dars/.java .dars/*
-
-.PHONY: codegen
-codegen:
-	daml codegen js -o ui/daml.js .dars/*
 
 .PHONY: build-ui
 build-ui: codegen

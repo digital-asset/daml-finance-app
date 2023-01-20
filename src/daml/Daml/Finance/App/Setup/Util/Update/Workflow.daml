@@ -238,19 +238,20 @@ processAuction operator provider customer public auctionCid bidCids = do
   serviceCid <- toInterfaceContractId @AuctionService.I . fst <$> fetchByKey @AuctionService.T (operator, provider, customer)
   exercise serviceCid AuctionService.ProcessAuction with auctionCid; bidCids
 
-declareDividend : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> [InstrumentQuantity] -> Update (ContractId Effect.I)
+declareDividend : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> [InstrumentQuantity] -> Update (InstrumentKey, ContractId Effect.I)
 declareDividend operator provider issuer public equity effectiveTime perUnitDistribution = do
   let
     id = "Dividend-" <> show equity.id <> "-" <> equity.version
     Some version = parseInt equity.version
   serviceCid <- toInterfaceContractId @LifecycleService.I . fst <$> fetchByKey @LifecycleService.T (operator, provider, issuer)
-  head <$> exercise serviceCid LifecycleService.DeclareDividend with
+  (newInstrument, [effectCid]) <- exercise serviceCid LifecycleService.DeclareDividend with
     equity
     newVersion = show (version + 1)
     eventId = Id id
     description = id
     effectiveTime
     perUnitDistribution
+  pure (newInstrument, effectCid)
 
 declareReplacement : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> [InstrumentQuantity] -> Update (ContractId Effect.I)
 declareReplacement operator provider issuer public equity effectiveTime perUnitReplacement = do
@@ -263,19 +264,20 @@ declareReplacement operator provider issuer public equity effectiveTime perUnitR
     effectiveTime
     perUnitReplacement
 
-declareStockSplit : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> Decimal -> Update (ContractId Effect.I)
+declareStockSplit : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> Decimal -> Update (InstrumentKey, ContractId Effect.I)
 declareStockSplit operator provider issuer public equity effectiveTime adjustmentFactor = do
   let
     id = "StockSplit-" <> show equity.id <> "-" <> equity.version
     Some version = parseInt equity.version
   serviceCid <- toInterfaceContractId @LifecycleService.I . fst <$> fetchByKey @LifecycleService.T (operator, provider, issuer)
-  head <$> exercise serviceCid LifecycleService.DeclareStockSplit with
+  (newInstrument, [effectCid]) <- exercise serviceCid LifecycleService.DeclareStockSplit with
     equity
     newVersion = show (version + 1)
     eventId = Id id
     description = id
     effectiveTime
     adjustmentFactor
+  pure (newInstrument, effectCid)
 
 claimEffect : Party -> Party -> Party -> Party -> ContractId Effect.I -> [ContractId Holding.I] -> Id -> Update (ContractId Batch.I, [ContractId Instruction.I])
 claimEffect operator custodian owner public effectCid holdingCids batchId = do

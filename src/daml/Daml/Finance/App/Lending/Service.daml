@@ -3,7 +3,7 @@
 
 module Daml.Finance.App.Lending.Service where
 
-import DA.Set (singleton)
+import DA.Set (fromList, singleton)
 import Daml.Finance.App.Interface.Base.Service qualified as Base (I, View(..))
 import Daml.Finance.App.Interface.Common.Util (fetchAndRemove)
 import Daml.Finance.App.Interface.Lending.BorrowOffer qualified as BorrowOffer (View(..))
@@ -45,7 +45,7 @@ template Service
       acceptBorrowOffer Service.AcceptBorrowOffer{borrowOfferCid; collateralCid; account} = do
         BorrowOffer.View{operator; provider; customer; dealId; description; borrowed; maturity; interest; collateral; borrowedCid; lenderBorrowedAccount; lenderInterestAccount} <- view <$> fetchAndRemove borrowOfferCid
         unlockedBorrowedCid <- exercise (coerceContractId borrowedCid : ContractId Holding.I) Holding.Release with context = show dealId
-        transferredCid <- exercise (coerceContractId unlockedBorrowedCid : ContractId Transferable.I) Transferable.Transfer with actors = singleton customer; newOwnerAccount = account
+        transferredCid <- exercise (coerceContractId unlockedBorrowedCid : ContractId Transferable.I) Transferable.Transfer with actors = fromList [provider, customer]; newOwnerAccount = account
         lockedCollateralCid : ContractId Transferable.I <- coerceContractId <$> exercise (toInterfaceContractId collateralCid : ContractId Holding.I) Holding.Acquire with newLockers = (singleton provider); context = show dealId; lockType = Holding.Semaphore
         borrowAgreementCid <- toInterfaceContractId <$> create Model.BorrowAgreement with operator; provider; customer; dealId; description; borrowed; maturity; interest; collateral; collateralCid = lockedCollateralCid; lenderBorrowedAccount; lenderInterestAccount
         pure (transferredCid, borrowAgreementCid)

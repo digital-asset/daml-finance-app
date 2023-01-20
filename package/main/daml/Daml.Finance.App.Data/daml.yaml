@@ -3,7 +3,7 @@
 
 sdk-version: 2.6.0-snapshot.20221218.11169.0.9d007b31
 name: daml-finance-app-data
-version: 0.0.1
+version: 0.0.2
 source: daml
 dependencies:
   - daml-prim

@@ -132,13 +132,13 @@ createBackToBackIssuanceService operator provider customer paths = do
   offerCid <- exerciseByKey @Custodian.Role (operator, provider) Custodian.OfferBackToBackService with customer; settlementServiceCid
   toInterfaceContractId <$> exercise offerCid BackToBack.Accept
 
-createLifecycleService : Party -> Party -> Party -> Update (ContractId Lifecycle.I)
-createLifecycleService operator provider customer = do
+createLifecycleService : Party -> Party -> Party -> Party -> Update (ContractId Lifecycle.I)
+createLifecycleService operator provider customer public = do
   let
-    observers = fromList [("Default", singleton customer)]
+    observers = fromList [("Default", singleton public)]
     providers = singleton provider
-  distributionRuleCid <- toInterfaceContractId <$> create Distribution.Rule  with providers; lifecycler = customer; id = Id "DistributionRule"; description = ""; observers = singleton customer
-  replacementRuleCid  <- toInterfaceContractId <$> create Replacement.Rule   with providers; lifecycler = customer; id = Id "ReplacementRule"; description = ""; observers = singleton customer
+  distributionRuleCid <- toInterfaceContractId <$> create Distribution.Rule  with providers; lifecycler = customer; id = Id "DistributionRule"; description = ""; observers = singleton public
+  replacementRuleCid  <- toInterfaceContractId <$> create Replacement.Rule   with providers; lifecycler = customer; id = Id "ReplacementRule"; description = ""; observers = singleton public
   genericRuleCid      <- toInterfaceContractId <$> create Generic.Rule       with providers; lifecycler = customer; id = Id "GenericRule"; description = ""; observers
   dynamicRuleCid      <- toInterfaceContractId <$> create Dynamic.Rule       with providers; lifecycler = customer; id = Id "DynamicRule"; description = ""; observers
   offerCid <- exerciseByKey @Custodian.Role (operator, provider) Custodian.OfferLifecycleService with ..

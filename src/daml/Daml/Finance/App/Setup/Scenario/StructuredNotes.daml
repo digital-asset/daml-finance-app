@@ -15,124 +15,148 @@ import Daml.Finance.App.Interface.Distribution.Subscription.Types (BackToBack(..
 import Daml.Finance.App.Interface.Distribution.Subscription.Offering qualified as Offering (Subscribe(..))
 import Daml.Finance.App.Interface.Distribution.Subscription.Service qualified as SubscriptionService (CreateOffering(..), I, ProcessOffering(..))
 import Daml.Finance.App.Interface.Issuance.BackToBack qualified as BackToBackService (CreateIssuance(..), I)
+import Daml.Finance.App.Setup.Payoff (bond, brc, buyWriteNote, putOptionCash, rc)
+import Daml.Finance.App.Setup.Types (Fixture(..))
+import Daml.Finance.App.Setup.Util.Update.Role (createOperatorRole, createCustodianRole, createDistributorRole)
+import Daml.Finance.App.Setup.Util.Update.Service (createBackToBackIssuanceService, createCustodyService, createIssuanceService, createLifecycleService, createStructuringService, createSubscriptionService)
+import Daml.Finance.App.Setup.Util.Update.Workflow (createAccount, createAccountDirectory, createClockAndEvent, createObservation, deposit, originateGeneric, originateToken)
 import Daml.Finance.Interface.Types.Common.Types (Id(..))
 import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
-import Daml.Finance.App.Setup.Payoff
-import Daml.Finance.App.Setup.Util.Script.Common
-import Daml.Finance.App.Setup.Util.Script.Role
-import Daml.Finance.App.Setup.Util.Script.Service
-import Daml.Finance.App.Setup.Util.Script.Workflow
 import Daml.Script
+import Prelude hiding (Scenario)
 
-run : Script [PartyInfo]
-run  = do
-  parties <- allocateParties "Structured Notes" ["Operator", "Public", "CentralBank", "Depository", "Issuer", "RiskTaker", "Investor1", "Investor2", "Investor3"]
-  let
-    all@[operator, public, centralBank, depository, issuer, riskTaker, inv1, inv2, inv3] = map (.id) parties
-    pub = fromList [("Public", singleton public)]
+template Scenario
+  with
+    parties : [Party]
+  where
+    signatory parties
 
-  -- Factories
-  let
-    assets = ["TSLA", "FWD1", "OPT1", "BOND1", "RC1", "BRC1", "BWN1", "BWN2"]
-    cashSettlementPaths = [[issuer], [riskTaker], [inv1], [inv2], [inv3]]
-    secSettlementPaths = [[issuer], [riskTaker], [inv1, issuer], [inv2, issuer], [inv3, issuer]]
-    cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = cashSettlementPaths
-    secRoute = Settlement.Hierarchy with rootCustodian = riskTaker; pathsToRootCustodian = secSettlementPaths
-    paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
+    nonconsuming choice Setup : Fixture
+      controller parties
+      do
+        -- Parties
+        let [operator, public, centralBank, depository, issuer, riskTaker, inv1, inv2, inv3] = parties
 
-  -- Roles
-  createOperatorRole    operator
-  createCustodianRole   operator centralBank
-  createCustodianRole   operator issuer
-  createCustodianRole   operator riskTaker
-  createDistributorRole operator issuer
+        -- Factories
+        let
+          assets = ["TSLA", "FWD1", "OPT1", "BOND1", "RC1", "BRC1", "BWN1", "BWN2"]
+          cashSettlementPaths = [[issuer], [riskTaker], [inv1], [inv2], [inv3]]
+          secSettlementPaths = [[issuer], [riskTaker], [inv1, issuer], [inv2, issuer], [inv3, issuer]]
+          cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = cashSettlementPaths
+          secRoute = Settlement.Hierarchy with rootCustodian = riskTaker; pathsToRootCustodian = secSettlementPaths
+          paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
 
-  -- Services
-  createCustodyService            operator centralBank  issuer    public paths
-  createCustodyService            operator centralBank  riskTaker public paths
-  createCustodyService            operator centralBank  inv1      public paths
-  createCustodyService            operator centralBank  inv2      public paths
-  createCustodyService            operator centralBank  inv3      public paths
-  createCustodyService            operator riskTaker    riskTaker public paths
-  createCustodyService            operator riskTaker    issuer    public paths
-  createCustodyService            operator issuer       issuer    public paths
-  createCustodyService            operator issuer       inv1      public paths
-  createCustodyService            operator issuer       inv2      public paths
-  createCustodyService            operator issuer       inv3      public paths
-  createStructuringService        operator issuer       issuer
-  createIssuanceService           operator issuer       issuer
-  createIssuanceService           operator riskTaker    riskTaker
-  createBackToBackIssuanceService operator riskTaker    issuer    paths
-  createLifecycleService          operator riskTaker    riskTaker
-  createLifecycleService          operator issuer       issuer
-  createSubscriptionService       operator issuer       issuer    paths
+        -- Roles
+        createOperatorRole    operator
+        createCustodianRole   operator centralBank
+        createCustodianRole   operator issuer
+        createCustodianRole   operator riskTaker
+        createDistributorRole operator issuer
 
-  -- Accounts
-  riskTakerCashAccount  <- createAccount operator centralBank  riskTaker  public "RiskTaker@CentralBank" $ fromList [("b2b", singleton issuer)]
-  issuerCashAccount     <- createAccount operator centralBank  issuer     public "Issuer@CentralBank"    empty
-  inv1CashAccount       <- createAccount operator centralBank  inv1       public "Investor1@CentralBank" empty
-  inv2CashAccount       <- createAccount operator centralBank  inv2       public "Investor2@CentralBank" empty
-  inv3CashAccount       <- createAccount operator centralBank  inv3       public "Investor3@CentralBank" empty
-  issuerSecAccount      <- createAccount operator riskTaker    issuer     public "Issuer@RiskTaker"      empty
-  inv1SecAccount        <- createAccount operator issuer       inv1       public "Investor1@Issuer"      empty
-  inv2SecAccount        <- createAccount operator issuer       inv2       public "Investor2@Issuer"      empty
-  inv3SecAccount        <- createAccount operator issuer       inv3       public "Investor3@Issuer"      empty
-  issuerOwnAccount      <- createAccount operator issuer       issuer     public "Issuer@Issuer"         empty
-  riskTakerOwnAccount   <- createAccount operator riskTaker    riskTaker  public "RiskTaker@RiskTaker"   $ fromList [("b2b", singleton issuer)]
+        -- Services
+        createCustodyService            operator centralBank  issuer    public paths
+        createCustodyService            operator centralBank  riskTaker public paths
+        createCustodyService            operator centralBank  inv1      public paths
+        createCustodyService            operator centralBank  inv2      public paths
+        createCustodyService            operator centralBank  inv3      public paths
+        createCustodyService            operator riskTaker    riskTaker public paths
+        createCustodyService            operator riskTaker    issuer    public paths
+        createCustodyService            operator issuer       issuer    public paths
+        createCustodyService            operator issuer       inv1      public paths
+        createCustodyService            operator issuer       inv2      public paths
+        createCustodyService            operator issuer       inv3      public paths
+        createStructuringService        operator issuer       issuer
+        createIssuanceService           operator issuer       issuer
+        createIssuanceService           operator riskTaker    riskTaker
+        createBackToBackIssuanceService operator riskTaker    issuer    paths
+        createLifecycleService          operator riskTaker    riskTaker public
+        createLifecycleService          operator issuer       issuer    public
+        createSubscriptionService       operator issuer       issuer    paths
 
-  -- Time
-  t <- getTime
-  let
-    today = toDateUTC t
-    todayTime = time today 0 0 0
-    fixTime = time (date 2022 Jul 5) 0 0 0
-    maturity = addDays today 365
-    (todayYear, todayMonth, todayDay) = toGregorian today
-  createClockAndEvent all today (singleton public)
+        -- Accounts
+        riskTakerCashAccount  <- createAccount operator centralBank  riskTaker  public "RiskTaker@CentralBank" $ fromList [("b2b", singleton issuer)]
+        issuerCashAccount     <- createAccount operator centralBank  issuer     public "Issuer@CentralBank"    empty
+        inv1CashAccount       <- createAccount operator centralBank  inv1       public "Investor1@CentralBank" empty
+        inv2CashAccount       <- createAccount operator centralBank  inv2       public "Investor2@CentralBank" empty
+        inv3CashAccount       <- createAccount operator centralBank  inv3       public "Investor3@CentralBank" empty
+        issuerSecAccount      <- createAccount operator riskTaker    issuer     public "Issuer@RiskTaker"      empty
+        inv1SecAccount        <- createAccount operator issuer       inv1       public "Investor1@Issuer"      empty
+        inv2SecAccount        <- createAccount operator issuer       inv2       public "Investor2@Issuer"      empty
+        inv3SecAccount        <- createAccount operator issuer       inv3       public "Investor3@Issuer"      empty
+        issuerOwnAccount      <- createAccount operator issuer       issuer     public "Issuer@Issuer"         empty
+        riskTakerOwnAccount   <- createAccount operator riskTaker    riskTaker  public "RiskTaker@RiskTaker"   $ fromList [("b2b", singleton issuer)]
 
-  -- Observables
-  let
-    amd = "AMD"
-    qc = "QUALCOMM"
-    tslaO = "Close(TSLA)"
-    libor3M = "LIB-USD-3M"
-    libor6M = "LIB-USD-6M"
+        -- Time
+        t <- getTime
+        let
+          today = toDateUTC t
+          todayTime = time today 0 0 0
+          fixTime = time (date 2022 Jul 5) 0 0 0
+          maturity = addDays today 365
+          (todayYear, todayMonth, todayDay) = toGregorian today
+          pub = fromList [("Public", singleton public)]
+        createClockAndEvent parties today (singleton public)
 
-  -- Instruments
-  usd     <- originateToken    centralBank centralBank pub todayTime "USD"    "United States Dollar"
-  tsla    <- originateToken    depository  issuer      pub todayTime "TSLA"   "Tesla, Inc. Common Stock"
-  fwd     <- originateGeneric  depository  issuer      pub todayTime "FWD1"   "Forward on TSLA"                       $ futureDvp tsla 200.0 usd 100_000.0 today
-  opt     <- originateGeneric  depository  issuer      pub todayTime "OPT1"   "Put Option on TSLA"                    $ putOptionCash tslaO usd 1_000.0 maturity
-  bnd     <- originateGeneric  depository  issuer      pub todayTime "BOND1"  "Bond 5Y/4.875%"                        $ bond usd 1.0 0.04875 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
-  rc      <- originateGeneric  depository  issuer      pub todayTime "RC1"    "Reverse Convertible on TSLA"           $ rc tslaO usd 0.02 800.0 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
-  brc     <- originateGeneric  depository  issuer      pub todayTime "BRC1"   "Barrier Reverse Convertible on TSLA"   $ brc tslaO usd 0.05 800.0 600.0 today $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
-  bwn1    <- originateGeneric  depository  issuer      pub todayTime "BWN1"   "Synthetic Buy-Write Notes on AMD"      $ buyWriteNote (date 2022 Jul 16) (date 2023 Jul 19) (date 2023 Jul 23) amd usd 0.1776 91.6300 100.7930 -- Issue size: 77'300
-  bwn2    <- originateGeneric  depository  issuer      pub todayTime "BWN2"   "Synthetic Buy-Write Notes on QUALCOMM" $ buyWriteNote (date 2022 Jun 30) (date 2022 Jul 05) (date 2022 Jul 07) qc usd 0.1312 147.2566 161.9823
-  let securities = [tsla, fwd, opt, bnd, rc, brc, bwn1, bwn2]
+        -- Observables
+        let
+          amd = "AMD"
+          qc = "QUALCOMM"
+          tslaO = "Close(TSLA)"
+          libor3M = "LIB-USD-3M"
+          libor6M = "LIB-USD-6M"
 
-  -- Distribution
-  -- issuerCashCid1  <- coerceContractId <$> deposit operator centralBank issuer public (qty 4_417_698.0 usd) issuerCashAccount
-  -- inv1CashCid1    <- coerceContractId <$> deposit operator centralBank inv1   public (qty 1_472_566.0 usd) inv1CashAccount
-  -- inv2CashCid1    <- coerceContractId <$> deposit operator centralBank inv2   public (qty 1_472_566.0 usd) inv2CashAccount
-  -- inv3CashCid1    <- coerceContractId <$> deposit operator centralBank inv3   public (qty 1_472_566.0 usd) inv3CashAccount
+        -- Instruments
+        usd     <- originateToken    centralBank centralBank pub todayTime "USD"    "United States Dollar"
+        tsla    <- originateToken    depository  issuer      pub todayTime "TSLA"   "Tesla, Inc. Common Stock"
+        opt     <- originateGeneric  depository  issuer      pub todayTime "OPT1"   "Put Option on TSLA"                    $ putOptionCash tslaO usd 1_000.0 maturity
+        bnd     <- originateGeneric  depository  issuer      pub todayTime "BOND1"  "Bond 5Y/4.875%"                        $ bond usd 1.0 0.04875 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
+        rc      <- originateGeneric  depository  issuer      pub todayTime "RC1"    "Reverse Convertible on TSLA"           $ rc tslaO usd 0.02 800.0 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
+        brc     <- originateGeneric  depository  issuer      pub todayTime "BRC1"   "Barrier Reverse Convertible on TSLA"   $ brc tslaO usd 0.05 800.0 600.0 today $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
+        bwn1    <- originateGeneric  depository  issuer      pub todayTime "BWN1"   "Synthetic Buy-Write Notes on AMD"      $ buyWriteNote (date 2022 Jul 16) (date 2023 Jul 19) (date 2023 Jul 23) amd usd 0.1776 91.6300 100.7930 -- Issue size: 77'300
+        bwn2    <- originateGeneric  depository  issuer      pub todayTime "BWN2"   "Synthetic Buy-Write Notes on QUALCOMM" $ buyWriteNote (date 2022 Jun 30) (date 2022 Jul 05) (date 2022 Jul 07) qc usd 0.1312 147.2566 161.9823
+        let securities = [tsla, opt, bnd, rc, brc, bwn1, bwn2]
 
-  issuerCashCid2  <- coerceContractId <$> deposit operator centralBank issuer public (qty 5_000_000.0 usd) issuerCashAccount
-  inv1CashCid2    <- coerceContractId <$> deposit operator centralBank inv1   public (qty 950_000.0 usd) inv1CashAccount
-  inv2CashCid2    <- coerceContractId <$> deposit operator centralBank inv2   public (qty 950_000.0 usd) inv2CashAccount
-  inv3CashCid2    <- coerceContractId <$> deposit operator centralBank inv3   public (qty 950_000.0 usd) inv3CashAccount
+        -- Holdings
+        issuerCashCid  <- coerceContractId <$> deposit operator centralBank issuer public (qty 5_000_000.0 usd) issuerCashAccount
+        inv1CashCid    <- coerceContractId <$> deposit operator centralBank inv1   public (qty 950_000.0 usd) inv1CashAccount
+        inv2CashCid    <- coerceContractId <$> deposit operator centralBank inv2   public (qty 950_000.0 usd) inv2CashAccount
+        inv3CashCid    <- coerceContractId <$> deposit operator centralBank inv3   public (qty 950_000.0 usd) inv3CashAccount
 
-  -- Data
-  createObservation issuer tslaO  [(todayTime, 580.0)]  pub
-  createObservation issuer qc     [(fixTime, 170.0)]    pub
-  createAccountDirectory riskTaker  ([(usd, riskTakerCashAccount)] <> map (\s -> (s, riskTakerOwnAccount)) securities)  $ singleton public
-  createAccountDirectory issuer     ([(usd, issuerCashAccount)] <> map (\s -> (s, issuerSecAccount)) securities)        $ singleton public
-  createAccountDirectory inv1       ([(usd, inv1CashAccount)] <> map (\s -> (s, inv1SecAccount)) securities)            $ singleton public
-  createAccountDirectory inv2       ([(usd, inv2CashAccount)] <> map (\s -> (s, inv2SecAccount)) securities)            $ singleton public
-  createAccountDirectory inv3       ([(usd, inv3CashAccount)] <> map (\s -> (s, inv3SecAccount)) securities)            $ singleton public
+        -- Data
+        createObservation issuer tslaO  [(todayTime, 580.0)]  pub
+        createObservation issuer qc     [(fixTime, 170.0)]    pub
+        createAccountDirectory riskTaker  ([(usd, riskTakerCashAccount)] <> map (\s -> (s, riskTakerOwnAccount)) securities)  $ singleton public
+        createAccountDirectory issuer     ([(usd, issuerCashAccount)] <> map (\s -> (s, issuerSecAccount)) securities)        $ singleton public
+        createAccountDirectory inv1       ([(usd, inv1CashAccount)] <> map (\s -> (s, inv1SecAccount)) securities)            $ singleton public
+        createAccountDirectory inv2       ([(usd, inv2CashAccount)] <> map (\s -> (s, inv2SecAccount)) securities)            $ singleton public
+        createAccountDirectory inv3       ([(usd, inv3CashAccount)] <> map (\s -> (s, inv3SecAccount)) securities)            $ singleton public
+
+        let
+          instruments = [usd, tsla, opt, bnd, rc, brc, bwn1, bwn2]
+          accounts = [riskTakerCashAccount, issuerCashAccount, inv1CashAccount, inv2CashAccount, inv3CashAccount, issuerSecAccount, inv1SecAccount, inv2SecAccount, inv3SecAccount, issuerOwnAccount, riskTakerOwnAccount]
+          holdings = [issuerCashCid, inv1CashCid, inv2CashCid, inv3CashCid]
+          services = []
+        pure Fixture with instruments; accounts; holdings; services
+
+run : Script Fixture
+run = do
+  parties@[operator, public, centralBank, depository, issuer, riskTaker, inv1, inv2, inv3] <-
+    mapA allocateParty ["Operator", "Public", "CentralBank", "Depository", "Issuer", "RiskTaker", "Investor1", "Investor2", "Investor3"]
+  submitMulti parties [] do createAndExerciseCmd (Scenario with parties) Setup
+
+testBackToBackIssuance : Script ()
+testBackToBackIssuance = do
+  -- Fixture
+  parties@[operator, public, centralBank, depository, issuer, riskTaker, inv1, inv2, inv3] <-
+    mapA allocateParty ["Operator", "Public", "CentralBank", "Depository", "Issuer", "RiskTaker", "Investor1", "Investor2", "Investor3"]
+  Fixture{instruments; accounts, holdings} <- submitMulti parties [] do createAndExerciseCmd (Scenario with parties) Setup
 
   -- Workflows
   let
+    [usd, tsla, opt, bnd, rc, brc, bwn1, bwn2] = instruments
+    [riskTakerCashAccount, issuerCashAccount, inv1CashAccount, inv2CashAccount, inv3CashAccount, issuerSecAccount, inv1SecAccount, inv2SecAccount, inv3SecAccount, issuerOwnAccount, riskTakerOwnAccount] = accounts
+    [issuerCashCid, inv1CashCid, inv2CashCid, inv3CashCid] = holdings
     issuance quantity = do
       b2bServiceCid <- toInterfaceContractId @BackToBackService.I . fst . fromSome <$> queryContractKey @BackToBackService.T issuer (operator, riskTaker, issuer)
       submitMulti [issuer] [public] do
@@ -155,7 +179,7 @@ run  = do
               party = riskTaker
               offeringId
               issuerReceivableAccount = issuerSecAccount
-              issuerDeliverableCid = issuerCashCid
+              issuerDeliverableCid = coerceContractId issuerCashCid
               b2bReceivableAccount = riskTakerCashAccount
               b2bDeliverableCid = coerceContractId riskTakerAssetCid
         exerciseCmd subscriptionServiceCid SubscriptionService.CreateOffering
@@ -169,9 +193,9 @@ run  = do
             backToBack
             observers = singleton public
 
-      inv1SubscriptionCid <- submitMulti [inv1] [public] do exerciseCmd offeringCid Offering.Subscribe with investor = inv1; quantity = 10_000.0; investorHoldingCid = inv1CashCid; investorAccount = inv1SecAccount
-      inv2SubscriptionCid <- submitMulti [inv2] [public] do exerciseCmd offeringCid Offering.Subscribe with investor = inv2; quantity = 10_000.0; investorHoldingCid = inv2CashCid; investorAccount = inv2SecAccount
-      inv3SubscriptionCid <- submitMulti [inv3] [public] do exerciseCmd offeringCid Offering.Subscribe with investor = inv3; quantity = 10_000.0; investorHoldingCid = inv3CashCid; investorAccount = inv3SecAccount
+      inv1SubscriptionCid <- submitMulti [inv1] [public] do exerciseCmd offeringCid Offering.Subscribe with investor = inv1; quantity = 10_000.0; investorHoldingCid = coerceContractId inv1CashCid; investorAccount = inv1SecAccount
+      inv2SubscriptionCid <- submitMulti [inv2] [public] do exerciseCmd offeringCid Offering.Subscribe with investor = inv2; quantity = 10_000.0; investorHoldingCid = coerceContractId inv2CashCid; investorAccount = inv2SecAccount
+      inv3SubscriptionCid <- submitMulti [inv3] [public] do exerciseCmd offeringCid Offering.Subscribe with investor = inv3; quantity = 10_000.0; investorHoldingCid = coerceContractId inv3CashCid; investorAccount = inv3SecAccount
 
       submitMulti [issuer] [public] do
         exerciseCmd subscriptionServiceCid SubscriptionService.ProcessOffering
@@ -180,14 +204,7 @@ run  = do
             subscriptionCids = [inv1SubscriptionCid, inv2SubscriptionCid, inv3SubscriptionCid]
       pure ()
 
-  -- (_, rcIssuerHoldingCid, rcRiskTakerHoldingCid) <- issuance $ qty 3_000_000.0 rc
-  -- subscription (qty 3_000_000.0 rc) (qty 1.0 usd) issuerCashCid1 rcIssuerHoldingCid rcRiskTakerHoldingCid inv1CashCid1 inv2CashCid1 inv3CashCid1
-  -- (_, brcIssuerHoldingCid, brcRiskTakerHoldingCid) <- issuance $ qty 3_000_000.0 brc
-  -- subscription (qty 3_000_000.0 brc) (qty 1.0 usd) issuerCashCid2 brcIssuerHoldingCid brcRiskTakerHoldingCid inv1CashCid2 inv2CashCid2 inv3CashCid2
-  -- (_, bwn1IssuerHoldingCid, bwn1RiskTakerHoldingCid) <- issuance $ qty 50_000.0 bwn1
-  -- subscription (qty 50_000.0 bwn1) (qty 95.00 usd) issuerCashCid2 bwn1IssuerHoldingCid bwn1RiskTakerHoldingCid inv1CashCid2 inv2CashCid2 inv3CashCid2
-  -- (_, bwn2IssuerHoldingCid, bwn2RiskTakerHoldingCid) <- issuance $ qty 44_000.0 bwn2
-  -- subscription (qty 44_000.0 bwn2) (qty 147.2566 usd) issuerCashCid1 bwn2IssuerHoldingCid bwn2RiskTakerHoldingCid inv1CashCid1 inv2CashCid1 inv3CashCid1
-
-  pure parties
+  (_, bwn1IssuerHoldingCid, bwn1RiskTakerHoldingCid) <- issuance $ qty 50_000.0 bwn1
+  subscription (qty 50_000.0 bwn1) (qty 95.00 usd) issuerCashCid bwn1IssuerHoldingCid bwn1RiskTakerHoldingCid inv1CashCid inv2CashCid inv3CashCid
+  pure ()
 

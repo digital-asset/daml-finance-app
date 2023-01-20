@@ -30,7 +30,7 @@ template InvestmentRequest
     observer manager
 
     interface instance Removable.I for InvestmentRequest where
-      view = Removable.View with removers = fromList [operator, provider, customer]
+      view = Removable.View with removers = fromList [operator, provider]
 
     interface instance InvestmentRequest.I for InvestmentRequest where
       view = InvestmentRequest.View with operator; provider; customer; manager; requestId; asOfDate; fundId; quantity; cashCid; customerFundAccount
@@ -38,7 +38,7 @@ template InvestmentRequest
       asRemovable = toInterface @Removable.I this
 
       allocateInstruction InvestmentRequest.AllocateInstruction{instructionCid} = do
-        fst <$> exercise instructionCid Instruction.Allocate with actors = singleton manager; allocation = Pledge $ toInterfaceContractId cashCid
+        fst <$> exercise instructionCid Instruction.Allocate with actors = singleton customer; allocation = Pledge $ toInterfaceContractId cashCid
 
       approveInstruction InvestmentRequest.ApproveInstruction{instructionCid} = do
-          exercise instructionCid Instruction.Approve with actors = singleton manager; approval = TakeDelivery customerFundAccount
+          exercise instructionCid Instruction.Approve with actors = singleton customer; approval = TakeDelivery customerFundAccount

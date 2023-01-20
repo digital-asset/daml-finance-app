@@ -53,7 +53,7 @@ template Fund
 
       approveInstruction Fund.ApproveInstruction{instructionCid} = do
         -- TODO: Assert instruction is the correct one
-        exercise instructionCid Instruction.Approve with actors = singleton manager; approval = TakeDelivery custodianCashAccount
+        exercise instructionCid Instruction.Approve with actors = singleton custodian; approval = TakeDelivery custodianCashAccount
 
 instance PooledInvestmentRequest.HasImplementation PooledInvestmentRequest
 

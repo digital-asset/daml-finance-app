@@ -7,93 +7,102 @@ import DA.Date (addDays, toDateUTC)
 import DA.Map (empty, fromList)
 import DA.Set (singleton)
 import DA.Time (time)
-import Daml.Finance.Data.Numeric.Observation (Observation(..))
-import Daml.Finance.Interface.Types.Common.Types (Id(..))
 import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
-import Daml.Finance.App.Setup.Payoff
-import Daml.Finance.App.Setup.Util.Script.Common
-import Daml.Finance.App.Setup.Util.Script.Role
-import Daml.Finance.App.Setup.Util.Script.Service
-import Daml.Finance.App.Setup.Util.Script.Workflow
+import Daml.Finance.App.Setup.Payoff (ngMultiLocation, ngLocationPricingOption, ngCapped, ngConditionalLocation)
+import Daml.Finance.App.Setup.Types (Fixture(..))
+import Daml.Finance.App.Setup.Util.Update.Role (createOperatorRole, createCustodianRole)
+import Daml.Finance.App.Setup.Util.Update.Service (createCustodyService, createIssuanceService, createLifecycleService)
+import Daml.Finance.App.Setup.Util.Update.Workflow (createAccount, createAccountDirectory, createClockAndEvent, createObservation, deposit, originateGeneric, originateToken)
 import Daml.Script
+import Prelude hiding (Scenario)
 
-run : Script [PartyInfo]
-run  = do
-  parties <- allocateParties "Natural Gas" ["Operator", "Public", "CashProvider", "Seller", "Buyer"]
-  let
-    all@[operator, public, cashProvider, seller, buyer] = map (.id) parties
-    pub = fromList [("Public", singleton public)]
+template Scenario
+  with
+    parties : [Party]
+  where
+    signatory parties
 
-  -- Factories
-  let
-    assets = ["Z4200L", "Z4GEN", "Z4300L", "NATGAS1", "NATGAS2", "NATGAS3", "NATGAS4"]
-    settlementPaths = [[buyer], [seller]]
-    cashRoute = Settlement.Hierarchy with rootCustodian = cashProvider; pathsToRootCustodian = settlementPaths
-    secRoute = Settlement.Hierarchy with rootCustodian = seller; pathsToRootCustodian = settlementPaths
-    paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
+    nonconsuming choice Setup : Fixture
+      controller parties
+      do
+        -- Parties
+        let [operator, public, cashProvider, seller, buyer] = parties
 
-  -- Roles
-  createOperatorRole  operator
-  createCustodianRole operator cashProvider
-  createCustodianRole operator seller
+        -- Roles
+        createOperatorRole  operator
+        createCustodianRole operator cashProvider
+        createCustodianRole operator seller
 
-  -- Services
-  createCustodyService    operator cashProvider seller  public paths
-  createCustodyService    operator cashProvider buyer   public paths
-  createCustodyService    operator seller       buyer   public paths
-  createIssuanceService   operator seller       seller
-  createLifecycleService  operator seller       seller
+        -- Services
+        let
+          assets = ["Z4200L", "Z4GEN", "Z4300L", "NATGAS1", "NATGAS2", "NATGAS3", "NATGAS4"]
+          settlementPaths = [[buyer], [seller]]
+          cashRoute = Settlement.Hierarchy with rootCustodian = cashProvider; pathsToRootCustodian = settlementPaths
+          secRoute = Settlement.Hierarchy with rootCustodian = seller; pathsToRootCustodian = settlementPaths
+          paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
+        createCustodyService    operator cashProvider seller  public paths
+        createCustodyService    operator cashProvider buyer   public paths
+        createCustodyService    operator seller       buyer   public paths
+        createIssuanceService   operator seller       seller
+        createLifecycleService  operator seller       seller  public
 
-  -- Accounts
-  sellerCashAccount   <- createAccount operator cashProvider  seller  public "Seller@CashProvider" empty
-  buyerCashAccount    <- createAccount operator cashProvider  buyer   public "Buyer@CashProvider"  empty
-  buyerSecAccount     <- createAccount operator seller        buyer   public "Buyer@Seller"        empty
+        -- Accounts
+        sellerCashAccount   <- createAccount operator cashProvider  seller  public "Seller@CashProvider" empty
+        buyerCashAccount    <- createAccount operator cashProvider  buyer   public "Buyer@CashProvider"  empty
+        buyerSecAccount     <- createAccount operator seller        buyer   public "Buyer@Seller"        empty
 
-  -- Time
-  t <- getTime
-  let
-    today = toDateUTC t
-    todayTime = time today 0 0 0
-    t1 = addDays today 1
-    t1t = time t1 0 0 0
-    t3 = addDays today 3
-  createClockAndEvent all today (singleton public)
+        -- Time
+        t <- getTime
+        let
+          today = toDateUTC t
+          todayTime = time today 0 0 0
+          t1 = addDays today 1
+          t1t = time t1 0 0 0
+          t3 = addDays today 3
+          pub = fromList [("Public", singleton public)]
+        createClockAndEvent parties today (singleton public)
 
-  -- Base Instruments
-  usd     <- originateToken cashProvider cashProvider pub todayTime "USD" "United States Dollar"
-  z4200L  <- originateToken seller      seller      pub todayTime "Z4200L" "Z4200L"
-  z4GEN   <- originateToken seller      seller      pub todayTime "Z4GEN" "Z4GEN"
-  z4300L  <- originateToken seller      seller      pub todayTime "Z4300L" "Z4300L"
+        -- Base Instruments
+        usd     <- originateToken cashProvider cashProvider pub todayTime "USD"    "United States Dollar"
+        z4200L  <- originateToken seller      seller        pub todayTime "Z4200L" "Z4200L"
+        z4GEN   <- originateToken seller      seller        pub todayTime "Z4GEN"  "Z4GEN"
+        z4300L  <- originateToken seller      seller        pub todayTime "Z4300L" "Z4300L"
 
-  -- Structured Instruments
-  let
-    gdTgp219 = "GD TGP 24-219 + 0"
-    gdTgp300 = "GD TGP 24-300 + 0"
-    deliveries =
-      [ qty 2_000.0 z4200L
-      , qty 4_000.0 z4GEN
-      , qty 4_000.0 z4300L ]
-  ng1 <- originateGeneric seller seller pub todayTime "NATGAS1" "Multi-location Fixed-Price Daily"  $ ngMultiLocation         t1 t3 deliveries 5.25 usd
-  ng2 <- originateGeneric seller seller pub todayTime "NATGAS2" "Location/Pricing Option Daily"     $ ngLocationPricingOption t1 t3  5_000.0 z4200L gdTgp219 z4GEN gdTgp300 usd
-  ng3 <- originateGeneric seller seller pub todayTime "NATGAS3" "Capped Pricing Daily"              $ ngCapped                t1 t3 10_000.0 z4200L gdTgp219 5.75 usd
-  ng4 <- originateGeneric seller seller pub todayTime "NATGAS4" "Price-conditional Location Daily"  $ ngConditionalLocation   t1 t3 10_000.0 z4200L gdTgp219 5.50 z4GEN gdTgp300 usd
+        -- Structured Instruments
+        let
+          gdTgp219 = "GD TGP 24-219 + 0"
+          gdTgp300 = "GD TGP 24-300 + 0"
+          deliveries =
+            [ qty 2_000.0 z4200L
+            , qty 4_000.0 z4GEN
+            , qty 4_000.0 z4300L ]
+        ng1 <- originateGeneric seller seller pub todayTime "NATGAS1" "Multi-location Fixed-Price Daily"  $ ngMultiLocation         t1 t3 deliveries 5.25 usd
+        ng2 <- originateGeneric seller seller pub todayTime "NATGAS2" "Location/Pricing Option Daily"     $ ngLocationPricingOption t1 t3  5_000.0 z4200L gdTgp219 z4GEN gdTgp300 usd
+        ng3 <- originateGeneric seller seller pub todayTime "NATGAS3" "Capped Pricing Daily"              $ ngCapped                t1 t3 10_000.0 z4200L gdTgp219 5.75 usd
+        ng4 <- originateGeneric seller seller pub todayTime "NATGAS4" "Price-conditional Location Daily"  $ ngConditionalLocation   t1 t3 10_000.0 z4200L gdTgp219 5.50 z4GEN gdTgp300 usd
 
-  -- Data
-  createAccountDirectory seller [(usd, sellerCashAccount)] $ singleton public
-  createAccountDirectory buyer  [(usd, buyerCashAccount), (ng1, buyerSecAccount), (ng3, buyerSecAccount), (ng4, buyerSecAccount)] $ singleton public
+        -- Holdings
+        buyerCashCid <- deposit operator cashProvider buyer public (qty 1_000_000.0 usd) buyerCashAccount
+        buyerSecCid1 <- deposit operator seller       buyer public (qty 1.0 ng1)         buyerSecAccount
+        buyerSecCid2 <- deposit operator seller       buyer public (qty 1.0 ng3)         buyerSecAccount
+        buyerSecCid2 <- deposit operator seller       buyer public (qty 1.0 ng4)         buyerSecAccount
 
-  -- Distribution
-  buyerCashCid <- deposit operator cashProvider buyer public (qty 1_000_000.0 usd) buyerCashAccount
-  buyerSecCid1 <- deposit operator seller       buyer public (qty 1.0 ng1)         buyerSecAccount
-  buyerSecCid2 <- deposit operator seller       buyer public (qty 1.0 ng3)         buyerSecAccount
-  buyerSecCid2 <- deposit operator seller       buyer public (qty 1.0 ng4)         buyerSecAccount
+        -- Data
+        createObservation seller gdTgp219 [ (t1t, 6.0) ] pub
+        createObservation seller gdTgp300 [ (t1t, 5.9) ] pub
+        createAccountDirectory seller [(usd, sellerCashAccount)] $ singleton public
+        createAccountDirectory buyer  [(usd, buyerCashAccount), (ng1, buyerSecAccount), (ng3, buyerSecAccount), (ng4, buyerSecAccount)] $ singleton public
 
-  -- Data
-  let
-    obs =
-      [ Observation with provider = seller; id = Id gdTgp219; observations = fromList [(t1t, 6.00)]; observers = pub
-      , Observation with provider = seller; id = Id gdTgp300; observations = fromList [(t1t, 5.90)]; observers = pub ]
-  obsCids <- mapA (\f -> submitMulti [seller] [] do createCmd f) obs
+        let
+          instruments = [usd, z4200L, z4GEN, z4300L, ng1, ng2, ng3, ng4]
+          accounts = [sellerCashAccount, buyerCashAccount, buyerSecAccount]
+          holdings = [buyerCashCid, buyerSecCid1, buyerSecCid2, buyerSecCid2]
+          services = []
+        pure Fixture with instruments; accounts; holdings; services
 
-  pure parties
+run : Script Fixture
+run = do
+  parties@[operator, public, cashProvider, seller, buyer] <-
+    mapA allocateParty ["Operator", "Public", "CashProvider", "Seller", "Buyer"]
+  submitMulti parties [] do createAndExerciseCmd (Scenario with parties) Setup

@@ -10,92 +10,115 @@ import DA.Time (time)
 import Daml.Finance.App.Interface.Lending.BorrowAgreement qualified as BorrowAgreement (Repay(..))
 import Daml.Finance.App.Interface.Lending.Service qualified as Lending (AcceptBorrowOffer(..), CreateBorrowOffer(..), I, RequestBorrowOffer(..))
 import Daml.Finance.App.Lending.Service qualified as Lending (T)
+import Daml.Finance.App.Setup.Payoff (loan)
+import Daml.Finance.App.Setup.Types (Fixture(..))
+import Daml.Finance.App.Setup.Util.Update.Role (createOperatorRole, createCustodianRole)
+import Daml.Finance.App.Setup.Util.Update.Service (createCustodyService, createLendingService, createLifecycleService, createStructuringService)
+import Daml.Finance.App.Setup.Util.Update.Workflow (createAccount, createAccountDirectory, createClockAndEvent, deposit, originateEquity, originateGeneric, originateToken)
 import Daml.Finance.Interface.Types.Common.Types (Id(..))
 import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
-import Daml.Finance.App.Setup.Payoff
-import Daml.Finance.App.Setup.Util.Script.Common
-import Daml.Finance.App.Setup.Util.Script.Role
-import Daml.Finance.App.Setup.Util.Script.Service
-import Daml.Finance.App.Setup.Util.Script.Workflow
 import Daml.Script
+import Prelude hiding (Scenario)
 
-run : Script [PartyInfo]
-run  = do
-  let scenario = "Securities Lending"
-  parties <- allocateParties scenario ["Operator", "Public", "CentralBank", "Registry", "Borrower", "Lender"]
-  let
-    all@[operator, public, centralBank, registry, borrower, lender] = map (.id) parties
-    pub = fromList [("Public", singleton public)]
+template Scenario
+  with
+    parties : [Party]
+  where
+    signatory parties
 
-  -- Factories
-  let
-    assets = ["TSLA", "DEAL1"]
-    settlementPaths = [[borrower], [lender]]
-    cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = settlementPaths
-    secRoute = Settlement.Hierarchy with rootCustodian = registry; pathsToRootCustodian = settlementPaths
-    paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
+    nonconsuming choice Setup : Fixture
+      controller parties
+      do
+        -- Parties
+        let [operator, public, centralBank, registry, borrower, lender] = parties
 
-  -- Roles
-  createOperatorRole  operator
-  createCustodianRole operator centralBank
-  createCustodianRole operator registry
-  createCustodianRole operator lender
+        -- Roles
+        createOperatorRole  operator
+        createCustodianRole operator centralBank
+        createCustodianRole operator registry
+        createCustodianRole operator lender
 
-  -- Create custody services
-  createCustodyService      operator centralBank  borrower  public paths
-  createCustodyService      operator centralBank  lender    public paths
-  createCustodyService      operator registry     borrower  public paths
-  createCustodyService      operator registry     lender    public paths
-  createCustodyService      operator lender       borrower  public paths
-  createLendingService      operator lender       borrower
-  createStructuringService  operator registry     lender
-  createLifecycleService    operator registry     lender
+        -- Create custody services
+        let
+          assets = ["TSLA", "DEAL1"]
+          settlementPaths = [[borrower], [lender]]
+          cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = settlementPaths
+          secRoute = Settlement.Hierarchy with rootCustodian = registry; pathsToRootCustodian = settlementPaths
+          paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
+        createCustodyService      operator centralBank  borrower  public paths
+        createCustodyService      operator centralBank  lender    public paths
+        createCustodyService      operator registry     borrower  public paths
+        createCustodyService      operator registry     lender    public paths
+        createCustodyService      operator lender       borrower  public paths
+        createLendingService      operator lender       borrower
+        createStructuringService  operator registry     lender
+        createLifecycleService    operator registry     lender    public
 
-  -- Accounts
-  borrowerLenderAccount <- createAccount operator lender      borrower  public "Borrower@Lender"       empty
-  borrowerCashAccount   <- createAccount operator centralBank borrower  public "Borrower@CentralBank"  empty
-  lenderCashAccount     <- createAccount operator centralBank lender    public "Lender@CentralBank"    empty
-  lenderSecAccount      <- createAccount operator registry    lender    public "Lender@Registry"       empty
-  borrowerSecAccount    <- createAccount operator registry    borrower  public "Borrower@Registry"     empty
+        -- Accounts
+        borrowerLenderAccount <- createAccount operator lender      borrower  public "Borrower@Lender"       empty
+        borrowerCashAccount   <- createAccount operator centralBank borrower  public "Borrower@CentralBank"  empty
+        lenderCashAccount     <- createAccount operator centralBank lender    public "Lender@CentralBank"    empty
+        lenderSecAccount      <- createAccount operator registry    lender    public "Lender@Registry"       empty
+        borrowerSecAccount    <- createAccount operator registry    borrower  public "Borrower@Registry"     empty
 
-  -- Time
-  t <- getTime
-  let
-    today = toDateUTC t
-    todayTime = time today 0 0 0
-    (todayYear, todayMonth, todayDay) = toGregorian today
-  createClockAndEvent all today (singleton public)
+        -- Time
+        t <- getTime
+        let
+          today = toDateUTC t
+          todayTime = time today 0 0 0
+          (todayYear, todayMonth, todayDay) = toGregorian today
+          pub = fromList [("Public", singleton public)]
+        createClockAndEvent parties today (singleton public)
 
-  -- Instruments
-  usd   <- originateToken   centralBank centralBank pub todayTime "USD" "United States Dollar"
-  tsla  <- originateEquity  registry    registry    pub todayTime "TSLA" "Tesla, Inc. Common Stock"
-  deal1 <- originateGeneric registry    lender      pub todayTime "DEAL1" "Loan of TSLA @ 0.2%" $ loan today (addDays today 28) tsla 0.002 usd [addDays today 7, addDays today 14, addDays today 21, addDays today 28]
+        -- Instruments
+        usd   <- originateToken   centralBank centralBank pub todayTime "USD" "United States Dollar"
+        tsla  <- originateEquity  registry    registry    pub todayTime "TSLA" "Tesla, Inc. Common Stock"
+        deal1 <- originateGeneric registry    lender      pub todayTime "DEAL1" "Loan of TSLA @ 0.2%" $ loan today (addDays today 28) tsla 0.002 usd [addDays today 7, addDays today 14, addDays today 21, addDays today 28]
 
-  -- Data
-  createAccountDirectory lender   [(usd, lenderCashAccount), (tsla, lenderSecAccount)] $ singleton public
-  createAccountDirectory borrower [(usd, borrowerCashAccount), (tsla, borrowerSecAccount), (deal1, borrowerLenderAccount)] $ singleton public
+        -- Data
+        createAccountDirectory lender   [(usd, lenderCashAccount), (tsla, lenderSecAccount)] $ singleton public
+        createAccountDirectory borrower [(usd, borrowerCashAccount), (tsla, borrowerSecAccount), (deal1, borrowerLenderAccount)] $ singleton public
 
-  -- Distribution
-  deposit operator lender borrower public (qty    10_000.0 deal1) borrowerLenderAccount
-  borrowedCid   <- coerceContractId <$> deposit operator registry    lender   public (qty     1_000.0 tsla) lenderSecAccount
-  collateralCid <- coerceContractId <$> deposit operator centralBank borrower public (qty 1_000_000.0 usd) borrowerCashAccount
-  interestCid   <- coerceContractId <$> deposit operator centralBank borrower public (qty     1_000.0 usd) borrowerCashAccount
+        -- Holdings
+        deal1Cid      <- deposit operator lender borrower public (qty    10_000.0 deal1) borrowerLenderAccount
+        borrowedCid   <- deposit operator registry    lender   public (qty     1_000.0 tsla) lenderSecAccount
+        collateralCid <- deposit operator centralBank borrower public (qty 1_000_000.0 usd) borrowerCashAccount
+        interestCid   <- deposit operator centralBank borrower public (qty     1_000.0 usd) borrowerCashAccount
+
+        let
+          instruments = [usd, tsla, deal1]
+          accounts = [borrowerLenderAccount, borrowerCashAccount, lenderCashAccount, lenderSecAccount, borrowerSecAccount]
+          holdings = [deal1Cid, borrowedCid, collateralCid, interestCid]
+          services = []
+        pure Fixture with instruments; accounts; holdings; services
+
+run : Script Fixture
+run = do
+  parties@[operator, public, centralBank, registry, borrower, lender] <-
+    mapA allocateParty ["Operator", "Public", "CentralBank", "Registry", "Borrower", "Lender"]
+  submitMulti parties [] do createAndExerciseCmd (Scenario with parties) Setup
+
+testBorrowing : Script ()
+testBorrowing  = do
+  parties@[operator, public, centralBank, registry, borrower, lender] <-
+    mapA allocateParty ["Operator", "Public", "CentralBank", "Registry", "Borrower", "Lender"]
+  Fixture{instruments, accounts, holdings} <- submitMulti parties [] do createAndExerciseCmd (Scenario with parties) Setup
 
   -- Workflows
+  t <- getTime
   let
-    doLoan = do
-      let
-        borrowed   = qty     1_000.0 tsla
-        interest   = qty     1_000.0 usd
-        collateral = qty 1_000_000.0 usd
+    [usd, tsla, deal1] = instruments
+    [borrowerLenderAccount, borrowerCashAccount, lenderCashAccount, lenderSecAccount, borrowerSecAccount] = accounts
+    [deal1Cid, borrowedCid, collateralCid, interestCid] = map coerceContractId holdings
+    borrowed   = qty     1_000.0 tsla
+    interest   = qty     1_000.0 usd
+    collateral = qty 1_000_000.0 usd
+    today = toDateUTC t
 
-      Some (serviceCid, _) <- queryContractKey @Lending.T borrower (operator, lender, borrower)
-      borrowOfferRequestCid <- submit borrower do exerciseCmd (toInterfaceContractId @Lending.I serviceCid) Lending.RequestBorrowOffer with dealId = Id "BORROW1"; description = "Loan of 1000 TSLA until " <> show today; borrowed; maturity = today
-      borrowOfferCid <- submit lender do exerciseCmd (toInterfaceContractId @Lending.I serviceCid) Lending.CreateBorrowOffer with borrowOfferRequestCid; interest; collateral; borrowedCid; lenderBorrowedAccount = lenderSecAccount; lenderInterestAccount = lenderCashAccount
-      (borrowedCid, borrowAgreementCid) <- submitMulti [borrower] [public] do exerciseCmd (toInterfaceContractId @Lending.I serviceCid) Lending.AcceptBorrowOffer with borrowOfferCid; collateralCid; account = borrowerSecAccount
-      submitMulti [borrower] [public] do exerciseCmd borrowAgreementCid BorrowAgreement.Repay with borrowedCid; interestCid
-
-  --doLoan
-
-  pure parties
+  Some (serviceCid, _) <- queryContractKey @Lending.T borrower (operator, lender, borrower)
+  borrowOfferRequestCid <- submit borrower do exerciseCmd (toInterfaceContractId @Lending.I serviceCid) Lending.RequestBorrowOffer with dealId = Id "BORROW1"; description = "Loan of 1000 TSLA until " <> show today; borrowed; maturity = today
+  borrowOfferCid <- submit lender do exerciseCmd (toInterfaceContractId @Lending.I serviceCid) Lending.CreateBorrowOffer with borrowOfferRequestCid; interest; collateral; borrowedCid; lenderBorrowedAccount = lenderSecAccount; lenderInterestAccount = lenderCashAccount
+  (borrowedCid, borrowAgreementCid) <- submitMulti [borrower] [public] do exerciseCmd (toInterfaceContractId @Lending.I serviceCid) Lending.AcceptBorrowOffer with borrowOfferCid; collateralCid; account = borrowerSecAccount
+  submitMulti [borrower] [public] do exerciseCmd borrowAgreementCid BorrowAgreement.Repay with borrowedCid; interestCid
+  pure ()

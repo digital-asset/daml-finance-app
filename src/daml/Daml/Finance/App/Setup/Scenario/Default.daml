@@ -8,16 +8,16 @@ import DA.Date (DayOfWeek(Saturday, Sunday), addDays, date, toDateUTC, toGregori
 import DA.Map (empty, fromList)
 import DA.Set (singleton)
 import DA.Time (time)
+import Daml.Finance.App.Setup.Payoff (basisSwap, bond, callOptionPhysical, callOptionCash, futureDvp, interestRateSwap)
+import Daml.Finance.App.Setup.Types (Fixture(..))
+import Daml.Finance.App.Setup.Util.Script.Common (getHolding)
+import Daml.Finance.App.Setup.Util.Script.Workflow (createAskOrder, createAuction, createAuctionBid, createBidOrder, list, processAuction)
+import Daml.Finance.App.Setup.Util.Update.Role (createOperatorRole, createCustodianRole, createDistributorRole, createExchangeRole)
+import Daml.Finance.App.Setup.Util.Update.Service (createAuctionService, createAuctionAutoService, createBiddingService, createBiddingAutoService, createCustodyService, createIssuanceService, createIssuanceAutoService, createLifecycleService, createListingService, createListingAutoService, createStructuringService, createStructuringAutoService, createTradingService, createTradingAutoService)
+import Daml.Finance.App.Setup.Util.Update.Workflow (createAccount, createAccountDirectory, createCalendar, createClockAndEvent, createObservation, deposit, issue, originateEquity, originateGeneric, originateToken)
 import Daml.Finance.Interface.Types.Common.Types (Id(..))
 import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
-import Daml.Finance.App.Setup.Payoff
-import Daml.Finance.App.Setup.Types (Fixture(..))
-import Daml.Finance.App.Setup.Util.Script.Common
-import Daml.Finance.App.Setup.Util.Script.Workflow (createAskOrder, createAuction, createAuctionBid, createBidOrder, list, processAuction)
-import Daml.Finance.App.Setup.Util.Update.Role
-import Daml.Finance.App.Setup.Util.Update.Service
-import Daml.Finance.App.Setup.Util.Update.Workflow (createAccount, createAccountDirectory, createCalendar, createClockAndEvent, createObservation, deposit, issue, originateEquity, originateGeneric, originateToken)
 import Daml.Script
 import Prelude hiding (Scenario)
 
@@ -37,8 +37,8 @@ template Scenario
         createOperatorRole    operator
         createCustodianRole   operator centralBank
         createCustodianRole   operator registry
-        createExchangeRole    operator exchange
         createDistributorRole operator agent
+        createExchangeRole    operator exchange
 
         -- Services
         let
@@ -59,7 +59,7 @@ template Scenario
         createIssuanceAutoService     operator registry    issuer
         createStructuringService      operator registry    issuer
         createStructuringAutoService  operator registry    issuer
-        createLifecycleService        operator registry    issuer
+        createLifecycleService        operator registry    issuer public
         createListingService          operator exchange    issuer
         createListingAutoService      operator exchange    issuer
         createTradingService          operator exchange    issuer paths
@@ -157,9 +157,9 @@ testAuction = do
 
   -- Workflow
   let
-    [usd, _, _, _, bnd, _, _, _, _] = instruments
-    [issuerCashAccount, _, _, _, _, inv1SecAccount, inv2SecAccount, inv3SecAccount] = accounts
-    [_, _, _, _, issuerBondCid, _, _] = holdings
+    [usd, tsla, nflx, fwd, bnd, swp, bswp, opt, opt2] = instruments
+    [issuerCashAccount, inv1CashAccount, inv2CashAccount, inv3CashAccount, issuerSecAccount, inv1SecAccount, inv2SecAccount, inv3SecAccount] = accounts
+    [inv1CashCid, inv2CashCid, inv3CashCid, issuerFwdCid, issuerBondCid, issuerSwapCid, issuerBasisSwapCid] = holdings
   auctionCid        <- createAuction operator agent issuer public (Id "AUCTION1") "AUCTION1" (qty 1_000_000.0 bnd) usd 0.95 (coerceContractId issuerBondCid) issuerCashAccount
   inv1CollateralCid <- coerceContractId <$> getHolding inv1 (qty 500_000.0 usd)
   inv2CollateralCid <- coerceContractId <$> getHolding inv2 (qty 392_000.0 usd)
@@ -179,7 +179,7 @@ testTrading = do
 
   -- Workflows
   let
-    [usd, _, _, _, _, swp, _, _, _] = instruments
+    [usd, tsla, nflx, fwd, bnd, swp, bswp, opt, opt2] = instruments
     listingId = Id "SWAP/USD"
   list operator exchange issuer listingId "SWAP vs USD" swp usd $ singleton public
   createAskOrder operator exchange issuer public (Id "1") (qty 250_000.0 swp) (qty 1.00 usd) $ singleton public

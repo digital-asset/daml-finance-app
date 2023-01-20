@@ -34,13 +34,13 @@ interface Service where
   asBase : Base.I
     -- ^ Conversion to base `Service` interface.
 
-  declareDividend : DeclareDividend -> Update [ContractId Effect.I]
+  declareDividend : DeclareDividend -> Update (InstrumentKey, [ContractId Effect.I])
     -- ^ Implementation of the `DeclareDividend` choice.
 
   declareReplacement : DeclareReplacement -> Update [ContractId Effect.I]
     -- ^ Implementation of the `DeclareReplacement` choice.
 
-  declareStockSplit : DeclareStockSplit -> Update [ContractId Effect.I]
+  declareStockSplit : DeclareStockSplit -> Update (InstrumentKey, [ContractId Effect.I])
     -- ^ Implementation of the `DeclareStockSplit` choice.
 
   previewLifecycle : PreviewLifecycle -> Update ([TaggedClaim], [Pending])
@@ -73,7 +73,7 @@ interface Service where
   previewPricing : PreviewPricing -> Update (Expr Text, Text)
     -- ^ Implementation of the `PreviewPricing` choice.
 
-  nonconsuming choice DeclareDividend : [ContractId Effect.I]
+  nonconsuming choice DeclareDividend : (InstrumentKey, [ContractId Effect.I])
     with
       equity : InstrumentKey
       newVersion : Text
@@ -96,7 +96,7 @@ interface Service where
     do
       declareReplacement this arg
 
-  nonconsuming choice DeclareStockSplit : [ContractId Effect.I]
+  nonconsuming choice DeclareStockSplit : (InstrumentKey, [ContractId Effect.I])
     with
       equity : InstrumentKey
       newVersion : Text

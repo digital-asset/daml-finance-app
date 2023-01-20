@@ -3,7 +3,7 @@
 
 sdk-version: 2.6.0-snapshot.20221218.11169.0.9d007b31
 name: daml-finance-app-setup
-version: 0.0.1
+version: 0.0.2
 source: daml
 dependencies:
   - daml-prim
@@ -40,29 +40,29 @@ data-dependencies:
   - .lib/daml-finance/Daml.Finance.Lifecycle/1.0.0/daml-finance-lifecycle-1.0.0.dar
   - .lib/daml-finance/Daml.Finance.Settlement/1.0.0/daml-finance-settlement-1.0.0.dar
   - .lib/daml-finance/Daml.Finance.Util/1.0.0/daml-finance-util-1.0.0.dar
-  - .lib/daml-finance-app/Daml.Finance.App.Custody/0.0.1/daml-finance-app-custody-0.0.1.dar
-  - .lib/daml-finance-app/Daml.Finance.App.Data/0.0.1/daml-finance-app-data-0.0.1.dar
-  - .lib/daml-finance-app/Daml.Finance.App.Decentralized/0.0.1/daml-finance-app-decentralized-0.0.1.dar
-  - .lib/daml-finance-app/Daml.Finance.App.Distribution/0.0.1/daml-finance-app-distribution-0.0.1.dar
-  - .lib/daml-finance-app/Daml.Finance.App.Interface.Base/0.0.1/daml-finance-app-interface-base-0.0.1.dar
-  - .lib/daml-finance-app/Daml.Finance.App.Interface.Custody/0.0.1/daml-finance-app-interface-custody-0.0.1.dar
-  - .lib/daml-finance-app/Daml.Finance.App.Interface.Decentralized/0.0.1/daml-finance-app-interface-decentralized-0.0.1.dar
-  - .lib/daml-finance-app/Daml.Finance.App.Interface.Distribution/0.0.1/daml-finance-app-interface-distribution-0.0.1.dar
-  - .lib/daml-finance-app/Daml.Finance.App.Interface.Issuance/0.0.1/daml-finance-app-interface-issuance-0.0.1.dar
-  - .lib/daml-finance-app/Daml.Finance.App.Interface.Lending/0.0.1/daml-finance-app-interface-lending-0.0.1.dar
-  - .lib/daml-finance-app/Daml.Finance.App.Interface.Lifecycle/0.0.1/daml-finance-app-interface-lifecycle-0.0.1.dar
-  - .lib/daml-finance-app/Daml.Finance.App.Interface.Listing/0.0.1/daml-finance-app-interface-listing-0.0.1.dar
-  - .lib/daml-finance-app/Daml.Finance.App.Interface.Settlement/0.0.1/daml-finance-app-interface-settlement-0.0.1.dar
-  - .lib/daml-finance-app/Daml.Finance.App.Interface.Structuring/0.0.1/daml-finance-app-interface-structuring-0.0.1.dar
-  - .lib/daml-finance-app/Daml.Finance.App.Interface.Trading/0.0.1/daml-finance-app-interface-trading-0.0.1.dar
-  - .lib/daml-finance-app/Daml.Finance.App.Issuance/0.0.1/daml-finance-app-issuance-0.0.1.dar
-  - .lib/daml-finance-app/Daml.Finance.App.Lending/0.0.1/daml-finance-app-lending-0.0.1.dar
-  - .lib/daml-finance-app/Daml.Finance.App.Lifecycle/0.0.1/daml-finance-app-lifecycle-0.0.1.dar
-  - .lib/daml-finance-app/Daml.Finance.App.Listing/0.0.1/daml-finance-app-listing-0.0.1.dar
-  - .lib/daml-finance-app/Daml.Finance.App.Role/0.0.1/daml-finance-app-role-0.0.1.dar
-  - .lib/daml-finance-app/Daml.Finance.App.Settlement/0.0.1/daml-finance-app-settlement-0.0.1.dar
-  - .lib/daml-finance-app/Daml.Finance.App.Structuring/0.0.1/daml-finance-app-structuring-0.0.1.dar
-  - .lib/daml-finance-app/Daml.Finance.App.Trading/0.0.1/daml-finance-app-trading-0.0.1.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Custody/0.0.1/daml-finance-app-custody-0.0.2.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Data/0.0.1/daml-finance-app-data-0.0.2.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Decentralized/0.0.1/daml-finance-app-decentralized-0.0.2.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Distribution/0.0.1/daml-finance-app-distribution-0.0.2.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Interface.Base/0.0.1/daml-finance-app-interface-base-0.0.2.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Interface.Custody/0.0.1/daml-finance-app-interface-custody-0.0.2.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Interface.Decentralized/0.0.1/daml-finance-app-interface-decentralized-0.0.2.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Interface.Distribution/0.0.1/daml-finance-app-interface-distribution-0.0.2.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Interface.Issuance/0.0.1/daml-finance-app-interface-issuance-0.0.2.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Interface.Lending/0.0.1/daml-finance-app-interface-lending-0.0.2.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Interface.Lifecycle/0.0.1/daml-finance-app-interface-lifecycle-0.0.2.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Interface.Listing/0.0.1/daml-finance-app-interface-listing-0.0.2.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Interface.Settlement/0.0.1/daml-finance-app-interface-settlement-0.0.2.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Interface.Structuring/0.0.1/daml-finance-app-interface-structuring-0.0.2.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Interface.Trading/0.0.1/daml-finance-app-interface-trading-0.0.2.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Issuance/0.0.1/daml-finance-app-issuance-0.0.2.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Lending/0.0.1/daml-finance-app-lending-0.0.2.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Lifecycle/0.0.1/daml-finance-app-lifecycle-0.0.2.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Listing/0.0.1/daml-finance-app-listing-0.0.2.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Role/0.0.1/daml-finance-app-role-0.0.2.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Settlement/0.0.1/daml-finance-app-settlement-0.0.2.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Structuring/0.0.1/daml-finance-app-structuring-0.0.2.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Trading/0.0.1/daml-finance-app-trading-0.0.2.dar
 start-navigator: no
 sandbox-options:
   - -c=canton.conf

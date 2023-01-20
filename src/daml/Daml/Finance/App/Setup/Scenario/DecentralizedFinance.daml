@@ -9,9 +9,9 @@ import DA.Set (singleton)
 import DA.Time (time)
 import Daml.Finance.App.Interface.Decentralized.Exchange.Service qualified as Dex (I, Swap(..))
 import Daml.Finance.Interface.Util.Common (qty)
-import Daml.Finance.App.Setup.Types
-import Daml.Finance.App.Setup.Util.Update.Role
-import Daml.Finance.App.Setup.Util.Update.Service
+import Daml.Finance.App.Setup.Types (Fixture(..))
+import Daml.Finance.App.Setup.Util.Update.Role (createOperatorRole, createCustodianRole, createExchangeRole)
+import Daml.Finance.App.Setup.Util.Update.Service (createCustodyService, createDecentralizedExchangeService)
 import Daml.Finance.App.Setup.Util.Update.Workflow (createAccount, createAccountDirectory, deposit, originateEquity, originateToken)
 import Daml.Finance.App.Setup.Util.Script.Workflow ()
 import Daml.Script
@@ -80,7 +80,7 @@ template Scenario
         gbpchf  <- originateEquity  con con  pub todayTime "LPS-GBPCHF" "Liqudity Pool Share for GBPCHF"
         let currencies = [usd, eur, chf, gbp]
 
-        -- Distribution
+        -- Holdings
         conUsdCid1  <- deposit operator fed con public (qty 105_000_000.0 usd) conFedAccount
         conUsdCid2  <- deposit operator fed con public (qty 100_000_000.0 usd) conFedAccount
         conUsdCid3  <- deposit operator fed con public (qty 100_000_000.0 usd) conFedAccount

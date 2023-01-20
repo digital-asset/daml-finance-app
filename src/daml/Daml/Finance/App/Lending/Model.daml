@@ -94,8 +94,8 @@ template BorrowAgreement
       asRemovable = toInterface @Removable.I this
 
       repay BorrowAgreement.Repay{borrowedCid; interestCid} = do
-        borrowedCid <- exercise borrowedCid Transferable.Transfer with actors = singleton customer; newOwnerAccount = lenderBorrowedAccount
-        interestCid <- exercise interestCid Transferable.Transfer with actors = singleton customer; newOwnerAccount = lenderInterestAccount
+        borrowedCid <- exercise borrowedCid Transferable.Transfer with actors = fromList [provider, customer]; newOwnerAccount = lenderBorrowedAccount
+        interestCid <- exercise interestCid Transferable.Transfer with actors = fromList [provider, customer]; newOwnerAccount = lenderInterestAccount
         unlockedCid <- coerceContractId <$> exercise (toInterfaceContractId collateralCid : ContractId Holding.I) Holding.Release with context = show dealId
         Account.exerciseInterfaceByKey @Disclosure.I lenderBorrowedAccount provider Disclosure.RemoveObservers with disclosers = singleton customer; observersToRemove = (show dealId, singleton customer)
         Account.exerciseInterfaceByKey @Disclosure.I lenderInterestAccount provider Disclosure.RemoveObservers with disclosers = singleton customer; observersToRemove = (show dealId, singleton customer)

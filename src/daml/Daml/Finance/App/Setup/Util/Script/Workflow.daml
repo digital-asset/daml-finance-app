@@ -268,13 +268,13 @@ processAuction operator provider customer public auctionCid bidCids = do
   serviceCid <- toInterfaceContractId @AuctionService.I . fst . fromSome <$> queryContractKey @AuctionService.T provider (operator, provider, customer)
   submitMulti [provider] [public] do exerciseCmd serviceCid AuctionService.ProcessAuction with auctionCid; bidCids
 
-declareDividend : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> [InstrumentQuantity] -> Script (ContractId Effect.I)
+declareDividend : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> [InstrumentQuantity] -> Script (InstrumentKey, ContractId Effect.I)
 declareDividend operator provider issuer public equity effectiveTime perUnitDistribution = do
   let
     id = "Dividend-" <> show equity.id <> "-" <> equity.version
     Some version = parseInt equity.version
   serviceCid <- toInterfaceContractId @LifecycleService.I . fst . fromSome <$> queryContractKey @LifecycleService.T provider (operator, provider, issuer)
-  head <$> submitMulti [issuer] [public] do
+  (newInstrument, [effectCid]) <- submitMulti [issuer] [public] do
     exerciseCmd serviceCid LifecycleService.DeclareDividend with
       equity
       newVersion = show (version + 1)
@@ -282,6 +282,7 @@ declareDividend operator provider issuer public equity effectiveTime perUnitDist
       description = id
       effectiveTime
       perUnitDistribution
+  pure (newInstrument, effectCid)
 
 declareReplacement : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> [InstrumentQuantity] -> Script (ContractId Effect.I)
 declareReplacement operator provider issuer public equity effectiveTime perUnitReplacement = do
@@ -295,13 +296,13 @@ declareReplacement operator provider issuer public equity effectiveTime perUnitR
       effectiveTime
       perUnitReplacement
 
-declareStockSplit : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> Decimal -> Script (ContractId Effect.I)
+declareStockSplit : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> Decimal -> Script (InstrumentKey, ContractId Effect.I)
 declareStockSplit operator provider issuer public equity effectiveTime adjustmentFactor = do
   let
     id = "StockSplit-" <> show equity.id <> "-" <> equity.version
     Some version = parseInt equity.version
   serviceCid <- toInterfaceContractId @LifecycleService.I . fst . fromSome <$> queryContractKey @LifecycleService.T provider (operator, provider, issuer)
-  head <$> submitMulti [issuer] [public] do
+  (newInstrument, [effectCid]) <- submitMulti [issuer] [public] do
     exerciseCmd serviceCid LifecycleService.DeclareStockSplit with
       equity
       newVersion = show (version + 1)
@@ -309,6 +310,7 @@ declareStockSplit operator provider issuer public equity effectiveTime adjustmen
       description = id
       effectiveTime
       adjustmentFactor
+  pure (newInstrument, effectCid)
 
 claimEffect : Party -> Party -> Party -> Party -> ContractId Effect.I -> [ContractId Holding.I] -> Id -> Script (ContractId Batch.I, [ContractId Instruction.I])
 claimEffect operator custodian owner public effectCid holdingCids batchId = do
@@ -319,9 +321,11 @@ claimEffect operator custodian owner public effectCid holdingCids batchId = do
 allocateAndApprove : Party -> Party -> ContractId Instruction.I -> Settlement.Allocation -> Settlement.Approval -> Script (ContractId Instruction.I)
 allocateAndApprove operator settler instructionCid allocation approval = do
   Some i <- queryContractId @Instruction.T settler $ coerceContractId instructionCid
-  debug i.routedStep
-  instructionCid <- fst <$> submit i.routedStep.sender do exerciseCmd instructionCid Instruction.Allocate with actors = singleton settler; allocation
-  submit i.routedStep.receiver do exerciseCmd instructionCid Instruction.Approve with actors = singleton settler; approval
+  debug i
+  debug allocation
+  debug approval
+  instructionCid <- fst <$> submit i.routedStep.sender do exerciseCmd instructionCid Instruction.Allocate with actors = singleton i.routedStep.sender; allocation
+  submit i.routedStep.receiver do exerciseCmd instructionCid Instruction.Approve with actors = singleton i.routedStep.receiver; approval
 
 createInvestmentRequest : Party -> Party -> Party -> Party -> Text -> Date -> ContractId Fund.I -> ContractId Transferable.I -> Script (ContractId InvestmentRequest.I)
 createInvestmentRequest operator provider customer public id asOfDate fundCid cashCid = do

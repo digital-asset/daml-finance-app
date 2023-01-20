@@ -8,6 +8,10 @@ import DA.Foldable (mapA_)
 import DA.Map (empty, fromList)
 import DA.Set (singleton)
 import DA.Time (time)
+import Daml.Finance.App.Setup.Types (Fixture(..))
+import Daml.Finance.App.Setup.Util.Update.Role (createOperatorRole, createCustodianRole)
+import Daml.Finance.App.Setup.Util.Update.Service (createCustodyService, createIssuanceService, createIssuanceAutoService, createLifecycleService, createStructuringService, createStructuringAutoService)
+import Daml.Finance.App.Setup.Util.Update.Workflow (createAccount, createAccountDirectory, createCalendar, createClockAndEvent, createObservation, deposit, issue, originateFixedRateBond, originateFloatingRateBond, originateInflationLinkedBond, originateToken, originateZeroCouponBond, transfer)
 import Daml.Finance.Claims.Lifecycle.Rule qualified as Lifecycle (Rule(..))
 import Daml.Finance.Data.Time.DateClock qualified as Data (DateClock)
 import Daml.Finance.Data.Time.DateClockUpdate qualified as Data (DateClockUpdateEvent)
@@ -19,10 +23,6 @@ import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum(..))
 import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Lifecycle.Effect qualified as Lifecycle (Effect)
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
-import Daml.Finance.App.Setup.Types
-import Daml.Finance.App.Setup.Util.Update.Role
-import Daml.Finance.App.Setup.Util.Update.Service
-import Daml.Finance.App.Setup.Util.Update.Workflow (createAccount, createAccountDirectory, createCalendar, createClockAndEvent, createObservation, deposit, issue, originateFixedRateBond, originateFloatingRateBond, originateInflationLinkedBond, originateToken, originateZeroCouponBond, transfer)
 import Daml.Script
 import Prelude hiding (Scenario)
 
@@ -63,7 +63,7 @@ template Scenario
         createIssuanceAutoService     operator registry     issuer
         createStructuringService      operator registry     issuer
         createStructuringAutoService  operator registry     issuer
-        createLifecycleService        operator registry     issuer
+        createLifecycleService        operator registry     issuer    public
 
         -- Accounts
         registryCashAccount   <- createAccount operator centralBank registry  public "Registry@CentralBank/Cash"       empty
