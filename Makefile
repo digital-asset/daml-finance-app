@@ -29,9 +29,10 @@ codegen:
 
 .PHONY: setup
 setup:
+	-rm -rf ui/daml.js
 	DAML_PROJECT=package/main/daml/Daml.Finance.App.Setup/ daml build
 	cp package/main/daml/Daml.Finance.App.Setup/.daml/dist/*.dar .dars/
-	make codegen
+	daml codegen js -o ui/daml.js .dars/*
 
 #########################
 # Packages (./packages) #

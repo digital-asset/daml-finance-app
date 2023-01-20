@@ -15,8 +15,14 @@ import appListing from "../images/app/listing.png";
 import appTrading from "../images/app/trading.png";
 import appNetwork from "../images/app/network.png";
 import { PartyInfo, useAdmin } from "./AdminContext";
-import { Scenario as Default } from "@daml.js/daml-finance-app-setup/lib/Daml/Finance/App/Setup/Scenario/Default";
 import { Scenario as BondIssuance } from "@daml.js/daml-finance-app-setup/lib/Daml/Finance/App/Setup/Scenario/BondIssuance";
+import { Scenario as CorporateActions } from "@daml.js/daml-finance-app-setup/lib/Daml/Finance/App/Setup/Scenario/CorporateActions";
+import { Scenario as DecentralizedFinance } from "@daml.js/daml-finance-app-setup/lib/Daml/Finance/App/Setup/Scenario/DecentralizedFinance";
+import { Scenario as Default } from "@daml.js/daml-finance-app-setup/lib/Daml/Finance/App/Setup/Scenario/Default";
+import { Scenario as FundTokenization } from "@daml.js/daml-finance-app-setup/lib/Daml/Finance/App/Setup/Scenario/FundTokenization";
+import { Scenario as NaturalGas } from "@daml.js/daml-finance-app-setup/lib/Daml/Finance/App/Setup/Scenario/NaturalGas";
+import { Scenario as SecuritiesLending } from "@daml.js/daml-finance-app-setup/lib/Daml/Finance/App/Setup/Scenario/SecuritiesLending";
+import { Scenario as StructuredNotes } from "@daml.js/daml-finance-app-setup/lib/Daml/Finance/App/Setup/Scenario/StructuredNotes";
 
 type Position = {
   x : number
@@ -72,8 +78,14 @@ export const applications : AppInfo[] = [
 ];
 
 export const setups : SetupInfo[] = [
-  { scenario: "Default",       templateId: Default.templateId,      choice: "Setup" },
-  { scenario: "Bond Issuance", templateId: BondIssuance.templateId, choice: "Setup" },
+  { scenario: "Bond Issuance",          templateId: BondIssuance.templateId,          choice: "Setup" },
+  { scenario: "Corporate Actions",      templateId: CorporateActions.templateId,      choice: "Setup" },
+  { scenario: "Decentralized Finance",  templateId: DecentralizedFinance.templateId,  choice: "Setup" },
+  { scenario: "Default",                templateId: Default.templateId,               choice: "Setup" },
+  { scenario: "Fund Tokenization",      templateId: FundTokenization.templateId,      choice: "Setup" },
+  { scenario: "Natural Gas",            templateId: NaturalGas.templateId,            choice: "Setup" },
+  { scenario: "Securities Lending",     templateId: SecuritiesLending.templateId,     choice: "Setup" },
+  { scenario: "Structured Notes",       templateId: StructuredNotes.templateId,       choice: "Setup" },
 ];
 
 const createParty = (name: string, x: number, y: number) : PartyPosition => {

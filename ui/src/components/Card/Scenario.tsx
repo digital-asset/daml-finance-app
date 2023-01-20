@@ -63,12 +63,12 @@ export const Scenario : React.FC<ScenarioProps> = ({ scenario }) => {
         <Grid item xs={3} className={cls.scenarioItem} >
           <Typography variant="body1" component="p">{scenario.description}</Typography>
         </Grid>
-        <Grid item xs={1} className={cls.scenarioItem} >
-          <Circular variant="determinate" value={progress}/>
-          {progress === 100 && !scenario.isInitialized && <CircularProgress />}
+        <Grid item xs={2} className={cls.scenarioItem} >
+          <Typography variant="body1" component="p" color="#666">{progress === 100 ? (scenario.isInitialized ? "Ready" : "Initializing scenario...") : "Creating parties..."}</Typography>
         </Grid>
-        <Grid item xs={3} className={cls.scenarioItem} >
-          <Typography variant="body1" component="p">{progress === 100 ? (scenario.isInitialized ? "Ready" : "Running scenario...") : "Creating parties..."}</Typography>
+        <Grid item xs={2} className={cls.scenarioItem} >
+          {(progress < 100 || scenario.isInitialized) && <Circular variant="determinate" value={progress}/>}
+          {progress === 100 && !scenario.isInitialized && <CircularProgress />}
         </Grid>
         <Grid item xs={1} />
       </Grid>
