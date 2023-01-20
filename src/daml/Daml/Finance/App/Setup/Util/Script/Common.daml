@@ -3,7 +3,7 @@
 
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
-module Daml.Finance.App.Setup.Util.Common where
+module Daml.Finance.App.Setup.Util.Script.Common where
 
 import DA.List (head)
 import DA.Optional (fromOptional, isNone)

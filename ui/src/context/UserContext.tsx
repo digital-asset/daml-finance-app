@@ -44,7 +44,7 @@ export const UserProvider : React.FC = ({ children }) => {
     const party = getParty(user);
     const token = getToken(party)
     setState(s => ({ ...s, loading: false, loggedIn: !!user, user, party, token }))
-  }, [l1, l2, ledgerId]);
+  }, [l1, l2, ledgerId, getParty, getToken]);
 
   return (
     <UserContext.Provider value={{ ...state, login, logout }}>

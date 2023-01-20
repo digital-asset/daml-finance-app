@@ -39,12 +39,12 @@ build-packages:
 # build-java-packages: build-packages
 # 	daml codegen java -o .dars/.java .dars/*
 
-.PHONY: build-js-packages
-build-js-packages: build-packages
+.PHONY: codegen
+codegen:
 	daml codegen js -o ui/daml.js .dars/*
 
 .PHONY: build-ui
-build-ui: build-js-packages
+build-ui: codegen
 	cd ui && npm install && npm run build
 
 .PHONY: test-packages
@@ -65,7 +65,7 @@ validate-packages: build-packages
 ###############################
 
 .PHONY: build-all
-build-all: build build-ui
+build-all: build build-packages build-ui
 
 .PHONY: test-all
 test-all: test test-packages

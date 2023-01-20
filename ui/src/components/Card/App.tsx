@@ -9,13 +9,13 @@ import useStyles from "./styles";
 import gradient from "../../images/gradient.png";
 
 type AppProps = {
-  label : string
+  name : string
   description : string
   image : string
   path : string
 }
 
-export const App : React.FC<AppProps> = ({ label, description, image, path }) => {
+export const App : React.FC<AppProps> = ({ name: label, description, image, path }) => {
   const classes = useStyles();
   const navigate = useNavigate()
 

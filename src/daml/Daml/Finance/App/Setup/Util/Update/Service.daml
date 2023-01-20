@@ -1,7 +1,7 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module Daml.Finance.App.Setup.Util2.Service where
+module Daml.Finance.App.Setup.Util.Update.Service where
 
 import DA.Map (Map, fromList)
 import DA.Set (singleton)
@@ -88,7 +88,7 @@ createCustodyService operator provider customer public paths = do
   holdingFactoryCid         <- toInterfaceContractId <$> create Fungible.Factory                   with provider; observers = publicObs
   routeProviderCid          <- toInterfaceContractId <$> create RouteProvider.IntermediatedStatic  with provider; observers; paths
   settlementFactoryCid      <- toInterfaceContractId <$> create Settlement.Factory                 with provider; observers
-  claimRuleCid              <- toInterfaceContractId <$> create Claim.Rule                         with providers; claimers = providers; settlers = providers; routeProviderCid; settlementFactoryCid; netInstructions = False
+  claimRuleCid              <- toInterfaceContractId <$> create Claim.Rule                         with providers; claimers = singleton customer; settlers = providers; routeProviderCid; settlementFactoryCid; netInstructions = False
   offerCid <- exerciseByKey @Custodian.Role (operator, provider) Custodian.OfferCustodyService with customer; accountFactoryCid; holdingFactoryCid; claimRuleCid
   toInterfaceContractId <$> exercise offerCid Custody.Accept
 

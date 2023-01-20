@@ -30,7 +30,7 @@ export const Sidebar : React.FC<SidebarProps> = ({ app, entries } : SidebarProps
       <div className={classes.toolbar} />
       <List>
         <Button variant="outlined" disableRipple className={classes.actionButton}>
-          <ActionSelect value={app} setValue={v => navigate("/app/" + v.toLowerCase())} values={selected.apps.map(a => a.name)} />
+          <ActionSelect value={app} setValue={v => navigate("/app/" + v.toLowerCase())} values={selected.apps} />
         </Button>
         <Divider style={{ marginBottom: 20 }} />
         {links.map(e => <SidebarLink key={e.label} label={e.label} path={e.path} action={e.action} /> )}

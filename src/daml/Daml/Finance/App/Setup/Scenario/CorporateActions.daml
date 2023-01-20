@@ -4,141 +4,172 @@
 module Daml.Finance.App.Setup.Scenario.CorporateActions where
 
 import DA.Date (Month(..), date, toDateUTC, toGregorian)
-import DA.List (head)
 import DA.Map (empty, fromList)
 import DA.Set (singleton)
 import DA.Time (time)
-import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
-import Daml.Finance.Interface.Settlement.Types (Allocation(..), Approval(..))
-import Daml.Finance.Interface.Types.Common.Types (Id(..))
+-- import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
+-- import Daml.Finance.Interface.Settlement.Types (Allocation(..), Approval(..))
+-- import Daml.Finance.Interface.Types.Common.Types (Id(..))
 import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
-import Daml.Finance.App.Setup.Util.Common
-import Daml.Finance.App.Setup.Util.Role
-import Daml.Finance.App.Setup.Util.Service
-import Daml.Finance.App.Setup.Util.Workflow
+import Daml.Finance.App.Setup.Types
+import Daml.Finance.App.Setup.Util.Script.Workflow (declareDividend)
+-- import Daml.Finance.App.Setup.Util.Script.Workflow (allocateAndApprove, claimEffect, declareDividend)
+import Daml.Finance.App.Setup.Util.Update.Role
+import Daml.Finance.App.Setup.Util.Update.Service
+import Daml.Finance.App.Setup.Util.Update.Workflow (createAccount, createAccountDirectory, createClockAndEvent, deposit, issue, originateEquity, originateToken, transfer)
 import Daml.Script
+import Prelude hiding (Scenario)
 
-run : Script [PartyInfo]
+template Scenario
+  with
+    parties : [Party]
+  where
+    signatory parties
+
+    nonconsuming choice Setup : Fixture
+      controller parties
+      do
+        -- Parties
+        let [ operator, public, centralBank, registry, issuer, custodian, inv1, inv2, inv3 ] = parties
+
+        -- Roles
+        createOperatorRole  operator
+        createCustodianRole operator centralBank
+        createCustodianRole operator registry
+        createCustodianRole operator issuer
+        createCustodianRole operator custodian
+
+        -- Services
+        let
+          assets = ["NewCo", "Acme"]
+          settlementPaths = [[issuer], [registry], [custodian], [inv1, custodian], [inv2, custodian], [inv3, custodian]]
+          cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = settlementPaths
+          secRoute = Settlement.Hierarchy with rootCustodian = issuer; pathsToRootCustodian = settlementPaths
+          paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
+        createCustodyService          operator centralBank  issuer    public paths
+        createCustodyService          operator centralBank  registry  public paths
+        createCustodyService          operator centralBank  custodian public paths
+        createCustodyService          operator issuer       registry  public paths
+        createCustodyService          operator registry     issuer    public paths
+        createCustodyService          operator registry     custodian public paths
+        createCustodyService          operator custodian    inv1      public paths
+        createCustodyService          operator custodian    inv2      public paths
+        createCustodyService          operator custodian    inv3      public paths
+        createIssuanceService         operator registry     issuer
+        createIssuanceAutoService     operator registry     issuer
+        createStructuringService      operator registry     issuer
+        createStructuringAutoService  operator registry     issuer
+        createLifecycleService        operator registry     issuer
+        createSettlementService       operator issuer       registry  paths
+        createSettlementService       operator registry     custodian paths
+        createSettlementService       operator custodian    inv1      paths
+        createSettlementService       operator custodian    inv2      paths
+        createSettlementService       operator custodian    inv3      paths
+
+        -- Accounts
+        issuerCashAccount     <- createAccount operator centralBank issuer    public "Issuer@CentralBank|Cash"         empty
+        registryCashAccount   <- createAccount operator centralBank registry  public "Registry@CentralBank|Cash"       empty
+        custodianCashAccount  <- createAccount operator centralBank custodian public "Custodian@CentralBank|Cash"      empty
+        inv1CashAccount       <- createAccount operator custodian   inv1      public "Investor1@Custodian|Cash"        empty
+        inv2CashAccount       <- createAccount operator custodian   inv2      public "Investor2@Custodian|Cash"        empty
+        inv3CashAccount       <- createAccount operator custodian   inv3      public "Investor3@Custodian|Cash"        empty
+        registrySecAccount    <- createAccount operator issuer      registry  public "Issuer@Registry|Securities"      empty
+        issuerSecAccount      <- createAccount operator registry    issuer    public "Registry@Issuer|Securities"      empty
+        custodianSecAccount   <- createAccount operator registry    custodian public "Custodian@Registry|Securities"   empty
+        inv1SecAccount        <- createAccount operator custodian   inv1      public "Investor1@Custodian|Securities"  empty
+        inv2SecAccount        <- createAccount operator custodian   inv2      public "Investor2@Custodian|Securities"  empty
+        inv3SecAccount        <- createAccount operator custodian   inv3      public "Investor3@Custodian|Securities"  empty
+
+        -- Time
+        t <- getTime
+        let
+          today = toDateUTC t
+          todayTime = time today 0 0 0
+          tt d = time d 0 0 0
+          epoch = tt $ date 1970 Jan 1
+          (ty, tm, td) = toGregorian today
+          pub = fromList [("Public", singleton public)]
+        (clockCid, eventCid) <- createClockAndEvent parties today (singleton public)
+
+        -- Instruments
+        usd     <- originateToken  centralBank centralBank pub epoch "USD"    "United States Dollar"
+        equity  <- originateEquity registry    issuer      pub epoch "NewCo"  "NewCo, Inc. Common Stock"
+        equity2 <- originateEquity registry    issuer      pub epoch "Acme"   "Acme, Inc. Common Stock"
+
+        -- Data
+        createAccountDirectory issuer     [(usd, issuerCashAccount), (equity, issuerSecAccount)]        $ singleton public
+        createAccountDirectory registry   [(usd, registryCashAccount), (equity, registrySecAccount)]    $ singleton public
+        createAccountDirectory custodian  [(usd, custodianCashAccount), (equity, custodianSecAccount)]  $ singleton public
+        createAccountDirectory inv1       [(usd, inv1CashAccount), (equity, inv1SecAccount)]            $ singleton public
+        createAccountDirectory inv2       [(usd, inv2CashAccount), (equity, inv2SecAccount)]            $ singleton public
+        createAccountDirectory inv3       [(usd, inv3CashAccount), (equity, inv3SecAccount)]            $ singleton public
+
+        -- Distribution
+        registryEquityCid     <- deposit  operator issuer   registry    public (qty 1_000_000.0 equity) registrySecAccount
+        (_, issuerEquityCid)  <- issue    operator registry issuer      public (qty 1_000_000.0 equity) issuerSecAccount
+        custodianEquityCid    <- transfer issuer   custodianSecAccount  public $ coerceContractId issuerEquityCid
+        inv1EquityCid         <- deposit  operator custodian inv1       public (qty 500_000.0 equity) inv1SecAccount
+        inv2EquityCid         <- deposit  operator custodian inv2       public (qty 300_000.0 equity) inv2SecAccount
+        inv3EquityCid         <- deposit  operator custodian inv3       public (qty 200_000.0 equity) inv3SecAccount
+
+        issuerCashCid         <- coerceContractId <$> deposit  operator centralBank issuer     public (qty 500_000.0 usd) issuerCashAccount
+        registryCashCid       <- coerceContractId <$> deposit  operator centralBank registry   public (qty 500_000.0 usd) registryCashAccount
+
+        let
+          instruments = [usd, equity, equity2]
+          accounts = [registryCashAccount, issuerCashAccount, custodianCashAccount, inv1CashAccount, inv2CashAccount, inv3CashAccount, issuerSecAccount, custodianSecAccount, inv1SecAccount, inv2SecAccount, inv3SecAccount]
+          holdings = [registryEquityCid, issuerEquityCid, toInterfaceContractId custodianEquityCid, inv1EquityCid, inv2EquityCid, inv3EquityCid, issuerCashCid, registryCashCid]
+          services = []
+        pure Fixture with instruments; accounts; holdings; services
+
+run : Script ()
 run = do
-  let scenario = "Corporate Actions"
-  parties <- allocateParties scenario ["Operator", "Public", "CentralBank", "Registry", "Issuer", "Custodian", "Investor1", "Investor2", "Investor3"]
-  let
-    all@[operator, public, centralBank, registry, issuer, custodian, inv1, inv2, inv3] = map (.id) parties
-    pub = fromList [("Public", singleton public)]
+  parties@[operator, public, centralBank, registry, issuer, custodian, inv1, inv2, inv3] <-
+    mapA allocateParty ["Operator", "Public", "CentralBank", "Registry", "Issuer", "Custodian", "Investor1", "Investor2", "Investor3"]
+  submitMulti parties [] do createAndExerciseCmd (Scenario with parties) Setup
+  pure ()
 
-  -- Factories
-  let
-    assets = ["NewCo", "Acme"]
-    settlementPaths = [[issuer], [registry], [custodian], [inv1, custodian], [inv2, custodian], [inv3, custodian]]
-    cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = settlementPaths
-    secRoute = Settlement.Hierarchy with rootCustodian = issuer; pathsToRootCustodian = settlementPaths
-    paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
-
-  -- Roles
-  createOperatorRole  operator
-  createCustodianRole operator centralBank
-  createCustodianRole operator registry
-  createCustodianRole operator issuer
-  createCustodianRole operator custodian
-
-  -- Services
-  createCustodyService          operator centralBank  issuer    public paths
-  createCustodyService          operator centralBank  registry  public paths
-  createCustodyService          operator centralBank  custodian public paths
-  createCustodyService          operator issuer       registry  public paths
-  createCustodyService          operator registry     issuer    public paths
-  createCustodyService          operator registry     custodian public paths
-  createCustodyService          operator custodian    inv1      public paths
-  createCustodyService          operator custodian    inv2      public paths
-  createCustodyService          operator custodian    inv3      public paths
-  createIssuanceService         operator registry     issuer
-  createIssuanceAutoService     operator registry     issuer
-  createStructuringService      operator registry     issuer
-  createStructuringAutoService  operator registry     issuer
-  createLifecycleService        operator registry     issuer
-  createSettlementService       operator issuer       registry  paths
-  createSettlementService       operator registry     custodian paths
-  createSettlementService       operator custodian    inv1      paths
-  createSettlementService       operator custodian    inv2      paths
-  createSettlementService       operator custodian    inv3      paths
-
-  -- Accounts
-  issuerCashAccount     <- createAccount operator centralBank issuer    public "Issuer@CentralBank|Cash"         empty
-  registryCashAccount   <- createAccount operator centralBank registry  public "Registry@CentralBank|Cash"       empty
-  custodianCashAccount  <- createAccount operator centralBank custodian public "Custodian@CentralBank|Cash"      empty
-  inv1CashAccount       <- createAccount operator custodian   inv1      public "Investor1@Custodian|Cash"        empty
-  inv2CashAccount       <- createAccount operator custodian   inv2      public "Investor2@Custodian|Cash"        empty
-  inv3CashAccount       <- createAccount operator custodian   inv3      public "Investor3@Custodian|Cash"        empty
-  registrySecAccount    <- createAccount operator issuer      registry  public "Issuer@Registry|Securities"      empty
-  issuerSecAccount      <- createAccount operator registry    issuer    public "Registry@Issuer|Securities"      empty
-  custodianSecAccount   <- createAccount operator registry    custodian public "Custodian@Registry|Securities"   empty
-  inv1SecAccount        <- createAccount operator custodian   inv1      public "Investor1@Custodian|Securities"  empty
-  inv2SecAccount        <- createAccount operator custodian   inv2      public "Investor2@Custodian|Securities"  empty
-  inv3SecAccount        <- createAccount operator custodian   inv3      public "Investor3@Custodian|Securities"  empty
-
-  -- Time
-  t <- getTime
-  let
-    today = toDateUTC t
-    todayTime = time today 0 0 0
-    tt d = time d 0 0 0
-    epoch = tt $ date 1970 Jan 1
-    (ty, tm, td) = toGregorian today
-  (clockCid, eventCid) <- createClockAndEvent all today (singleton public)
-
-  -- Instruments
-  usd     <- originateToken  centralBank centralBank pub epoch "USD"    "United States Dollar"
-  equity  <- originateEquity registry    issuer      pub epoch "NewCo"  "NewCo, Inc. Common Stock"
-  equity2 <- originateEquity registry    issuer      pub epoch "Acme"   "Acme, Inc. Common Stock"
-
-  -- Data
-  createAccountDirectory issuer     [(usd, issuerCashAccount), (equity, issuerSecAccount)]        $ singleton public
-  createAccountDirectory registry   [(usd, registryCashAccount), (equity, registrySecAccount)]    $ singleton public
-  createAccountDirectory custodian  [(usd, custodianCashAccount), (equity, custodianSecAccount)]  $ singleton public
-  createAccountDirectory inv1       [(usd, inv1CashAccount), (equity, inv1SecAccount)]            $ singleton public
-  createAccountDirectory inv2       [(usd, inv2CashAccount), (equity, inv2SecAccount)]            $ singleton public
-  createAccountDirectory inv3       [(usd, inv3CashAccount), (equity, inv3SecAccount)]            $ singleton public
-
-  -- Distribution
-  registryEquityCid     <- deposit  operator issuer   registry    public (qty 1_000_000.0 equity) registrySecAccount
-  (_, issuerEquityCid)  <- issue    operator registry issuer      public (qty 1_000_000.0 equity) issuerSecAccount
-  custodianEquityCid    <- transfer issuer   custodianSecAccount  public $ coerceContractId issuerEquityCid
-  inv1EquityCid         <- deposit  operator custodian inv1       public (qty 500_000.0 equity) inv1SecAccount
-  inv2EquityCid         <- deposit  operator custodian inv2       public (qty 300_000.0 equity) inv2SecAccount
-  inv3EquityCid         <- deposit  operator custodian inv3       public (qty 200_000.0 equity) inv3SecAccount
-
-  issuerCashCid         <- coerceContractId <$> deposit  operator centralBank issuer     public (qty 500_000.0 usd) issuerCashAccount
-  registryCashCid       <- coerceContractId <$> deposit  operator centralBank registry   public (qty 500_000.0 usd) registryCashAccount
+testDividend : Script ()
+testDividend = do
+  -- Fixture
+  parties@[operator, public, centralBank, registry, issuer, custodian, inv1, inv2, inv3] <-
+    mapA allocateParty ["Operator", "Public", "CentralBank", "Registry", "Issuer", "Custodian", "Investor1", "Investor2", "Investor3"]
+  Fixture{instruments; accounts; holdings} <- submitMulti parties [] do createAndExerciseCmd (Scenario with parties) Setup
 
   -- Workflows
+  t <- getTime
   let
-    processDividend = do
-      effectCid <- declareDividend operator registry issuer public equity todayTime [qty 0.5 usd]
+    [usd, equity, _] = instruments
+    [registryCashAccount, _, custodianCashAccount, inv1CashAccount, inv2CashAccount, inv3CashAccount, _, _, _, _, _] = accounts
+    [registryEquityCid, _, custodianEquityCid, inv1EquityCid, inv2EquityCid, inv3EquityCid, issuerCashCid, registryCashCid] = holdings
+    today = toDateUTC t
+    todayTime = time today 0 0 0
 
-      -- Claim registry holding
-      (batchCid, instructionCids) <- claimEffect operator issuer registry public effectCid [registryEquityCid] (Id "Registry-Settlement")
-      allocateAndApprove operator issuer (head instructionCids) (Pledge issuerCashCid) (TakeDelivery registryCashAccount)
-      submitMulti [issuer] [public] do exerciseCmd batchCid Batch.Settle with actors = singleton issuer
+  effectCid <- declareDividend operator registry issuer public equity todayTime [qty 0.5 usd]
 
-      -- Claim custodian holding
-      (batchCid, instructionCids) <- claimEffect operator registry custodian public effectCid [toInterfaceContractId custodianEquityCid] (Id "Custodian-Settlement")
-      allocateAndApprove operator registry (head instructionCids) (Pledge registryCashCid) (TakeDelivery custodianCashAccount)
-      submitMulti [registry] [public] do exerciseCmd batchCid Batch.Settle with actors = singleton registry
+  -- -- TODO: We don't create new instrument versions yet
+  -- -- Claim registry holding
+  -- (batchCid, [oldCid, newCid, cashCid]) <- claimEffect operator issuer registry public effectCid [registryEquityCid] (Id "Registry-Settlement")
+  -- allocateAndApprove operator issuer oldCid (Pledge issuerCashCid) (TakeDelivery registryCashAccount)
+  -- allocateAndApprove operator issuer newCid (Pledge issuerCashCid) (TakeDelivery registryCashAccount)
+  -- allocateAndApprove operator issuer cashCid (Pledge issuerCashCid) (TakeDelivery registryCashAccount)
+  -- submitMulti [issuer] [public] do exerciseCmd batchCid Batch.Settle with actors = singleton issuer
 
-      -- Claim investor holdings
-      (batchCid, instructionCids) <- claimEffect operator custodian inv1 public effectCid [toInterfaceContractId inv1EquityCid] (Id "Investor1-Settlement")
-      allocateAndApprove operator custodian (head instructionCids) CreditReceiver (TakeDelivery inv1CashAccount)
-      submitMulti [custodian] [public] do exerciseCmd batchCid Batch.Settle with actors = singleton custodian
-      (batchCid, instructionCids) <- claimEffect operator custodian inv2 public effectCid [toInterfaceContractId inv2EquityCid] (Id "Investor2-Settlement")
-      allocateAndApprove operator custodian (head instructionCids) CreditReceiver (TakeDelivery inv2CashAccount)
-      submitMulti [custodian] [public] do exerciseCmd batchCid Batch.Settle with actors = singleton custodian
-      (batchCid, instructionCids) <- claimEffect operator custodian inv3 public effectCid [toInterfaceContractId inv3EquityCid] (Id "Investor3-Settlement")
-      allocateAndApprove operator custodian (head instructionCids) CreditReceiver (TakeDelivery inv3CashAccount)
-      submitMulti [custodian] [public] do exerciseCmd batchCid Batch.Settle with actors = singleton custodian
+  -- -- Claim custodian holding
+  -- (batchCid, instructionCids) <- claimEffect operator registry custodian public effectCid [toInterfaceContractId custodianEquityCid] (Id "Custodian-Settlement")
+  -- allocateAndApprove operator registry (head instructionCids) (Pledge registryCashCid) (TakeDelivery custodianCashAccount)
+  -- submitMulti [registry] [public] do exerciseCmd batchCid Batch.Settle with actors = singleton registry
 
-      pure ()
+  -- -- Claim investor holdings
+  -- (batchCid, instructionCids) <- claimEffect operator custodian inv1 public effectCid [toInterfaceContractId inv1EquityCid] (Id "Investor1-Settlement")
+  -- allocateAndApprove operator custodian (head instructionCids) CreditReceiver (TakeDelivery inv1CashAccount)
+  -- submitMulti [custodian] [public] do exerciseCmd batchCid Batch.Settle with actors = singleton custodian
+  -- (batchCid, instructionCids) <- claimEffect operator custodian inv2 public effectCid [toInterfaceContractId inv2EquityCid] (Id "Investor2-Settlement")
+  -- allocateAndApprove operator custodian (head instructionCids) CreditReceiver (TakeDelivery inv2CashAccount)
+  -- submitMulti [custodian] [public] do exerciseCmd batchCid Batch.Settle with actors = singleton custodian
+  -- (batchCid, instructionCids) <- claimEffect operator custodian inv3 public effectCid [toInterfaceContractId inv3EquityCid] (Id "Investor3-Settlement")
+  -- allocateAndApprove operator custodian (head instructionCids) CreditReceiver (TakeDelivery inv3CashAccount)
+  -- submitMulti [custodian] [public] do exerciseCmd batchCid Batch.Settle with actors = singleton custodian
 
-  -- processDividend
-
-  pure parties
+  pure ()

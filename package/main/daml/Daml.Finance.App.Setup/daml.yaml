@@ -44,6 +44,7 @@ data-dependencies:
   - .lib/daml-finance-app/Daml.Finance.App.Data/0.0.1/daml-finance-app-data-0.0.1.dar
   - .lib/daml-finance-app/Daml.Finance.App.Decentralized/0.0.1/daml-finance-app-decentralized-0.0.1.dar
   - .lib/daml-finance-app/Daml.Finance.App.Distribution/0.0.1/daml-finance-app-distribution-0.0.1.dar
+  - .lib/daml-finance-app/Daml.Finance.App.Interface.Base/0.0.1/daml-finance-app-interface-base-0.0.1.dar
   - .lib/daml-finance-app/Daml.Finance.App.Interface.Custody/0.0.1/daml-finance-app-interface-custody-0.0.1.dar
   - .lib/daml-finance-app/Daml.Finance.App.Interface.Decentralized/0.0.1/daml-finance-app-interface-decentralized-0.0.1.dar
   - .lib/daml-finance-app/Daml.Finance.App.Interface.Distribution/0.0.1/daml-finance-app-interface-distribution-0.0.1.dar

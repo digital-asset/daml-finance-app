@@ -1,7 +1,7 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module Daml.Finance.App.Setup.Util2.Workflow where
+module Daml.Finance.App.Setup.Util.Update.Workflow where
 
 import DA.Date (DayOfWeek, toGregorian)
 import DA.List (head)
@@ -68,18 +68,6 @@ import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayAdjustment(..), Bu
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum, RollConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.Schedule (Frequency(..), PeriodicSchedule(..))
-
--- getService : forall t k . (Template t, TemplateKey t k) => Party -> k -> Update (ContractId t)
--- getService actor k = do
---   opt <- queryContractKey @t actor k
---   case opt of
---     Some (serviceCid, service) -> pure serviceCid
---     None -> fail $ "Service not found"
-
--- getServiceInterface : forall t k i . (Template t, TemplateKey t k, HasInterfaceTypeRep i) => Party -> (Party, Party, Party) -> Update (ContractId i)
--- getServiceInterface actor k = do
---   svc <- getService @t actor k
---   pure $ toInterfaceContractId @i svc
 
 createAccount : Party -> Party -> Party -> Party -> Text -> PartiesMap -> Update AccountKey
 createAccount operator provider customer public id observers = do

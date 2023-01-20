@@ -15,6 +15,8 @@ import appListing from "../images/app/listing.png";
 import appTrading from "../images/app/trading.png";
 import appNetwork from "../images/app/network.png";
 import { PartyInfo, useAdmin } from "./AdminContext";
+import { Scenario as Default } from "@daml.js/daml-finance-app-setup/lib/Daml/Finance/App/Setup/Scenario/Default";
+import { Scenario as BondIssuance } from "@daml.js/daml-finance-app-setup/lib/Daml/Finance/App/Setup/Scenario/BondIssuance";
 
 type Position = {
   x : number
@@ -27,15 +29,15 @@ type PartyPosition = {
 };
 
 export type Scenario = {
-  label : string,
+  name : string,
   description : string,
-  apps: AppInfo[],
+  apps: string[],
   parties : PartyPosition[],
   useNetworkLogin: boolean,
   isInitialized: boolean,
 };
 
-export type ScenarioState = {
+type ScenarioState = {
   selected : Scenario
   scenarios : Scenario[]
   select : (name : string) => Scenario
@@ -45,22 +47,34 @@ export type ScenarioState = {
 
 type AppInfo = {
   name : string
-  path : string
-  elem : JSX.Element
+  element : JSX.Element
 };
 
-const structuring   = { name: "Structuring",  path: "structuring",  elem: <App key={0}  label="Structuring"   description="Structure and design new assets"         image={appStructuring}  path="/app/structuring/instruments" /> };
-const issuance      = { name: "Issuance",     path: "issuance",     elem: <App key={1}  label="Issuance"      description="Issue new assets"                        image={appIssuance}     path="/app/issuance/issuances" /> };
-const custody       = { name: "Custody",      path: "custody",      elem: <App key={2}  label="Custody"       description="Manage assets in custody"                image={appCustody}      path="/app/custody/assets" /> };
-const defi          = { name: "DeFi",         path: "defi",         elem: <App key={3}  label="DeFi"          description="Explore Decentralized Finance protocols" image={appDefi}         path="/app/defi/exchanges" /> };
-const distribution  = { name: "Distribution", path: "distribution", elem: <App key={4}  label="Distribution"  description="Distribute assets in the primary market" image={appDistribution} path="/app/distribution/auctions" /> };
-const lending       = { name: "Lending",      path: "lending",      elem: <App key={5}  label="Lending"       description="Borrow and lend securities"              image={appLending}      path="/app/lending/trades" /> };
-const servicing     = { name: "Servicing",    path: "servicing",    elem: <App key={6}  label="Servicing"     description="Service and lifecycle your assets"       image={appServicing}    path="/app/servicing/instruments" /> };
-const simulation    = { name: "Simulation",   path: "simulation",   elem: <App key={7}  label="Simulation"    description="Run market scenarios on your assets"     image={appSimulation}   path="/app/simulation/scenario" /> };
-const listing       = { name: "Listing",      path: "listing",      elem: <App key={8}  label="Listing"       description="List your assets on trading venues"      image={appListing}      path="/app/listing/listings" /> };
-const trading       = { name: "Trading",      path: "trading",      elem: <App key={9}  label="Trading"       description="Trade assets in the secondary market"    image={appTrading}      path="/app/trading/markets" /> };
-const network       = { name: "Network",      path: "network",      elem: <App key={10} label="Network"       description="Explore the distributed ledger network"  image={appNetwork}      path="/app/network/overview" /> };
-const settlement    = { name: "Settlement",   path: "settlement",   elem: <App key={11} label="Settlement"    description="Settle instructions in batches"          image={appSimulation}   path="/app/settlement/batches" /> };
+type SetupInfo = {
+  scenario : string
+  templateId : string
+  choice : string
+};
+
+export const applications : AppInfo[] = [
+  { name: "Structuring", element: <App key={0}  name="Structuring"   description="Structure and design new assets"         image={appStructuring}  path="/app/structuring/instruments" /> },
+  { name: "Issuance", element: <App key={1}  name="Issuance"      description="Issue new assets"                        image={appIssuance}     path="/app/issuance/issuances" /> },
+  { name: "Custody", element: <App key={2}  name="Custody"       description="Manage assets in custody"                image={appCustody}      path="/app/custody/assets" /> },
+  { name: "DeFi", element: <App key={3}  name="DeFi"          description="Explore Decentralized Finance protocols" image={appDefi}         path="/app/defi/exchanges" /> },
+  { name: "Distribution", element: <App key={4}  name="Distribution"  description="Distribute assets in the primary market" image={appDistribution} path="/app/distribution/auctions" /> },
+  { name: "Lending", element: <App key={5}  name="Lending"       description="Borrow and lend securities"              image={appLending}      path="/app/lending/trades" /> },
+  { name: "Servicing", element: <App key={6}  name="Servicing"     description="Service and lifecycle your assets"       image={appServicing}    path="/app/servicing/instruments" /> },
+  { name: "Simulation", element: <App key={7}  name="Simulation"    description="Run market scenarios on your assets"     image={appSimulation}   path="/app/simulation/scenario" /> },
+  { name: "Listing", element: <App key={8}  name="Listing"       description="List your assets on trading venues"      image={appListing}      path="/app/listing/listings" /> },
+  { name: "Trading", element: <App key={9}  name="Trading"       description="Trade assets in the secondary market"    image={appTrading}      path="/app/trading/markets" /> },
+  { name: "Network", element: <App key={10} name="Network"       description="Explore the distributed ledger network"  image={appNetwork}      path="/app/network/overview" /> },
+  { name: "Settlement", element: <App key={11} name="Settlement"    description="Settle instructions in batches"          image={appSimulation}   path="/app/settlement/batches" /> },
+];
+
+export const setups : SetupInfo[] = [
+  { scenario: "Default",       templateId: Default.templateId,      choice: "Setup" },
+  { scenario: "Bond Issuance", templateId: BondIssuance.templateId, choice: "Setup" },
+];
 
 const createParty = (name: string, x: number, y: number) : PartyPosition => {
   return { party: { displayName: name, identifier: "", isLocal: true, scenario: "" }, position: { x, y }};
@@ -68,9 +82,9 @@ const createParty = (name: string, x: number, y: number) : PartyPosition => {
 
 const defaultScenarios : Scenario[] = [
   {
-    label: "Default",
+    name: "Default",
     description: "Primary and secondary markets workflows",
-    apps: [ structuring, issuance, custody, distribution, servicing, simulation, listing, trading, network ],
+    apps: [ "Structuring", "Issuance", "Custody", "Distribution", "Servicing", "Simulation", "Listing", "Trading", "Network", ],
     parties: [
       createParty("Operator",        0,   0),
       createParty("Public",          0,   0),
@@ -87,9 +101,9 @@ const defaultScenarios : Scenario[] = [
     isInitialized: false,
   },
   {
-    label: "Bond Issuance",
+    name: "Bond Issuance",
     description: "Simple bond issuance custody scenario",
-    apps: [ structuring, issuance, custody, distribution, servicing, listing, trading, settlement, network ],
+    apps: [ "Structuring", "Issuance", "Custody", "Distribution", "Servicing", "Listing", "Trading", "Settlement", "Network", ],
     parties: [
       createParty("Operator",        0,   0),
       createParty("Public",          0,   0),
@@ -105,9 +119,9 @@ const defaultScenarios : Scenario[] = [
     isInitialized: false
   },
   {
-    label: "Corporate Actions",
+    name: "Corporate Actions",
     description: "Equity workflows for corporate actions",
-    apps: [ structuring, issuance, custody, distribution, servicing, listing, trading, settlement, network ],
+    apps: [ "Structuring", "Issuance", "Custody", "Distribution", "Servicing", "Listing", "Trading", "Settlement", "Network", ],
     parties: [
       createParty("Operator",        0,   0),
       createParty("Public",          0,   0),
@@ -123,9 +137,9 @@ const defaultScenarios : Scenario[] = [
     isInitialized: false
   },
   {
-    label: "Securities Lending",
+    name: "Securities Lending",
     description: "Stock borrowing and lending scenario",
-    apps: [ structuring, issuance, custody, lending, servicing, settlement, network ],
+    apps: [ "Structuring", "Issuance", "Custody", "Lending", "Servicing", "Settlement", "Network", ],
     parties: [
       createParty("Operator",        0,   0),
       createParty("Public",          0,   0),
@@ -138,9 +152,9 @@ const defaultScenarios : Scenario[] = [
     isInitialized: false
   },
   {
-    label: "Natural Gas",
+    name: "Natural Gas",
     description: "Modeling complex commodity trades",
-    apps: [ structuring, issuance, custody, servicing, network ],
+    apps: [ "Structuring", "Issuance", "Custody", "Servicing", "Network", ],
     parties: [
       createParty("Operator",        0,   0),
       createParty("Public",          0,   0),
@@ -152,9 +166,9 @@ const defaultScenarios : Scenario[] = [
     isInitialized: false
   },
   {
-    label: "Structured Notes",
+    name: "Structured Notes",
     description: "Synchronized issuance for structured products",
-    apps: [ structuring, issuance, custody, distribution, servicing, listing, trading, settlement, network ],
+    apps: [ "Structuring", "Issuance", "Custody", "Distribution", "Servicing", "Listing", "Trading", "Settlement", "Network", ],
     parties: [
       createParty("Operator",        0,   0),
       createParty("Public",          0,   0),
@@ -170,9 +184,9 @@ const defaultScenarios : Scenario[] = [
     isInitialized: false
   },
   {
-    label: "Fund Tokenization",
+    name: "Fund Tokenization",
     description: "Issuance and distribution of funds",
-    apps: [ structuring, issuance, custody, distribution, servicing, listing, trading, settlement, network ],
+    apps: [ "Structuring", "Issuance", "Custody", "Distribution", "Servicing", "Listing", "Trading", "Settlement", "Network", ],
     parties: [
       createParty("Operator",             0,   0),
       createParty("Public",               0,   0),
@@ -188,9 +202,9 @@ const defaultScenarios : Scenario[] = [
     isInitialized: false
   },
   {
-    label: "Decentralized Finance",
+    name: "Decentralized Finance",
     description: "Experimental Decentralized Financial protocols",
-    apps: [ custody, defi, network ],
+    apps: [ "Custody", "DeFi", "Network", ],
     parties: [
       createParty("Operator",       0,   0),
       createParty("Public",         0,   0),
@@ -217,17 +231,17 @@ export const ScenarioProvider : React.FC = ({ children }) => {
   const initialize = (scenario : Scenario) => {
     if (loading) throw new Error("Trying to initialize scenario but still loading");
     const scenariosKey = ledgerId + ".scenarios";
-    const newScenarios = state.scenarios.map(s => s.label === scenario.label ? scenario : s);
+    const newScenarios = state.scenarios.map(s => s.name === scenario.name ? scenario : s);
     console.log("Storing scenarios for " + scenariosKey);
     localStorage.setItem(scenariosKey, JSON.stringify(newScenarios));
-    if (state.selected.label === scenario.label) setState({ ...state, scenarios: newScenarios, selected: scenario });
+    if (state.selected.name === scenario.name) setState({ ...state, scenarios: newScenarios, selected: scenario });
     else setState(s => ({ ...s, scenarios: newScenarios }));
   };
 
   const select = (name : string) : Scenario => {
     if (loading) throw new Error("Trying to select scenario but still loading");
     const scenarioKey = ledgerId + ".scenario";
-    const selected = state.scenarios.find(s => s.label === name);
+    const selected = state.scenarios.find(s => s.name === name);
     if (!selected) throw new Error("Couldn't find scenario " + name);
     localStorage.setItem(scenarioKey, name);
     setState(s => ({ ...s, selected }));
@@ -243,7 +257,7 @@ export const ScenarioProvider : React.FC = ({ children }) => {
 
     const scenarioKey = ledgerId + ".scenario";
     const scenarioName = localStorage.getItem(scenarioKey) || "Default";
-    const selected = scenarios.find(s => s.label === scenarioName);
+    const selected = scenarios.find(s => s.name === scenarioName);
     if (!selected) throw new Error("Couldn't find scenario " + scenarioName);
 
     console.log("Scenario: " + scenarioName);

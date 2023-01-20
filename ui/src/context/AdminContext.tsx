@@ -18,6 +18,7 @@ type AdminState = {
   ledgerParties : PartyInfo[]
   createParty : (displayName : string, identifierHint: string) => Promise<PartyInfo>
   getMultiPartyToken : (parties : string[]) => Promise<string>
+  runSetup : (templateId : string, choice : string, parties : string[]) => Promise<void>
 };
 
 const defaultState : AdminState = {
@@ -25,7 +26,8 @@ const defaultState : AdminState = {
   ledgerId: "",
   ledgerParties: [],
   createParty: (a, b) => { throw new Error("Not implemented") },
-  getMultiPartyToken: (parties) => { throw new Error("Not implemented") }
+  getMultiPartyToken: (parties) => { throw new Error("Not implemented") },
+  runSetup: (templateId, choice, parties) => { throw new Error("Not implemented") }
 };
 const AdminContext = React.createContext<AdminState>(defaultState);
 
@@ -47,6 +49,18 @@ export const AdminProvider : React.FC = ({ children }) => {
     return Promise.resolve(token);
   };
 
+  const runSetup = async (templateId : string, choice : string, parties: string[]) => {
+    const token = await getMultiPartyToken(parties);
+    const config = { headers: { "Authorization": "Bearer " + token } };
+    const body = {
+      templateId,
+      payload: { parties },
+      choice: choice,
+      argument: {}
+    }
+    await axios.post("/v1/create-and-exercise", body, config);
+  };
+
   useMemo(() => {
     const initialize = async () => {
       const payload = { ledgerId: "sandbox", applicationId: "daml-finance-app", admin: true };
@@ -65,7 +79,7 @@ export const AdminProvider : React.FC = ({ children }) => {
   }, []);
 
   return (
-    <AdminContext.Provider value={{ ...state, createParty, getMultiPartyToken }}>
+    <AdminContext.Provider value={{ ...state, createParty, getMultiPartyToken, runSetup }}>
         {children}
     </AdminContext.Provider>
   );

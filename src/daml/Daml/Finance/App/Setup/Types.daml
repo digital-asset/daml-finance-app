@@ -1,0 +1,17 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Setup.Types where
+
+import Daml.Finance.App.Interface.Base.Service qualified as Service (I)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentKey)
+
+data Fixture = Fixture
+  with
+    instruments : [InstrumentKey]
+    accounts : [AccountKey]
+    holdings : [ContractId Holding.I]
+    services : [ContractId Service.I]
+  deriving (Eq, Show)
+

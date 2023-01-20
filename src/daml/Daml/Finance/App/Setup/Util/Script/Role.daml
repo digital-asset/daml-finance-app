@@ -1,7 +1,7 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module Daml.Finance.App.Setup.Util.Role where
+module Daml.Finance.App.Setup.Util.Script.Role where
 
 import Daml.Script
 import Daml.Finance.App.Role.Operator qualified as Operator (OfferCustodianRole(..), OfferDistributorRole(..), OfferExchangeRole(..), Role(..))

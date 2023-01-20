@@ -11,10 +11,10 @@ import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum(..)
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum(..))
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
-import Daml.Finance.App.Setup.Util.Common
-import Daml.Finance.App.Setup.Util.Role
-import Daml.Finance.App.Setup.Util.Service
-import Daml.Finance.App.Setup.Util.Workflow
+import Daml.Finance.App.Setup.Util.Script.Common
+import Daml.Finance.App.Setup.Util.Script.Role
+import Daml.Finance.App.Setup.Util.Script.Service
+import Daml.Finance.App.Setup.Util.Script.Workflow
 import Daml.Script
 
 run : Script [PartyInfo]
