@@ -49,6 +49,7 @@
     "d3": "^7.1.1",
     "date-fns": "^2.25.0",
     "jwt-simple": "^0.5.6",
+    "preval.macro": "^5.0.0",
     "react": "^17.0.2",
     "react-d3-tree": "^3.3.2",
     "react-dom": "^17.0.2",
@@ -87,6 +88,7 @@
   "devDependencies": {
     "@types/d3": "^7.1.0",
     "@types/jwt-simple": "^0.5.33",
+    "@types/preval.macro": "^3.0.0",
     "@types/react": "^17.0.2",
     "@types/react-dom": "^17.0.2",
     "@types/uuid": "^8.3.1",

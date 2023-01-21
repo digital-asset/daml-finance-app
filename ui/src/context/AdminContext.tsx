@@ -61,20 +61,21 @@ export const AdminProvider : React.FC = ({ children }) => {
     await axios.post("/v1/create-and-exercise", body, config);
   };
 
+  const initialize = async () => {
+    const payload = { ledgerId: "sandbox", applicationId: "daml-finance-app", admin: true };
+    const token = encode({ "https://daml.com/ledger-api": payload }, "secret", "HS256");
+    const config = { headers: { "Authorization": "Bearer " + token } };
+    const { data } = await axios.get("/v1/parties", config);
+    const ledgerParties : PartyInfo[] = data.result;
+    const sandboxParty = ledgerParties.find(p => p.identifier.startsWith("sandbox::"));
+    if (!sandboxParty) throw new Error("Couldn't find sandbox party");
+    const participantId = sandboxParty.identifier.split("::")[1];
+    console.log("LedgerId: " + participantId);
+    console.log("Parties: " + ledgerParties.length);
+    setState(s => ({ ...s, loading: false, ledgerId: participantId, ledgerParties }));
+  };
+
   useMemo(() => {
-    const initialize = async () => {
-      const payload = { ledgerId: "sandbox", applicationId: "daml-finance-app", admin: true };
-      const token = encode({ "https://daml.com/ledger-api": payload }, "secret", "HS256");
-      const config = { headers: { "Authorization": "Bearer " + token } };
-      const { data } = await axios.get("/v1/parties", config);
-      const ledgerParties : PartyInfo[] = data.result;
-      const sandboxParty = ledgerParties.find(p => p.identifier.startsWith("sandbox::"));
-      if (!sandboxParty) throw new Error("Couldn't find sandbox party");
-      const ledgerId = sandboxParty.identifier.split("::")[1];
-      console.log("LedgerId: " + ledgerId);
-      console.log("Parties: " + ledgerParties.length);
-      setState(s => ({ ...s, loading: false, ledgerId, ledgerParties }));
-    };
     initialize();
   }, []);
 

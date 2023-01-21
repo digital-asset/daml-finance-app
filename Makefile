@@ -25,14 +25,26 @@ clean:
 
 .PHONY: codegen
 codegen:
-	daml codegen js -o ui/daml.js .dars/*
+	daml codegen js -o ui/daml.js .dars/*.dar
 
 .PHONY: setup
 setup:
 	-rm -rf ui/daml.js
 	DAML_PROJECT=package/main/daml/Daml.Finance.App.Setup/ daml build
 	cp package/main/daml/Daml.Finance.App.Setup/.daml/dist/*.dar .dars/
-	daml codegen js -o ui/daml.js .dars/*
+	daml codegen js -o ui/daml.js .dars/*.dar
+
+.PHONY: build-ui
+build-ui:
+	cd ui && npm run build
+
+.PHONY: package
+package: build-ui
+	./$(SCRIPTS_DIR)/package.sh
+
+.PHONY: deploy
+deploy:
+	./$(SCRIPTS_DIR)/deploy.sh
 
 #########################
 # Packages (./packages) #
@@ -49,10 +61,6 @@ build-packages:
 # .PHONY: build-java-packages
 # build-java-packages: build-packages
 # 	daml codegen java -o .dars/.java .dars/*
-
-.PHONY: build-ui
-build-ui: codegen
-	cd ui && npm install && npm run build
 
 .PHONY: test-packages
 test-packages: build-packages
@@ -97,13 +105,13 @@ ci-build:
 # ci-build-java:
 # 	@nix-shell \
 # 		--pure \
-# 		--run 'daml codegen java -o .dars/.java .dars/*'
+# 		--run 'daml codegen java -o .dars/.java .dars/*.dar'
 
 # .PHONY: ci-build-js
 # ci-build-js:
 # 	@nix-shell \
 # 		--pure \
-# 		--run 'daml codegen js -o ui/daml.js .dars/*'
+# 		--run 'daml codegen js -o ui/daml.js .dars/*.dar'
 
 .PHONY: ci-test
 ci-test:

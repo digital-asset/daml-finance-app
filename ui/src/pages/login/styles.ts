@@ -18,6 +18,13 @@ export default makeStyles((theme : any) => createStyles({
     left: "50%",
     transform: "translate(-50%, 0%)"
   },
+  versionText: {
+    textAlign: "right",
+    position: "absolute",
+    top: "0%",
+    right: "0%",
+
+  },
   progressBar: {
     position: "absolute",
     top: "30%",
