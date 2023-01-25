@@ -23,9 +23,9 @@ import Daml.Script
 run : Script [PartyInfo]
 run = do
   let scenario = "OTC Swaps"
-  parties <- allocateParties scenario ["Operator", "Public", "CentralBank", "Seller", "Buyer"]
+  parties <- allocateParties scenario ["Operator", "CentralBank", "Seller", "Buyer"] "Public"
   let
-    all@[operator, public, centralBank, seller, buyer] = map (.id) parties
+    all@[operator, centralBank, seller, buyer, public] = map (.id) parties
     pub = fromList [("Public", singleton public)]
 
   -- Factories

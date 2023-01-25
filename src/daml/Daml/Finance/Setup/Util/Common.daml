@@ -5,8 +5,9 @@
 
 module Daml.Finance.Setup.Util.Common where
 
-import DA.List (head)
+import DA.List (head, singleton)
 import DA.Optional (fromOptional)
+import DA.Text (asciiToLower, replace)
 import Daml.Finance.Holding.Fungible qualified as Fungible (T)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..), SplitResult(..))
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
@@ -20,16 +21,34 @@ data PartyInfo = PartyInfo
     id : Party
   deriving (Eq, Show)
 
-allocateParties : Text -> [Text] -> Script [PartyInfo]
-allocateParties scenario partyNames = do
+allocateUser : Text -> [Party] -> [Party] -> Script User
+allocateUser displayName actAsParties readAsParties = do
+  userId <- validateUserId $ asciiToLower displayName
+  let
+    user = User userId (Some $ head actAsParties)
+    actAsRights = fmap CanActAs actAsParties
+    readAsRights = fmap CanReadAs readAsParties
+  createUser user $ actAsRights ++ readAsRights
+  pure user
+
+allocateParties : Text -> [Text] -> Text -> Script [PartyInfo]
+allocateParties scenario partyNames publicPartyName = do
   existingParties <- listKnownParties
   let
-    allocate party =
+    scopedPartyName p = p <> "-" <> scenario
+    allocate publicParty party =
       case find (\d -> (fromOptional "" d.displayName) == party) existingParties of
         Some detail -> do pure detail.party
-        None -> do allocatePartyWithHint (party <> "-" <> scenario) $ PartyIdHint (party <> "-" <> scenario)
-  parties <- mapA allocate partyNames
-  pure $ map (\(name, id) -> PartyInfo with scenario; name; id) $ zip partyNames parties
+        None -> do
+          let
+            scopedPartyName = party <> "-" <> scenario
+            scopedUserName = replace " " "-" scopedPartyName
+          p <- allocatePartyWithHint scopedPartyName $ PartyIdHint scopedPartyName
+          u <- allocateUser scopedUserName [p] [publicParty]
+          pure p
+  publicParty <- allocatePartyWithHint (scopedPartyName publicPartyName) $ PartyIdHint (scopedPartyName publicPartyName)
+  parties <- mapA (allocate publicParty) partyNames
+  pure $ map (\(name, id) -> PartyInfo with scenario; name; id) $ zip partyNames parties ++ singleton (publicPartyName, publicParty)
 
 getHolding : Party -> Instrument.Q -> Script (ContractId Holding.I)
 getHolding party quantity = do
