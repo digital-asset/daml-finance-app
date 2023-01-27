@@ -49,14 +49,15 @@ run  = do
   createDistributorRole operator agent
 
   -- Services
-  createCustodyService          operator centralBank issuer settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator centralBank inv1   settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator centralBank inv2   settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator centralBank inv3   settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator registry    issuer settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator registry    inv1   settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator registry    inv2   settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator registry    inv3   settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank issuer     settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank inv1       settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank inv2       settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank inv3       settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank registry   settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator registry    issuer     settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator registry    inv1       settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator registry    inv2       settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator registry    inv3       settlementFactoryCid accountFactoryCid holdingFactoryCid
   createIssuanceService         operator registry    issuer
   createIssuanceAutoService     operator registry    issuer
   createStructuringService      operator registry    issuer
@@ -82,14 +83,15 @@ run  = do
   createBiddingAutoService      operator agent       inv3
 
   -- Accounts
-  issuerCashAccount <- createAccount operator centralBank  issuer public "Issuer@CentralBank"    empty
-  inv1CashAccount   <- createAccount operator centralBank  inv1   public "Investor1@CentralBank" empty
-  inv2CashAccount   <- createAccount operator centralBank  inv2   public "Investor2@CentralBank" empty
-  inv3CashAccount   <- createAccount operator centralBank  inv3   public "Investor3@CentralBank" empty
-  issuerSecAccount  <- createAccount operator registry     issuer public "Issuer@Registry"       empty
-  inv1SecAccount    <- createAccount operator registry     inv1   public "Investor1@Registry"    empty
-  inv2SecAccount    <- createAccount operator registry     inv2   public "Investor2@Registry"    empty
-  inv3SecAccount    <- createAccount operator registry     inv3   public "Investor3@Registry"    empty
+  issuerCashAccount   <- createAccount operator centralBank  issuer   public "Issuer@CentralBank"    empty
+  registryCashAccount <- createAccount operator centralBank  registry public "Registry@CentralBank"  empty
+  inv1CashAccount     <- createAccount operator centralBank  inv1     public "Investor1@CentralBank" empty
+  inv2CashAccount     <- createAccount operator centralBank  inv2     public "Investor2@CentralBank" empty
+  inv3CashAccount     <- createAccount operator centralBank  inv3     public "Investor3@CentralBank" empty
+  issuerSecAccount    <- createAccount operator registry     issuer   public "Issuer@Registry"       empty
+  inv1SecAccount      <- createAccount operator registry     inv1     public "Investor1@Registry"    empty
+  inv3SecAccount      <- createAccount operator registry     inv3     public "Investor3@Registry"    empty
+  inv2SecAccount      <- createAccount operator registry     inv2     public "Investor2@Registry"    empty
 
   -- Time
   t <- getTime
@@ -121,9 +123,10 @@ run  = do
   let securities = [tsla, nflx, fwd, bnd, swp, bswp, opt, opt2 ]
 
   -- Distribution
-  inv1CashCid <- coerceContractId <$> deposit operator centralBank inv1 public (Instrument.qty 1_000_000.0 usd) inv1CashAccount
-  inv2CashCid <- coerceContractId <$> deposit operator centralBank inv2 public (Instrument.qty 1_000_000.0 usd) inv2CashAccount
-  inv3CashCid <- coerceContractId <$> deposit operator centralBank inv3 public (Instrument.qty 1_000_000.0 usd) inv3CashAccount
+  inv1CashCid <- deposit operator centralBank inv1 public (Instrument.qty 1_000_000.0 usd) inv1CashAccount
+  inv2CashCid <- deposit operator centralBank inv2 public (Instrument.qty 1_000_000.0 usd) inv2CashAccount
+  inv3CashCid <- deposit operator centralBank inv3 public (Instrument.qty 1_000_000.0 usd) inv3CashAccount
+  regCashCid <- deposit operator centralBank registry public (Instrument.qty 1_000_000.0 usd) registryCashAccount
 
   (_, ad1) <- issue operator registry issuer public (Instrument.qty 1.0 fwd)           issuerSecAccount
   (_, ad2) <- issue operator registry issuer public (Instrument.qty 1_000_000.0 bnd)   issuerSecAccount
