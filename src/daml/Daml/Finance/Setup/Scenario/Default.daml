@@ -32,9 +32,10 @@ run  = do
   -- Factories
   let
     assets = ["TSLA", "NFLX", "FWD1", "BOND1", "SWAP1", "BSWAP1", "OPT1", "OPT2"]
-    custodianPaths = [[issuer], [inv1], [inv2], [inv3]]
-    cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = custodianPaths
-    secRoute = Settlement.Hierarchy with rootCustodian = registry; pathsToRootCustodian = custodianPaths
+    cashSettlementPaths = [[issuer], [registry], [inv1], [inv2], [inv3]]
+    securitiesSettlementPaths = [[issuer], [inv1], [inv2], [inv3]]
+    cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = cashSettlementPaths
+    secRoute = Settlement.Hierarchy with rootCustodian = registry; pathsToRootCustodian = securitiesSettlementPaths
     paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
   accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
   holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
