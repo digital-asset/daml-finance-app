@@ -26,9 +26,9 @@ import Daml.Script
 
 run : Script [PartyInfo]
 run  = do
-  parties <- allocateParties "Structured Notes" ["Operator", "Public", "CentralBank", "Depository", "Issuer", "RiskTaker", "Investor1", "Investor2", "Investor3"]
+  parties <- allocateParties "Structured Notes" ["Operator", "CentralBank", "Depository", "Issuer", "RiskTaker", "Investor1", "Investor2", "Investor3"] "Public"
   let
-    all@[operator, public, centralBank, depository, issuer, riskTaker, inv1, inv2, inv3] = map (.id) parties
+    all@[operator, centralBank, depository, issuer, riskTaker, inv1, inv2, inv3, public] = map (.id) parties
     pub = fromList [("Public", singleton public)]
 
   -- Factories

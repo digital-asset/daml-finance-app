@@ -23,9 +23,9 @@ import Daml.Script
 
 run : Script [PartyInfo]
 run  = do
-  parties <- allocateParties "Natural Gas" ["Operator", "Public", "CashProvider", "Seller", "Buyer"]
+  parties <- allocateParties "Natural Gas" ["Operator", "CashProvider", "Seller", "Buyer"] "Public"
   let
-    all@[operator, public, cashProvider, seller, buyer] = map (.id) parties
+    all@[operator, cashProvider, seller, buyer, public] = map (.id) parties
     pub = fromList [("Public", singleton public)]
 
   -- Factories
