@@ -30,9 +30,10 @@ run = do
 
   -- Factories
   let
-    settlementPaths = [[buyer], [seller]]
-    cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = settlementPaths
-    secRoute = Settlement.Hierarchy with rootCustodian = seller; pathsToRootCustodian = settlementPaths
+    cashSettlementPaths = [[buyer], [seller]]
+    securitySettlementPaths = [[buyer]]
+    cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = cashSettlementPaths
+    secRoute = Settlement.Hierarchy with rootCustodian = seller; pathsToRootCustodian = securitySettlementPaths
     paths = fromList [("USD", cashRoute), ("CDS1", secRoute)]
   accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
   holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub

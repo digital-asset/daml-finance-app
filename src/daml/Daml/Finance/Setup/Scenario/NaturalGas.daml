@@ -31,9 +31,10 @@ run  = do
   -- Factories
   let
     assets = ["Z4200L", "Z4GEN", "Z4300L", "NATGAS1", "NATGAS2", "NATGAS3", "NATGAS4"]
-    settlementPaths = [[buyer], [seller]]
-    cashRoute = Settlement.Hierarchy with rootCustodian = cashProvider; pathsToRootCustodian = settlementPaths
-    secRoute = Settlement.Hierarchy with rootCustodian = seller; pathsToRootCustodian = settlementPaths
+    cashSettlementPaths = [[buyer], [seller]]
+    securitySettlementPaths = [[buyer]]
+    cashRoute = Settlement.Hierarchy with rootCustodian = cashProvider; pathsToRootCustodian = cashSettlementPaths
+    secRoute = Settlement.Hierarchy with rootCustodian = seller; pathsToRootCustodian = securitySettlementPaths
     paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
   accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
   holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
