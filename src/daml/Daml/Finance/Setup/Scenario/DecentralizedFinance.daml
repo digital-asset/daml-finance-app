@@ -22,9 +22,9 @@ import Daml.Script
 run : Script [PartyInfo]
 run  = do
   let scenario = "Decentralized Finance"
-  parties <- allocateParties scenario ["Operator", "Public", "FED", "ECB", "SNB", "BOE", "Consortium", "Trader"]
+  parties <- allocateParties scenario ["Operator", "FED", "ECB", "SNB", "BOE", "Consortium", "Trader"] "Public"
   let
-    all@[operator, public, fed, ecb, snb, boe, con, trd] = map (.id) parties
+    all@[operator, fed, ecb, snb, boe, con, trd, public] = map (.id) parties
     pub = fromList [("Public", singleton public)]
 
   -- Factories
