@@ -115,7 +115,7 @@ run = do
       ir2Cid <- createInvestmentRequest operator am inv2 public "REQ-FUND1-INV2" today fund1Cid (coerceContractId inv2CashCid)
       ir3Cid <- createInvestmentRequest operator am inv3 public "REQ-FUND1-INV3" today fund1Cid (coerceContractId inv3CashCid)
       pirCid <- poolInvestmentRequests operator pm am public "REQ-FUND1-POOLED" today fund1Cid (coerceContractId amCashCid) [ir1Cid, ir2Cid, ir3Cid]
-      fulfillPooledInvestmentRequest operator pm am public fund1Cid pirCid navFund1Cid settlementFactoryCid
+      fulfillPooledInvestmentRequest operator pm am public fund1Cid pirCid navFund1Cid
   -- doDistribution
 
   pure parties
