@@ -134,13 +134,6 @@ run = do
   (timeObservableCid, eventCid) <- createClockAndEvent all today (singleton public)
 
   -- Distribution
-  Some bond2I <- queryContractId issuer (coerceContractId bond2Cid : ContractId FixedRateBond.Instrument)
-  Some bond3I <- queryContractId issuer (coerceContractId bond3Cid : ContractId FloatingRateBond.Instrument)
-  Some bond4I <- queryContractId issuer (coerceContractId bond4Cid : ContractId InflationLinkedBond.Instrument)
-  let
-    bond2 = Instrument.getKey $ toInterface @Instrument.I bond2I
-    bond3 = Instrument.getKey $ toInterface @Instrument.I bond3I
-    bond4 = Instrument.getKey $ toInterface @Instrument.I bond4I
   (_, bond2HoldingCid) <- issue operator registry issuer public (qty 100_000_000.0 bond2) issuerSecAccount
   (_, bond3HoldingCid) <- issue operator registry issuer public (qty 100_000_000.0 bond3) issuerSecAccount
   (_, bond4HoldingCid) <- issue operator registry issuer public (qty 100_000_000.0 bond4) issuerSecAccount
