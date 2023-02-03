@@ -111,7 +111,7 @@ template Role
     nonconsuming choice OfferSubscriptionService : ContractId Subscription.Offer
       with
         customer : Party
-        public : Party
+        settlementServiceCid : ContractId Settlement.Service
       controller provider
       do
         create Subscription.Offer with ..
@@ -119,6 +119,7 @@ template Role
     nonconsuming choice ApproveSubscriptionServiceRequest : ContractId Subscription.Service
       with
         subscriptionServiceRequestCid : ContractId Subscription.Request
+        settlementServiceCid : ContractId Settlement.Service
       controller provider
       do
         exercise subscriptionServiceRequestCid Subscription.Approve with ..

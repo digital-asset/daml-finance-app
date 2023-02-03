@@ -65,8 +65,8 @@ run  = do
   createIssuanceService           operator riskTaker    riskTaker
   createLifecycleService          operator riskTaker    riskTaker public
   createLifecycleService          operator issuer       issuer    public
-  createSubscriptionService       operator issuer       issuer    public
   createBackToBackIssuanceService operator riskTaker    issuer    paths
+  createSubscriptionService       operator issuer       issuer    paths
 
   -- Accounts
   riskTakerCashAccount  <- createAccount operator centralBank  riskTaker  public "RiskTaker@CentralBank" $ fromList [("b2b", singleton issuer)]
@@ -163,6 +163,7 @@ run  = do
             customerHoldingCid = coerceContractId issuerAssetCid
             customerAccount = issuerCashAccount
             backToBack
+            observers = singleton public
 
       inv1SubscriptionCid   <- submitMulti [inv1] [public] do exerciseCmd offeringCid Subscription.Subscribe with investor = inv1; quantity = 10_000.0; investorHoldingCid = inv1CashCid; investorAccount = inv1SecAccount
       inv2SubscriptionCid     <- submitMulti [inv2] [public] do exerciseCmd offeringCid Subscription.Subscribe with investor = inv2; quantity = 10_000.0; investorHoldingCid = inv2CashCid; investorAccount = inv2SecAccount
@@ -171,7 +172,6 @@ run  = do
       submitMulti [issuer] [public] do
         exerciseByKeyCmd @Subscription.Service (operator, issuer, issuer) Subscription.ProcessOffering
           with
-            settlementFactoryCid
             offeringCid
             subscriptionCids = [inv1SubscriptionCid, inv2SubscriptionCid, inv3SubscriptionCid]
       pure ()

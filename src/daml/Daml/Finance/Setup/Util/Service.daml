@@ -147,9 +147,14 @@ createBiddingAutoService operator distributor customer = do
   offerCid <- submit distributor do exerciseByKeyCmd @Distributor.Role (operator, distributor) Distributor.OfferBiddingAutoService with ..
   submit customer do exerciseCmd offerCid BiddingAuto.Accept
 
-createSubscriptionService : Party -> Party -> Party -> Party -> Script (ContractId Subscription.Service)
-createSubscriptionService operator distributor customer public = do
-  offerCid <- submit distributor do exerciseByKeyCmd @Distributor.Role (operator, distributor) Distributor.OfferSubscriptionService with customer; public
+createSubscriptionService : Party -> Party -> Party -> SettlementPaths -> Script (ContractId Subscription.Service)
+createSubscriptionService operator provider customer paths = do
+  settlementServiceCid <- createSettlementService operator provider customer paths
+  offerCid <- submit provider do
+    exerciseByKeyCmd @Distributor.Role (operator, provider) Distributor.OfferSubscriptionService
+      with
+        customer
+        settlementServiceCid
   submit customer do exerciseCmd offerCid Subscription.Accept
 
 createLendingService : Party -> Party -> Party -> Script (ContractId Lending.Service)
