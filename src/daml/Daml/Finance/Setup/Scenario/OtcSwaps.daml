@@ -63,8 +63,8 @@ run = do
   t <- getTime
   let
     today = toDateUTC t
-    todayTime = time today 12 0 0
-    tt d = time d 12 0 0
+    todayTime = time today 0 0 0
+    tt d = time d 0 0 0
     epoch = tt $ date 1970 Jan 1
     (ty, tm, td) = toGregorian today
   (clockCid, eventCid) <- createClockAndEvent all (date 2021 tm td) (singleton public)

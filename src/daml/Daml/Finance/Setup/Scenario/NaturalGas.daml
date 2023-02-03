@@ -61,9 +61,9 @@ run  = do
   t <- getTime
   let
     today = toDateUTC t
-    todayTime = time today 12 0 0
+    todayTime = time today 0 0 0
     t1 = addDays today 1
-    t1t = time t1 12 0 0
+    t1t = time t1 0 0 0
     t3 = addDays today 3
   createClockAndEvent all today (singleton public)
 
