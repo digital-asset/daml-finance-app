@@ -51,7 +51,6 @@ import Daml.Finance.Interface.Lifecycle.Observable.NumericObservable qualified a
 import Daml.Finance.Interface.Lifecycle.Observable.TimeObservable qualified as TimeObservable (I)
 import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Claim (ClaimEffect(..), ClaimResult(..))
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (I)
-import Daml.Finance.Interface.Settlement.Factory qualified as SettlementFactory (I)
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (I, Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Types qualified as Settlement (Allocation, Approval)
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id(..), InstrumentKey, InstrumentQuantity, Parties, PartiesMap)
@@ -59,7 +58,6 @@ import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayAdjustment(..), Bu
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum, RollConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.Schedule (Frequency(..), PeriodicSchedule(..))
-import Daml.Finance.Settlement.Factory qualified as Settlement (FactoryWithIntermediaries)
 import Daml.Finance.Settlement.Instruction qualified as Instruction (T)
 import Daml.Finance.Setup.Util.Common (getHolding)
 import Daml.Script
@@ -236,11 +234,9 @@ createAuctionBid operator provider customer public auctionCid amount price colla
 
 processAuction : Party -> Party -> Party -> Party -> ContractId Auction.T -> [ContractId Bidding.Bid] -> Script (ContractId Auction.T)
 processAuction operator provider customer public auctionCid bidCids = do
-  [(factoryCid, _)] <- query @Settlement.FactoryWithIntermediaries public
   submitMulti [provider] [public] do
     exerciseByKeyCmd @Auction.S (operator, provider, customer) Auction.ProcessAuction
       with
-        settlementFactoryCid = toInterfaceContractId factoryCid
         auctionCid
         bidCids
 
@@ -306,6 +302,6 @@ poolInvestmentRequests : Party -> Party -> Party -> Party -> Text -> Date -> Con
 poolInvestmentRequests operator provider customer public id asOfDate fundCid cashCid investmentRequestCids =
   submitMulti [customer] [public] do exerciseByKeyCmd @Fund.S (operator, provider, customer) Fund.PoolInvestmentRequests with requestId = Id id; asOfDate; fundCid; cashCid; investmentRequestCids
 
-fulfillPooledInvestmentRequest : Party -> Party -> Party -> Party -> ContractId Fund.T -> ContractId Fund.PooledInvestmentRequest -> ContractId NumericObservable.I -> ContractId SettlementFactory.I -> Script [ContractId Holding.I]
-fulfillPooledInvestmentRequest operator provider customer public fundCid pooledInvestmentRequestCid navObservableCid settlementFactoryCid =
-  submitMulti [provider] [public] do exerciseByKeyCmd @Fund.S (operator, provider, customer) Fund.FulfillPooledInvestmentRequest with fundCid; pooledInvestmentRequestCid; navObservableCid; settlementFactoryCid
+fulfillPooledInvestmentRequest : Party -> Party -> Party -> Party -> ContractId Fund.T -> ContractId Fund.PooledInvestmentRequest -> ContractId NumericObservable.I -> Script [ContractId Holding.I]
+fulfillPooledInvestmentRequest operator provider customer public fundCid pooledInvestmentRequestCid navObservableCid =
+  submitMulti [provider] [public] do exerciseByKeyCmd @Fund.S (operator, provider, customer) Fund.FulfillPooledInvestmentRequest with fundCid; pooledInvestmentRequestCid; navObservableCid
