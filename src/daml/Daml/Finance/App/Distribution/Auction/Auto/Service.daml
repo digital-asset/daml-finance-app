@@ -3,10 +3,8 @@
 
 module Daml.Finance.App.Distribution.Auction.Auto.Service where
 
-import Daml.Finance.Interface.Account.Account qualified as Account (K)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K, Q)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Types.Common (Parties)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentKey, InstrumentQuantity, Parties)
 import Daml.Finance.App.Distribution.Auction.Model (Auction)
 import Daml.Finance.App.Distribution.Auction.Service qualified as S (CreateAuction(..), RequestCreateAuction(..), Service)
 
@@ -26,11 +24,11 @@ template Service
     nonconsuming choice RequestAndCreateAuction : ContractId Auction
       with
         id : Text
-        quantity : Instrument.Q
-        currency : Instrument.K
+        quantity : InstrumentQuantity
+        currency : InstrumentKey
         floor : Decimal
         collateralCid : ContractId Fungible.I
-        receivableAccount : Account.K
+        receivableAccount : AccountKey
         observers : Parties
       controller customer
       do

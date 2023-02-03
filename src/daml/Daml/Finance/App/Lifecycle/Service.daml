@@ -11,7 +11,7 @@ import ContingentClaims.Valuation.Stochastic (Expr)
 import Daml.Finance.Claims.Util.Lifecycle qualified as Claim (lifecycle, lifecycleClaims, timeEvent)
 import Daml.Finance.Interface.Data.NumericObservable qualified as NumericObservable (I)
 import Daml.Finance.Interface.Data.TimeObservable qualified as TimeObservable (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I, K, Q, R)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I, R)
 import Daml.Finance.Interface.Instrument.Equity.Instrument qualified as Equity (I, DeclareDividend(..), DeclareReplacement(..), DeclareStockSplit(..))
 import Daml.Finance.Interface.Claims.Claim qualified as Claim (Claim, getClaims, GetClaims(..))
 import Daml.Finance.Interface.Claims.Types (C, Pending, TaggedClaim)
@@ -19,7 +19,7 @@ import Daml.Finance.Interface.Lifecycle.Effect qualified as Effect (I)
 import Daml.Finance.Interface.Lifecycle.Event qualified as Event (I)
 import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (I, Evolve(..))
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I)
-import Daml.Finance.Interface.Types.Common (Id, InstrumentKey(..))
+import Daml.Finance.Interface.Types.Common.Types (Id, InstrumentKey(..), InstrumentQuantity)
 import Daml.Finance.App.Lifecycle.Pricing qualified as Pricing
 import Daml.Finance.App.Structuring.Auto.Service qualified as Structuring
 
@@ -39,12 +39,12 @@ template Service
     nonconsuming choice DeclareDividend : [ContractId Effect.I]
       with
         timeObservableCid : ContractId TimeObservable.I
-        equity : Instrument.K
+        equity : InstrumentKey
         newVersion : Text
         id : Id
         description : Text
         effectiveDate : Date
-        perUnitDistribution : [ Instrument.Q ]
+        perUnitDistribution : [ InstrumentQuantity ]
       controller customer
       do
         now <- getTime
@@ -62,11 +62,11 @@ template Service
     nonconsuming choice DeclareReplacement : [ContractId Effect.I]
       with
         timeObservableCid : ContractId TimeObservable.I
-        equity : Instrument.K
+        equity : InstrumentKey
         id : Id
         description : Text
         effectiveDate : Date
-        perUnitReplacement : [ Instrument.Q ]
+        perUnitReplacement : [InstrumentQuantity]
       controller customer
       do
         (_, equityRef) <- fetchByKey @Instrument.R equity
@@ -76,7 +76,7 @@ template Service
     nonconsuming choice DeclareStockSplit : [ContractId Effect.I]
       with
         timeObservableCid : ContractId TimeObservable.I
-        equity : Instrument.K
+        equity : InstrumentKey
         newVersion : Text
         id : Id
         description : Text
@@ -107,7 +107,7 @@ template Service
         claims <- exercise self GetCurrentClaims with instrumentCid; observableCids
         Claim.lifecycleClaims observableCids ((view instrument).acquisitionTime) claims [Claim.timeEvent today]
 
-    nonconsuming choice SimulateLifecycle : [[Lifecycle.Pending Time Instrument.K]]
+    nonconsuming choice SimulateLifecycle : [[Lifecycle.Pending Time InstrumentKey]]
       with
         today : Time
         prices : [Decimal]
@@ -151,14 +151,14 @@ template Service
       do
         pure $ expiry claims
 
-    nonconsuming choice Underlying : [Instrument.K]
+    nonconsuming choice Underlying : [InstrumentKey]
       with
         claims : C
       controller customer
         do
           pure $ snd <$> payoffs claims
 
-    nonconsuming choice Payoffs : [(Observation Time Decimal Text, Instrument.K)]
+    nonconsuming choice Payoffs : [(Observation Time Decimal Text, InstrumentKey)]
       with
         claims : C
       controller customer

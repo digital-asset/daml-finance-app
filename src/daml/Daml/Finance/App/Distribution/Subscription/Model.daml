@@ -4,15 +4,15 @@
 module Daml.Finance.App.Distribution.Subscription.Model where
 
 import DA.Set (fromList, singleton)
-import Daml.Finance.Interface.Account.Account qualified as Account (K, R)
+import Daml.Finance.Interface.Account.Account qualified as Account (R)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
 import Daml.Finance.Interface.Account.Util (getAccount)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..), I)
 import Daml.Finance.Interface.Settlement.Types (Allocation(Pledge), Approval(TakeDelivery))
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentQuantity, Parties)
 
 data Status
     = Open
@@ -23,9 +23,9 @@ data BackToBack = BackToBack
   with
     party : Party
     offeringId : Text
-    issuerReceivableAccount : Account.K
+    issuerReceivableAccount : AccountKey
     issuerDeliverableCid : ContractId Fungible.I
-    b2bReceivableAccount : Account.K
+    b2bReceivableAccount : AccountKey
     b2bDeliverableCid : ContractId Fungible.I
   deriving (Eq, Show)
 
@@ -34,17 +34,17 @@ template Offering
     operator : Party
     provider : Party
     issuer : Party
-    public : Party
     offeringId : Text
-    asset : Instrument.Q
-    price : Instrument.Q
+    asset : InstrumentQuantity
+    price : InstrumentQuantity
     issuerHoldingCid : ContractId Fungible.I
-    issuerAccount : Account.K
+    issuerAccount : AccountKey
     backToBack : Optional BackToBack
     status : Status
+    observers : Parties
   where
     signatory operator, provider, issuer
-    observer public
+    observer observers
 
     key (provider, offeringId) : (Party, Text)
     maintainer key._1
@@ -54,7 +54,7 @@ template Offering
         investor : Party
         quantity : Decimal
         investorHoldingCid : ContractId Fungible.I
-        investorAccount : Account.K
+        investorAccount : AccountKey
       controller investor
       do
         -- Disclose holding
@@ -80,14 +80,14 @@ template Subscription
     offeringId : Text
     quantity : Decimal
     holdingCid : ContractId Fungible.I
-    accountKey : Account.K
+    accountKey : AccountKey
   where
     signatory operator, provider, issuer, investor
 
     nonconsuming choice ApproveInstruction : ContractId Instruction.I
       with
         instructionCid : ContractId Instruction.I
-        receiverAccount : Account.K
+        receiverAccount : AccountKey
       controller provider
       do
         exercise instructionCid Instruction.Approve with actors = fromList [provider, investor]; approval = TakeDelivery receiverAccount

@@ -5,8 +5,8 @@ module Daml.Finance.App.Structuring.Auto.Service where
 
 import Daml.Finance.App.Structuring.Service qualified as S
 import Daml.Finance.Interface.Claims.Types (C)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I, K)
-import Daml.Finance.Interface.Types.Common (Id, PartiesMap)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I)
+import Daml.Finance.Interface.Types.Common.Types (Id, InstrumentKey, PartiesMap)
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum)
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum)
@@ -72,7 +72,7 @@ template Service
         businessDayConvention : BusinessDayConventionEnum
         couponPeriod : PeriodEnum
         couponPeriodMultiplier : Int
-        currency : Instrument.K
+        currency : InstrumentKey
         observers : PartiesMap
         lastEventTimestamp : Time
       controller customer
@@ -95,7 +95,7 @@ template Service
         businessDayConvention : BusinessDayConventionEnum
         couponPeriod : PeriodEnum
         couponPeriodMultiplier : Int
-        currency : Instrument.K
+        currency : InstrumentKey
         observers : PartiesMap
         lastEventTimestamp : Time
       controller customer
@@ -119,7 +119,7 @@ template Service
         businessDayConvention : BusinessDayConventionEnum
         couponPeriod : PeriodEnum
         couponPeriodMultiplier : Int
-        currency : Instrument.K
+        currency : InstrumentKey
         observers : PartiesMap
         lastEventTimestamp : Time
       controller customer
@@ -133,7 +133,7 @@ template Service
         description : Text
         issueDate : Date
         maturityDate : Date
-        currency : Instrument.K
+        currency : InstrumentKey
         observers : PartiesMap
         lastEventTimestamp : Time
       controller customer

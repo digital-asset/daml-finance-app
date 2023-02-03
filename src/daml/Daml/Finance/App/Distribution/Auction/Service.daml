@@ -11,13 +11,6 @@ import DA.Foldable (forA_)
 import DA.List (sortOn, mapAccumL)
 import DA.Optional (whenSome)
 import DA.Set (fromList, singleton)
-import Daml.Finance.Interface.Account.Account qualified as Account (K, R, exerciseInterfaceByKey)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K, Q)
-import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
-import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Account.Util (getAccount)
-import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I, RemoveObservers(..))
-import Daml.Finance.Interface.Types.Common (Parties)
 import Daml.Finance.Interface.Settlement.Factory qualified as Factory (I)
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
 import Daml.Finance.App.Distribution.Auction.Model (Auction(..), CreateAuctionRequest(..), Status(..))
@@ -25,6 +18,12 @@ import Daml.Finance.App.Distribution.Auction.Utils (dutchAuction, splitList, gen
 import Daml.Finance.App.Distribution.Bidding.Model qualified as Bidding (Allocation(..), Bid, SettleAllocation(..), Status(..))
 import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (RejectBid(..), S)
 import Daml.Finance.App.Util (fetchAndArchive)
+import Daml.Finance.Interface.Account.Account qualified as Account (R, exerciseInterfaceByKey)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
+import Daml.Finance.Interface.Account.Util (getAccount)
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I, RemoveObservers(..))
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentKey, InstrumentQuantity, Parties)
 
 type S = Service
 
@@ -42,11 +41,11 @@ template Service
     nonconsuming choice RequestCreateAuction : ContractId CreateAuctionRequest
       with
         id : Text
-        quantity : Instrument.Q
-        currency : Instrument.K
+        quantity : InstrumentQuantity
+        currency : InstrumentKey
         floor : Decimal
         collateralCid : ContractId Fungible.I
-        receivableAccount : Account.K
+        receivableAccount : AccountKey
         observers : Parties
       controller customer
       do

@@ -7,13 +7,14 @@ import DA.Assert ((===))
 import DA.List (head)
 import DA.Optional (fromSome)
 import DA.Set (singleton)
-import Daml.Finance.Interface.Account.Account qualified as Account (K, R)
+import Daml.Finance.Interface.Account.Account qualified as Account (R)
 import Daml.Finance.Interface.Account.Util (getAccount)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..), SplitResult(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
 import Daml.Finance.Interface.Holding.Util (getAmount, getInstrument)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I, RemoveObservers(..))
 import Daml.Finance.App.Distribution.Auction.Model qualified as Auction (Fetch(..), T)
 import Daml.Finance.App.Distribution.Bidding.Model (Bid(..), CreateBidRequest(..), Details(..), Status(..), UpdateStatus(..))
@@ -37,7 +38,7 @@ template Service
         amount : Decimal
         price : Decimal
         collateralCid : ContractId Fungible.I
-        receivableAccount : Account.K
+        receivableAccount : AccountKey
       controller customer
       do
         auction <- exercise auctionCid Auction.Fetch with actor = customer

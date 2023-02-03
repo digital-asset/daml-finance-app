@@ -8,17 +8,16 @@ import DA.Optional (fromSome)
 import DA.Set (fromList, singleton)
 import Daml.Finance.App.Distribution.Subscription.Model (BackToBack, Offering(..))
 import Daml.Finance.App.Issuance.Model (Issuance(..))
-import Daml.Finance.Interface.Account.Account qualified as Account (Credit(..), K, R)
+import Daml.Finance.Interface.Account.Account qualified as Account (Credit(..), R)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (Split(..), SplitResult(..))
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I, Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Holding.Util (getAmount)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 import Daml.Finance.Interface.Settlement.Factory qualified as Factory (I, Instruct(..))
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
 import Daml.Finance.Interface.Settlement.Types (Allocation(Pledge), Approval(TakeDelivery), Step(..))
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
-import Daml.Finance.Interface.Types.Common (Id(..))
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id(..), InstrumentQuantity)
 
 template Service
   with
@@ -36,9 +35,9 @@ template Service
       with
         id : Id
         description : Text
-        quantity : Instrument.Q
-        customerAccount : Account.K
-        providerAccount : Account.K
+        quantity : InstrumentQuantity
+        customerAccount : AccountKey
+        providerAccount : AccountKey
       controller customer
       do
         (_, customerRef) <- fetchByKey @Account.R customerAccount

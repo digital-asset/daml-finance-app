@@ -10,11 +10,11 @@ import DA.Set (singleton)
 import DA.Time (time)
 import Daml.Finance.Account.Account qualified as Account (Factory(..))
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
 import Daml.Finance.Interface.Settlement.Types (Allocation(..), Approval(..))
-import Daml.Finance.Interface.Types.Common (Id(..))
 import Daml.Finance.Settlement.Factory qualified as Settlement (FactoryWithIntermediaries(..))
+import Daml.Finance.Interface.Types.Common.Types (Id(..))
+import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
 import Daml.Finance.Setup.Util.Common
 import Daml.Finance.Setup.Util.Role
@@ -108,20 +108,20 @@ run = do
   createAccountDirectory inv3       [(usd, inv3CashAccount), (equity, inv3SecAccount)]            $ singleton public
 
   -- Distribution
-  registryEquityCid     <- deposit  operator issuer   registry    public (Instrument.qty 1_000_000.0 equity) registrySecAccount
-  (_, issuerEquityCid)  <- issue    operator registry issuer      public (Instrument.qty 1_000_000.0 equity) issuerSecAccount
+  registryEquityCid     <- deposit  operator issuer   registry    public (qty 1_000_000.0 equity) registrySecAccount
+  (_, issuerEquityCid)  <- issue    operator registry issuer      public (qty 1_000_000.0 equity) issuerSecAccount
   custodianEquityCid    <- transfer issuer   custodianSecAccount  public $ coerceContractId issuerEquityCid
-  inv1EquityCid         <- deposit  operator custodian inv1       public (Instrument.qty 500_000.0 equity) inv1SecAccount
-  inv2EquityCid         <- deposit  operator custodian inv2       public (Instrument.qty 300_000.0 equity) inv2SecAccount
-  inv3EquityCid         <- deposit  operator custodian inv3       public (Instrument.qty 200_000.0 equity) inv3SecAccount
+  inv1EquityCid         <- deposit  operator custodian inv1       public (qty 500_000.0 equity) inv1SecAccount
+  inv2EquityCid         <- deposit  operator custodian inv2       public (qty 300_000.0 equity) inv2SecAccount
+  inv3EquityCid         <- deposit  operator custodian inv3       public (qty 200_000.0 equity) inv3SecAccount
 
-  issuerCashCid         <- coerceContractId <$> deposit  operator centralBank issuer     public (Instrument.qty 500_000.0 usd) issuerCashAccount
-  registryCashCid       <- coerceContractId <$> deposit  operator centralBank registry   public (Instrument.qty 500_000.0 usd) registryCashAccount
+  issuerCashCid         <- coerceContractId <$> deposit  operator centralBank issuer     public (qty 500_000.0 usd) issuerCashAccount
+  registryCashCid       <- coerceContractId <$> deposit  operator centralBank registry   public (qty 500_000.0 usd) registryCashAccount
 
   -- Workflows
   let
     processDividend = do
-      effectCid <- declareDividend operator registry issuer public equity today [Instrument.qty 0.5 usd]
+      effectCid <- declareDividend operator registry issuer public equity todayTime [qty 0.5 usd]
 
       -- Claim registry holding
       (batchCid, instructionCids) <- claimEffect operator issuer registry public effectCid [registryEquityCid] (Id "Registry-Settlement")

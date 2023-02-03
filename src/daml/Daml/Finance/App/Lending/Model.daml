@@ -4,10 +4,10 @@
 module Daml.Finance.App.Lending.Model where
 
 import DA.Set (singleton)
-import Daml.Finance.Interface.Account.Account qualified as Account (K, exerciseInterfaceByKey)
+import Daml.Finance.Interface.Account.Account qualified as Account (exerciseInterfaceByKey)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I, Release(..))
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I, Transfer(..))
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentQuantity)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, RemoveObservers(..))
 
 template BorrowOfferRequest
@@ -16,7 +16,7 @@ template BorrowOfferRequest
     provider : Party
     customer : Party
     id : Text
-    borrowed : Instrument.Q
+    borrowed : InstrumentQuantity
     maturity : Date
   where
     signatory operator, provider, customer
@@ -30,13 +30,13 @@ template BorrowOffer
     provider : Party
     customer : Party
     id : Text
-    borrowed : Instrument.Q
+    borrowed : InstrumentQuantity
     maturity : Date
-    interest : Instrument.Q
-    collateral : Instrument.Q
+    interest : InstrumentQuantity
+    collateral : InstrumentQuantity
     borrowedCid : ContractId Transferable.I
-    lenderBorrowedAccount : Account.K
-    lenderInterestAccount : Account.K
+    lenderBorrowedAccount : AccountKey
+    lenderInterestAccount : AccountKey
   where
     signatory operator, provider, customer
 
@@ -49,13 +49,13 @@ template BorrowAgreement
     provider : Party
     customer : Party
     id : Text
-    borrowed : Instrument.Q
+    borrowed : InstrumentQuantity
     maturity : Date
-    interest : Instrument.Q
-    collateral : Instrument.Q
+    interest : InstrumentQuantity
+    collateral : InstrumentQuantity
     collateralCid : ContractId Transferable.I
-    lenderBorrowedAccount : Account.K
-    lenderInterestAccount : Account.K
+    lenderBorrowedAccount : AccountKey
+    lenderInterestAccount : AccountKey
   where
     signatory operator, provider, customer
 

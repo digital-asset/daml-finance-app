@@ -7,12 +7,10 @@ import DA.Set (singleton)
 import Daml.Finance.App.Distribution.Investment.Model (InvestmentRequest)
 import Daml.Finance.App.Issuance.Model qualified as Issuance (T)
 import Daml.Finance.App.Issuance.Service qualified as Issuance (CreateIssuance(..), RequestCreateIssuance(..), Service)
-import Daml.Finance.Interface.Account.Account qualified as Account (K)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K, Q)
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Approve(..), I)
 import Daml.Finance.Interface.Settlement.Types (Approval(TakeDelivery))
-import Daml.Finance.Interface.Types.Common (Id, Parties)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentKey, InstrumentQuantity, Parties)
 
 type T = Fund
 
@@ -23,10 +21,10 @@ template Fund
     manager : Party
     id : Id
     description : Text
-    instrument : Instrument.K
-    currency : Instrument.K
-    custodianCashAccount : Account.K
-    managerFundAccount : Account.K
+    instrument : InstrumentKey
+    currency : InstrumentKey
+    custodianCashAccount : AccountKey
+    managerFundAccount : AccountKey
     totalUnits : Decimal
     observers : Parties
   where
@@ -46,7 +44,7 @@ template Fund
     choice IssueUnits : (ContractId Issuance.T, ContractId Transferable.I, ContractId Fund)
       with
         requestId : Id
-        quantity : Instrument.Q
+        quantity : InstrumentQuantity
       controller manager
       do
         createIssuanceRequestCid <- exerciseByKey @Issuance.Service (operator, custodian, manager) Issuance.RequestCreateIssuance with id = requestId; description = "Issuance for request " <> show requestId; quantity; account = managerFundAccount
@@ -70,10 +68,10 @@ template PooledInvestmentRequest
     requestId : Id
     asOfDate : Date
     fundId : Id
-    quantity : Instrument.Q
+    quantity : InstrumentQuantity
     cashCid : ContractId Transferable.I
     investmentRequestCids : [ContractId InvestmentRequest]
-    customerFundAccount : Account.K
+    customerFundAccount : AccountKey
   where
     signatory operator, provider, customer
 
