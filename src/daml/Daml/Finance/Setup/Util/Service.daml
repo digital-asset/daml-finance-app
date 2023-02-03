@@ -3,8 +3,9 @@
 
 module Daml.Finance.Setup.Util.Service where
 
-import DA.Map qualified as M (fromList)
-import DA.Set (fromList, singleton)
+import DA.Map (Map, fromList)
+import DA.Set (singleton)
+import DA.Set qualified as S (fromList)
 import Daml.Finance.App.Custody.Service qualified as Custody (Accept(..), Service)
 import Daml.Finance.App.Decentralized.Exchange.Model qualified as DecentralizedExchange (Pool(..))
 import Daml.Finance.App.Decentralized.Exchange.Service qualified as DecentralizedExchange (Service(..))
@@ -27,7 +28,7 @@ import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscript
 import Daml.Finance.App.Role.Custodian qualified as Custodian
 import Daml.Finance.App.Role.Distributor qualified as Distributor
 import Daml.Finance.App.Role.Exchange qualified as Exchange
-import Daml.Finance.App.Settlement.Service qualified as Settlement (Accept(..), Service)
+import Daml.Finance.App.Settlement.Service qualified as Settlement (Accept(..), Offer(..), Service)
 import Daml.Finance.App.Structuring.Auto.Service qualified as StructuringAuto (Accept(..), Service)
 import Daml.Finance.App.Structuring.Service qualified as Structuring (Accept(..), Factories(..), Service)
 import Daml.Finance.Instrument.Bond.FixedRate.Factory qualified as FixedRateBond (Factory(..))
@@ -40,12 +41,14 @@ import Daml.Finance.Instrument.Token.Factory qualified as Token (Factory(..))
 import Daml.Finance.Interface.Account.Factory qualified as Account (F)
 import Daml.Finance.Interface.Holding.Factory qualified as Holding (F)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Settlement.Factory qualified as Settlement (Factory)
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id(..), InstrumentQuantity)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, AddObservers(..))
 import Daml.Finance.Lifecycle.Rule.Claim qualified as Claim (Rule(..))
 import Daml.Finance.Lifecycle.Rule.Distribution qualified as Distribution (Rule(..))
 import Daml.Finance.Lifecycle.Rule.Replacement qualified as Replacement (Rule(..))
+import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy)
+import Daml.Finance.Settlement.RouteProvider.IntermediatedStatic qualified as RouteProvider (IntermediatedStatic(..))
+import Daml.Finance.Settlement.Factory qualified as Settlement (Factory(..))
 import Daml.Script
 
 createCustodyService : Party -> Party -> Party -> ContractId Settlement.Factory -> ContractId Account.F -> ContractId Holding.F -> Script (ContractId Custody.Service)
@@ -53,6 +56,7 @@ createCustodyService operator custodian customer settlementFactoryCid accountFac
   let providers = fromList [custodian, customer]
   claimRuleCid <- toInterfaceContractId <$> submitMulti [custodian, customer] [] do createCmd Claim.Rule with providers = fromList [custodian, customer]; claimers = providers; settlers = providers; settlementFactoryCid; netInstructions = False
   offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferCustodyService with customer; claimRuleCid; accountFactoryCid; holdingFactoryCid
+type SettlementPaths = Map Text Settlement.Hierarchy
   submit customer do exerciseCmd offerCid Custody.Accept
 
 createIssuanceService : Party -> Party -> Party -> Script (ContractId Issuance.Service)
@@ -145,9 +149,11 @@ createLendingService operator lender borrower = do
   offerCid <- submit lender do exerciseByKeyCmd @Custodian.Role (operator, lender) Custodian.OfferLendingService with customer = borrower
   submit borrower do exerciseCmd offerCid Lending.Accept
 
-createSettlementService : Party -> Party -> Party -> Script (ContractId Settlement.Service)
-createSettlementService operator custodian customer = do
-  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferSettlementService with customer
+createSettlementService : Party -> Party -> Party -> SettlementPaths -> Script (ContractId Settlement.Service)
+createSettlementService operator provider customer paths = do
+  routeProviderCid      <- toInterfaceContractId <$> submit provider do createCmd RouteProvider.IntermediatedStatic  with provider; observers = singleton customer; paths
+  settlementFactoryCid  <- toInterfaceContractId <$> submit provider do createCmd Settlement.Factory                 with provider; observers = singleton customer
+  offerCid <- submitMulti [operator, provider] [] do createCmd Settlement.Offer with operator; provider; customer; routeProviderCid; settlementFactoryCid
   submit customer do exerciseCmd offerCid Settlement.Accept
 
 createInvestmentService : Party -> Party -> Party -> Script (ContractId Investment.Service)
