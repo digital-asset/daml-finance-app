@@ -138,28 +138,28 @@ run = do
     bond2 = Instrument.getKey $ toInterface @Instrument.I bond2I
     bond3 = Instrument.getKey $ toInterface @Instrument.I bond3I
     bond4 = Instrument.getKey $ toInterface @Instrument.I bond4I
-  (_, bond2HoldingCid) <- issue operator registry issuer public (Instrument.qty 100_000_000.0 bond2) issuerSecAccount
-  (_, bond3HoldingCid) <- issue operator registry issuer public (Instrument.qty 100_000_000.0 bond3) issuerSecAccount
-  (_, bond4HoldingCid) <- issue operator registry issuer public (Instrument.qty 100_000_000.0 bond4) issuerSecAccount
+  (_, bond2HoldingCid) <- issue operator registry issuer public (qty 100_000_000.0 bond2) issuerSecAccount
+  (_, bond3HoldingCid) <- issue operator registry issuer public (qty 100_000_000.0 bond3) issuerSecAccount
+  (_, bond4HoldingCid) <- issue operator registry issuer public (qty 100_000_000.0 bond4) issuerSecAccount
 
   transfer issuer custodianSecAccount public $ coerceContractId bond2HoldingCid
   transfer issuer custodianSecAccount public $ coerceContractId bond3HoldingCid
   transfer issuer custodianSecAccount public $ coerceContractId bond4HoldingCid
 
-  deposit operator custodian inv1 public (Instrument.qty 50_000_000.0 bond2) inv1SecAccount
-  deposit operator custodian inv2 public (Instrument.qty 30_000_000.0 bond2) inv2SecAccount
-  deposit operator custodian inv3 public (Instrument.qty 20_000_000.0 bond2) inv3SecAccount
-  deposit operator custodian inv1 public (Instrument.qty 60_000_000.0 bond3) inv1SecAccount
-  deposit operator custodian inv2 public (Instrument.qty 30_000_000.0 bond3) inv2SecAccount
-  deposit operator custodian inv3 public (Instrument.qty 10_000_000.0 bond3) inv3SecAccount
-  deposit operator custodian inv1 public (Instrument.qty 70_000_000.0 bond4) inv1SecAccount
-  deposit operator custodian inv2 public (Instrument.qty 20_000_000.0 bond4) inv2SecAccount
-  deposit operator custodian inv3 public (Instrument.qty 10_000_000.0 bond4) inv3SecAccount
+  deposit operator custodian inv1 public (qty 50_000_000.0 bond2) inv1SecAccount
+  deposit operator custodian inv2 public (qty 30_000_000.0 bond2) inv2SecAccount
+  deposit operator custodian inv3 public (qty 20_000_000.0 bond2) inv3SecAccount
+  deposit operator custodian inv1 public (qty 60_000_000.0 bond3) inv1SecAccount
+  deposit operator custodian inv2 public (qty 30_000_000.0 bond3) inv2SecAccount
+  deposit operator custodian inv3 public (qty 10_000_000.0 bond3) inv3SecAccount
+  deposit operator custodian inv1 public (qty 70_000_000.0 bond4) inv1SecAccount
+  deposit operator custodian inv2 public (qty 20_000_000.0 bond4) inv2SecAccount
+  deposit operator custodian inv3 public (qty 10_000_000.0 bond4) inv3SecAccount
 
-  deposit operator centralBank  registry  public (Instrument.qty 120_000_000.0 usd) registryCashAccount
-  deposit operator centralBank  custodian public (Instrument.qty 120_000_000.0 usd) custodianCashAccount
-  deposit operator custodian    inv1      public (Instrument.qty  50_000_000.0 usd) inv1CashAccount
-  deposit operator custodian    inv2      public (Instrument.qty  40_000_000.0 usd) inv2CashAccount
-  deposit operator custodian    inv3      public (Instrument.qty  30_000_000.0 usd) inv3CashAccount
+  deposit operator centralBank  registry  public (qty 120_000_000.0 usd) registryCashAccount
+  deposit operator centralBank  custodian public (qty 120_000_000.0 usd) custodianCashAccount
+  deposit operator custodian    inv1      public (qty  50_000_000.0 usd) inv1CashAccount
+  deposit operator custodian    inv2      public (qty  40_000_000.0 usd) inv2CashAccount
+  deposit operator custodian    inv3      public (qty  30_000_000.0 usd) inv3CashAccount
 
   pure parties
