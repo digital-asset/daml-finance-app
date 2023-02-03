@@ -5,7 +5,7 @@ module Daml.Finance.App.Trading.Service where
 
 import DA.Action (foldlA, when)
 import DA.Optional (isNone)
-import DA.Set (insert, singleton)
+import DA.Set (fromList, insert, singleton)
 import Daml.Finance.App.Settlement.Service qualified as Settlement (Service)
 import Daml.Finance.App.Trading.Model (ApproveInstruction(..), CreateOrderRequest(..), CancelOrderRequest(..), Fill(..), FillResult(..), Order(..), Side(..))
 import Daml.Finance.App.Util (fetchAndArchive)
@@ -102,7 +102,7 @@ template Service
                 [transferableCid] <- exercise batchCid Batch.Settle with actors = singleton provider
                 exercise (toInterfaceContractId transferableCid : ContractId Holding.I) Holding.Release with context = show my.id
                 FillResult{orderOpt = otherOpt; batchCid; instructionCid} <- exercise otherCid Fill with settlementServiceCid; other = my; isResting = True
-                exercise instructionCid Instruction.Approve with actors = singleton provider; approval = TakeDelivery my.account
+                exercise instructionCid Instruction.Approve with actors = fromList [provider, customer]; approval = TakeDelivery my.account
                 [transferableCid] <- exercise batchCid Batch.Settle with actors = singleton provider
                 exercise (toInterfaceContractId transferableCid : ContractId Holding.I) Holding.Release with context = show other.id
                 when (isNone orderOpt) do

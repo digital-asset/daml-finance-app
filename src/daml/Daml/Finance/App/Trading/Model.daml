@@ -3,7 +3,7 @@
 
 module Daml.Finance.App.Trading.Model where
 
-import DA.Set (singleton)
+import DA.Set (fromList, singleton)
 import Daml.Finance.App.Settlement.Service qualified as Settlement (DiscoverAndInstruct(..), Service)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..), SplitResult(..))
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (I, Allocate(..), Approve(..))
@@ -71,10 +71,10 @@ template Order
         Fungible.SplitResult [splitCid] restCidOpt <- exercise collateralCid Fungible.Split with amounts = [ amount ]
         if remaining == 0.0
         then do
-          instructionCid <- fst <$> exercise instructionCid Instruction.Allocate with actors = singleton provider; allocation = Pledge $ toInterfaceContractId splitCid
+          instructionCid <- fst <$> exercise instructionCid Instruction.Allocate with actors = fromList [provider, customer]; allocation = Pledge $ toInterfaceContractId splitCid
           pure FillResult with orderOpt = None; batchCid; instructionCid
         else do
-          instructionCid <- fst <$> exercise instructionCid Instruction.Allocate with actors = singleton provider; allocation = Pledge $ toInterfaceContractId splitCid
+          instructionCid <- fst <$> exercise instructionCid Instruction.Allocate with actors = fromList [provider, customer]; allocation = Pledge $ toInterfaceContractId splitCid
           case restCidOpt of
             Some restCid -> do
               let new = this with quantity.amount = remaining; collateralCid = restCid
@@ -87,7 +87,7 @@ template Order
         instructionCid : ContractId Instruction.I
       controller provider
       do
-        exercise instructionCid Instruction.Approve with actors = singleton provider; approval = TakeDelivery account
+        exercise instructionCid Instruction.Approve with actors = fromList [provider, customer]; approval = TakeDelivery account
 
 template CreateOrderRequest
   with
