@@ -58,11 +58,11 @@ type SettlementPaths = Map Text Settlement.Hierarchy
 createCustodyService : Party -> Party -> Party -> SettlementPaths -> ContractId Account.F -> ContractId Holding.F -> Script (ContractId Custody.Service)
 createCustodyService operator provider customer paths accountFactoryCid holdingFactoryCid = do
   let
-    providers = singleton provider
+    providers = S.fromList [provider, customer]
     observers = singleton customer
   routeProviderCid      <- toInterfaceContractId <$> submit provider do createCmd RouteProvider.IntermediatedStatic  with provider; observers; paths
   settlementFactoryCid  <- toInterfaceContractId <$> submit provider do createCmd Settlement.Factory                 with provider; observers
-  claimRuleCid          <- toInterfaceContractId <$> submitMulti [provider] [customer] do createCmd Claim.Rule       with providers; claimers = S.fromList [provider, customer]; settlers = providers; routeProviderCid; settlementFactoryCid; netInstructions = False
+  claimRuleCid          <- toInterfaceContractId <$> submitMulti [provider, customer] [] do createCmd Claim.Rule                         with providers; claimers = S.fromList [provider, customer]; settlers = providers; routeProviderCid; settlementFactoryCid; netInstructions = False
   offerCid <- submit provider do exerciseByKeyCmd @Custodian.Role (operator, provider) Custodian.OfferCustodyService with customer; claimRuleCid; accountFactoryCid; holdingFactoryCid
   submit customer do exerciseCmd offerCid Custody.Accept
 
