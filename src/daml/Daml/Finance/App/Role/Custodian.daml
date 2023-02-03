@@ -16,6 +16,8 @@ import Daml.Finance.Interface.Account.Factory qualified as Account (F)
 import Daml.Finance.Interface.Holding.Factory qualified as Holding (F)
 import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Lifecycle (Claim)
 import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (I)
+import Daml.Finance.Interface.Settlement.Factory qualified as Settlement (F)
+import Daml.Finance.Interface.Settlement.RouteProvider qualified as RouteProvider (I)
 
 template Role
   with
@@ -99,7 +101,7 @@ template Role
     nonconsuming choice OfferBackToBackService : ContractId BackToBack.Offer
       with
         customer : Party
-        public : Party
+        settlementServiceCid : ContractId Settlement.Service
       controller provider
       do
         create BackToBack.Offer with ..
@@ -107,6 +109,7 @@ template Role
     nonconsuming choice ApproveBackToBackRequest : ContractId BackToBack.Service
       with
         backToBackServiceRequestCid : ContractId BackToBack.Request
+        settlementServiceCid : ContractId Settlement.Service
       controller provider
       do
         exercise backToBackServiceRequestCid BackToBack.Approve with ..

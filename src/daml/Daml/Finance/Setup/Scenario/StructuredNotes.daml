@@ -65,10 +65,10 @@ run  = do
   createStructuringService        operator issuer       issuer
   createIssuanceService           operator issuer       issuer
   createIssuanceService           operator riskTaker    riskTaker
-  createBackToBackIssuanceService operator riskTaker    issuer    public
   createLifecycleService          operator riskTaker    riskTaker public
   createLifecycleService          operator issuer       issuer    public
   createSubscriptionService       operator issuer       issuer    public
+  createBackToBackIssuanceService operator riskTaker    issuer    paths
 
   -- Accounts
   riskTakerCashAccount  <- createAccount operator centralBank  riskTaker  public "RiskTaker@CentralBank" $ fromList [("b2b", singleton issuer)]
