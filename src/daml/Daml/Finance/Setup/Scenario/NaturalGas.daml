@@ -49,6 +49,7 @@ run  = do
   createCustodyService    operator seller       buyer   paths accountFactoryCid holdingFactoryCid
   createIssuanceService   operator seller       seller
   createLifecycleService  operator seller       seller
+  createSettlementService operator seller       buyer   paths
 
   -- Accounts
   sellerCashAccount   <- createAccount operator cashProvider  seller  public "Seller@CashProvider" empty

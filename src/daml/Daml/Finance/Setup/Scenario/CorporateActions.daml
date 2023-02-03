@@ -61,12 +61,12 @@ run = do
   createIssuanceAutoService     operator registry     issuer
   createStructuringService      operator registry     issuer
   createStructuringAutoService  operator registry     issuer
-  createSettlementService       operator issuer       registry
-  createSettlementService       operator registry     custodian
-  createSettlementService       operator custodian    inv1
-  createSettlementService       operator custodian    inv2
-  createSettlementService       operator custodian    inv3
   createLifecycleService        operator registry     issuer
+  createSettlementService       operator issuer       registry  paths
+  createSettlementService       operator registry     custodian paths
+  createSettlementService       operator custodian    inv1      paths
+  createSettlementService       operator custodian    inv2      paths
+  createSettlementService       operator custodian    inv3      paths
 
   -- Accounts
   issuerCashAccount     <- createAccount operator centralBank issuer    public "Issuer@CentralBank|Cash"         empty

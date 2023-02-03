@@ -51,6 +51,7 @@ run = do
   createStructuringService      operator seller       seller
   createStructuringAutoService  operator seller       seller
   createLifecycleService        operator seller       seller
+  createSettlementService       operator seller       buyer   paths
 
   -- Accounts
   sellerCashAccount <- createAccount operator centralBank seller  public "Seller@CentralBank/Cash" empty

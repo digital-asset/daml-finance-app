@@ -65,6 +65,11 @@ run = do
   createStructuringService      operator registry     issuer
   createStructuringAutoService  operator registry     issuer
   createLifecycleService        operator registry     issuer
+  createSettlementService       operator custodian    inv1      paths
+  createSettlementService       operator custodian    inv2      paths
+  createSettlementService       operator custodian    inv3      paths
+  createSettlementService       operator registry     custodian paths
+  createSettlementService       operator registry     issuer    paths
 
   -- Accounts
   registryCashAccount   <- createAccount operator centralBank registry  public "Registry@CentralBank/Cash"       empty
