@@ -104,8 +104,8 @@ run  = do
 
   -- Observables
   let
-    libor3M = "USD-LIBOR-3M"
-    libor6M = "USD-LIBOR-6M"
+    libor3M = "USD/LIBOR/3M"
+    libor6M = "USD/LIBOR/6M"
     amd = "AMD"
     qc = "QUALCOMM"
     tslaObs = "TSLA"

@@ -16,7 +16,7 @@ export const Overview : React.FC = () => {
       <Header/>
       <Grid container direction="column" className={classes.bg}>
         <Grid item xs={12}>
-          <Typography variant="h1" className={classes.title}>Welcome to the Daml Finance Portal</Typography>
+          <Typography variant="h1" className={classes.title}>Welcome to the Daml Finance Demo</Typography>
           <Typography variant="h3" className={classes.subtext}>There are {scenario.selected.apps.length} services available to you.</Typography>
           <Grid container direction="row" spacing={4}>
             {scenario.selected.apps.map(a => a.elem)}
