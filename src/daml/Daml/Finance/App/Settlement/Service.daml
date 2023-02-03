@@ -4,14 +4,20 @@
 module Daml.Finance.App.Settlement.Service where
 
 import DA.Set (singleton)
-import Daml.Finance.Interface.Settlement.Types qualified as Settlement (Allocation, Approval)
+import Daml.Finance.Interface.Settlement.Batch qualified as Batch (I)
+import Daml.Finance.Interface.Settlement.Factory qualified as Settlement (F, Instruct(..))
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (I, Allocate(..), Approve(..))
+import Daml.Finance.Interface.Settlement.RouteProvider qualified as RouteProvider (Discover(..), I)
+import Daml.Finance.Interface.Settlement.Types qualified as Settlement (Allocation, Approval, Step)
+import Daml.Finance.Interface.Types.Common.Types (Id, Parties)
 
 template Service
   with
     operator : Party
     provider : Party
     customer : Party
+    routeProviderCid : ContractId RouteProvider.I
+    settlementFactoryCid : ContractId Settlement.F
   where
     signatory operator, provider, customer
 
@@ -38,6 +44,20 @@ template Service
         assertMsg "Actor must be provider or customer" $ actor == customer || actor == provider
         exercise instructionCid Instruction.Approve with actors = singleton actor; approval
 
+    nonconsuming choice DiscoverAndInstruct : (ContractId Batch.I, [ContractId Instruction.I])
+      with
+        actor : Party
+        settlers : Parties
+        id : Id
+        description : Text
+        contextId : Optional Id
+        settlementTime : Optional Time
+        steps : [Settlement.Step]
+      controller actor
+      do
+        routedSteps <- exercise routeProviderCid RouteProvider.Discover with discoverors = singleton actor; contextId = None; steps
+        exercise settlementFactoryCid Settlement.Instruct with instructors = singleton actor; settlers; id; description; contextId; settlementTime; routedSteps
+
     choice Terminate : ()
       with
         actor : Party
@@ -51,6 +71,8 @@ template Offer
     operator : Party
     provider : Party
     customer : Party
+    routeProviderCid : ContractId RouteProvider.I
+    settlementFactoryCid : ContractId Settlement.F
   where
     signatory operator, provider
     observer customer
@@ -58,7 +80,7 @@ template Offer
     choice Accept : ContractId Service
       controller customer
       do
-        create Service with operator; provider; customer
+        create Service with operator; provider; customer; routeProviderCid, settlementFactoryCid
 
     choice Decline : ()
       controller customer
@@ -87,6 +109,8 @@ template Request
     choice Approve : ContractId Service
       with
         operator : Party
+        routeProviderCid : ContractId RouteProvider.I
+        settlementFactoryCid : ContractId Settlement.F
       controller operator, provider
       do
-        create Service with operator; provider; customer
+        create Service with operator; provider; customer; routeProviderCid; settlementFactoryCid

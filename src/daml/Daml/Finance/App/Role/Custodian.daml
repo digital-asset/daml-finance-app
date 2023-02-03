@@ -121,6 +121,8 @@ template Role
     nonconsuming choice OfferSettlementService : ContractId Settlement.Offer
       with
         customer : Party
+        routeProviderCid : ContractId RouteProvider.I
+        settlementFactoryCid : ContractId Settlement.F
       controller provider
       do
         create Settlement.Offer with ..
@@ -128,6 +130,8 @@ template Role
     nonconsuming choice ApproveSettlementRequest : ContractId Settlement.Service
       with
         settlementServiceRequestCid : ContractId Settlement.Request
+        routeProviderCid : ContractId RouteProvider.I
+        settlementFactoryCid : ContractId Settlement.F
       controller provider
       do
         exercise settlementServiceRequestCid Settlement.Approve with ..
@@ -188,6 +192,8 @@ template Role
         customer : Party
         distributionRuleCid : ContractId Lifecycle.I
         replacementRuleCid : ContractId Lifecycle.I
+        genericRuleCid : ContractId Lifecycle.I
+        dynamicRuleCid : ContractId Lifecycle.I
       controller provider
       do
         create Lifecycle.Offer with ..
