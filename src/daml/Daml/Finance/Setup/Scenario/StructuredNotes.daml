@@ -63,9 +63,9 @@ run  = do
   createStructuringService        operator issuer       issuer
   createIssuanceService           operator issuer       issuer
   createIssuanceService           operator riskTaker    riskTaker
-  createLifecycleService          operator riskTaker    riskTaker public
-  createLifecycleService          operator issuer       issuer    public
   createBackToBackIssuanceService operator riskTaker    issuer    paths
+  createLifecycleService          operator riskTaker    riskTaker
+  createLifecycleService          operator issuer       issuer
   createSubscriptionService       operator issuer       issuer    paths
 
   -- Accounts

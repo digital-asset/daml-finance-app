@@ -31,12 +31,14 @@ import Daml.Finance.App.Role.Exchange qualified as Exchange
 import Daml.Finance.App.Settlement.Service qualified as Settlement (Accept(..), Offer(..), Service)
 import Daml.Finance.App.Structuring.Auto.Service qualified as StructuringAuto (Accept(..), Service)
 import Daml.Finance.App.Structuring.Service qualified as Structuring (Accept(..), Factories(..), Service)
+import Daml.Finance.Claims.Lifecycle.Rule qualified as Dynamic (Rule(..))
 import Daml.Finance.Instrument.Bond.FixedRate.Factory qualified as FixedRateBond (Factory(..))
 import Daml.Finance.Instrument.Bond.FloatingRate.Factory qualified as FloatingRateBond (Factory(..))
 import Daml.Finance.Instrument.Bond.InflationLinked.Factory qualified as InflationLinkedBond (Factory(..))
 import Daml.Finance.Instrument.Bond.ZeroCoupon.Factory qualified as ZeroCouponBond (Factory(..))
 import Daml.Finance.Instrument.Equity.Factory qualified as Equity (Factory(..))
 import Daml.Finance.Instrument.Generic.Factory qualified as Generic (Factory(..))
+import Daml.Finance.Instrument.Generic.Lifecycle.Rule qualified as Generic (Rule(..))
 import Daml.Finance.Instrument.Token.Factory qualified as Token (Factory(..))
 import Daml.Finance.Interface.Account.Factory qualified as Account (F)
 import Daml.Finance.Interface.Holding.Factory qualified as Holding (F)
@@ -76,13 +78,13 @@ createIssuanceAutoService operator custodian customer = do
 
 createStructuringService : Party -> Party -> Party -> Script (ContractId Structuring.Service)
 createStructuringService operator custodian customer = do
-  token <- toInterfaceContractId <$> submit custodian do createCmd Token.Factory with provider = custodian; observers = M.fromList [("Default", singleton customer)]
-  equity <- toInterfaceContractId <$> submit custodian do createCmd Equity.Factory with provider = custodian; observers = M.fromList [("Default", singleton customer)]
-  generic <- toInterfaceContractId <$> submit custodian do createCmd Generic.Factory with provider = custodian; observers = M.fromList [("Default", singleton customer)]
-  fixedRateBond <- toInterfaceContractId <$> submit custodian do createCmd FixedRateBond.Factory with provider = custodian; observers = M.fromList [("Default", singleton customer)]
-  floatingRateBond <- toInterfaceContractId <$> submit custodian do createCmd FloatingRateBond.Factory with provider = custodian; observers = M.fromList [("Default", singleton customer)]
-  inflationLinkedBond <- toInterfaceContractId <$> submit custodian do createCmd InflationLinkedBond.Factory with provider = custodian; observers = M.fromList [("Default", singleton customer)]
-  zeroCouponBond <- toInterfaceContractId <$> submit custodian do createCmd ZeroCouponBond.Factory with provider = custodian; observers = M.fromList [("Default", singleton customer)]
+  token <- toInterfaceContractId <$> submit custodian do createCmd Token.Factory with provider = custodian; observers = fromList [("Default", singleton customer)]
+  equity <- toInterfaceContractId <$> submit custodian do createCmd Equity.Factory with provider = custodian; observers = fromList [("Default", singleton customer)]
+  generic <- toInterfaceContractId <$> submit custodian do createCmd Generic.Factory with provider = custodian; observers = fromList [("Default", singleton customer)]
+  fixedRateBond <- toInterfaceContractId <$> submit custodian do createCmd FixedRateBond.Factory with provider = custodian; observers = fromList [("Default", singleton customer)]
+  floatingRateBond <- toInterfaceContractId <$> submit custodian do createCmd FloatingRateBond.Factory with provider = custodian; observers = fromList [("Default", singleton customer)]
+  inflationLinkedBond <- toInterfaceContractId <$> submit custodian do createCmd InflationLinkedBond.Factory with provider = custodian; observers = fromList [("Default", singleton customer)]
+  zeroCouponBond <- toInterfaceContractId <$> submit custodian do createCmd ZeroCouponBond.Factory with provider = custodian; observers = fromList [("Default", singleton customer)]
   let factories = Structuring.Factories with token; equity; generic; fixedRateBond; floatingRateBond; inflationLinkedBond; zeroCouponBond
   offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferStructuringService with ..
   submit customer do exerciseCmd offerCid Structuring.Accept
@@ -98,11 +100,16 @@ createBackToBackIssuanceService operator provider customer paths = do
   offerCid <- submit provider do exerciseByKeyCmd @Custodian.Role (operator, provider) Custodian.OfferBackToBackService with customer; settlementServiceCid
   submit customer do exerciseCmd offerCid BackToBack.Accept
 
-createLifecycleService : Party -> Party -> Party -> Party -> Script (ContractId Lifecycle.Service)
-createLifecycleService operator custodian customer public = do
-  distributionRuleCid <- toInterfaceContractId <$> submit custodian do createCmd Distribution.Rule with providers = singleton custodian; lifecycler = customer; observers = singleton public
-  replacementRuleCid <- toInterfaceContractId <$> submit custodian do createCmd Replacement.Rule with providers = singleton custodian; lifecycler = customer; observers = singleton public
-  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferLifecycleService with ..
+createLifecycleService : Party -> Party -> Party -> Script (ContractId Lifecycle.Service)
+createLifecycleService operator provider customer = do
+  let
+    observers = fromList [("Default", singleton customer)]
+    providers = singleton provider
+  distributionRuleCid <- toInterfaceContractId <$> submit provider do createCmd Distribution.Rule with providers; lifecycler = customer; id = Id "DistributionRule"; description = ""; observers = singleton customer
+  replacementRuleCid  <- toInterfaceContractId <$> submit provider do createCmd Replacement.Rule  with providers; lifecycler = customer; id = Id "ReplacementRule"; description = ""; observers = singleton customer
+  genericRuleCid      <- toInterfaceContractId <$> submit provider do createCmd Generic.Rule      with providers; lifecycler = customer; id = Id "GenericRule"; description = ""; observers
+  dynamicRuleCid      <- toInterfaceContractId <$> submit provider do createCmd Dynamic.Rule      with providers; lifecycler = customer; id = Id "DynamicRule"; description = ""; observers
+  offerCid <- submit provider do exerciseByKeyCmd @Custodian.Role (operator, provider) Custodian.OfferLifecycleService with ..
   submit customer do exerciseCmd offerCid Lifecycle.Accept
 
 createTradingService : Party -> Party -> Party -> SettlementPaths -> Script (ContractId Trading.Service)

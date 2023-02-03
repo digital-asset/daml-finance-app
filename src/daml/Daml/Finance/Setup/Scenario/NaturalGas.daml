@@ -7,7 +7,7 @@ import DA.Date (addDays, toDateUTC)
 import DA.Map (empty, fromList)
 import DA.Set (singleton)
 import DA.Time (time)
-import Daml.Finance.Data.Observable.Observation (Observation(..))
+import Daml.Finance.Data.Numeric.Observation (Observation(..))
 import Daml.Finance.Account.Account qualified as Account (Factory(..))
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
 import Daml.Finance.Interface.Types.Common.Types (Id(..))
@@ -48,7 +48,7 @@ run  = do
   createCustodyService    operator cashProvider buyer   paths accountFactoryCid holdingFactoryCid
   createCustodyService    operator seller       buyer   paths accountFactoryCid holdingFactoryCid
   createIssuanceService   operator seller       seller
-  createLifecycleService  operator seller       seller  public
+  createLifecycleService  operator seller       seller
 
   -- Accounts
   sellerCashAccount   <- createAccount operator cashProvider  seller  public "Seller@CashProvider" empty

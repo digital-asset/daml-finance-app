@@ -52,7 +52,7 @@ run  = do
   createCustodyService      operator lender       borrower  paths accountFactoryCid holdingFactoryCid
   createLendingService      operator lender       borrower
   createStructuringService  operator registry     lender
-  createLifecycleService    operator registry     lender    public
+  createLifecycleService    operator registry     lender
 
   -- Accounts
   borrowerLenderAccount <- createAccount operator lender      borrower  public "Borrower@Lender"       empty

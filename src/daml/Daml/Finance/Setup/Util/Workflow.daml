@@ -8,6 +8,7 @@ import DA.List (head)
 import DA.Map qualified as M (Map, fromList)
 import DA.Set (fromList, singleton)
 import DA.Text (parseInt)
+import DA.Time (time)
 import Daml.Finance.App.Custody.Service qualified as Custody (Deposit(..), OpenAccount(..), RequestDeposit(..), RequestOpenAccount(..), Service)
 import Daml.Finance.App.Data.AccountDirectory (AccountDirectory(..))
 import Daml.Finance.App.Distribution.Auction.Model qualified as Auction (T)
@@ -25,9 +26,11 @@ import Daml.Finance.App.Listing.Model qualified as Listing (T)
 import Daml.Finance.App.Listing.Service qualified as Listing (CreateListing(..), RequestCreateListing(..), Service)
 import Daml.Finance.App.Trading.Model qualified as Trading (Order, Side(..))
 import Daml.Finance.App.Trading.Service qualified as Trading (CreateOrder(..), RequestCreateOrder(..), Service)
-import Daml.Finance.Data.Observable.Observation qualified as Data (Observation(..))
+import Daml.Finance.Data.Numeric.Observation qualified as Data (Observation(..))
 import Daml.Finance.Data.Reference.HolidayCalendar qualified as Data (HolidayCalendar(..))
 import Daml.Finance.Data.Time.DateClock qualified as Data (DateClock(..))
+import Daml.Finance.Data.Time.DateClockUpdate qualified as Data (DateClockUpdateEvent(..))
+import Daml.Finance.Data.Time.DateClock.Types (Unit(..))
 import Daml.Finance.Instrument.Token.Instrument qualified as Token (Instrument(..))
 import Daml.Finance.Instrument.Equity.Instrument qualified as Equity (Instrument(..))
 import Daml.Finance.Instrument.Bond.FixedRate.Instrument qualified as FixedRate (Instrument(..))
@@ -38,14 +41,14 @@ import Daml.Finance.Instrument.Generic.Instrument qualified as Generic (Instrume
 import Daml.Finance.Instrument.Swap.CreditDefault.Instrument qualified as CreditDefaultSwap (Instrument(..))
 import Daml.Finance.Interface.Account.Account qualified as Account (Controllers(..), R)
 import Daml.Finance.Interface.Claims.Types (C)
-import Daml.Finance.Interface.Data.NumericObservable qualified as NumericObservable (I)
-import Daml.Finance.Interface.Data.TimeObservable qualified as TimeObservable (I)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I, Transfer(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (GetView(..), I, Reference(..))
 import Daml.Finance.Interface.Lifecycle.Event qualified as Event (I)
 import Daml.Finance.Interface.Lifecycle.Effect qualified as Effect (I)
+import Daml.Finance.Interface.Lifecycle.Observable.NumericObservable qualified as NumericObservable (I)
+import Daml.Finance.Interface.Lifecycle.Observable.TimeObservable qualified as TimeObservable (I)
 import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Claim (ClaimEffect(..), ClaimResult(..))
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (I)
 import Daml.Finance.Interface.Settlement.Factory qualified as SettlementFactory (I)
@@ -56,8 +59,6 @@ import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayAdjustment(..), Bu
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum, RollConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.Schedule (Frequency(..), PeriodicSchedule(..))
-import Daml.Finance.Lifecycle.Event.DateClock qualified as DateClock (Event(..))
-import Daml.Finance.Lifecycle.Types (Unit(..))
 import Daml.Finance.Settlement.Factory qualified as Settlement (FactoryWithIntermediaries)
 import Daml.Finance.Settlement.Instruction qualified as Instruction (T)
 import Daml.Finance.Setup.Util.Common (getHolding)
@@ -114,7 +115,7 @@ createClockAndEvent providers today observers = do
     date = Unit today
     clock = Data.DateClock with providers = fromList providers; date; id; description; observers
   clockCid <- toInterfaceContractId <$> submitMulti providers [] do createCmd clock
-  eventCid <- toInterfaceContractId <$> submitMulti providers [] do createCmd DateClock.Event with providers = fromList providers; id; description; date; observers
+  eventCid <- toInterfaceContractId <$> submitMulti providers [] do createCmd Data.DateClockUpdateEvent with providers = fromList providers; id; description; eventTime = time today 0 0 0; date = today; observers
   pure (clockCid, eventCid)
 
 createObservation : Party -> Text -> [(Time, Decimal)] -> M.Map Text Parties -> Script (ContractId NumericObservable.I)
@@ -243,52 +244,46 @@ processAuction operator provider customer public auctionCid bidCids = do
         auctionCid
         bidCids
 
-declareDividend : Party -> Party -> Party -> Party -> Instrument.K -> Date -> [Instrument.Q] -> Script (ContractId Effect.I)
-declareDividend operator provider issuer public equity effectiveDate perUnitDistribution = do
-  [(clockCid, _)] <- query @Data.DateClock public
+declareDividend : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> [InstrumentQuantity] -> Script (ContractId Effect.I)
+declareDividend operator provider issuer public equity effectiveTime perUnitDistribution = do
   let
     id = "Dividend-" <> show equity.id <> "-" <> equity.version
     Some version = parseInt equity.version
   head <$> submitMulti [issuer] [public] do
     exerciseByKeyCmd @Lifecycle.Service (operator, provider, issuer) Lifecycle.DeclareDividend
       with
-        timeObservableCid = toInterfaceContractId clockCid
         equity
         newVersion = show (version + 1)
         id = Id id
         description = id
-        effectiveDate
+        effectiveTime
         perUnitDistribution
 
-declareReplacement : Party -> Party -> Party -> Party -> Instrument.K -> Date -> [Instrument.Q] -> Script (ContractId Effect.I)
-declareReplacement operator provider issuer public equity effectiveDate perUnitReplacement = do
-  [(clockCid, _)] <- query @Data.DateClock issuer
+declareReplacement : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> [InstrumentQuantity] -> Script (ContractId Effect.I)
+declareReplacement operator provider issuer public equity effectiveTime perUnitReplacement = do
   let id = "Replacement-" <> show equity.id <> "-" <> equity.version
   head <$> submitMulti [issuer] [public] do
     exerciseByKeyCmd @Lifecycle.Service (operator, provider, issuer) Lifecycle.DeclareReplacement
       with
-        timeObservableCid = toInterfaceContractId clockCid
         equity
         id = Id id
         description = id
-        effectiveDate
+        effectiveTime
         perUnitReplacement
 
-declareStockSplit : Party -> Party -> Party -> Party -> Instrument.K -> Date -> Decimal -> Script (ContractId Effect.I)
-declareStockSplit operator provider issuer public equity effectiveDate adjustmentFactor = do
-  [(clockCid, _)] <- query @Data.DateClock issuer
+declareStockSplit : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> Decimal -> Script (ContractId Effect.I)
+declareStockSplit operator provider issuer public equity effectiveTime adjustmentFactor = do
   let
     id = "StockSplit-" <> show equity.id <> "-" <> equity.version
     Some version = parseInt equity.version
   head <$> submitMulti [issuer] [public] do
     exerciseByKeyCmd @Lifecycle.Service (operator, provider, issuer) Lifecycle.DeclareStockSplit
       with
-        timeObservableCid = toInterfaceContractId clockCid
         equity
         newVersion = show (version + 1)
         id = Id id
         description = id
-        effectiveDate
+        effectiveTime
         adjustmentFactor
 
 claimEffect : Party -> Party -> Party -> Party -> ContractId Effect.I -> [ContractId Holding.I] -> Id -> Script (ContractId Batch.I, [ContractId Instruction.I])

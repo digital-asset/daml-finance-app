@@ -206,6 +206,8 @@ template Role
         lifecycleServiceRequestCid : ContractId Lifecycle.Request
         distributionRuleCid : ContractId Lifecycle.I
         replacementRuleCid : ContractId Lifecycle.I
+        genericRuleCid : ContractId Lifecycle.I
+        dynamicRuleCid : ContractId Lifecycle.I
       controller provider
       do
         exercise lifecycleServiceRequestCid Lifecycle.Approve with ..

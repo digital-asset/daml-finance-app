@@ -9,14 +9,13 @@ import ContingentClaims.Lifecycle.Lifecycle qualified as Lifecycle
 import ContingentClaims.Lifecycle.Util (expiry, fixings, payoffs)
 import ContingentClaims.Valuation.Stochastic (Expr)
 import Daml.Finance.Claims.Util.Lifecycle qualified as Claim (lifecycle, lifecycleClaims, timeEvent)
-import Daml.Finance.Interface.Data.NumericObservable qualified as NumericObservable (I)
-import Daml.Finance.Interface.Data.TimeObservable qualified as TimeObservable (I)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I, R)
 import Daml.Finance.Interface.Instrument.Equity.Instrument qualified as Equity (I, DeclareDividend(..), DeclareReplacement(..), DeclareStockSplit(..))
 import Daml.Finance.Interface.Claims.Claim qualified as Claim (Claim, getClaims, GetClaims(..))
 import Daml.Finance.Interface.Claims.Types (C, Pending, TaggedClaim)
 import Daml.Finance.Interface.Lifecycle.Effect qualified as Effect (I)
 import Daml.Finance.Interface.Lifecycle.Event qualified as Event (I)
+import Daml.Finance.Interface.Lifecycle.Observable.NumericObservable qualified as NumericObservable (I)
 import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (I, Evolve(..))
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I)
 import Daml.Finance.Interface.Types.Common.Types (Id, InstrumentKey(..), InstrumentQuantity)
@@ -30,6 +29,8 @@ template Service
     customer : Party
     distributionRuleCid : ContractId Lifecycle.I
     replacementRuleCid : ContractId Lifecycle.I
+    genericRuleCid : ContractId Lifecycle.I
+    dynamicRuleCid : ContractId Lifecycle.I
   where
     signatory operator, provider, customer
 
@@ -38,63 +39,69 @@ template Service
 
     nonconsuming choice DeclareDividend : [ContractId Effect.I]
       with
-        timeObservableCid : ContractId TimeObservable.I
         equity : InstrumentKey
         newVersion : Text
         id : Id
         description : Text
-        effectiveDate : Date
+        effectiveTime : Time
         perUnitDistribution : [ InstrumentQuantity ]
       controller customer
       do
         now <- getTime
         (_, equityRef) <- fetchByKey @Instrument.R equity
-        equity <- fetch equityRef.cid
+        equityInstrument <- fetch equityRef.cid
         let
-          disclosure = toInterface @Disclosure.I equity
-          v = view equity
+          disclosure = toInterface @Disclosure.I equityInstrument
+          v = view equityInstrument
           dv = view disclosure
-          newInstrument = InstrumentKey with depository = provider; issuer = customer; id = v.id; version = newVersion
-        exerciseByKey @Structuring.Service (operator, provider, customer) Structuring.RequestAndCreateEquity with id = v.id; description = v.description; version = newVersion; validAsOf = now; observers = dv.observers
-        eventCid <- exercise (coerceContractId equityRef.cid : ContractId Equity.I) Equity.DeclareDividend with id; description; effectiveDate; newInstrument; perUnitDistribution
-        snd <$> exercise distributionRuleCid Lifecycle.Evolve with ruleName = "Dividend"; eventCid; timeObservableCid; observableCids = []
+          newInstrument = InstrumentKey with depository = provider; issuer = customer; id = equity.id; version = newVersion
+        exerciseByKey @Structuring.Service (operator, provider, customer) Structuring.RequestAndCreateEquity with id = equity.id; description = v.description; version = newVersion; validAsOf = now; observers = dv.observers
+        eventCid <- exercise (coerceContractId equityRef.cid : ContractId Equity.I) Equity.DeclareDividend with id; description; effectiveTime; newInstrument; perUnitDistribution
+        snd <$> exercise distributionRuleCid Lifecycle.Evolve with
+          eventCid
+          instrument = equity
+          observableCids = []
 
     nonconsuming choice DeclareReplacement : [ContractId Effect.I]
       with
-        timeObservableCid : ContractId TimeObservable.I
         equity : InstrumentKey
         id : Id
         description : Text
-        effectiveDate : Date
+        effectiveTime : Time
         perUnitReplacement : [InstrumentQuantity]
       controller customer
       do
         (_, equityRef) <- fetchByKey @Instrument.R equity
-        eventCid <- exercise (coerceContractId equityRef.cid : ContractId Equity.I) Equity.DeclareReplacement with id; description; effectiveDate; perUnitReplacement
-        snd <$> exercise replacementRuleCid Lifecycle.Evolve with ruleName = "StockSplit"; eventCid; timeObservableCid; observableCids = []
+        eventCid <- exercise (coerceContractId equityRef.cid : ContractId Equity.I) Equity.DeclareReplacement with id; description; effectiveTime; perUnitReplacement
+        snd <$> exercise replacementRuleCid Lifecycle.Evolve with
+          eventCid
+          instrument = equity
+          observableCids = []
 
     nonconsuming choice DeclareStockSplit : [ContractId Effect.I]
       with
-        timeObservableCid : ContractId TimeObservable.I
         equity : InstrumentKey
         newVersion : Text
         id : Id
         description : Text
-        effectiveDate : Date
+        effectiveTime : Time
         adjustmentFactor : Decimal
       controller customer
       do
         now <- getTime
         (_, equityRef) <- fetchByKey @Instrument.R equity
-        equity <- fetch equityRef.cid
+        equityInstrument <- fetch equityRef.cid
         let
-          disclosure = toInterface @Disclosure.I equity
-          v = view equity
+          disclosure = toInterface @Disclosure.I equityInstrument
+          v = view equityInstrument
           dv = view disclosure
           newInstrument = InstrumentKey with depository = provider; issuer = customer; id = v.id; version = newVersion
         exerciseByKey @Structuring.Service (operator, provider, customer) Structuring.RequestAndCreateEquity with id = v.id; description = v.description; version = newVersion; validAsOf = now; observers = dv.observers
-        eventCid <- exercise (coerceContractId equityRef.cid : ContractId Equity.I) Equity.DeclareStockSplit with id; description; effectiveDate; newInstrument; adjustmentFactor
-        snd <$> exercise replacementRuleCid Lifecycle.Evolve with ruleName = "StockSplit"; eventCid; timeObservableCid; observableCids = []
+        eventCid <- exercise (coerceContractId equityRef.cid : ContractId Equity.I) Equity.DeclareStockSplit with id; description; effectiveTime; newInstrument; adjustmentFactor
+        snd <$> exercise replacementRuleCid Lifecycle.Evolve with
+          eventCid
+          instrument = equity
+          observableCids = []
 
     nonconsuming choice PreviewLifecycle : ([TaggedClaim], [Pending])
       with
@@ -133,16 +140,15 @@ template Service
         instrument <- fetch (coerceContractId instrumentCid : ContractId Instrument.I)
         fst <$> Claim.lifecycle customer observableCids hasClaims [Claim.timeEvent (view instrument).validAsOf]
 
-    nonconsuming choice Lifecycle : (ContractId Lifecycle.I, [ContractId Effect.I])
+    nonconsuming choice Lifecycle : (Optional InstrumentKey, [ContractId Effect.I])
       with
-        ruleName : Text
         eventCid : ContractId Event.I
-        timeObservableCid : ContractId TimeObservable.I
+        instrument : InstrumentKey
         observableCids : [ContractId NumericObservable.I]
-        lifecyclableCid : ContractId Lifecycle.I
+        ruleCid : ContractId Lifecycle.I
       controller customer
       do
-        exercise lifecyclableCid Lifecycle.Evolve with ruleName; eventCid; timeObservableCid; observableCids
+        exercise ruleCid Lifecycle.Evolve with eventCid; observableCids; instrument
 
     nonconsuming choice Expiry : Optional Time
       with
@@ -206,6 +212,8 @@ template Offer
     customer : Party
     distributionRuleCid : ContractId Lifecycle.I
     replacementRuleCid : ContractId Lifecycle.I
+    genericRuleCid : ContractId Lifecycle.I
+    dynamicRuleCid : ContractId Lifecycle.I
   where
     signatory operator, provider
     observer customer
@@ -244,6 +252,8 @@ template Request
         operator : Party
         distributionRuleCid : ContractId Lifecycle.I
         replacementRuleCid : ContractId Lifecycle.I
+        genericRuleCid : ContractId Lifecycle.I
+        dynamicRuleCid : ContractId Lifecycle.I
       controller operator, provider
       do
         create Service with ..

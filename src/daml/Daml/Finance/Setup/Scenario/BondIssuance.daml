@@ -9,16 +9,15 @@ import DA.Map (empty, fromList)
 import DA.Set (singleton)
 import DA.Time (time)
 import Daml.Finance.Account.Account qualified as Account (Factory(..))
+import Daml.Finance.Claims.Lifecycle.Rule qualified as Lifecycle (Rule(..))
 import Daml.Finance.Data.Time.DateClock qualified as Data (DateClock)
+import Daml.Finance.Data.Time.DateClockUpdate qualified as Data (DateClockUpdateEvent)
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
-import Daml.Finance.Instrument.Bond.FixedRate.Instrument qualified as FixedRateBond (Instrument)
-import Daml.Finance.Instrument.Bond.FloatingRate.Instrument qualified as FloatingRateBond (Instrument)
-import Daml.Finance.Instrument.Bond.InflationLinked.Instrument qualified as InflationLinkedBond (Instrument)
 import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (Evolve(..), I)
+import Daml.Finance.Interface.Types.Common.Types (Id(..))
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum(..))
-import Daml.Finance.Lifecycle.Event.DateClock qualified as DateClock (Event)
 import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Lifecycle.Effect qualified as Lifecycle (Effect)
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
@@ -65,7 +64,7 @@ run = do
   createIssuanceAutoService     operator registry     issuer
   createStructuringService      operator registry     issuer
   createStructuringAutoService  operator registry     issuer
-  createLifecycleService        operator registry     issuer    public
+  createLifecycleService        operator registry     issuer
 
   -- Accounts
   registryCashAccount   <- createAccount operator centralBank registry  public "Registry@CentralBank/Cash"       empty
@@ -117,14 +116,15 @@ run = do
   createAccountDirectory inv3       ([(usd, inv3CashAccount)] <> map (\s -> (s, inv3SecAccount)) securities)            $ singleton public
 
   -- Lifecycle
-  (bond2Cid, effectCids2) <- submitExerciseInterfaceByKeyCmd @Lifecycle.I [issuer] [public] bond2 Lifecycle.Evolve with ruleName = "Time"; eventCid; timeObservableCid; observableCids = [obsCid1, obsCid2]
-  (bond3Cid, effectCids3) <- submitExerciseInterfaceByKeyCmd @Lifecycle.I [issuer] [public] bond3 Lifecycle.Evolve with ruleName = "Time"; eventCid; timeObservableCid; observableCids = [obsCid1, obsCid2]
-  (bond4Cid, effectCids4) <- submitExerciseInterfaceByKeyCmd @Lifecycle.I [issuer] [public] bond4 Lifecycle.Evolve with ruleName = "Time"; eventCid; timeObservableCid; observableCids = [obsCid1, obsCid2]
+  lifecycleCid <- toInterfaceContractId @Lifecycle.I <$> submit operator do createCmd Lifecycle.Rule with providers = singleton operator; lifecycler = issuer; observers = pub; id = Id "LC-RULE"; description = "Dynamic instrument lifecycle rule"
+  (Some bond2, effectCids2) <- submitMulti [issuer] [public] do exerciseCmd lifecycleCid Lifecycle.Evolve with eventCid; instrument = bond2; observableCids = [obsCid1, obsCid2]
+  (Some bond3, effectCids3) <- submitMulti [issuer] [public] do exerciseCmd lifecycleCid Lifecycle.Evolve with eventCid; instrument = bond3; observableCids = [obsCid1, obsCid2]
+  (Some bond4, effectCids4) <- submitMulti [issuer] [public] do exerciseCmd lifecycleCid Lifecycle.Evolve with eventCid; instrument = bond4; observableCids = [obsCid1, obsCid2]
   mapA_ (\eCid -> submitMulti [registry, issuer] [] do archiveCmd $ fromInterfaceContractId @Lifecycle.Effect eCid) effectCids2
   mapA_ (\eCid -> submitMulti [registry, issuer] [] do archiveCmd $ fromInterfaceContractId @Lifecycle.Effect eCid) effectCids3
   mapA_ (\eCid -> submitMulti [registry, issuer] [] do archiveCmd $ fromInterfaceContractId @Lifecycle.Effect eCid) effectCids4
   submitMulti all [] do archiveCmd $ fromInterfaceContractId @Data.DateClock timeObservableCid
-  submitMulti all [] do archiveCmd $ fromInterfaceContractId @DateClock.Event eventCid
+  submitMulti all [] do archiveCmd $ fromInterfaceContractId @Data.DateClockUpdateEvent eventCid
 
   (timeObservableCid, eventCid) <- createClockAndEvent all today (singleton public)
 
