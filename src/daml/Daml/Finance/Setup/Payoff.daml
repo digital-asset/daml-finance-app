@@ -22,7 +22,7 @@ import Prelude hiding (and, or, (<=))
 type C = Claim Time Decimal InstrumentKey Text
 
 t : Date -> Time
-t d = time d 12 00 00
+t d = time d 0 0 0
 
 payment : InstrumentKey -> Decimal -> C
 payment ccy qty =
