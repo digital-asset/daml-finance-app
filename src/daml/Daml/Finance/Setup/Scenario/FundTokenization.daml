@@ -62,7 +62,7 @@ run = do
   createInvestmentService       operator am           inv1
   createInvestmentService       operator am           inv2
   createInvestmentService       operator am           inv3
-  createFundService             operator pm           am
+  createFundService             operator pm           am       paths
 
   -- Accounts
   amCashAccount         <- createAccount operator cashProvider  am        public "AssetManager@CashProvider/Cash"        $ fromList [("PM", singleton pm)]

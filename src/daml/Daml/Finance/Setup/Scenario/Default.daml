@@ -65,15 +65,15 @@ run  = do
   createLifecycleService        operator registry    issuer public
   createListingService          operator exchange    issuer
   createListingAutoService      operator exchange    issuer
-  createTradingService          operator exchange    issuer settlementFactoryCid
+  createTradingService          operator exchange    issuer paths
   createTradingAutoService      operator exchange    issuer
-  createTradingService          operator exchange    inv1   settlementFactoryCid
+  createTradingService          operator exchange    inv1   paths
   createTradingAutoService      operator exchange    inv1
-  createTradingService          operator exchange    inv2   settlementFactoryCid
+  createTradingService          operator exchange    inv2   paths
   createTradingAutoService      operator exchange    inv2
-  createTradingService          operator exchange    inv3   settlementFactoryCid
+  createTradingService          operator exchange    inv3   paths
   createTradingAutoService      operator exchange    inv3
-  createAuctionService          operator agent       issuer
+  createAuctionService          operator agent       issuer paths
   createAuctionAutoService      operator agent       issuer
   createBiddingService          operator agent       inv1
   createBiddingAutoService      operator agent       inv1

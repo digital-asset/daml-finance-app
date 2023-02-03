@@ -11,12 +11,11 @@ import DA.Foldable (forA_)
 import DA.List (sortOn, mapAccumL)
 import DA.Optional (whenSome)
 import DA.Set (fromList, singleton)
-import Daml.Finance.Interface.Settlement.Factory qualified as Factory (I)
-import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
 import Daml.Finance.App.Distribution.Auction.Model (Auction(..), CreateAuctionRequest(..), Status(..))
 import Daml.Finance.App.Distribution.Auction.Utils (dutchAuction, splitList, generateSettlementInstruction)
 import Daml.Finance.App.Distribution.Bidding.Model qualified as Bidding (Allocation(..), Bid, SettleAllocation(..), Status(..))
 import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (RejectBid(..), S)
+import Daml.Finance.App.Settlement.Service qualified as Settlement (Service)
 import Daml.Finance.App.Util (fetchAndArchive)
 import Daml.Finance.Interface.Account.Account qualified as Account (R, exerciseInterfaceByKey)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
@@ -24,6 +23,7 @@ import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
 import Daml.Finance.Interface.Account.Util (getAccount)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I, RemoveObservers(..))
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentKey, InstrumentQuantity, Parties)
+import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
 
 type S = Service
 
@@ -32,6 +32,7 @@ template Service
     operator : Party
     provider : Party
     customer : Party
+    settlementServiceCid : ContractId Settlement.Service
   where
     signatory operator, provider, customer
 
@@ -88,7 +89,6 @@ template Service
 
     nonconsuming choice ProcessAuction : ContractId Auction
       with
-        settlementFactoryCid : ContractId Factory.I
         auctionCid : ContractId Auction
         bidCids : [ContractId Bidding.Bid]
       controller provider
@@ -118,7 +118,7 @@ template Service
 
         -- Generate Settlement instructions for allocated bids
         let settleAllocations = (\allocation -> Bidding.SettleAllocation with allocation; price = finalPrice; issuer = customer) <$> allocatedBids
-        (remainingDepositCidOpt, batchCids) <- foldlA (generateSettlementInstruction settlementFactoryCid provider auction.receivableAccount) (Some auctionCollateralClid, []) settleAllocations
+        (remainingDepositCidOpt, batchCids) <- foldlA (generateSettlementInstruction settlementServiceCid provider auction.receivableAccount) (Some auctionCollateralClid, []) settleAllocations
 
         -- Settle transfers
         forA_ batchCids (`exercise` Batch.Settle with actors = singleton provider)
@@ -155,6 +155,7 @@ template Offer
     operator : Party
     provider : Party
     customer : Party
+    settlementServiceCid : ContractId Settlement.Service
   where
     signatory operator, provider
     observer customer
@@ -162,7 +163,7 @@ template Offer
     choice Accept : ContractId Service
       controller customer
       do
-        create Service with ..
+        create Service with operator; provider; customer; settlementServiceCid
 
     choice Decline : ()
       controller customer
@@ -192,6 +193,7 @@ template Request
     choice Approve : ContractId Service
       with
         operator : Party
+        settlementServiceCid : ContractId Settlement.Service
       controller operator, provider
       do
-        create Service with ..
+        create Service with operator; provider; customer; settlementServiceCid

@@ -100,9 +100,10 @@ createLifecycleService operator custodian customer public = do
   offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferLifecycleService with ..
   submit customer do exerciseCmd offerCid Lifecycle.Accept
 
-createTradingService : Party -> Party -> Party -> ContractId Settlement.Factory -> Script (ContractId Trading.Service)
-createTradingService operator exchange customer settlementFactoryCid = do
-  offerCid <- submit exchange do exerciseByKeyCmd @Exchange.Role (operator, exchange) Exchange.OfferTradingService with customer; settlementFactoryCid
+createTradingService : Party -> Party -> Party -> SettlementPaths -> Script (ContractId Trading.Service)
+createTradingService operator provider customer paths = do
+  settlementServiceCid <- createSettlementService operator provider customer paths
+  offerCid <- submit provider do exerciseByKeyCmd @Exchange.Role (operator, provider) Exchange.OfferTradingService with customer; settlementServiceCid
   submit customer do exerciseCmd offerCid Trading.Accept
 
 createTradingAutoService : Party -> Party -> Party -> Script (ContractId TradingAuto.Service)
@@ -120,9 +121,10 @@ createListingAutoService operator exchange customer = do
   offerCid <- submit exchange do exerciseByKeyCmd @Exchange.Role (operator, exchange) Exchange.OfferListingAutoService with ..
   submit customer do exerciseCmd offerCid ListingAuto.Accept
 
-createAuctionService : Party -> Party -> Party -> Script (ContractId Auction.Service)
-createAuctionService operator distributor customer = do
-  offerCid <- submit distributor do exerciseByKeyCmd @Distributor.Role (operator, distributor) Distributor.OfferAuctionService with customer
+createAuctionService : Party -> Party -> Party -> SettlementPaths -> Script (ContractId Auction.Service)
+createAuctionService operator provider customer paths = do
+  settlementServiceCid <- createSettlementService operator provider customer paths
+  offerCid <- submit provider do exerciseByKeyCmd @Distributor.Role (operator, provider) Distributor.OfferAuctionService with customer; settlementServiceCid
   submit customer do exerciseCmd offerCid Auction.Accept
 
 createAuctionAutoService : Party -> Party -> Party -> Script (ContractId AuctionAuto.Service)
@@ -162,9 +164,10 @@ createInvestmentService operator provider customer = do
   offerCid <- submit provider do exerciseByKeyCmd @Distributor.Role (operator, provider) Distributor.OfferInvestmentService with customer
   submit customer do exerciseCmd offerCid Investment.Accept
 
-createFundService : Party -> Party -> Party -> Script (ContractId Fund.Service)
-createFundService operator provider customer = do
-  offerCid <- submit provider do exerciseByKeyCmd @Distributor.Role (operator, provider) Distributor.OfferFundService with customer
+createFundService : Party -> Party -> Party -> SettlementPaths -> Script (ContractId Fund.Service)
+createFundService operator provider customer paths = do
+  settlementServiceCid <- createSettlementService operator provider customer paths
+  offerCid <- submit provider do exerciseByKeyCmd @Distributor.Role (operator, provider) Distributor.OfferFundService with customer; settlementServiceCid
   submit customer do exerciseCmd offerCid Fund.Accept
 
 createDecentralizedExchangeService : Party -> Party -> Text -> InstrumentQuantity -> InstrumentQuantity -> AccountKey -> ContractId Fungible.I -> InstrumentQuantity -> AccountKey -> ContractId Fungible.I -> Script (ContractId DecentralizedExchange.Service)
