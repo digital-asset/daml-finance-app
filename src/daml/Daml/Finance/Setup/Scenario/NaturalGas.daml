@@ -10,7 +10,6 @@ import DA.Time (time)
 import Daml.Finance.Data.Observable.Observation (Observation(..))
 import Daml.Finance.Account.Account qualified as Account (Factory(..))
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
-import Daml.Finance.Settlement.Factory qualified as Settlement (FactoryWithIntermediaries(..))
 import Daml.Finance.Interface.Types.Common.Types (Id(..))
 import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
@@ -36,9 +35,8 @@ run  = do
     cashRoute = Settlement.Hierarchy with rootCustodian = cashProvider; pathsToRootCustodian = cashSettlementPaths
     secRoute = Settlement.Hierarchy with rootCustodian = seller; pathsToRootCustodian = securitySettlementPaths
     paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
-  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
-  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
-  settlementFactoryCid      <- toInterfaceContractId <$> submit operator do createCmd Settlement.FactoryWithIntermediaries with provider = operator; paths; observers = singleton public
+  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory                   with provider = operator; observers = pub
+  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory                  with provider = operator; observers = pub
 
   -- Roles
   createOperatorRole  operator
@@ -46,9 +44,9 @@ run  = do
   createCustodianRole operator seller
 
   -- Services
-  createCustodyService    operator cashProvider seller  settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService    operator cashProvider buyer   settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService    operator seller       buyer   settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService    operator cashProvider seller  paths accountFactoryCid holdingFactoryCid
+  createCustodyService    operator cashProvider buyer   paths accountFactoryCid holdingFactoryCid
+  createCustodyService    operator seller       buyer   paths accountFactoryCid holdingFactoryCid
   createIssuanceService   operator seller       seller
   createLifecycleService  operator seller       seller  public
 

@@ -10,7 +10,6 @@ import DA.Time (time)
 import Daml.Finance.Account.Account qualified as Account (Factory(..))
 import Daml.Finance.App.Decentralized.Exchange.Service as Dex (Swap(..))
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
-import Daml.Finance.Settlement.Factory qualified as Settlement (FactoryWithIntermediaries(..))
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
 import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Setup.Util.Common
@@ -33,9 +32,8 @@ run  = do
     pathsToRootCustodian = [[con], [trd]]
     hierarchies = map (\rootCustodian -> Settlement.Hierarchy with rootCustodian; pathsToRootCustodian) [fed, ecb, snb, boe]
     paths = fromList $ zip assets hierarchies
-  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory with provider = operator; observers = pub
-  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory with provider = operator; observers = pub
-  settlementFactoryCid      <- toInterfaceContractId <$> submit operator do createCmd Settlement.FactoryWithIntermediaries with provider = operator; paths; observers = singleton public
+  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory                   with provider = operator; observers = pub
+  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory                  with provider = operator; observers = pub
 
   -- Roles
   createOperatorRole    operator

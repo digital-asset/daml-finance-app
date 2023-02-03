@@ -11,7 +11,6 @@ import DA.Time (time)
 import Daml.Finance.Account.Account qualified as Account (Factory(..))
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
-import Daml.Finance.Settlement.Factory qualified as Settlement (FactoryWithIntermediaries(..))
 import Daml.Finance.Interface.Types.Common.Types (Id(..))
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
 import Daml.Finance.Setup.Payoff
@@ -39,7 +38,6 @@ run  = do
     paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
   accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
   holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
-  settlementFactoryCid      <- toInterfaceContractId <$> submit operator do createCmd Settlement.FactoryWithIntermediaries with provider = operator; paths; observers = singleton public
 
   -- Roles
   createOperatorRole    operator
@@ -49,15 +47,15 @@ run  = do
   createDistributorRole operator agent
 
   -- Services
-  createCustodyService          operator centralBank issuer     settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator centralBank inv1       settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator centralBank inv2       settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator centralBank inv3       settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator centralBank registry   settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator registry    issuer     settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator registry    inv1       settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator registry    inv2       settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator registry    inv3       settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank issuer     paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank inv1       paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank inv2       paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank inv3       paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank registry   paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator registry    issuer     paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator registry    inv1       paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator registry    inv2       paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator registry    inv3       paths accountFactoryCid holdingFactoryCid
   createIssuanceService         operator registry    issuer
   createIssuanceAutoService     operator registry    issuer
   createStructuringService      operator registry    issuer

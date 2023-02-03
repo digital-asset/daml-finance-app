@@ -51,12 +51,17 @@ import Daml.Finance.Settlement.RouteProvider.IntermediatedStatic qualified as Ro
 import Daml.Finance.Settlement.Factory qualified as Settlement (Factory(..))
 import Daml.Script
 
-createCustodyService : Party -> Party -> Party -> ContractId Settlement.Factory -> ContractId Account.F -> ContractId Holding.F -> Script (ContractId Custody.Service)
-createCustodyService operator custodian customer settlementFactoryCid accountFactoryCid holdingFactoryCid = do
-  let providers = fromList [custodian, customer]
-  claimRuleCid <- toInterfaceContractId <$> submitMulti [custodian, customer] [] do createCmd Claim.Rule with providers = fromList [custodian, customer]; claimers = providers; settlers = providers; settlementFactoryCid; netInstructions = False
-  offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferCustodyService with customer; claimRuleCid; accountFactoryCid; holdingFactoryCid
 type SettlementPaths = Map Text Settlement.Hierarchy
+
+createCustodyService : Party -> Party -> Party -> SettlementPaths -> ContractId Account.F -> ContractId Holding.F -> Script (ContractId Custody.Service)
+createCustodyService operator provider customer paths accountFactoryCid holdingFactoryCid = do
+  let
+    providers = singleton provider
+    observers = singleton customer
+  routeProviderCid      <- toInterfaceContractId <$> submit provider do createCmd RouteProvider.IntermediatedStatic  with provider; observers; paths
+  settlementFactoryCid  <- toInterfaceContractId <$> submit provider do createCmd Settlement.Factory                 with provider; observers
+  claimRuleCid          <- toInterfaceContractId <$> submitMulti [provider] [customer] do createCmd Claim.Rule       with providers; claimers = S.fromList [provider, customer]; settlers = providers; routeProviderCid; settlementFactoryCid; netInstructions = False
+  offerCid <- submit provider do exerciseByKeyCmd @Custodian.Role (operator, provider) Custodian.OfferCustodyService with customer; claimRuleCid; accountFactoryCid; holdingFactoryCid
   submit customer do exerciseCmd offerCid Custody.Accept
 
 createIssuanceService : Party -> Party -> Party -> Script (ContractId Issuance.Service)

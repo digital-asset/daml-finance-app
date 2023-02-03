@@ -11,7 +11,6 @@ import Daml.Finance.App.Distribution.Fund.Model (Fund(..))
 import Daml.Finance.Account.Account qualified as Account (Factory(..))
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
-import Daml.Finance.Settlement.Factory qualified as Settlement (FactoryWithIntermediaries(..))
 import Daml.Finance.Interface.Types.Common.Types (Id(..))
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
 import Daml.Finance.Setup.Util.Common
@@ -37,7 +36,6 @@ run = do
     paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
   accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
   holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
-  settlementFactoryCid      <- toInterfaceContractId <$> submit operator do createCmd Settlement.FactoryWithIntermediaries with provider = operator; paths; observers = singleton public
 
   -- Roles
   createOperatorRole operator
@@ -48,13 +46,13 @@ run = do
   createDistributorRole operator am
 
   -- Services
-  createCustodyService          operator cashProvider am        settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator cashProvider custodian settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator am           inv1      settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator am           inv2      settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator am           inv3      settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator custodian    am        settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator custodian    pm        settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator cashProvider am        paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator cashProvider custodian paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator am           inv1      paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator am           inv2      paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator am           inv3      paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator custodian    am        paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator custodian    pm        paths accountFactoryCid holdingFactoryCid
   createIssuanceService         operator custodian    pm
   createIssuanceAutoService     operator custodian    pm
   createStructuringService      operator custodian    pm
