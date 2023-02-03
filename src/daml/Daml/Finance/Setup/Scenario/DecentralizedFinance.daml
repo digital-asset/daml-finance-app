@@ -44,14 +44,14 @@ run  = do
   createExchangeRole    operator con
 
   -- Services
-  createCustodyService          operator fed con settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator fed trd     settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator ecb con settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator ecb trd     settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator snb con settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator snb trd     settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator boe con settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator boe trd     settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator fed con paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator fed trd paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator ecb con paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator ecb trd paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator snb con paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator snb trd paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator boe con paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator boe trd paths accountFactoryCid holdingFactoryCid
 
   -- Accounts
   conFedAccount  <- createAccount operator fed con  public "Consortium@FED" pub
