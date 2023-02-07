@@ -50,7 +50,7 @@ run = do
   createIssuanceAutoService     operator seller       seller
   createStructuringService      operator seller       seller
   createStructuringAutoService  operator seller       seller
-  createLifecycleService        operator seller       seller
+  createLifecycleService        operator seller       seller  public
   createSettlementService       operator seller       buyer   paths
 
   -- Accounts

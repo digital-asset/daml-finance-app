@@ -100,13 +100,13 @@ createBackToBackIssuanceService operator provider customer paths = do
   offerCid <- submit provider do exerciseByKeyCmd @Custodian.Role (operator, provider) Custodian.OfferBackToBackService with customer; settlementServiceCid
   submit customer do exerciseCmd offerCid BackToBack.Accept
 
-createLifecycleService : Party -> Party -> Party -> Script (ContractId Lifecycle.Service)
-createLifecycleService operator provider customer = do
+createLifecycleService : Party -> Party -> Party -> Party -> Script (ContractId Lifecycle.Service)
+createLifecycleService operator provider customer public = do
   let
-    observers = fromList [("Default", singleton customer)]
+    observers = fromList [("Public", singleton public)]
     providers = singleton provider
-  distributionRuleCid <- toInterfaceContractId <$> submit provider do createCmd Distribution.Rule with providers; lifecycler = customer; id = Id "DistributionRule"; description = ""; observers = singleton customer
-  replacementRuleCid  <- toInterfaceContractId <$> submit provider do createCmd Replacement.Rule  with providers; lifecycler = customer; id = Id "ReplacementRule"; description = ""; observers = singleton customer
+  distributionRuleCid <- toInterfaceContractId <$> submit provider do createCmd Distribution.Rule with providers; lifecycler = customer; id = Id "DistributionRule"; description = ""; observers = singleton public
+  replacementRuleCid  <- toInterfaceContractId <$> submit provider do createCmd Replacement.Rule  with providers; lifecycler = customer; id = Id "ReplacementRule"; description = ""; observers = singleton public
   genericRuleCid      <- toInterfaceContractId <$> submit provider do createCmd Generic.Rule      with providers; lifecycler = customer; id = Id "GenericRule"; description = ""; observers
   dynamicRuleCid      <- toInterfaceContractId <$> submit provider do createCmd Dynamic.Rule      with providers; lifecycler = customer; id = Id "DynamicRule"; description = ""; observers
   offerCid <- submit provider do exerciseByKeyCmd @Custodian.Role (operator, provider) Custodian.OfferLifecycleService with ..

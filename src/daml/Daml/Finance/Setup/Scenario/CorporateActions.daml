@@ -61,7 +61,7 @@ run = do
   createIssuanceAutoService     operator registry     issuer
   createStructuringService      operator registry     issuer
   createStructuringAutoService  operator registry     issuer
-  createLifecycleService        operator registry     issuer
+  createLifecycleService        operator registry     issuer    public
   createSettlementService       operator issuer       registry  paths
   createSettlementService       operator registry     custodian paths
   createSettlementService       operator custodian    inv1      paths

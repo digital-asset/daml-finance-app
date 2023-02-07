@@ -3,7 +3,7 @@
 
 module Daml.Finance.App.Lending.Model where
 
-import DA.Set (singleton)
+import DA.Set (fromList, singleton)
 import Daml.Finance.Interface.Account.Account qualified as Account (exerciseInterfaceByKey)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I, Release(..))
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I, Transfer(..))
@@ -68,8 +68,8 @@ template BorrowAgreement
         interestCid : ContractId Transferable.I
       controller customer
       do
-        borrowedCid <- exercise borrowedCid Transferable.Transfer with actors = singleton customer; newOwnerAccount = lenderBorrowedAccount
-        interestCid <- exercise interestCid Transferable.Transfer with actors = singleton customer; newOwnerAccount = lenderInterestAccount
+        borrowedCid <- exercise borrowedCid Transferable.Transfer with actors = fromList [provider, customer]; newOwnerAccount = lenderBorrowedAccount
+        interestCid <- exercise interestCid Transferable.Transfer with actors = fromList [provider, customer]; newOwnerAccount = lenderInterestAccount
         unlockedCid <- coerceContractId <$> exercise (toInterfaceContractId collateralCid : ContractId Holding.I) Holding.Release with context = id
         Account.exerciseInterfaceByKey @Disclosure.I lenderBorrowedAccount provider Disclosure.RemoveObservers with disclosers = singleton customer; observersToRemove = (id, singleton customer)
         Account.exerciseInterfaceByKey @Disclosure.I lenderInterestAccount provider Disclosure.RemoveObservers with disclosers = singleton customer; observersToRemove = (id, singleton customer)

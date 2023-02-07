@@ -181,7 +181,7 @@ export const Instrument : React.FC = () => {
                       </TableRow>
                     </TableBody>
                   </Table>
-                  {!!instrument.lifecycle &&
+                  {!!instrument.claim &&
                   <>
                     <Button color="primary" className={classes.actionButton} variant="contained" disabled={!!remaining} onClick={() => previewLifecycle()}>Preview Lifecycle</Button>
                     <Button color="primary" className={classes.actionButton} variant="contained" disabled={!remaining} onClick={() => executeLifecycle()}>Execute Lifecycle</Button>
@@ -221,7 +221,7 @@ export const Instrument : React.FC = () => {
           </Grid>
           <Grid item xs={8}>
             <Grid container direction="column" spacing={2}>
-              {!!instrument.lifecycle &&
+              {!!instrument.claim &&
               <Grid item xs={12}>
                 <Paper className={classnames(classes.fullWidth, classes.paper)}>
                   <Typography variant="h5" className={classes.heading}>Current State</Typography>

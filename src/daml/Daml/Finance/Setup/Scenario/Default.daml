@@ -60,7 +60,7 @@ run  = do
   createIssuanceAutoService     operator registry    issuer
   createStructuringService      operator registry    issuer
   createStructuringAutoService  operator registry    issuer
-  createLifecycleService        operator registry    issuer
+  createLifecycleService        operator registry    issuer public
   createListingService          operator exchange    issuer
   createListingAutoService      operator exchange    issuer
   createTradingService          operator exchange    issuer paths

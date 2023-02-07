@@ -57,7 +57,7 @@ template Fund
         instructionCid : ContractId Instruction.I
       controller manager
       do
-        exercise instructionCid Instruction.Approve with actors = singleton manager; approval = TakeDelivery custodianCashAccount
+        exercise instructionCid Instruction.Approve with actors = singleton custodian; approval = TakeDelivery custodianCashAccount
 
 
 template PooledInvestmentRequest

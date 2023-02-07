@@ -30,7 +30,7 @@ run = do
   -- Factories
   let
     assets = ["FUND1", "FUND2", "FUND3"]
-    settlementPaths = [[am], [pm], [inv1, am], [inv2, am], [inv3, am]]
+    settlementPaths = [[custodian], [am], [pm], [inv1, am], [inv2, am], [inv3, am]]
     cashRoute = Settlement.Hierarchy with rootCustodian = cashProvider; pathsToRootCustodian = settlementPaths
     secRoute = Settlement.Hierarchy with rootCustodian = custodian; pathsToRootCustodian = settlementPaths
     paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets

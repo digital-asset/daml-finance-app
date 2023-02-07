@@ -107,25 +107,25 @@ template Service
           (reqInstCash, reqInstFund) = splitAt (length irs) reqInst
 
         -- Allocate and approve custodian cash instruction
-        (custodianCashInstructionCid, _) <- exercise custodianCashInstructionCid Instruction.Allocate with actors = singleton provider; allocation = Pledge $ toInterfaceContractId pir.cashCid
+        (custodianCashInstructionCid, _) <- exercise custodianCashInstructionCid Instruction.Allocate with actors = singleton customer; allocation = Pledge $ toInterfaceContractId pir.cashCid
         exercise fundCid Fund.ApproveInstruction with instructionCid = custodianCashInstructionCid
 
         -- Allocate and approve manager fund instruction
         (managerFundInstructionCid, _) <- exercise managerFundInstructionCid Instruction.Allocate with actors = singleton provider; allocation = Pledge $ coerceContractId fundUnitsCid
-        exercise managerFundInstructionCid Instruction.Approve with actors = singleton provider; approval = TakeDelivery pir.customerFundAccount
+        exercise managerFundInstructionCid Instruction.Approve with actors = singleton customer; approval = TakeDelivery pir.customerFundAccount
 
         -- Allocate and approve investor instructions
         let
           processCash (irCid, iCid) = do
             iCid <- exercise irCid AllocateInstruction with instructionCid = iCid
-            exercise iCid Instruction.Approve with actors = singleton provider; approval = DebitSender
+            exercise iCid Instruction.Approve with actors = singleton customer; approval = DebitSender
           processFund (irCid, iCid) = do
-            (iCid, _) <- exercise iCid Instruction.Allocate with actors = singleton provider; allocation = CreditReceiver
+            (iCid, _) <- exercise iCid Instruction.Allocate with actors = singleton customer; allocation = CreditReceiver
             exercise irCid ApproveInstruction with instructionCid = iCid
         mapA_ processCash reqInstCash
         mapA_ processFund reqInstFund
 
-        mapA_ (\cid -> exercise cid Delete) pir.investmentRequestCids
+        mapA_ (`exercise` Delete) pir.investmentRequestCids
         exercise pooledInvestmentRequestCid Fund.Remove
         exercise batchCid Batch.Settle with actors = singleton provider
 
