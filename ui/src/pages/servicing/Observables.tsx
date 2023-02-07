@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from "react";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Spinner } from "../../components/Spinner/Spinner";
-import { NumericObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/NumericObservable";
+import { NumericObservable } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Observable/NumericObservable";
 import { useParties } from "../../context/PartiesContext";
 import { CreateEvent } from "@daml/ledger";
 import { HorizontalTable } from "../../components/Table/HorizontalTable";

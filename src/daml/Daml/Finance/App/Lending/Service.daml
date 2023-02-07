@@ -3,13 +3,13 @@
 
 module Daml.Finance.App.Lending.Service where
 
-import DA.Set (singleton)
+import DA.Set (fromList, singleton)
 import Daml.Finance.App.Lending.Model (BorrowAgreement(..), BorrowOffer(..), BorrowOfferRequest(..))
 import Daml.Finance.App.Util (fetchAndArchive)
-import Daml.Finance.Interface.Account.Account qualified as Account (K, exerciseInterfaceByKey)
+import Daml.Finance.Interface.Account.Account qualified as Account (exerciseInterfaceByKey)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I, Transfer(..))
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentQuantity)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, AddObservers(..))
 
 template Service
@@ -26,7 +26,7 @@ template Service
     nonconsuming choice RequestBorrowOffer : ContractId BorrowOfferRequest
       with
         id : Text
-        borrowed : Instrument.Q
+        borrowed : InstrumentQuantity
         maturity : Date
       controller customer
       do
@@ -36,12 +36,12 @@ template Service
       with
         borrowOfferCid : ContractId BorrowOffer
         collateralCid : ContractId Transferable.I
-        account : Account.K
+        account : AccountKey
       controller customer
       do
         BorrowOffer{operator; provider; customer; id; borrowed; maturity; interest; collateral; borrowedCid; lenderBorrowedAccount; lenderInterestAccount} <- fetchAndArchive borrowOfferCid
         unlockedBorrowedCid <- exercise (coerceContractId borrowedCid : ContractId Holding.I) Holding.Release with context = id
-        transferredCid <- exercise (coerceContractId unlockedBorrowedCid : ContractId Transferable.I) Transferable.Transfer with actors = singleton customer; newOwnerAccount = account
+        transferredCid <- exercise (coerceContractId unlockedBorrowedCid : ContractId Transferable.I) Transferable.Transfer with actors = fromList [provider, customer]; newOwnerAccount = account
         lockedCollateralCid : ContractId Transferable.I <- coerceContractId <$> exercise (toInterfaceContractId collateralCid : ContractId Holding.I) Holding.Acquire with newLockers = (singleton provider); context = id; lockType = Holding.Semaphore
         borrowAgreementCid <- create BorrowAgreement with operator; provider; customer; id; borrowed; maturity; interest; collateral; collateralCid = lockedCollateralCid; lenderBorrowedAccount; lenderInterestAccount
         pure (transferredCid, borrowAgreementCid)
@@ -49,11 +49,11 @@ template Service
     nonconsuming choice CreateBorrowOffer : ContractId BorrowOffer
       with
         borrowOfferRequestCid : ContractId BorrowOfferRequest
-        interest : Instrument.Q
-        collateral : Instrument.Q
+        interest : InstrumentQuantity
+        collateral : InstrumentQuantity
         borrowedCid : ContractId Transferable.I
-        lenderBorrowedAccount : Account.K
-        lenderInterestAccount : Account.K
+        lenderBorrowedAccount : AccountKey
+        lenderInterestAccount : AccountKey
       controller provider
       do
         BorrowOfferRequest{operator; provider; customer; id; borrowed; maturity} <- fetchAndArchive borrowOfferRequestCid

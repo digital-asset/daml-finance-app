@@ -9,20 +9,20 @@ import DA.Set (fromList, singleton)
 import Daml.Finance.App.BackToBack.Service qualified as BackToBack
 import Daml.Finance.App.Distribution.Subscription.Model (BackToBack, Offering(..), Status(..), Subscription)
 import Daml.Finance.App.Distribution.Subscription.Util (settleSubscription)
+import Daml.Finance.App.Settlement.Service qualified as Settlement (Service)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
-import Daml.Finance.Interface.Account.Account qualified as Account (K, R)
+import Daml.Finance.Interface.Account.Account qualified as Account (R)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
 import Daml.Finance.Interface.Account.Util (getAccount)
-import Daml.Finance.Interface.Settlement.Factory qualified as Factory (I)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentQuantity, Parties)
 
 template Service
   with
     operator : Party
     provider : Party
     customer : Party
-    public : Party
+    settlementServiceCid : ContractId Settlement.Service
   where
     signatory operator, provider, customer
 
@@ -32,11 +32,12 @@ template Service
     nonconsuming choice CreateOffering : ContractId Offering
       with
         offeringId : Text
-        asset : Instrument.Q
-        price : Instrument.Q
+        asset : InstrumentQuantity
+        price : InstrumentQuantity
         customerHoldingCid : ContractId Fungible.I
-        customerAccount : Account.K
+        customerAccount : AccountKey
         backToBack : Optional BackToBack
+        observers : Parties
       controller customer
       do
         -- Disclose holding
@@ -60,16 +61,16 @@ template Service
 
         create Offering
           with
-            operator; provider; public; asset; price; offeringId
+            operator; provider; asset; price; offeringId
             issuer = customer
             issuerHoldingCid = customerHoldingCid
             issuerAccount = customerAccount
             backToBack = lockedB2b
             status = Open
+            observers
 
     nonconsuming choice ProcessOffering : ContractId Offering
       with
-        settlementFactoryCid : ContractId Factory.I
         offeringCid : ContractId Offering
         subscriptionCids : [ContractId Subscription]
       controller provider
@@ -77,13 +78,13 @@ template Service
         -- Settle subscriptions
         offering <- fetch offeringCid
         subscriptions <- zip subscriptionCids <$> forA subscriptionCids fetch
-        (remainingIssuerQuantity, remainingIssuerHoldingCidOpt) <- foldlA (settleSubscription provider settlementFactoryCid offering) (offering.asset.amount, Some offering.issuerHoldingCid) subscriptions
+        (remainingIssuerQuantity, remainingIssuerHoldingCidOpt) <- foldlA (settleSubscription provider settlementServiceCid offering) (offering.asset.amount, Some offering.issuerHoldingCid) subscriptions
 
         -- Settle back-to-back trade
         whenSome offering.backToBack \b2b -> do
           let
             totalQuantity = sum $ map ((.quantity) . snd) subscriptions
-          exerciseByKey @BackToBack.Service (operator, b2b.party, customer) BackToBack.SettleOffering with settlementFactoryCid; offeringCid; totalQuantity
+          exerciseByKey @BackToBack.Service (operator, b2b.party, customer) BackToBack.SettleOffering with offeringCid; totalQuantity
           pure ()
 
         -- Archive offer and subscriptions
@@ -110,7 +111,7 @@ template Offer
     operator : Party
     provider : Party
     customer : Party
-    public : Party
+    settlementServiceCid : ContractId Settlement.Service
   where
     signatory operator, provider
     observer customer
@@ -133,7 +134,6 @@ template Request
   with
     provider : Party
     customer : Party
-    public : Party
   where
     signatory customer
     observer provider
@@ -149,6 +149,7 @@ template Request
     choice Approve : ContractId Service
       with
         operator : Party
+        settlementServiceCid : ContractId Settlement.Service
       controller operator, provider
       do
         create Service with ..

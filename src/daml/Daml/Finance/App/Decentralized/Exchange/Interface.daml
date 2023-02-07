@@ -6,8 +6,7 @@ module Daml.Finance.App.Decentralized.Exchange.Interface where
 import DA.Assert ((===))
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 -- import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..), SplitResult(..))
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Types.Common (Parties)
+import Daml.Finance.Interface.Types.Common.Types (InstrumentQuantity, Parties)
 
 data View = View {}
 
@@ -18,8 +17,8 @@ interface FlashSwapAction where
   choice ExecuteAction: (ContractId Holding.I, [ContractId Holding.I])
     with
       actors : Parties
-      consumedQuantity : Instrument.Q
-      producedQuantity: Instrument.Q
+      consumedQuantity : InstrumentQuantity
+      producedQuantity: InstrumentQuantity
       holdingCid: ContractId Holding.I
     controller actors
     do

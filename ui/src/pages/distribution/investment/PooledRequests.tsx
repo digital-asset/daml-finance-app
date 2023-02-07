@@ -13,7 +13,7 @@ import { Service as FundService } from "@daml.js/daml-finance-app/lib/Daml/Finan
 import { Fund, PooledInvestmentRequest } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Fund/Model";
 import { Button } from "@mui/material";
 import useStyles from "../../styles";
-import { NumericObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/NumericObservable";
+import { NumericObservable } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Observable/NumericObservable";
 import { Factory } from "@daml.js/daml-finance-interface-settlement/lib/Daml/Finance/Interface/Settlement/Factory";
 
 export const PooledRequests : React.FC = () => {

@@ -9,44 +9,43 @@ import { useParties } from "../../context/PartiesContext";
 import { useServices } from "../../context/ServiceContext";
 import { InstrumentAggregate, useInstruments } from "../../context/InstrumentContext";
 import { Event } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Event";
-import { NumericObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/NumericObservable";
-import { TimeObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/TimeObservable";
+import { NumericObservable } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Observable/NumericObservable";
 import { DetailButton } from "../../components/DetailButton/DetailButton";
 import { SelectionTable } from "../../components/Table/SelectionTable";
 import { useNavigate } from "react-router-dom";
-import { ContractId } from "@daml/types";
-import { Lifecycle } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Rule/Lifecycle";
 
 export const Instruments : React.FC = () => {
   const navigate = useNavigate();
   const { getName } = useParties();
   const party = useParty();
   const ledger = useLedger();
-  const svc = useServices();
-  const inst = useInstruments();
 
-  const { loading: l1, contracts: numericObservables } = useStreamQueries(NumericObservable);
-  const { loading: l2, contracts: events } = useStreamQueries(Event);
-  const { loading: l3, contracts: timeObservables } = useStreamQueries(TimeObservable);
+  const { loading: l1, lifecycle } = useServices();
+  const { loading: l2, latests } = useInstruments();
+  const { loading: l3, contracts: numericObservables } = useStreamQueries(NumericObservable);
+  const { loading: l4, contracts: events } = useStreamQueries(Event);
 
-  if (l1 || l2 || l3 || svc.loading || inst.loading) return <Spinner />;
+  if (l1 || l2 || l3 || l4) return <Spinner />;
 
-  const myInstruments = inst.latests.filter(a => (!!a.lifecycle && a.lifecycle.payload.lifecycler === party) || (!!a.equity && a.payload.issuer === party));
+  const myInstruments = latests.filter(a =>
+    (a.payload.issuer === party) &&
+    (!!a.claim || !!a.equity));
 
   const lifecycleAll = async (cs : any[]) => {
-    const lifecycle = async (c : ContractId<Lifecycle>) => {
+    const lifecycleOne = async (c : InstrumentAggregate) => {
+      if (!c.claim) return;
+      const ruleCid = !!c.generic ? lifecycle[0].payload.genericRuleCid : lifecycle[0].payload.dynamicRuleCid;
       const arg = {
-        ruleName: "Time",
+        ruleCid,
         // TODO: Assumes the only event we have is a DateClockUpdatedEvent
         eventCid: events[0].contractId,
-        timeObservableCid: timeObservables[0].contractId,
+        instrument: c.key,
         observableCids: numericObservables.map(o => o.contractId),
-        lifecyclableCid: c
       }
-      await ledger.exercise(Service.Lifecycle, svc.lifecycle[0].contractId, arg);
-      navigate("/app/servicing/effects");
+      await ledger.exercise(Service.Lifecycle, lifecycle[0].contractId, arg);
     };
-    await Promise.all(cs.map(c => lifecycle(c as ContractId<Lifecycle>)));
+    await Promise.all(cs.map(c => lifecycleOne(c as InstrumentAggregate)));
+    navigate("/app/servicing/effects")
   };
 
   const createRow = (c : InstrumentAggregate) : any[] => {
@@ -62,8 +61,7 @@ export const Instruments : React.FC = () => {
   }
   const headers = ["Depository", "Issuer", "Id", "Description", "Version", "ValidAsOf", "Details"];
   const values : any[] = myInstruments.map(createRow);
-  const callbackValues = myInstruments.map(c => c.contractId);
   return (
-    <SelectionTable title="Instruments" variant={"h3"} headers={headers} values={values} action="Lifecycle" onExecute={lifecycleAll} callbackValues={callbackValues} />
+    <SelectionTable title="Instruments" variant={"h3"} headers={headers} values={values} action="Lifecycle" onExecute={lifecycleAll} callbackValues={myInstruments} />
   );
 };

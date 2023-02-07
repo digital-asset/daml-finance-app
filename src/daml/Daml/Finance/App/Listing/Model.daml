@@ -3,8 +3,7 @@
 
 module Daml.Finance.App.Listing.Model where
 
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K)
-import Daml.Finance.Interface.Types.Common (Parties)
+import Daml.Finance.Interface.Types.Common.Types (InstrumentKey, Parties)
 
 type T = Listing
 
@@ -14,8 +13,8 @@ template Listing
     provider : Party
     customer : Party
     id : Text
-    tradedInstrument : Instrument.K
-    quotedInstrument : Instrument.K
+    tradedInstrument : InstrumentKey
+    quotedInstrument : InstrumentKey
     observers : Parties
   where
     signatory operator, provider, customer
@@ -30,8 +29,8 @@ template CreateListingRequest
     provider : Party
     customer : Party
     id : Text
-    tradedInstrument : Instrument.K
-    quotedInstrument : Instrument.K
+    tradedInstrument : InstrumentKey
+    quotedInstrument : InstrumentKey
     observers : Parties
   where
     signatory operator, provider, customer

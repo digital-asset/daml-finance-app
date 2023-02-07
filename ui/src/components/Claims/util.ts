@@ -6,7 +6,7 @@ import { Claim, Inequality } from "@daml.js/contingent-claims-core/lib/Contingen
 import { Observation } from "@daml.js/contingent-claims-core/lib/ContingentClaims/Core/Observation";
 import { Decimal, Time } from "@daml/types";
 import { ClaimTreeNode } from "./ClaimsTreeBuilder";
-import { InstrumentKey } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Common";
+import { InstrumentKey } from "@daml.js/daml-finance-interface-types-common/lib/Daml/Finance/Interface/Types/Common/Types";
 
 export type MenuEntry = {
   id : string

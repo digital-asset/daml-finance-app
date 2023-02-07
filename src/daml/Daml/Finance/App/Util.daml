@@ -4,7 +4,7 @@
 module Daml.Finance.App.Util where
 
 -- | Fetches a contract, archives it and returns its value.
-fetchAndArchive : Template a => ContractId a -> Update a
+fetchAndArchive : (HasArchive a, HasFetch a) => ContractId a -> Update a
 fetchAndArchive cid = do
   c <- fetch cid
   archive cid

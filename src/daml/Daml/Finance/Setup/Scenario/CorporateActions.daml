@@ -10,11 +10,10 @@ import DA.Set (singleton)
 import DA.Time (time)
 import Daml.Finance.Account.Account qualified as Account (Factory(..))
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
 import Daml.Finance.Interface.Settlement.Types (Allocation(..), Approval(..))
-import Daml.Finance.Interface.Types.Common (Id(..))
-import Daml.Finance.Settlement.Factory qualified as Settlement (FactoryWithIntermediaries(..))
+import Daml.Finance.Interface.Types.Common.Types (Id(..))
+import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
 import Daml.Finance.Setup.Util.Common
 import Daml.Finance.Setup.Util.Role
@@ -40,7 +39,6 @@ run = do
     paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
   accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
   holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
-  settlementFactoryCid      <- toInterfaceContractId <$> submit operator do createCmd Settlement.FactoryWithIntermediaries with provider = operator; paths; observers = singleton public
 
   -- Roles
   createOperatorRole  operator
@@ -50,25 +48,25 @@ run = do
   createCustodianRole operator custodian
 
   -- Services
-  createCustodyService          operator centralBank  issuer    settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator centralBank  registry  settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator centralBank  custodian settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator issuer       registry  settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator registry     issuer    settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator registry     custodian settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator custodian    inv1      settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator custodian    inv2      settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator custodian    inv3      settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank  issuer    paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank  registry  paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank  custodian paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator issuer       registry  paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator registry     issuer    paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator registry     custodian paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator custodian    inv1      paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator custodian    inv2      paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator custodian    inv3      paths accountFactoryCid holdingFactoryCid
   createIssuanceService         operator registry     issuer
   createIssuanceAutoService     operator registry     issuer
   createStructuringService      operator registry     issuer
   createStructuringAutoService  operator registry     issuer
   createLifecycleService        operator registry     issuer    public
-  createSettlementService       operator issuer       registry
-  createSettlementService       operator registry     custodian
-  createSettlementService       operator custodian    inv1
-  createSettlementService       operator custodian    inv2
-  createSettlementService       operator custodian    inv3
+  createSettlementService       operator issuer       registry  paths
+  createSettlementService       operator registry     custodian paths
+  createSettlementService       operator custodian    inv1      paths
+  createSettlementService       operator custodian    inv2      paths
+  createSettlementService       operator custodian    inv3      paths
 
   -- Accounts
   issuerCashAccount     <- createAccount operator centralBank issuer    public "Issuer@CentralBank|Cash"         empty
@@ -88,8 +86,8 @@ run = do
   t <- getTime
   let
     today = toDateUTC t
-    todayTime = time today 12 0 0
-    tt d = time d 12 0 0
+    todayTime = time today 0 0 0
+    tt d = time d 0 0 0
     epoch = tt $ date 1970 Jan 1
     (ty, tm, td) = toGregorian today
   (clockCid, eventCid) <- createClockAndEvent all today (singleton public)
@@ -108,20 +106,20 @@ run = do
   createAccountDirectory inv3       [(usd, inv3CashAccount), (equity, inv3SecAccount)]            $ singleton public
 
   -- Distribution
-  registryEquityCid     <- deposit  operator issuer   registry    public (Instrument.qty 1_000_000.0 equity) registrySecAccount
-  (_, issuerEquityCid)  <- issue    operator registry issuer      public (Instrument.qty 1_000_000.0 equity) issuerSecAccount
+  registryEquityCid     <- deposit  operator issuer   registry    public (qty 1_000_000.0 equity) registrySecAccount
+  (_, issuerEquityCid)  <- issue    operator registry issuer      public (qty 1_000_000.0 equity) issuerSecAccount
   custodianEquityCid    <- transfer issuer   custodianSecAccount  public $ coerceContractId issuerEquityCid
-  inv1EquityCid         <- deposit  operator custodian inv1       public (Instrument.qty 500_000.0 equity) inv1SecAccount
-  inv2EquityCid         <- deposit  operator custodian inv2       public (Instrument.qty 300_000.0 equity) inv2SecAccount
-  inv3EquityCid         <- deposit  operator custodian inv3       public (Instrument.qty 200_000.0 equity) inv3SecAccount
+  inv1EquityCid         <- deposit  operator custodian inv1       public (qty 500_000.0 equity) inv1SecAccount
+  inv2EquityCid         <- deposit  operator custodian inv2       public (qty 300_000.0 equity) inv2SecAccount
+  inv3EquityCid         <- deposit  operator custodian inv3       public (qty 200_000.0 equity) inv3SecAccount
 
-  issuerCashCid         <- coerceContractId <$> deposit  operator centralBank issuer     public (Instrument.qty 500_000.0 usd) issuerCashAccount
-  registryCashCid       <- coerceContractId <$> deposit  operator centralBank registry   public (Instrument.qty 500_000.0 usd) registryCashAccount
+  issuerCashCid         <- coerceContractId <$> deposit  operator centralBank issuer     public (qty 500_000.0 usd) issuerCashAccount
+  registryCashCid       <- coerceContractId <$> deposit  operator centralBank registry   public (qty 500_000.0 usd) registryCashAccount
 
   -- Workflows
   let
     processDividend = do
-      effectCid <- declareDividend operator registry issuer public equity today [Instrument.qty 0.5 usd]
+      effectCid <- declareDividend operator registry issuer public equity todayTime [qty 0.5 usd]
 
       -- Claim registry holding
       (batchCid, instructionCids) <- claimEffect operator issuer registry public effectCid [registryEquityCid] (Id "Registry-Settlement")

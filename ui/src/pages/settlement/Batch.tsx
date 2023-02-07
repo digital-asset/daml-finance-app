@@ -34,11 +34,10 @@ export const Batch : React.FC = () => {
 
   if (l1 || l2 || l3 || l4) return <Spinner />;
   if (!batch) return <Message text={"Batch [" + contractId + "] not found"} />;
-  const filtered = instructions.filter(c => c.payload.batchId.unpack === batch.payload.id.unpack);
+  const filtered = instructions.filter(c => c.payload.batchId.unpack === batch.payload.id.unpack).sort((a, b) => a.payload.id.unpack.localeCompare(b.payload.id.unpack));
   const actors = singleton(party);
 
   const allocate = async (c : CreateEvent<Instruction>) => {
-    console.log(c.payload.routedStep.custodian);
     if (c.payload.routedStep.custodian === party) {
       const allocation : Allocation = { tag: "CreditReceiver", value: {} };
       await ledger.exercise(Instruction.Allocate, c.contractId, { actors, allocation });

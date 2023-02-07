@@ -30,7 +30,7 @@ export const Effects : React.FC = () => {
       const custodians = dedup(filtered.map(c => c.payload.account.custodian));
       const owners = dedup(filtered.map(c => c.payload.account.owner));
       if (custodians.length > 1 || owners.length > 1) throw new Error("Cannot claim holdings on multiple custodians or owners.");
-      const claimRule = claimRules.find(c => c.payload.providers.map.has(custodians[0]) && c.payload.providers.map.has(owners[0]));
+      const claimRule = claimRules.find(c => c.payload.providers.map.has(custodians[0]) && c.payload.claimers.map.has(owners[0]));
       if (!claimRule) throw new Error("Couldn't find claim rule for custodian [" + custodians[0] + "] and owner [" + owners[0] + "].");
       const arg = {
         claimer: party,

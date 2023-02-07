@@ -3,7 +3,7 @@
 
 import React from "react";
 import { useParty, useStreamQueries } from "@daml/react";
-import { AccountKey, InstrumentKey } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Common";
+import { AccountKey, InstrumentKey } from "@daml.js/daml-finance-interface-types-common/lib/Daml/Finance/Interface/Types/Common/Types";
 import { Reference } from "@daml.js/daml-finance-interface-account/lib/Daml/Finance/Interface/Account/Account";
 import { AccountDirectory } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Data/AccountDirectory";
 

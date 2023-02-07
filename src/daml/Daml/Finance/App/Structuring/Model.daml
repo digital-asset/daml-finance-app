@@ -3,9 +3,8 @@
 
 module Daml.Finance.App.Structuring.Model where
 
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K)
 import Daml.Finance.Interface.Claims.Types (C)
-import Daml.Finance.Interface.Types.Common (Id, PartiesMap)
+import Daml.Finance.Interface.Types.Common.Types (Id, InstrumentKey, PartiesMap)
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum)
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum)
@@ -66,7 +65,7 @@ template CreateFixedRateBondRequest
     businessDayConvention : BusinessDayConventionEnum
     couponPeriod : PeriodEnum
     couponPeriodMultiplier : Int
-    currency : Instrument.K
+    currency : InstrumentKey
     observers : PartiesMap
     lastEventTimestamp : Time
   where
@@ -90,7 +89,7 @@ template CreateFloatingRateBondRequest
     businessDayConvention : BusinessDayConventionEnum
     couponPeriod : PeriodEnum
     couponPeriodMultiplier : Int
-    currency : Instrument.K
+    currency : InstrumentKey
     observers : PartiesMap
     lastEventTimestamp : Time
   where
@@ -115,7 +114,7 @@ template CreateInflationLinkedBondRequest
     businessDayConvention : BusinessDayConventionEnum
     couponPeriod : PeriodEnum
     couponPeriodMultiplier : Int
-    currency : Instrument.K
+    currency : InstrumentKey
     observers : PartiesMap
     lastEventTimestamp : Time
   where
@@ -130,7 +129,7 @@ template CreateZeroCouponBondRequest
     description : Text
     issueDate : Date
     maturityDate : Date
-    currency : Instrument.K
+    currency : InstrumentKey
     observers : PartiesMap
     lastEventTimestamp : Time
   where

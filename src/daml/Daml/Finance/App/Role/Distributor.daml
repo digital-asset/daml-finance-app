@@ -10,6 +10,7 @@ import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Appro
 import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Settlement.Service qualified as Settlement (Service)
 
 template Role
   with
@@ -24,6 +25,7 @@ template Role
     nonconsuming choice OfferAuctionService : ContractId Auction.Offer
       with
         customer : Party
+        settlementServiceCid : ContractId Settlement.Service
       controller provider
       do
         create Auction.Offer with ..
@@ -31,6 +33,7 @@ template Role
     nonconsuming choice ApproveAuctionServiceRequest : ContractId Auction.Service
       with
         auctionServiceRequestCid : ContractId Auction.Request
+        settlementServiceCid : ContractId Settlement.Service
       controller provider
       do
         exercise auctionServiceRequestCid Auction.Approve with ..
@@ -108,7 +111,7 @@ template Role
     nonconsuming choice OfferSubscriptionService : ContractId Subscription.Offer
       with
         customer : Party
-        public : Party
+        settlementServiceCid : ContractId Settlement.Service
       controller provider
       do
         create Subscription.Offer with ..
@@ -116,6 +119,7 @@ template Role
     nonconsuming choice ApproveSubscriptionServiceRequest : ContractId Subscription.Service
       with
         subscriptionServiceRequestCid : ContractId Subscription.Request
+        settlementServiceCid : ContractId Settlement.Service
       controller provider
       do
         exercise subscriptionServiceRequestCid Subscription.Approve with ..
@@ -151,6 +155,7 @@ template Role
     nonconsuming choice OfferFundService : ContractId Fund.Offer
       with
         customer : Party
+        settlementServiceCid : ContractId Settlement.Service
       controller provider
       do
         create Fund.Offer with ..
@@ -158,6 +163,7 @@ template Role
     nonconsuming choice ApproveFundServiceRequest : ContractId Fund.Service
       with
         fundServiceRequestCid : ContractId Fund.Request
+        settlementServiceCid : ContractId Settlement.Service
       controller provider
       do
         exercise fundServiceRequestCid Fund.Approve with ..
