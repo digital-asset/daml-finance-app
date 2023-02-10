@@ -66,7 +66,7 @@ export const scenarios : Scenario[] = [
     label: "Default",
     description: "Primary and secondary markets workflows",
     image: scenarioDefault,
-    apps: [ structuring, issuance, custody, distribution, servicing, simulation, listing, trading, network ],
+    apps: [ structuring, issuance, custody, distribution, servicing, simulation, listing, trading, settlement ],
     positions: new Map([
       [ "Operator",     { x:    0, y:   0 } ],
       [ "Public",       { x:    0, y:   0 } ],

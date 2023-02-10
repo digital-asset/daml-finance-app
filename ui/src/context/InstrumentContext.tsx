@@ -18,7 +18,7 @@ import { Instrument as InterestRateSwap } from "@daml.js/daml-finance-interface-
 import { Instrument as Token } from "@daml.js/daml-finance-interface-instrument-token/lib/Daml/Finance/Interface/Instrument/Token/Instrument";
 import { Lifecycle } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Rule/Lifecycle";
 import { Claim } from "@daml.js/daml-finance-interface-claims/lib/Daml/Finance/Interface/Claims/Claim";
-import { Id, InstrumentKey } from "@daml.js/daml-finance-interface-types/lib/Daml/Finance/Interface/Types/Common";
+import { Id, InstrumentKey } from "@daml.js/daml-finance-interface-types-common/lib/Daml/Finance/Interface/Types/Common/Types";
 import { key } from "../util";
 import { Disclosure } from "@daml.js/daml-finance-interface-util/lib/Daml/Finance/Interface/Util/Disclosure";
 

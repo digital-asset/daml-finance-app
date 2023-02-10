@@ -3,8 +3,8 @@
 
 module Daml.Finance.App.Distribution.Bidding.Auto.Service where
 
-import Daml.Finance.Interface.Account.Account qualified as Account (K)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey)
 import Daml.Finance.App.Distribution.Auction.Model qualified as Auction (T)
 import Daml.Finance.App.Distribution.Bidding.Model (Bid)
 import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (CreateBid(..), S, RequestCreateBid(..))
@@ -28,7 +28,7 @@ template Service
         amount : Decimal
         price : Decimal
         collateralCid : ContractId Fungible.I
-        receivableAccount : Account.K
+        receivableAccount : AccountKey
       controller customer
       do
         createBidRequestCid <- exerciseByKey @Bidding.S (operator, provider, customer) Bidding.RequestCreateBid with auctionCid; amount; price; collateralCid; receivableAccount

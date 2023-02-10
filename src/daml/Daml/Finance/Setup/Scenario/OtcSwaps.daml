@@ -12,7 +12,6 @@ import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum(..))
-import Daml.Finance.Settlement.Factory qualified as Settlement (FactoryWithIntermediaries(..))
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
 import Daml.Finance.Setup.Util.Common
 import Daml.Finance.Setup.Util.Role
@@ -23,20 +22,20 @@ import Daml.Script
 run : Script [PartyInfo]
 run = do
   let scenario = "OTC Swaps"
-  parties <- allocateParties scenario ["Operator", "Public", "CentralBank", "Seller", "Buyer"]
+  parties <- allocateParties scenario ["Operator", "CentralBank", "Seller", "Buyer"] "Public"
   let
-    all@[operator, public, centralBank, seller, buyer] = map (.id) parties
+    all@[operator, centralBank, seller, buyer, public] = map (.id) parties
     pub = fromList [("Public", singleton public)]
 
   -- Factories
   let
-    settlementPaths = [[buyer], [seller]]
-    cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = settlementPaths
-    secRoute = Settlement.Hierarchy with rootCustodian = seller; pathsToRootCustodian = settlementPaths
+    cashSettlementPaths = [[buyer], [seller]]
+    securitySettlementPaths = [[buyer]]
+    cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = cashSettlementPaths
+    secRoute = Settlement.Hierarchy with rootCustodian = seller; pathsToRootCustodian = securitySettlementPaths
     paths = fromList [("USD", cashRoute), ("CDS1", secRoute)]
-  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
-  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
-  settlementFactoryCid      <- toInterfaceContractId <$> submit operator do createCmd Settlement.FactoryWithIntermediaries with provider = operator; paths; observers = singleton public
+  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory                   with provider = operator; observers = pub
+  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory                  with provider = operator; observers = pub
 
   -- Roles
   createOperatorRole operator
@@ -44,14 +43,15 @@ run = do
   createCustodianRole operator seller
 
   -- Services
-  createCustodyService          operator centralBank  seller  settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator centralBank  buyer   settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService          operator seller       buyer   settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank  seller  paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank  buyer   paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator seller       buyer   paths accountFactoryCid holdingFactoryCid
   createIssuanceService         operator seller       seller
   createIssuanceAutoService     operator seller       seller
   createStructuringService      operator seller       seller
   createStructuringAutoService  operator seller       seller
   createLifecycleService        operator seller       seller  public
+  createSettlementService       operator seller       buyer   paths
 
   -- Accounts
   sellerCashAccount <- createAccount operator centralBank seller  public "Seller@CentralBank/Cash" empty
@@ -62,8 +62,8 @@ run = do
   t <- getTime
   let
     today = toDateUTC t
-    todayTime = time today 12 0 0
-    tt d = time d 12 0 0
+    todayTime = time today 0 0 0
+    tt d = time d 0 0 0
     epoch = tt $ date 1970 Jan 1
     (ty, tm, td) = toGregorian today
   (clockCid, eventCid) <- createClockAndEvent all (date 2021 tm td) (singleton public)

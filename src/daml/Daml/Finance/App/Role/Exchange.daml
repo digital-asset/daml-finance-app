@@ -5,9 +5,9 @@ module Daml.Finance.App.Role.Exchange where
 
 import Daml.Finance.App.Listing.Auto.Service qualified as ListingAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Listing.Service qualified as Listing (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Settlement.Service qualified as Settlement (Service)
 import Daml.Finance.App.Trading.Auto.Service qualified as TradingAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Trading.Service qualified as Trading (Approve(..), Offer(..), Request, Service, Terminate(..))
-import Daml.Finance.Interface.Settlement.Factory qualified as Factory (I)
 
 template Role
   with
@@ -22,18 +22,18 @@ template Role
     nonconsuming choice OfferTradingService : ContractId Trading.Offer
       with
         customer : Party
-        settlementFactoryCid : ContractId Factory.I
+        settlementServiceCid : ContractId Settlement.Service
       controller provider
       do
-        create Trading.Offer with operator; provider; customer; settlementFactoryCid
+        create Trading.Offer with operator; provider; customer; settlementServiceCid
 
     nonconsuming choice ApproveTradingServiceRequest : ContractId Trading.Service
       with
         tradingRequestCid : ContractId Trading.Request
-        settlementFactoryCid : ContractId Factory.I
+        settlementServiceCid : ContractId Settlement.Service
       controller provider
       do
-        exercise tradingRequestCid Trading.Approve with operator; settlementFactoryCid
+        exercise tradingRequestCid Trading.Approve with operator; settlementServiceCid
 
     nonconsuming choice TerminateTradingService : ()
       with

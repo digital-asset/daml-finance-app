@@ -3,14 +3,13 @@
 
 module Daml.Finance.App.Custody.Service where
 
-import Daml.Finance.Interface.Account.Account qualified as Account (Controllers, Credit(..), Debit(..), K, R)
+import Daml.Finance.Interface.Account.Account qualified as Account (Controllers, Credit(..), Debit(..), R)
 import Daml.Finance.Interface.Account.Factory qualified as Account (F, Create(..), Remove(..))
 import Daml.Finance.Interface.Holding.Factory qualified as Holding (F)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Account.Util (getAccount)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K, Q)
 import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Lifecycle (Claim)
-import Daml.Finance.Interface.Types.Common (AccountKey(..), Id, PartiesMap)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey(..), Id, InstrumentKey, InstrumentQuantity, PartiesMap)
 import Daml.Finance.App.Custody.Model qualified as Custody
 import Daml.Finance.App.Util (fetchAndArchive)
 
@@ -40,28 +39,28 @@ template Service
 
     nonconsuming choice RequestCloseAccount : ContractId Custody.CloseAccountRequest
       with
-        account : Account.K
+        account : AccountKey
       controller customer
       do
         create Custody.CloseAccountRequest with ..
 
     nonconsuming choice RequestDeposit : ContractId Custody.DepositRequest
       with
-        quantity : Instrument.Q
-        account : Account.K
+        quantity : InstrumentQuantity
+        account : AccountKey
       controller customer
       do
         create Custody.DepositRequest with ..
 
     nonconsuming choice RequestWithdrawal : ContractId Custody.WithdrawalRequest
       with
-        instrument : Instrument.K
+        instrument : InstrumentKey
         holdingCid : ContractId Holding.I
       controller customer
       do
         create Custody.WithdrawalRequest with ..
 
-    nonconsuming choice OpenAccount : Account.K
+    nonconsuming choice OpenAccount : AccountKey
       with
         openAccountRequestCid : ContractId Custody.OpenAccountRequest
       controller provider

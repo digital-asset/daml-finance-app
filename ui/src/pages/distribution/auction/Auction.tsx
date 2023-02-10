@@ -52,7 +52,7 @@ export const Auction: React.FC = () => {
   const closeAuction = async () => {
     if (factories.length === 0) return new Error("No settlement factory found");
     const bidCids = filteredBids.map(c => c.contractId);
-    const [result, ] = await ledger.exercise(Service.ProcessAuction, service.contractId, { settlementFactoryCid: factories[0].contractId, auctionCid: auction.contractId, bidCids });
+    const [result, ] = await ledger.exercise(Service.ProcessAuction, service.contractId, { auctionCid: auction.contractId, bidCids });
     navigate("/app/distribution/auctions/" + result);
   };
 

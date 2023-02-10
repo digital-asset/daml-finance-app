@@ -5,8 +5,7 @@ module Daml.Finance.App.Listing.Service where
 
 import Daml.Finance.App.Listing.Model (CreateListingRequest(..), DeleteListingRequest(..), Listing(..))
 import Daml.Finance.App.Util (fetchAndArchive)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K)
-import Daml.Finance.Interface.Types.Common (Parties)
+import Daml.Finance.Interface.Types.Common.Types (InstrumentKey, Parties)
 
 template Service
   with
@@ -22,8 +21,8 @@ template Service
     nonconsuming choice RequestCreateListing : ContractId CreateListingRequest
       with
         id : Text
-        tradedInstrument : Instrument.K
-        quotedInstrument : Instrument.K
+        tradedInstrument : InstrumentKey
+        quotedInstrument : InstrumentKey
         observers : Parties
       controller customer
       do

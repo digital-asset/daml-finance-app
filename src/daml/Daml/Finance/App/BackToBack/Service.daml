@@ -8,24 +8,23 @@ import DA.Optional (fromSome)
 import DA.Set (fromList, singleton)
 import Daml.Finance.App.Distribution.Subscription.Model (BackToBack, Offering(..))
 import Daml.Finance.App.Issuance.Model (Issuance(..))
-import Daml.Finance.Interface.Account.Account qualified as Account (Credit(..), K, R)
+import Daml.Finance.App.Settlement.Service qualified as Settlement (DiscoverAndInstruct(..), Service)
+import Daml.Finance.Interface.Account.Account qualified as Account (Credit(..), R)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (Split(..), SplitResult(..))
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I, Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Holding.Util (getAmount)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Settlement.Factory qualified as Factory (I, Instruct(..))
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
 import Daml.Finance.Interface.Settlement.Types (Allocation(Pledge), Approval(TakeDelivery), Step(..))
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
-import Daml.Finance.Interface.Types.Common (Id(..))
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id(..), InstrumentQuantity)
 
 template Service
   with
     operator : Party
     provider : Party
     customer : Party
-    public : Party
+    settlementServiceCid : ContractId Settlement.Service
   where
     signatory operator, provider, customer
 
@@ -36,9 +35,9 @@ template Service
       with
         id : Id
         description : Text
-        quantity : Instrument.Q
-        customerAccount : Account.K
-        providerAccount : Account.K
+        quantity : InstrumentQuantity
+        customerAccount : AccountKey
+        providerAccount : AccountKey
       controller customer
       do
         (_, customerRef) <- fetchByKey @Account.R customerAccount
@@ -60,7 +59,6 @@ template Service
 
     nonconsuming choice SettleOffering : [ContractId Holding.I]
       with
-        settlementFactoryCid : ContractId Factory.I
         offeringCid : ContractId Offering
         totalQuantity : Decimal
       controller customer
@@ -71,7 +69,15 @@ template Service
           totalNotional = totalQuantity * offering.price.amount
           delivery = Step with sender = b2b.party; receiver = offering.issuer; quantity = (offering.asset with amount = totalQuantity)
           payment = Step with sender = offering.issuer; receiver = b2b.party; quantity = (offering.price with amount = totalNotional)
-        (batchCid, [deliveryCid, paymentCid]) <- exercise settlementFactoryCid Factory.Instruct with instructors = singleton customer; settlers = singleton offering.issuer; id = Id offering.offeringId; contextId = None; steps = [ delivery, payment ]; description = "Settlement for offering " <> offering.offeringId
+        (batchCid, [deliveryCid, paymentCid]) <- exercise settlementServiceCid Settlement.DiscoverAndInstruct
+          with
+            actor = customer
+            contextId = None
+            settlers = singleton offering.issuer
+            id = Id offering.offeringId
+            settlementTime = None
+            description = "Settlement for offering " <> offering.offeringId
+            steps = [ delivery, payment ]
 
         b2bDeliverable <- fetch b2b.b2bDeliverableCid
         b2bSizedDeliverableCid <-
@@ -106,7 +112,7 @@ template Offer
     operator : Party
     provider : Party
     customer : Party
-    public : Party
+    settlementServiceCid : ContractId Settlement.Service
   where
     signatory operator, provider
     observer customer
@@ -114,7 +120,7 @@ template Offer
     choice Accept : ContractId Service
       controller customer
       do
-        create Service with ..
+        create Service with operator; provider; customer; settlementServiceCid
 
     choice Decline : ()
       controller customer
@@ -128,7 +134,6 @@ template Request
   with
     customer : Party
     provider : Party
-    public : Party
   where
     signatory customer
     observer provider
@@ -144,6 +149,7 @@ template Request
     choice Approve : ContractId Service
       with
         operator : Party
+        settlementServiceCid : ContractId Settlement.Service
       controller operator, provider
       do
-        create Service with ..
+        create Service with operator; provider; customer; settlementServiceCid

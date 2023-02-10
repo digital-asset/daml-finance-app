@@ -3,10 +3,9 @@
 
 module Daml.Finance.App.Custody.Model where
 
-import Daml.Finance.Interface.Account.Account qualified as Account (Controllers, K)
+import Daml.Finance.Interface.Account.Account qualified as Account (Controllers)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Types.Common (Id, PartiesMap)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity, PartiesMap)
 
 template OpenAccountRequest
   with
@@ -25,7 +24,7 @@ template CloseAccountRequest
     operator : Party
     provider : Party
     customer : Party
-    account : Account.K
+    account : AccountKey
   where
     signatory operator, provider, customer
 
@@ -34,8 +33,8 @@ template DepositRequest
     operator : Party
     provider : Party
     customer : Party
-    quantity : Instrument.Q
-    account : Account.K
+    quantity : InstrumentQuantity
+    account : AccountKey
   where
     signatory operator, provider, customer
 

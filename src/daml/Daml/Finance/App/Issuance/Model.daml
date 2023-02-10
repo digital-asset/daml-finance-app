@@ -3,10 +3,8 @@
 
 module Daml.Finance.App.Issuance.Model where
 
-import Daml.Finance.Interface.Account.Account qualified as Account (K)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (Q)
-import Daml.Finance.Interface.Types.Common (Id)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity)
 
 type T = Issuance
 
@@ -17,7 +15,7 @@ template Issuance
     customer : Party
     id : Id
     description : Text
-    quantity : Instrument.Q
+    quantity : InstrumentQuantity
   where
     signatory operator, provider, customer
 
@@ -31,8 +29,8 @@ template CreateIssuanceRequest
     customer : Party
     id : Id
     description : Text
-    quantity : Instrument.Q
-    account : Account.K
+    quantity : InstrumentQuantity
+    account : AccountKey
   where
     signatory operator, provider, customer
 

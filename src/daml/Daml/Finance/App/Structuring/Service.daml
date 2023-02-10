@@ -7,7 +7,7 @@ import DA.Date (toGregorian)
 import Daml.Finance.App.Structuring.Model
 import Daml.Finance.App.Util (fetchAndArchive)
 import Daml.Finance.Interface.Claims.Types (C)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I, K)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I)
 import Daml.Finance.Interface.Instrument.Bond.FixedRate.Factory qualified as FixedRateBond (Factory, Create(..))
 import Daml.Finance.Interface.Instrument.Bond.FixedRate.Types (FixedRate(..))
 import Daml.Finance.Interface.Instrument.Bond.FloatingRate.Factory qualified as FloatingRateBond (Factory, Create(..))
@@ -24,7 +24,7 @@ import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayAdjustment(..), Bu
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum, RollConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.Schedule (Frequency(..), PeriodicSchedule(..))
-import Daml.Finance.Interface.Types.Common (Id(..), InstrumentKey(..), PartiesMap)
+import Daml.Finance.Interface.Types.Common.Types (Id(..), InstrumentKey(..), PartiesMap)
 
 data Factories = Factories
   with
@@ -96,7 +96,7 @@ template Service
         businessDayConvention : BusinessDayConventionEnum
         couponPeriod : PeriodEnum
         couponPeriodMultiplier : Int
-        currency : Instrument.K
+        currency : InstrumentKey
         observers : PartiesMap
         lastEventTimestamp : Time
       controller customer
@@ -118,7 +118,7 @@ template Service
         businessDayConvention : BusinessDayConventionEnum
         couponPeriod : PeriodEnum
         couponPeriodMultiplier : Int
-        currency : Instrument.K
+        currency : InstrumentKey
         observers : PartiesMap
         lastEventTimestamp : Time
       controller customer
@@ -141,7 +141,7 @@ template Service
         businessDayConvention : BusinessDayConventionEnum
         couponPeriod : PeriodEnum
         couponPeriodMultiplier : Int
-        currency : Instrument.K
+        currency : InstrumentKey
         observers : PartiesMap
         lastEventTimestamp : Time
       controller customer
@@ -154,7 +154,7 @@ template Service
         description : Text
         issueDate : Date
         maturityDate : Date
-        currency : Instrument.K
+        currency : InstrumentKey
         observers : PartiesMap
         lastEventTimestamp : Time
       controller customer

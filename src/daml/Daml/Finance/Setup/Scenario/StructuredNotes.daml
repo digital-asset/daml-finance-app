@@ -13,9 +13,8 @@ import Daml.Finance.App.Distribution.Subscription.Model qualified as Subscriptio
 import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription
 import Daml.Finance.Account.Account qualified as Account (Factory(..))
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
-import Daml.Finance.Interface.Types.Common (Id(..))
-import Daml.Finance.Settlement.Factory qualified as Settlement (FactoryWithIntermediaries(..))
+import Daml.Finance.Interface.Types.Common.Types (Id(..))
+import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
 import Daml.Finance.Setup.Payoff
 import Daml.Finance.Setup.Util.Common
@@ -26,9 +25,9 @@ import Daml.Script
 
 run : Script [PartyInfo]
 run  = do
-  parties <- allocateParties "Structured Notes" ["Operator", "Public", "CentralBank", "Depository", "Issuer", "RiskTaker", "Investor1", "Investor2", "Investor3"]
+  parties <- allocateParties "Structured Notes" ["Operator", "CentralBank", "Depository", "Issuer", "RiskTaker", "Investor1", "Investor2", "Investor3"] "Public"
   let
-    all@[operator, public, centralBank, depository, issuer, riskTaker, inv1, inv2, inv3] = map (.id) parties
+    all@[operator, centralBank, depository, issuer, riskTaker, inv1, inv2, inv3, public] = map (.id) parties
     pub = fromList [("Public", singleton public)]
 
   -- Factories
@@ -41,7 +40,6 @@ run  = do
     paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
   accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
   holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
-  settlementFactoryCid      <- toInterfaceContractId <$> submit operator do createCmd Settlement.FactoryWithIntermediaries with provider = operator; paths; observers = singleton public
 
   -- Roles
   createOperatorRole    operator
@@ -51,24 +49,24 @@ run  = do
   createDistributorRole operator issuer
 
   -- Services
-  createCustodyService            operator centralBank  issuer    settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService            operator centralBank  riskTaker settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService            operator centralBank  inv1      settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService            operator centralBank  inv2      settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService            operator centralBank  inv3      settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService            operator riskTaker    riskTaker settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService            operator riskTaker    issuer    settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService            operator issuer       issuer    settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService            operator issuer       inv1      settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService            operator issuer       inv2      settlementFactoryCid accountFactoryCid holdingFactoryCid
-  createCustodyService            operator issuer       inv3      settlementFactoryCid accountFactoryCid holdingFactoryCid
+  createCustodyService            operator centralBank  issuer    paths accountFactoryCid holdingFactoryCid
+  createCustodyService            operator centralBank  riskTaker paths accountFactoryCid holdingFactoryCid
+  createCustodyService            operator centralBank  inv1      paths accountFactoryCid holdingFactoryCid
+  createCustodyService            operator centralBank  inv2      paths accountFactoryCid holdingFactoryCid
+  createCustodyService            operator centralBank  inv3      paths accountFactoryCid holdingFactoryCid
+  createCustodyService            operator riskTaker    riskTaker paths accountFactoryCid holdingFactoryCid
+  createCustodyService            operator riskTaker    issuer    paths accountFactoryCid holdingFactoryCid
+  createCustodyService            operator issuer       issuer    paths accountFactoryCid holdingFactoryCid
+  createCustodyService            operator issuer       inv1      paths accountFactoryCid holdingFactoryCid
+  createCustodyService            operator issuer       inv2      paths accountFactoryCid holdingFactoryCid
+  createCustodyService            operator issuer       inv3      paths accountFactoryCid holdingFactoryCid
   createStructuringService        operator issuer       issuer
   createIssuanceService           operator issuer       issuer
   createIssuanceService           operator riskTaker    riskTaker
-  createBackToBackIssuanceService operator riskTaker    issuer    public
+  createBackToBackIssuanceService operator riskTaker    issuer    paths
   createLifecycleService          operator riskTaker    riskTaker public
   createLifecycleService          operator issuer       issuer    public
-  createSubscriptionService       operator issuer       issuer    public
+  createSubscriptionService       operator issuer       issuer    paths
 
   -- Accounts
   riskTakerCashAccount  <- createAccount operator centralBank  riskTaker  public "RiskTaker@CentralBank" $ fromList [("b2b", singleton issuer)]
@@ -114,15 +112,15 @@ run  = do
   let securities = [tsla, fwd, opt, bnd, rc, brc, bwn1, bwn2]
 
   -- Distribution
-  -- issuerCashCid1  <- coerceContractId <$> deposit operator centralBank issuer public (Instrument.qty 4_417_698.0 usd) issuerCashAccount
-  -- inv1CashCid1    <- coerceContractId <$> deposit operator centralBank inv1   public (Instrument.qty 1_472_566.0 usd) inv1CashAccount
-  -- inv2CashCid1    <- coerceContractId <$> deposit operator centralBank inv2   public (Instrument.qty 1_472_566.0 usd) inv2CashAccount
-  -- inv3CashCid1    <- coerceContractId <$> deposit operator centralBank inv3   public (Instrument.qty 1_472_566.0 usd) inv3CashAccount
+  -- issuerCashCid1  <- coerceContractId <$> deposit operator centralBank issuer public (qty 4_417_698.0 usd) issuerCashAccount
+  -- inv1CashCid1    <- coerceContractId <$> deposit operator centralBank inv1   public (qty 1_472_566.0 usd) inv1CashAccount
+  -- inv2CashCid1    <- coerceContractId <$> deposit operator centralBank inv2   public (qty 1_472_566.0 usd) inv2CashAccount
+  -- inv3CashCid1    <- coerceContractId <$> deposit operator centralBank inv3   public (qty 1_472_566.0 usd) inv3CashAccount
 
-  issuerCashCid2  <- coerceContractId <$> deposit operator centralBank issuer public (Instrument.qty 5_000_000.0 usd) issuerCashAccount
-  inv1CashCid2    <- coerceContractId <$> deposit operator centralBank inv1   public (Instrument.qty 950_000.0 usd) inv1CashAccount
-  inv2CashCid2    <- coerceContractId <$> deposit operator centralBank inv2   public (Instrument.qty 950_000.0 usd) inv2CashAccount
-  inv3CashCid2    <- coerceContractId <$> deposit operator centralBank inv3   public (Instrument.qty 950_000.0 usd) inv3CashAccount
+  issuerCashCid2  <- coerceContractId <$> deposit operator centralBank issuer public (qty 5_000_000.0 usd) issuerCashAccount
+  inv1CashCid2    <- coerceContractId <$> deposit operator centralBank inv1   public (qty 950_000.0 usd) inv1CashAccount
+  inv2CashCid2    <- coerceContractId <$> deposit operator centralBank inv2   public (qty 950_000.0 usd) inv2CashAccount
+  inv3CashCid2    <- coerceContractId <$> deposit operator centralBank inv3   public (qty 950_000.0 usd) inv3CashAccount
 
   -- Data
   createObservation issuer tslaO  [(todayTime, 580.0)]  pub
@@ -165,6 +163,7 @@ run  = do
             customerHoldingCid = coerceContractId issuerAssetCid
             customerAccount = issuerCashAccount
             backToBack
+            observers = singleton public
 
       inv1SubscriptionCid   <- submitMulti [inv1] [public] do exerciseCmd offeringCid Subscription.Subscribe with investor = inv1; quantity = 10_000.0; investorHoldingCid = inv1CashCid; investorAccount = inv1SecAccount
       inv2SubscriptionCid     <- submitMulti [inv2] [public] do exerciseCmd offeringCid Subscription.Subscribe with investor = inv2; quantity = 10_000.0; investorHoldingCid = inv2CashCid; investorAccount = inv2SecAccount
@@ -173,19 +172,18 @@ run  = do
       submitMulti [issuer] [public] do
         exerciseByKeyCmd @Subscription.Service (operator, issuer, issuer) Subscription.ProcessOffering
           with
-            settlementFactoryCid
             offeringCid
             subscriptionCids = [inv1SubscriptionCid, inv2SubscriptionCid, inv3SubscriptionCid]
       pure ()
 
-  -- (_, rcIssuerHoldingCid, rcRiskTakerHoldingCid) <- issuance $ Instrument.qty 3_000_000.0 rc
-  -- subscription (Instrument.qty 3_000_000.0 rc) (Instrument.qty 1.0 usd) issuerCashCid1 rcIssuerHoldingCid rcRiskTakerHoldingCid inv1CashCid1 inv2CashCid1 inv3CashCid1
-  -- (_, brcIssuerHoldingCid, brcRiskTakerHoldingCid) <- issuance $ Instrument.qty 3_000_000.0 brc
-  -- subscription (Instrument.qty 3_000_000.0 brc) (Instrument.qty 1.0 usd) issuerCashCid2 brcIssuerHoldingCid brcRiskTakerHoldingCid inv1CashCid2 inv2CashCid2 inv3CashCid2
-  -- (_, bwn1IssuerHoldingCid, bwn1RiskTakerHoldingCid) <- issuance $ Instrument.qty 50_000.0 bwn1
-  -- subscription (Instrument.qty 50_000.0 bwn1) (Instrument.qty 95.00 usd) issuerCashCid2 bwn1IssuerHoldingCid bwn1RiskTakerHoldingCid inv1CashCid2 inv2CashCid2 inv3CashCid2
-  -- (_, bwn2IssuerHoldingCid, bwn2RiskTakerHoldingCid) <- issuance $ Instrument.qty 44_000.0 bwn2
-  -- subscription (Instrument.qty 44_000.0 bwn2) (Instrument.qty 147.2566 usd) issuerCashCid1 bwn2IssuerHoldingCid bwn2RiskTakerHoldingCid inv1CashCid1 inv2CashCid1 inv3CashCid1
+  -- (_, rcIssuerHoldingCid, rcRiskTakerHoldingCid) <- issuance $ qty 3_000_000.0 rc
+  -- subscription (qty 3_000_000.0 rc) (qty 1.0 usd) issuerCashCid1 rcIssuerHoldingCid rcRiskTakerHoldingCid inv1CashCid1 inv2CashCid1 inv3CashCid1
+  -- (_, brcIssuerHoldingCid, brcRiskTakerHoldingCid) <- issuance $ qty 3_000_000.0 brc
+  -- subscription (qty 3_000_000.0 brc) (qty 1.0 usd) issuerCashCid2 brcIssuerHoldingCid brcRiskTakerHoldingCid inv1CashCid2 inv2CashCid2 inv3CashCid2
+  -- (_, bwn1IssuerHoldingCid, bwn1RiskTakerHoldingCid) <- issuance $ qty 50_000.0 bwn1
+  -- subscription (qty 50_000.0 bwn1) (qty 95.00 usd) issuerCashCid2 bwn1IssuerHoldingCid bwn1RiskTakerHoldingCid inv1CashCid2 inv2CashCid2 inv3CashCid2
+  -- (_, bwn2IssuerHoldingCid, bwn2RiskTakerHoldingCid) <- issuance $ qty 44_000.0 bwn2
+  -- subscription (qty 44_000.0 bwn2) (qty 147.2566 usd) issuerCashCid1 bwn2IssuerHoldingCid bwn2RiskTakerHoldingCid inv1CashCid1 inv2CashCid1 inv3CashCid1
 
   pure parties
 

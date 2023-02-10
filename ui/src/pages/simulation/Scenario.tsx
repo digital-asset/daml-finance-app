@@ -16,7 +16,7 @@ import { dedup } from "../../util";
 import { useServices } from "../../context/ServiceContext";
 import { useInstruments } from "../../context/InstrumentContext";
 import { Message } from "../../components/Message/Message";
-import { NumericObservable } from "@daml.js/daml-finance-interface-data/lib/Daml/Finance/Interface/Data/NumericObservable";
+import { NumericObservable } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Observable/NumericObservable";
 
 type Payout = {
   asset : string

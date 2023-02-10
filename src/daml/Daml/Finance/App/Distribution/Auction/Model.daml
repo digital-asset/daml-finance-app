@@ -3,10 +3,8 @@
 
 module Daml.Finance.App.Distribution.Auction.Model where
 
-import Daml.Finance.Interface.Account.Account qualified as Account (K)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (K, Q)
-import Daml.Finance.Interface.Types.Common (Parties)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentKey, InstrumentQuantity, Parties)
 
 type T = Auction
 
@@ -26,11 +24,11 @@ template Auction
     provider : Party
     customer : Party
     id : Text
-    quantity : Instrument.Q
-    currency : Instrument.K
+    quantity : InstrumentQuantity
+    currency : InstrumentKey
     floor : Decimal
     collateralCid : ContractId Fungible.I
-    receivableAccount : Account.K
+    receivableAccount : AccountKey
     status : Status
     observers : Parties
   where
@@ -55,11 +53,11 @@ template CreateAuctionRequest
     provider : Party
     customer : Party
     id : Text
-    quantity : Instrument.Q
-    currency : Instrument.K
+    quantity : InstrumentQuantity
+    currency : InstrumentKey
     floor : Decimal
     collateralCid : ContractId Fungible.I
-    receivableAccount : Account.K
+    receivableAccount : AccountKey
     observers : Parties
   where
     signatory operator, provider, customer
