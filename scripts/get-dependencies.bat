@@ -30,8 +30,8 @@ call :get_dependency daml-finance-interface-instrument-swap     Daml.Finance.Int
 call :get_dependency daml-finance-interface-instrument-token    Daml.Finance.Interface.Instrument.Token   1.0.0
 call :get_dependency daml-finance-interface-lifecycle           Daml.Finance.Interface.Lifecycle          1.0.0
 call :get_dependency daml-finance-interface-settlement          Daml.Finance.Interface.Settlement         1.0.0
-call :get_dependency daml-finance-interface-types               Daml.Finance.Interface.Types.Common       1.0.0
-call :get_dependency daml-finance-interface-types               Daml.Finance.Interface.Types.Date         1.0.0
+call :get_dependency daml-finance-interface-types-common        Daml.Finance.Interface.Types.Common       1.0.0
+call :get_dependency daml-finance-interface-types-date          Daml.Finance.Interface.Types.Date         1.0.0
 call :get_dependency daml-finance-interface-util                Daml.Finance.Interface.Util               1.0.0
 call :get_dependency daml-finance-lifecycle                     Daml.Finance.Lifecycle                    1.0.0
 call :get_dependency daml-finance-settlement                    Daml.Finance.Settlement                   1.0.0
