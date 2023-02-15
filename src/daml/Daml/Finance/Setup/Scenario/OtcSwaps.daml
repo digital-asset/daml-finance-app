@@ -12,6 +12,7 @@ import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum(..))
+import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
 import Daml.Finance.Setup.Util.Common
 import Daml.Finance.Setup.Util.Role
@@ -22,16 +23,16 @@ import Daml.Script
 run : Script [PartyInfo]
 run = do
   let scenario = "OTC Swaps"
-  parties <- allocateParties scenario ["Operator", "CentralBank", "Seller", "Buyer"] "Public"
+  parties <- allocateParties scenario ["Operator", "CashProvider", "Seller", "Buyer"] "Public"
   let
-    all@[operator, centralBank, seller, buyer, public] = map (.id) parties
+    all@[operator, cashProvider, seller, buyer, public] = map (.id) parties
     pub = fromList [("Public", singleton public)]
 
   -- Factories
   let
     cashSettlementPaths = [[buyer], [seller]]
     securitySettlementPaths = [[buyer]]
-    cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = cashSettlementPaths
+    cashRoute = Settlement.Hierarchy with rootCustodian = cashProvider; pathsToRootCustodian = cashSettlementPaths
     secRoute = Settlement.Hierarchy with rootCustodian = seller; pathsToRootCustodian = securitySettlementPaths
     paths = fromList [("USD", cashRoute), ("CDS1", secRoute)]
   accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory                   with provider = operator; observers = pub
@@ -39,12 +40,13 @@ run = do
 
   -- Roles
   createOperatorRole operator
-  createCustodianRole operator centralBank
+  createCustodianRole operator cashProvider
   createCustodianRole operator seller
+  createExchangeRole operator seller
 
   -- Services
-  createCustodyService          operator centralBank  seller  paths accountFactoryCid holdingFactoryCid
-  createCustodyService          operator centralBank  buyer   paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator cashProvider seller  paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator cashProvider buyer   paths accountFactoryCid holdingFactoryCid
   createCustodyService          operator seller       buyer   paths accountFactoryCid holdingFactoryCid
   createIssuanceService         operator seller       seller
   createIssuanceAutoService     operator seller       seller
@@ -52,11 +54,12 @@ run = do
   createStructuringAutoService  operator seller       seller
   createLifecycleService        operator seller       seller  public
   createSettlementService       operator seller       buyer   paths
+  createQuotingService          operator seller       buyer
 
   -- Accounts
-  sellerCashAccount <- createAccount operator centralBank seller  public "Seller@CentralBank/Cash" empty
-  buyerCashAccount  <- createAccount operator centralBank buyer   public "Buyer@CentralBank/Cash"  empty
-  buyerSecAccount   <- createAccount operator seller      buyer   public "Buyer@Seller/Securties"  empty
+  sellerCashAccount <- createAccount operator cashProvider seller  public "Seller@CashProvider/Cash" empty
+  buyerCashAccount  <- createAccount operator cashProvider buyer   public "Buyer@CashProvider/Cash"  empty
+  buyerSecAccount   <- createAccount operator seller       buyer   public "Buyer@Seller/Securties"   empty
 
   -- Time
   t <- getTime
@@ -69,7 +72,14 @@ run = do
   (clockCid, eventCid) <- createClockAndEvent all (date 2021 tm td) (singleton public)
 
   -- Instruments
-  usd   <- originateToken               centralBank centralBank pub epoch "USD"   "United States Dollar"
-  swap1 <- originateCreditDefaultSwap   seller      seller                "CDS1"  "Credit Default Swap 5Y"  pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] seller (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.011 M 12 usd "DefaultProbability" "RecoveryRate" True
+  usd   <- originateToken               cashProvider cashProvider pub epoch "USD"   "United States Dollar"
+  swap1 <- originateCreditDefaultSwap   seller       seller                 "CDS1"  "Credit Default Swap 5Y"  pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] seller (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.011 M 12 usd "DefaultProbability" "RecoveryRate" True
+
+  -- Distribution
+  buyerCashCid <- deposit operator cashProvider buyer public (qty 1_000_000.0 usd) buyerCashAccount
+
+  -- Data
+  createAccountDirectory buyer [(usd, buyerCashAccount), (swap1, buyerSecAccount)] $ singleton public
+  createAccountDirectory seller [(usd, sellerCashAccount)] $ singleton public
 
   pure parties

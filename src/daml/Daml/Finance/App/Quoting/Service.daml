@@ -1,0 +1,117 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Quoting.Service where
+
+import DA.Set (singleton)
+import Daml.Finance.App.Settlement.Service qualified as Settlement (DiscoverAndInstruct(..), Service)
+import Daml.Finance.App.Quoting.Model (QuoteRequest(..), Quote(..), Side(..))
+import Daml.Finance.App.Util (fetchAndArchive)
+import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (I)
+import Daml.Finance.Interface.Settlement.Batch qualified as Batch (I)
+import Daml.Finance.Interface.Settlement.Types (Step(..))
+import Daml.Finance.Interface.Types.Common.Types (Id, InstrumentQuantity)
+
+template Service
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, customer) : (Party, Party, Party)
+    maintainer key._1
+
+    nonconsuming choice RequestQuote : ContractId QuoteRequest
+      with
+        id : Id
+        side : Side
+        quantity : InstrumentQuantity
+      controller customer
+      do
+        create QuoteRequest with operator; provider; customer; id; quantity; side
+
+    nonconsuming choice CreateQuote : ContractId Quote
+      with
+        quoteRequestCid : ContractId QuoteRequest
+        price : InstrumentQuantity
+      controller provider
+      do
+        QuoteRequest{operator; provider; customer; id; quantity; side} <- fetchAndArchive quoteRequestCid
+        create Quote with operator; provider; customer; id; quantity; price; side; clearer = None
+
+    nonconsuming choice AcceptQuote : (ContractId Batch.I, [ContractId Instruction.I])
+      with
+        quoteCid : ContractId Quote
+        settlementServiceCid : ContractId Settlement.Service
+      controller customer
+      do
+        quote <- fetchAndArchive quoteCid
+        let
+          customerDeliverable = if quote.side == Buy then quote.price else quote.quantity
+          providerDeliverable = if quote.side == Buy then quote.quantity else quote.price
+          customerStep = Step with sender = customer; receiver = provider; quantity = customerDeliverable
+          providerStep = Step with sender = provider; receiver = customer; quantity = providerDeliverable
+        exercise settlementServiceCid Settlement.DiscoverAndInstruct
+          with
+            actor = customer
+            id = quote.id
+            settlers = singleton provider
+            steps = [customerStep, providerStep]
+            contextId = Some quote.id
+            description = show quote.id
+            settlementTime = None
+
+    choice Terminate : ()
+      with
+        actor : Party
+      controller actor
+      do
+        assert $ actor == operator || actor == provider || actor == customer
+        pure ()
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider
+    observer customer
+
+    choice Accept : ContractId Service
+      controller customer
+      do
+        create Service with operator; provider; customer
+
+    choice Decline : ()
+      controller customer
+      do
+        return ()
+
+    choice Withdraw : ()
+      controller provider
+      do pure ()
+
+template Request
+  with
+    customer : Party
+    provider : Party
+  where
+    signatory customer
+
+    choice Cancel : ()
+      controller customer
+      do pure ()
+
+    choice Reject : ()
+      controller provider
+      do pure ()
+
+    choice Approve : ContractId Service
+      with
+        operator : Party
+      controller operator, provider
+      do
+        create Service with operator; provider; customer

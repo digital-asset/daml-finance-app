@@ -183,6 +183,20 @@ export const scenarios : Scenario[] = [
     useNetworkLogin: true
   },
   {
+    label: "OTC Swaps",
+    description: "OTC swap quoting and trading",
+    apps: [ structuring, issuance, custody, distribution, servicing, listing, trading, settlement, network ],
+    image: scenarioFundTokenization,
+    positions: new Map([
+      [ "Operator",         { x:    0, y:   0 } ],
+      [ "Public",           { x:    0, y:   0 } ],
+      [ "CashProvider",     { x:  150, y:   0 } ],
+      [ "Seller",           { x:    0, y: 150 } ],
+      [ "Buyer",            { x:  300, y: 300 } ],
+    ]),
+    useNetworkLogin: true
+  },
+  {
     label: "Decentralized Finance",
     description: "Experimental Decentralized Financial protocols",
     apps: [ custody, defi, network ],

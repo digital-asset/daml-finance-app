@@ -5,6 +5,7 @@ module Daml.Finance.App.Role.Exchange where
 
 import Daml.Finance.App.Listing.Auto.Service qualified as ListingAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Listing.Service qualified as Listing (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Quoting.Service qualified as Quoting (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Settlement.Service qualified as Settlement (Service)
 import Daml.Finance.App.Trading.Auto.Service qualified as TradingAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Trading.Service qualified as Trading (Approve(..), Offer(..), Request, Service, Terminate(..))
@@ -104,6 +105,27 @@ template Role
       controller provider
       do
         exerciseByKey @ListingAuto.Service (operator, provider, customer) ListingAuto.Terminate with actor = provider
+
+    nonconsuming choice OfferQuotingService : ContractId Quoting.Offer
+      with
+        customer : Party
+      controller provider
+      do
+        create Quoting.Offer with ..
+
+    nonconsuming choice ApproveQuotingServiceRequest : ContractId Quoting.Service
+      with
+        quotingRequestCid : ContractId Quoting.Request
+      controller provider
+      do
+        exercise quotingRequestCid Quoting.Approve with ..
+
+    nonconsuming choice TerminateQuotingService : ()
+      with
+        customer : Party
+      controller provider
+      do
+        exerciseByKey @Quoting.Service (operator, provider, customer) Quoting.Terminate with actor = provider
 
     choice TerminateRole : ()
       controller operator

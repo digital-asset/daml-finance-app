@@ -4,16 +4,21 @@
 import React from "react";
 import { Market } from "../pages/trading/Market";
 import { Markets } from "../pages/trading/Markets";
-// import { useStreamQueries } from "@daml/react";
-// import { Listing } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Listing/Model";
+import { NewQuote } from "../pages/trading/NewQuote";
+import { Quotes } from "../pages/trading/Quotes";
+import { Request } from "../pages/trading/Request";
+import { Requests } from "../pages/trading/Requests";
 import { App } from "./App";
-// import { Spinner } from "../components/Spinner/Spinner";
 
 export const Trading : React.FC = () => {
-  // const { contracts: listings, loading: l1 } = useStreamQueries(Listing);
-  // if (l1) return <Spinner />;
-  // const listingEntries = listings.map(c => ({ label: c.payload.id, path: "markets/" + c.contractId, element: <Market /> }));
-  const entries = [ { label: "Markets", path: "markets", element: <Markets /> } ];//.concat(listingEntries);
-  const paths = [ { path: "markets/:contractId", element: <Market /> } ];
+  const entries =
+    [ { label: "Markets", path: "markets", element: <Markets /> }
+  , { label: "Quotes", path: "quotes", element: <Quotes /> }
+    , { label: "Requests", path: "requests", element: <Requests /> }
+    , { label: "Request Quote", path: "new", element: <NewQuote />, action: true } ];
+
+  const paths =
+    [ { path: "requests/:contractId", element: <Request /> }
+    , { path: "markets/:contractId", element: <Market /> } ];
   return <App app="Trading" entries={entries} paths={paths} />;
 }

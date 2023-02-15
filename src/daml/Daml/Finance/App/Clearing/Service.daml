@@ -1,0 +1,68 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Clearing.Service where
+
+template Service
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, customer) : (Party, Party, Party)
+    maintainer key._1
+
+    choice Terminate : ()
+      with
+        actor : Party
+      controller actor
+      do
+        assert $ actor == operator || actor == provider || actor == customer
+        pure ()
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider
+    observer customer
+
+    choice Accept : ContractId Service
+      controller customer
+      do
+        create Service with operator; provider; customer
+
+    choice Decline : ()
+      controller customer
+      do
+        return ()
+
+    choice Withdraw : ()
+      controller provider
+      do pure ()
+
+template Request
+  with
+    customer : Party
+    provider : Party
+  where
+    signatory customer
+
+    choice Cancel : ()
+      controller customer
+      do pure ()
+
+    choice Reject : ()
+      controller provider
+      do pure ()
+
+    choice Approve : ContractId Service
+      with
+        operator : Party
+      controller operator, provider
+      do
+        create Service with operator; provider; customer

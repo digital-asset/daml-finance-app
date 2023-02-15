@@ -1,0 +1,19 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Clearing.Model where
+
+import Daml.Finance.Interface.Types.Common.Types (Id, InstrumentQuantity)
+
+template ClearingRequest
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Id
+    quantity : InstrumentQuantity
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, id) : (Party, Party, Id)
+    maintainer key._1
