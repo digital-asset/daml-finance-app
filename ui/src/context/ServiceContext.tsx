@@ -5,6 +5,7 @@ import React from "react";
 import { CreateEvent } from "@daml/ledger";
 import { useStreamQueries } from "@daml/react";
 import { Service as BackToBackService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/BackToBack/Service"
+import { Service as ClearingService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Clearing/Service"
 import { Service as CustodyService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Custody/Service"
 import { Service as DecentralizedExchangeService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Decentralized/Exchange/Service"
 import { Service as AuctionService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Service"
@@ -30,6 +31,7 @@ import { Service as TradingAutoService } from "@daml.js/daml-finance-app/lib/Dam
 export type ServicesState = {
   loading               : boolean
   backToBack            : readonly CreateEvent<BackToBackService, BackToBackService.Key>[]
+  clearing              : readonly CreateEvent<ClearingService, ClearingService.Key>[]
   custody               : readonly CreateEvent<CustodyService, CustodyService.Key>[]
   decentralizedExchange : readonly CreateEvent<DecentralizedExchangeService, DecentralizedExchangeService.Key>[]
   auctionAuto           : readonly CreateEvent<AuctionAutoService, AuctionAutoService.Key>[]
@@ -56,6 +58,7 @@ export type ServicesState = {
 const empty = {
   loading: true,
   backToBack: [],
+  clearing: [],
   custody: [],
   decentralizedExchange: [],
   auctionAuto: [],
@@ -84,32 +87,34 @@ const ServicesContext = React.createContext<ServicesState>(empty);
 export const ServicesProvider : React.FC = ({ children }) => {
 
   const { loading: l1,  contracts: backToBack }             = useStreamQueries(BackToBackService);
-  const { loading: l2,  contracts: custody }                = useStreamQueries(CustodyService);
-  const { loading: l3,  contracts: decentralizedExchange }  = useStreamQueries(DecentralizedExchangeService);
-  const { loading: l4,  contracts: auctionAuto }            = useStreamQueries(AuctionAutoService);
-  const { loading: l5,  contracts: auction }                = useStreamQueries(AuctionService);
-  const { loading: l6,  contracts: biddingAuto }            = useStreamQueries(BiddingAutoService);
-  const { loading: l7,  contracts: bidding }                = useStreamQueries(BiddingService);
-  const { loading: l8,  contracts: fund }                   = useStreamQueries(FundService);
-  const { loading: l9,  contracts: investment }             = useStreamQueries(InvestmentService);
-  const { loading: l10,  contracts: issuanceAuto }          = useStreamQueries(IssuanceAutoService);
-  const { loading: l11, contracts: issuance }               = useStreamQueries(IssuanceService);
-  const { loading: l12, contracts: lending }                = useStreamQueries(LendingService);
-  const { loading: l13, contracts: lifecycle }              = useStreamQueries(LifecycleService);
-  const { loading: l14, contracts: listingAuto }            = useStreamQueries(ListingAutoService);
-  const { loading: l15, contracts: listing }                = useStreamQueries(ListingService);
-  const { loading: l16, contracts: quoting }                = useStreamQueries(QuotingService);
-  const { loading: l17, contracts: settlement }             = useStreamQueries(SettlementService);
-  const { loading: l18, contracts: structuringAuto }        = useStreamQueries(StructuringAutoService);
-  const { loading: l19, contracts: structuring }            = useStreamQueries(StructuringService);
-  const { loading: l20, contracts: subscription }           = useStreamQueries(SubscriptionService);
-  const { loading: l21, contracts: tradingAuto }            = useStreamQueries(TradingAutoService);
-  const { loading: l22, contracts: trading }                = useStreamQueries(TradingService);
-  const loading = l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8 || l9 || l10 || l11 || l12 || l13 || l14 || l15 || l16 || l17 || l18 || l19 || l20 || l21 || l22;
+  const { loading: l2,  contracts: clearing }               = useStreamQueries(ClearingService);
+  const { loading: l3,  contracts: custody }                = useStreamQueries(CustodyService);
+  const { loading: l4,  contracts: decentralizedExchange }  = useStreamQueries(DecentralizedExchangeService);
+  const { loading: l5,  contracts: auctionAuto }            = useStreamQueries(AuctionAutoService);
+  const { loading: l6,  contracts: auction }                = useStreamQueries(AuctionService);
+  const { loading: l7,  contracts: biddingAuto }            = useStreamQueries(BiddingAutoService);
+  const { loading: l8,  contracts: bidding }                = useStreamQueries(BiddingService);
+  const { loading: l9,  contracts: fund }                   = useStreamQueries(FundService);
+  const { loading: l10,  contracts: investment }            = useStreamQueries(InvestmentService);
+  const { loading: l11,  contracts: issuanceAuto }          = useStreamQueries(IssuanceAutoService);
+  const { loading: l12, contracts: issuance }               = useStreamQueries(IssuanceService);
+  const { loading: l13, contracts: lending }                = useStreamQueries(LendingService);
+  const { loading: l14, contracts: lifecycle }              = useStreamQueries(LifecycleService);
+  const { loading: l15, contracts: listingAuto }            = useStreamQueries(ListingAutoService);
+  const { loading: l16, contracts: listing }                = useStreamQueries(ListingService);
+  const { loading: l17, contracts: quoting }                = useStreamQueries(QuotingService);
+  const { loading: l18, contracts: settlement }             = useStreamQueries(SettlementService);
+  const { loading: l19, contracts: structuringAuto }        = useStreamQueries(StructuringAutoService);
+  const { loading: l20, contracts: structuring }            = useStreamQueries(StructuringService);
+  const { loading: l21, contracts: subscription }           = useStreamQueries(SubscriptionService);
+  const { loading: l22, contracts: tradingAuto }            = useStreamQueries(TradingAutoService);
+  const { loading: l23, contracts: trading }                = useStreamQueries(TradingService);
+  const loading = l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8 || l9 || l10 || l11 || l12 || l13 || l14 || l15 || l16 || l17 || l18 || l19 || l20 || l21 || l22 || l23;
 
   const value = {
     loading,
     backToBack,
+    clearing,
     custody,
     decentralizedExchange,
     auctionAuto,

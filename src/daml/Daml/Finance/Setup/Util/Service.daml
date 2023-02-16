@@ -6,6 +6,7 @@ module Daml.Finance.Setup.Util.Service where
 import DA.Map (Map, fromList)
 import DA.Set (singleton)
 import DA.Set qualified as S (fromList)
+import Daml.Finance.App.Clearing.Service qualified as Clearing (Accept(..), Service)
 import Daml.Finance.App.Custody.Service qualified as Custody (Accept(..), Service)
 import Daml.Finance.App.Decentralized.Exchange.Model qualified as DecentralizedExchange (Pool(..))
 import Daml.Finance.App.Decentralized.Exchange.Service qualified as DecentralizedExchange (Service(..))
@@ -174,6 +175,11 @@ createQuotingService : Party -> Party -> Party -> Script (ContractId Quoting.Ser
 createQuotingService operator provider customer = do
   offerCid <- submit provider do exerciseByKeyCmd @Exchange.Role (operator, provider) Exchange.OfferQuotingService with customer
   submit customer do exerciseCmd offerCid Quoting.Accept
+
+createClearingService : Party -> Party -> Party -> Script (ContractId Clearing.Service)
+createClearingService operator provider customer = do
+  offerCid <- submit provider do exerciseByKeyCmd @Exchange.Role (operator, provider) Exchange.OfferClearingService with customer
+  submit customer do exerciseCmd offerCid Clearing.Accept
 
 createSettlementService : Party -> Party -> Party -> SettlementPaths -> Script (ContractId Settlement.Service)
 createSettlementService operator provider customer paths = do

@@ -3,7 +3,11 @@
 
 module Daml.Finance.App.Clearing.Model where
 
-import Daml.Finance.Interface.Types.Common.Types (Id, InstrumentQuantity)
+import DA.Optional (isNone, fromSome)
+import Daml.Finance.Interface.Account.Account qualified as Account (Credit(..), Debit(..), I, exerciseInterfaceByKey)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id)
+import Daml.Finance.Interface.Util.Common (qty)
 
 template ClearingRequest
   with
@@ -11,9 +15,24 @@ template ClearingRequest
     provider : Party
     customer : Party
     id : Id
-    quantity : InstrumentQuantity
+    holdingCid : ContractId Holding.I
+    counterparty : Party
+    customerClearingAccount : AccountKey
+    counterpartyClearingAccount : Optional AccountKey
   where
-    signatory operator, provider, customer
+    signatory [operator, provider, customer] <> if isNone counterpartyClearingAccount then [] else [ (fromSome counterpartyClearingAccount).owner ]
 
     key (operator, provider, id) : (Party, Party, Id)
     maintainer key._1
+
+    choice Clear : (ContractId Holding.I, ContractId Holding.I)
+      controller provider
+      do
+        holding <- view <$> fetch holdingCid
+        let
+          quantity = qty holding.amount holding.instrument
+          cptyAccount = fromSome counterpartyClearingAccount
+        Account.exerciseInterfaceByKey @Account.I holding.account customer Account.Debit with holdingCid
+        customerHoldingCid <- Account.exerciseInterfaceByKey @Account.I customerClearingAccount customer Account.Credit with quantity
+        counterpartyHoldingCid <- Account.exerciseInterfaceByKey @Account.I cptyAccount counterparty Account.Credit with quantity
+        pure (customerHoldingCid, counterpartyHoldingCid)

@@ -26,7 +26,7 @@ export const Quotes : React.FC = () => {
   if (l1 || l2) return <Spinner />;
 
   const acceptQuote = async (quote : CreateEvent<Quote>) => {
-    if (!quoting) throw new Error("No settlement service found");
+    if (!quoting) throw new Error("No quoting service found");
     if (!settlement) throw new Error("No settlement service found");
     const arg = {
       quoteCid: quote.contractId,
@@ -35,7 +35,7 @@ export const Quotes : React.FC = () => {
     await ledger.exercise(Service.AcceptQuote, quoting[0].contractId, arg);
     navigate("/app/settlement/batches");
   };
-  
+
   const createRow = (c : CreateEvent<Quote>) : any[] => {
     return [
       getName(c.payload.provider),

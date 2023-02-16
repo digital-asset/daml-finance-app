@@ -35,8 +35,7 @@ export const New : React.FC = () => {
   const { loading: l1, subscription, backToBack } = useServices();
   const { loading: l2, latests, tokens } = useInstruments();
   const { loading: l3, holdings, getFungible } = useHoldings();
-
-  const { contracts: accounts, loading: l4 } = useStreamQueries(Reference);
+  const { loading: l4, contracts: accounts } = useStreamQueries(Reference);
 
   const myServices = subscription.filter(s => s.payload.customer === party);
   const myB2BServices = backToBack.filter(s => s.payload.customer === party);

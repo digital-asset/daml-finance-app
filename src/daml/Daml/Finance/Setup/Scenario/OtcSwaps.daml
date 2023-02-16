@@ -23,9 +23,9 @@ import Daml.Script
 run : Script [PartyInfo]
 run = do
   let scenario = "OTC Swaps"
-  parties <- allocateParties scenario ["Operator", "CashProvider", "Seller", "Buyer"] "Public"
+  parties <- allocateParties scenario ["Operator", "CashProvider", "Clearer", "Seller", "Buyer"] "Public"
   let
-    all@[operator, cashProvider, seller, buyer, public] = map (.id) parties
+    all@[operator, cashProvider, clearer, seller, buyer, public] = map (.id) parties
     pub = fromList [("Public", singleton public)]
 
   -- Factories
@@ -42,6 +42,7 @@ run = do
   createOperatorRole operator
   createCustodianRole operator cashProvider
   createCustodianRole operator seller
+  createExchangeRole operator clearer
   createExchangeRole operator seller
 
   -- Services
@@ -55,6 +56,8 @@ run = do
   createLifecycleService        operator seller       seller  public
   createSettlementService       operator seller       buyer   paths
   createQuotingService          operator seller       buyer
+  createClearingService         operator clearer      buyer
+  createClearingService         operator clearer      seller
 
   -- Accounts
   sellerCashAccount <- createAccount operator cashProvider seller  public "Seller@CashProvider/Cash" empty
