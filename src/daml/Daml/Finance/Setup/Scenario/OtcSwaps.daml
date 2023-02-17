@@ -3,15 +3,20 @@
 
 module Daml.Finance.Setup.Scenario.OtcSwaps where
 
-import DA.Date (Month(..), date, toDateUTC, toGregorian)
+import DA.Date (DayOfWeek(Saturday, Sunday), Month(..), date, toDateUTC, toGregorian)
 import DA.Map (empty, fromList)
 import DA.Set (singleton)
 import DA.Time (time)
 import Daml.Finance.Account.Account qualified as Account (Factory(..))
+import Daml.Finance.App.Quoting.Model qualified as Quoting (Side(..))
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
+import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
+import Daml.Finance.Interface.Settlement.Types (Allocation(..), Approval(..))
+import Daml.Finance.Interface.Types.Common.Types (Id(..))
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum(..))
+import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
 import Daml.Finance.Setup.Util.Common
 import Daml.Finance.Setup.Util.Role
@@ -22,41 +27,54 @@ import Daml.Script
 run : Script [PartyInfo]
 run = do
   let scenario = "OTC Swaps"
-  parties <- allocateParties scenario ["Operator", "CentralBank", "Seller", "Buyer"] "Public"
+  parties <- allocateParties scenario ["Operator", "CashProvider", "Clearer", "Seller", "Buyer"] "Public"
   let
-    all@[operator, centralBank, seller, buyer, public] = map (.id) parties
+    all@[operator, cashProvider, clearer, seller, buyer, public] = map (.id) parties
     pub = fromList [("Public", singleton public)]
 
   -- Factories
   let
-    cashSettlementPaths = [[buyer], [seller]]
-    securitySettlementPaths = [[buyer]]
-    cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = cashSettlementPaths
+    cashSettlementPaths = [[buyer], [seller], [clearer]]
+    securitySettlementPaths = [[buyer], [clearer]]
+    cashRoute = Settlement.Hierarchy with rootCustodian = cashProvider; pathsToRootCustodian = cashSettlementPaths
     secRoute = Settlement.Hierarchy with rootCustodian = seller; pathsToRootCustodian = securitySettlementPaths
-    paths = fromList [("USD", cashRoute), ("CDS1", secRoute)]
+    paths = fromList [("HKD", cashRoute), ("IRS1", secRoute), ("IRS2", secRoute), ("IRS3", secRoute), ("IRS4", secRoute), ("CDS1", secRoute)]
   accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory                   with provider = operator; observers = pub
   holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory                  with provider = operator; observers = pub
 
   -- Roles
   createOperatorRole operator
-  createCustodianRole operator centralBank
+  createCustodianRole operator cashProvider
+  createCustodianRole operator clearer
   createCustodianRole operator seller
+  createCustodianRole operator buyer
+  createExchangeRole operator clearer
+  createExchangeRole operator seller
 
   -- Services
-  createCustodyService          operator centralBank  seller  paths accountFactoryCid holdingFactoryCid
-  createCustodyService          operator centralBank  buyer   paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator cashProvider seller  paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator cashProvider buyer   paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator clearer      buyer   paths accountFactoryCid holdingFactoryCid
   createCustodyService          operator seller       buyer   paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator seller       clearer paths accountFactoryCid holdingFactoryCid
   createIssuanceService         operator seller       seller
   createIssuanceAutoService     operator seller       seller
   createStructuringService      operator seller       seller
   createStructuringAutoService  operator seller       seller
-  createLifecycleService        operator seller       seller  public
-  createSettlementService       operator seller       buyer   paths
+  createLifecycleService        operator clearer      seller  public
+  createLifecycleService        operator clearer      buyer   public
+  createLifecycleService        operator clearer      clearer public
+  settlementServiceCid <- createSettlementService       operator seller       buyer   paths
+  createQuotingService          operator seller       buyer
+  createClearingService         operator clearer      buyer
+  createClearingService         operator clearer      seller
 
   -- Accounts
-  sellerCashAccount <- createAccount operator centralBank seller  public "Seller@CentralBank/Cash" empty
-  buyerCashAccount  <- createAccount operator centralBank buyer   public "Buyer@CentralBank/Cash"  empty
-  buyerSecAccount   <- createAccount operator seller      buyer   public "Buyer@Seller/Securties"  empty
+  sellerCashAccount       <- createAccount operator cashProvider seller  public "Seller@CashProvider|Cash" empty
+  buyerCashAccount        <- createAccount operator cashProvider buyer   public "Buyer@CashProvider|Cash"  empty
+  buyerSecAccount         <- createAccount operator seller       buyer   public "Buyer@Seller|Securties"   $ fromList [("OTC", singleton clearer)]
+  buyerClearingAccount    <- createAccount operator clearer      buyer   public "Buyer@Clearer|Clearing"   empty
+  clearerClearingAccount  <- createAccount operator seller       clearer public "Clearer@Seller|Clearing"  empty
 
   -- Time
   t <- getTime
@@ -66,10 +84,50 @@ run = do
     tt d = time d 0 0 0
     epoch = tt $ date 1970 Jan 1
     (ty, tm, td) = toGregorian today
-  (clockCid, eventCid) <- createClockAndEvent all (date 2021 tm td) (singleton public)
+    y year = date year tm td
+  (clockCid, eventCid) <- createClockAndEvent all today (singleton public)
 
   -- Instruments
-  usd   <- originateToken               centralBank centralBank pub epoch "USD"   "United States Dollar"
-  swap1 <- originateCreditDefaultSwap   seller      seller                "CDS1"  "Credit Default Swap 5Y"  pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] seller (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.011 M 12 usd "DefaultProbability" "RecoveryRate" True
+  let
+    hibor6M = "HKD-HIBOR-6M"
+    hibor12M = "HKD-HIBOR-12M"
+    dpTencent = "DP-TENCENT"
+    rrTencent = "RR-TENCENT"
+  hkd  <- originateToken               cashProvider cashProvider pub epoch "HKD"   "Hong Kong Dollar"
+  irs1 <- originateInterestRateSwap    clearer      clearer                "IRS1"  "Interest Rate Swap 3Y 1.5%/HIBOR-6M"     pub (tt $ y 2022) (y 2022) ["EMPTY"] clearer (y 2023) (y 2025) Act365Fixed Following 0.025  M 6  hkd hibor6M  True
+  irs2 <- originateInterestRateSwap    clearer      clearer                "IRS2"  "Interest Rate Swap 5Y 1.75%/HIBOR-6M"    pub (tt $ y 2022) (y 2022) ["EMPTY"] clearer (y 2023) (y 2027) Act365Fixed Following 0.025  M 6  hkd hibor6M  True
+  irs3 <- originateInterestRateSwap    clearer      clearer                "IRS3"  "Interest Rate Swap 5Y 2.0%/HIBOR-12M"    pub (tt $ y 2022) (y 2022) ["EMPTY"] clearer (y 2023) (y 2027) Act365Fixed Following 0.025  M 12 hkd hibor12M True
+  irs4 <- originateInterestRateSwap    clearer      clearer                "IRS4"  "Interest Rate Swap 10Y 2.25%/HIBOR-12M"  pub (tt $ y 2022) (y 2022) ["EMPTY"] clearer (y 2023) (y 2032) Act365Fixed Following 0.025  M 12 hkd hibor12M True
+  cds1 <- originateCreditDefaultSwap   clearer      clearer                "CDS1"  "Credit Default Swap 10Y 4.25% TENCENT"   pub (tt $ y 2022) (y 2022) ["EMPTY"] clearer (y 2023) (y 2032) Act365Fixed Following 0.0425 M 12 hkd dpTencent rrTencent True
+  let secs = [irs1, irs2, irs3, irs4, cds1]
+
+  -- Distribution
+  buyerCashCid <- deposit operator cashProvider buyer public (qty 10_000_000.0 hkd) buyerCashAccount
+
+  -- Data
+  createCalendar clearer "EMPTY" [Saturday, Sunday] [] pub
+  createObservation clearer hibor6M [(tt $ y 2022, 0.022625), (todayTime, 0.024825)] pub
+  createObservation clearer hibor12M [(tt $ y 2022, 0.025225), (todayTime, 0.028825)] pub
+  createObservation clearer dpTencent [(tt $ y 2022, 0.0), (todayTime, 0.0)] pub
+  createObservation clearer rrTencent [(tt $ y 2022, 1.0), (todayTime, 1.0)] pub
+  createAccountDirectory buyer ([(hkd, buyerCashAccount)] <> map (\s -> (s, buyerSecAccount)) secs) $ singleton public
+  createAccountDirectory seller [(hkd, sellerCashAccount)] $ singleton public
+
+  -- Workflows
+  let
+    doTrade = do
+      buyerPaymentCid <- deposit operator cashProvider buyer public (qty 150_000.0 hkd) buyerCashAccount
+      quoteRequestCid <- requestQuote operator seller buyer (Id "RFQ-IRS1") Quoting.Buy $ qty 10_000_000.0 irs1
+      quoteCid <- quote operator seller buyer quoteRequestCid $ qty 150_000.0 hkd
+      (batchCid, [paymentCid, deliveryCid]) <- acceptQuote operator seller buyer quoteCid settlementServiceCid
+      allocateAndApprove operator buyer paymentCid (Pledge buyerPaymentCid) (TakeDelivery sellerCashAccount)
+      allocateAndApprove operator buyer deliveryCid CreditReceiver (TakeDelivery buyerSecAccount)
+      [_, swapCid] <- submitMulti [buyer] [public] do exerciseCmd batchCid Batch.Settle with actors = singleton buyer
+
+      clearingRequestCid <- requestClearing operator clearer buyer (Id "CLEAR-IRS1") swapCid buyerClearingAccount
+      clearingRequestCid <- approveClearing seller clearingRequestCid clearerClearingAccount
+      clear clearer public clearingRequestCid
+
+  -- doTrade
 
   pure parties

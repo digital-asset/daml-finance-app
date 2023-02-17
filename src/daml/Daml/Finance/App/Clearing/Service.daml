@@ -1,0 +1,88 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Clearing.Service where
+
+import DA.Set (singleton)
+import Daml.Finance.App.Clearing.Model (ClearingRequest(..))
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id)
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, AddObservers(..))
+
+template Service
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, customer) : (Party, Party, Party)
+    maintainer key._1
+
+    nonconsuming choice RequestClearing : ContractId ClearingRequest
+      with
+        id : Id
+        holdingCid : ContractId Holding.I
+        clearingAccount : AccountKey
+      controller customer
+      do
+        holding <- view <$> fetch holdingCid
+        assertMsg "Only the owner can request clearing" $ customer == holding.account.owner
+        assertMsg "Customer clearing account owner must be customer" $ customer == clearingAccount.owner
+        assertMsg "Customer clearing account custodian must be clearing provider" $ provider == clearingAccount.custodian
+        holdingCid <- coerceContractId <$> exercise (coerceContractId holdingCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (show id, singleton provider)
+        create ClearingRequest with operator; provider; customer; id; holdingCid; counterparty = holding.account.custodian; customerClearingAccount = clearingAccount; counterpartyClearingAccount = None
+
+    choice Terminate : ()
+      with
+        actor : Party
+      controller actor
+      do
+        assert $ actor == operator || actor == provider || actor == customer
+        pure ()
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider
+    observer customer
+
+    choice Accept : ContractId Service
+      controller customer
+      do
+        create Service with operator; provider; customer
+
+    choice Decline : ()
+      controller customer
+      do
+        return ()
+
+    choice Withdraw : ()
+      controller provider
+      do pure ()
+
+template Request
+  with
+    customer : Party
+    provider : Party
+  where
+    signatory customer
+
+    choice Cancel : ()
+      controller customer
+      do pure ()
+
+    choice Reject : ()
+      controller provider
+      do pure ()
+
+    choice Approve : ContractId Service
+      with
+        operator : Party
+      controller operator, provider
+      do
+        create Service with operator; provider; customer

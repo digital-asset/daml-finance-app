@@ -20,6 +20,8 @@ import { InstrumentProvider } from "./context/InstrumentContext";
 import { HoldingProvider } from "./context/HoldingContext";
 import { AccountProvider } from "./context/AccountContext";
 import { DeFi } from "./apps/DeFi";
+import { Clearing } from "./apps/Clearing";
+import { Quoting } from "./apps/Quoting";
 
 export const Root : React.FC = () => {
 
@@ -30,18 +32,20 @@ export const Root : React.FC = () => {
           <AccountProvider>
             <Routes>
               <Route path="/" element={<Overview />} />
-              <Route path="/structuring/*" element={<Structuring />} />
-              <Route path="/issuance/*" element={<Issuance />} />
-              <Route path="/lending/*" element={<Lending />} />
+              <Route path="/clearing/*" element={<Clearing />} />
               <Route path="/custody/*" element={<Custody />} />
               <Route path="/defi/*" element={<DeFi />} />
               <Route path="/distribution/*" element={<Distribution />} />
+              <Route path="/issuance/*" element={<Issuance />} />
+              <Route path="/lending/*" element={<Lending />} />
+              <Route path="/listing/*" element={<Listing />} />
+              <Route path="/network/*" element={<Network />} />
+              <Route path="/quoting/*" element={<Quoting />} />
               <Route path="/servicing/*" element={<Servicing />} />
               <Route path="/settlement/*" element={<Settlement />} />
               <Route path="/simulation/*" element={<Simulation />} />
-              <Route path="/listing/*" element={<Listing />} />
+              <Route path="/structuring/*" element={<Structuring />} />
               <Route path="/trading/*" element={<Trading />} />
-              <Route path="/network/*" element={<Network />} />
             </Routes>
           </AccountProvider>
         </HoldingProvider>

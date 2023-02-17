@@ -21,7 +21,7 @@ export const Observables : React.FC = () => {
   useEffect(() => {
     if (l1) return;
     const today = new Date();
-    today.setUTCHours(12, 0, 0, 0);
+    today.setUTCHours(0, 0, 0, 0);
     const createRow = async (c : CreateEvent<NumericObservable>) : Promise<any[]> => {
       const [obs, ] = await ledger.exercise(NumericObservable.Observe, c.contractId, { actors: singleton(party), t: today.toISOString() });
       return [
@@ -42,6 +42,7 @@ export const Observables : React.FC = () => {
   }, [l1, observables, getName, ledger, party]);
 
   if (l1) return <Spinner />;
+  console.log(observables);
 
   const headers = ["Provider", "Observable", "Value (Today)"]
   return (

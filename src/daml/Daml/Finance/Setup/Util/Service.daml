@@ -6,6 +6,7 @@ module Daml.Finance.Setup.Util.Service where
 import DA.Map (Map, fromList)
 import DA.Set (singleton)
 import DA.Set qualified as S (fromList)
+import Daml.Finance.App.Clearing.Service qualified as Clearing (Accept(..), Service)
 import Daml.Finance.App.Custody.Service qualified as Custody (Accept(..), Service)
 import Daml.Finance.App.Decentralized.Exchange.Model qualified as DecentralizedExchange (Pool(..))
 import Daml.Finance.App.Decentralized.Exchange.Service qualified as DecentralizedExchange (Service(..))
@@ -25,6 +26,7 @@ import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Accep
 import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (Accept(..), Service)
 import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (Accept(..), Service)
 import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Accept(..), Service)
+import Daml.Finance.App.Quoting.Service qualified as Quoting (Accept(..), Service)
 import Daml.Finance.App.Role.Custodian qualified as Custodian
 import Daml.Finance.App.Role.Distributor qualified as Distributor
 import Daml.Finance.App.Role.Exchange qualified as Exchange
@@ -168,6 +170,16 @@ createLendingService : Party -> Party -> Party -> Script (ContractId Lending.Ser
 createLendingService operator lender borrower = do
   offerCid <- submit lender do exerciseByKeyCmd @Custodian.Role (operator, lender) Custodian.OfferLendingService with customer = borrower
   submit borrower do exerciseCmd offerCid Lending.Accept
+
+createQuotingService : Party -> Party -> Party -> Script (ContractId Quoting.Service)
+createQuotingService operator provider customer = do
+  offerCid <- submit provider do exerciseByKeyCmd @Exchange.Role (operator, provider) Exchange.OfferQuotingService with customer
+  submit customer do exerciseCmd offerCid Quoting.Accept
+
+createClearingService : Party -> Party -> Party -> Script (ContractId Clearing.Service)
+createClearingService operator provider customer = do
+  offerCid <- submit provider do exerciseByKeyCmd @Exchange.Role (operator, provider) Exchange.OfferClearingService with customer
+  submit customer do exerciseCmd offerCid Clearing.Accept
 
 createSettlementService : Party -> Party -> Party -> SettlementPaths -> Script (ContractId Settlement.Service)
 createSettlementService operator provider customer paths = do
