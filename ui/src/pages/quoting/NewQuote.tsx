@@ -48,14 +48,14 @@ export const NewQuote : React.FC = () => {
       quantity: { unit: quotedInstrument.key, amount }
     };
     await ledger.exercise(Service.RequestQuote, myQuotingServices[0].contractId, arg);
-    navigate("/app/trading/requests");
+    navigate("/app/quoting/requests");
   }
 
   const buySell : SelectInputValue[] = [
     { value: "Buy", display: "Buy" },
     { value: "Sell", display: "Sell" },
   ];
-  
+
   return (
     <CenteredForm title= "New Quote Request">
       <ToggleInput  label="Side"        value={side}        setValue={setSide}        values={buySell} />

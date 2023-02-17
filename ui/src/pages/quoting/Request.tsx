@@ -17,6 +17,7 @@ import { SelectInput, toValues } from "../../components/Form/SelectInput";
 import { TextInput } from "../../components/Form/TextInput";
 import { QuoteRequest } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Quoting/Model";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Quoting/Service";
+import { Aggregate } from "../../components/Instrument/Aggregate";
 
 export const Request : React.FC = () => {
   const cls = useStyles();
@@ -29,19 +30,20 @@ export const Request : React.FC = () => {
   const party = useParty();
   const ledger = useLedger();
   const { loading: l1, quoting } = useServices();
-  const { loading: l2, tokens } = useInstruments();
+  const { loading: l2, tokens, latests } = useInstruments();
   const { loading: l3, contracts: requests } = useStreamQueries(QuoteRequest);
 
   const { contractId } = useParams<any>();
   const request = requests.find(b => b.contractId === contractId);
   const currencyInstrument = tokens.find(c => c.payload.id.unpack === currency);
-
+  const instrument = latests.find(c => c.payload.id.unpack === request?.payload.quantity.unit.id.unpack);
   if (l1 || l2 || l3) return <Spinner />;
 
   const providerServices = quoting.filter(c => c.payload.provider === party);
   const isProvider = providerServices.length > 0;
 
   if (!request) return <Message text="Quote request not found" />
+  if (!instrument) return <Message text="Instrument not found" />
   const canRequest = !!currencyInstrument;
 
   const createQuote = async () => {
@@ -52,7 +54,7 @@ export const Request : React.FC = () => {
       price: { amount: amount, unit: currencyInstrument.key },
     };
     await ledger.exercise(Service.CreateQuote, providerServices[0].contractId, arg);
-    navigate("/app/trading/quotes");
+    navigate("/app/quoting/quotes");
   };
 
   return (
@@ -62,7 +64,7 @@ export const Request : React.FC = () => {
       </Grid>
       <Grid item xs={12}>
         <Grid container spacing={4}>
-          <Grid item xs={4}>
+          <Grid item xs={3}>
             <Grid container direction="column">
               <Grid xs={12}>
                 <Paper className={classnames(cls.fullWidth, cls.paper)}>
@@ -102,6 +104,9 @@ export const Request : React.FC = () => {
                 }
               </Grid>
             </Grid>
+          </Grid>
+          <Grid item xs={9}>
+            <Aggregate instrument={instrument}></Aggregate>
           </Grid>
         </Grid>
       </Grid>

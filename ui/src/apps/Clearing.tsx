@@ -4,11 +4,13 @@
 import React from "react";
 import { Request } from "../pages/clearing/Request";
 import { Requests } from "../pages/clearing/Requests";
+import { Trades } from "../pages/clearing/Trades";
 import { App } from "./App";
 
 export const Clearing : React.FC = () => {
   const entries =
-    [ { label: "Requests", path: "requests", element: <Requests /> } ];
+    [ { label: "Trades", path: "trades", element: <Trades /> }
+    , { label: "Requests", path: "requests", element: <Requests /> } ];
 
   const paths =
     [ { path: "requests/:contractId", element: <Request /> } ];

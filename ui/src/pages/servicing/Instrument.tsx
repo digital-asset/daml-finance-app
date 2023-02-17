@@ -49,24 +49,26 @@ export const Instrument : React.FC = () => {
   const { contractId } = useParams<any>();
   const loading = l1 || l2 || l3 || l4;
   const instrument = getByCid(contractId || "");
+  const svc = lifecycle.find(c => c.payload.customer === party);
 
   useEffect(() => {
     const setClaims = async () => {
-      if (loading || !lifecycle || !instrument.claim) return;
+      if (loading || !instrument.claim) return;
+      if (!svc) throw new Error("Couldn't find lifecycle service");
       const observableCids = numericObservables.map(c => c.contractId);
-      const [res, ] = await ledger.exercise(Lifecycle.GetCurrentClaims, lifecycle[0].contractId, { instrumentCid: instrument.claim.contractId, observableCids })
+      const [res, ] = await ledger.exercise(Lifecycle.GetCurrentClaims, svc.contractId, { instrumentCid: instrument.claim.contractId, observableCids })
       const claims = res.length > 1 ? and(res.map(r => r.claim)) : res[0].claim;
       setNode1(claimToNode(claims));
     };
     setClaims();
-  }, [ledger, party, instrument, numericObservables, lifecycle, loading]);
+  }, [ledger, party, instrument, numericObservables, svc, loading]);
 
   useEffect(() => {
     if (!!remaining) setNode2(claimToNode(remaining));
   }, [remaining]);
 
   if (loading) return <Spinner />;
-  if (lifecycle.length === 0) return <Message text={"No lifecycle service found"} />;
+  if (!svc) return <Message text={"No lifecycle service found"} />;
 
   const canDeclareDividend = !!description && !!effectiveDate && !!currency && !!amount;
   const canDeclareStockSplit = !!description && !!effectiveDate && !!amount;
@@ -74,7 +76,7 @@ export const Instrument : React.FC = () => {
 
   const previewLifecycle = async () => {
     const observableCids = numericObservables.map(c => c.contractId);
-    const [ res, ] = await ledger.exercise(Lifecycle.PreviewLifecycle, lifecycle[0].contractId, { today: events[0].payload.eventTime, observableCids, instrumentCid: instrument.claim!.contractId });
+    const [ res, ] = await ledger.exercise(Lifecycle.PreviewLifecycle, svc.contractId, { today: events[0].payload.eventTime, observableCids, instrumentCid: instrument.claim!.contractId });
     const claims = res._1.length > 1 ? and(res._1.map(r => r.claim)) : res._1[0].claim;
     setRemaining(claims);
     setPending(res._2);
@@ -82,14 +84,14 @@ export const Instrument : React.FC = () => {
 
   const executeLifecycle = async () => {
     const observableCids = numericObservables.map(c => c.contractId);
-    const ruleCid = !!instrument.generic ? lifecycle[0].payload.genericRuleCid : lifecycle[0].payload.dynamicRuleCid;
+    const ruleCid = !!instrument.generic ? svc.payload.genericRuleCid : svc.payload.dynamicRuleCid;
     const arg = {
       ruleCid,
       eventCid: events[0].contractId,
       observableCids,
       instrument: instrument.key
     }
-    await ledger.exercise(Lifecycle.Lifecycle, lifecycle[0].contractId, arg);
+    await ledger.exercise(Lifecycle.Lifecycle, svc.contractId, arg);
     navigate("/app/servicing/effects");
   };
 
@@ -100,7 +102,7 @@ export const Instrument : React.FC = () => {
 
   const declareDividend = async () => {
     const ccy = tokens.find(c => c.payload.id.unpack === currency);
-    if (!lifecycle || !instrument.equity || !ccy) throw new Error("Cannot declare dividend on non-equity instrument");
+    if (!instrument.equity || !ccy) throw new Error("Cannot declare dividend on non-equity instrument");
     const arg = {
       equity: instrument.key,
       newVersion: (parseInt(instrument.payload.version) + 1).toString(),
@@ -109,12 +111,12 @@ export const Instrument : React.FC = () => {
       effectiveTime: parseDateAsTime(effectiveDate),
       perUnitDistribution: [ { amount, unit: ccy.key } ]
     };
-    await ledger.exercise(Lifecycle.DeclareDividend, lifecycle[0].contractId, arg);
+    await ledger.exercise(Lifecycle.DeclareDividend, svc.contractId, arg);
     navigate("/app/servicing/effects");
   };
 
   const declareStockSplit = async () => {
-    if (!lifecycle || !instrument.equity) throw new Error("Cannot declare stock split on non-equity instrument");
+    if (!instrument.equity) throw new Error("Cannot declare stock split on non-equity instrument");
     const arg = {
       equity: instrument.key,
       newVersion: (parseInt(instrument.payload.version) + 1).toString(),
@@ -123,13 +125,13 @@ export const Instrument : React.FC = () => {
       effectiveTime: parseDateAsTime(effectiveDate),
       adjustmentFactor: amount
     };
-    await ledger.exercise(Lifecycle.DeclareStockSplit, lifecycle[0].contractId, arg);
+    await ledger.exercise(Lifecycle.DeclareStockSplit, svc.contractId, arg);
     navigate("/app/servicing/effects");
   };
 
   const declareReplacement = async () => {
     const ccy = tokens.find(c => c.payload.id.unpack === currency);
-    if (!lifecycle || !instrument.equity || !ccy) throw new Error("Cannot declare replacement on non-equity instrument");
+    if (!instrument.equity || !ccy) throw new Error("Cannot declare replacement on non-equity instrument");
     const arg = {
       equity: instrument.key,
       newVersion: (parseInt(instrument.payload.version) + 1).toString(),
@@ -138,7 +140,7 @@ export const Instrument : React.FC = () => {
       effectiveTime: parseDateAsTime(effectiveDate),
       perUnitReplacement: [ { amount, unit: ccy.key } ]
     };
-    await ledger.exercise(Lifecycle.DeclareReplacement, lifecycle[0].contractId, arg);
+    await ledger.exercise(Lifecycle.DeclareReplacement, svc.contractId, arg);
     navigate("/app/servicing/effects");
   };
 
@@ -206,7 +208,7 @@ export const Instrument : React.FC = () => {
                     <TableBody>
                       {pending.map((c, i) => (
                         <TableRow key={i} className={classes.tableRow}>
-                          <TableCell key={0} className={classes.tableCell}>{c.t}</TableCell>
+                          <TableCell key={0} className={classes.tableCell}>{c.t.substring(0, 10)}</TableCell>
                           <TableCell key={1} className={classes.tableCell}>{parseFloat(c.amount) < 0 ? "Owner" : "Custodian"}</TableCell>
                           <TableCell key={2} className={classes.tableCell}>{parseFloat(c.amount) < 0 ? "Custodian" : "Owner"}</TableCell>
                           <TableCell key={3} className={classes.tableCell}>{(Math.abs(parseFloat(c.amount))).toFixed(5)}</TableCell>

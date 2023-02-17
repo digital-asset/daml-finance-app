@@ -3,9 +3,11 @@
 
 module Daml.Finance.App.Clearing.Service where
 
+import DA.Set (singleton)
 import Daml.Finance.App.Clearing.Model (ClearingRequest(..))
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id)
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, AddObservers(..))
 
 template Service
   with
@@ -29,19 +31,8 @@ template Service
         assertMsg "Only the owner can request clearing" $ customer == holding.account.owner
         assertMsg "Customer clearing account owner must be customer" $ customer == clearingAccount.owner
         assertMsg "Customer clearing account custodian must be clearing provider" $ provider == clearingAccount.custodian
+        holdingCid <- coerceContractId <$> exercise (coerceContractId holdingCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (show id, singleton provider)
         create ClearingRequest with operator; provider; customer; id; holdingCid; counterparty = holding.account.custodian; customerClearingAccount = clearingAccount; counterpartyClearingAccount = None
-
-    nonconsuming choice ApproveClearing : ContractId ClearingRequest
-      with
-        clearingRequestCid : ContractId ClearingRequest
-        clearingAccount : AccountKey
-      controller customer
-      do
-        clearingRequest <- fetch clearingRequestCid
-        assertMsg "Only the counterparty can approve a clearing request" $ customer == clearingRequest.counterparty
-        assertMsg "Counterparty clearing account owner must be clearing provider" $ provider == clearingAccount.owner
-        assertMsg "Counterparty clearing account custodian must be counterparty" $ customer == clearingAccount.custodian
-        create clearingRequest with counterpartyClearingAccount = Some clearingAccount
 
     choice Terminate : ()
       with

@@ -6,11 +6,13 @@ import { NewQuote } from "../pages/quoting/NewQuote";
 import { Quotes } from "../pages/quoting/Quotes";
 import { Request } from "../pages/quoting/Request";
 import { Requests } from "../pages/quoting/Requests";
+import { Trades } from "../pages/quoting/Trades";
 import { App } from "./App";
 
 export const Quoting : React.FC = () => {
   const entries =
-    [ { label: "Quotes", path: "quotes", element: <Quotes /> }
+    [ { label: "Trades", path: "trades", element: <Trades /> }
+    , { label: "Quotes", path: "quotes", element: <Quotes /> }
     , { label: "Requests", path: "requests", element: <Requests /> }
     , { label: "Request Quote", path: "new", element: <NewQuote />, action: true } ];
 

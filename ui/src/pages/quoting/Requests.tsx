@@ -9,6 +9,7 @@ import { useParties } from "../../context/PartiesContext";
 import { QuoteRequest } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Quoting/Model";
 import { HorizontalTable } from "../../components/Table/HorizontalTable";
 import { DetailButton } from "../../components/DetailButton/DetailButton";
+import { fmt } from "../../util";
 
 export const Requests : React.FC = () => {
   const { getName } = useParties();
@@ -22,11 +23,11 @@ export const Requests : React.FC = () => {
       getName(c.payload.customer),
       c.payload.id.unpack,
       c.payload.side,
-      c.payload.quantity.amount + " " + c.payload.quantity.unit.id.unpack,
+      fmt(c.payload.quantity.amount) + " " + c.payload.quantity.unit.id.unpack,
       <DetailButton path={c.contractId} />
     ];
   }
-  const headers = ["Dealer", "Buyer", "Id", "Side", "Asset", "Price", "Clearer"]
+  const headers = ["Dealer", "Buyer", "Id", "Side", "Asset", "Details"]
   const values : any[] = requests.map(createRow);
   return (
     <HorizontalTable title="Quote Requests" variant={"h3"} headers={headers} values={values} />

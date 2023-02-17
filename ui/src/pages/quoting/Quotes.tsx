@@ -14,6 +14,7 @@ import useStyles from "../styles";
 import { useServices } from "../../context/ServiceContext";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Quoting/Service";
 import { useNavigate } from "react-router-dom";
+import { fmt } from "../../util";
 
 export const Quotes : React.FC = () => {
   const cls = useStyles();
@@ -42,16 +43,15 @@ export const Quotes : React.FC = () => {
       getName(c.payload.customer),
       c.payload.id.unpack,
       c.payload.side,
-      c.payload.quantity.amount + " " + c.payload.quantity.unit.id.unpack,
-      c.payload.price.amount + " " + c.payload.price.unit.id.unpack,
-      c.payload.clearer,
+      fmt(c.payload.quantity.amount) + " " + c.payload.quantity.unit.id.unpack,
+      fmt(c.payload.price.amount) + " " + c.payload.price.unit.id.unpack,
       c.payload.customer === party ? <Button color="primary" size="small" className={cls.choiceButton} variant="contained" onClick={() => acceptQuote(c)}>Accept</Button> : <></>,
       <DetailButton path={c.contractId} />
     ];
   }
-  const headers = ["Dealer", "Buyer", "Id", "Side", "Asset", "Price", "Clearer", "Action", "Details"]
+  const headers = ["Dealer", "Buyer", "Id", "Side", "Asset", "Price", "Action", "Details"]
   const values : any[] = listings.map(createRow);
   return (
-    <HorizontalTable title="Markets" variant={"h3"} headers={headers} values={values} />
+    <HorizontalTable title="Quotes" variant={"h3"} headers={headers} values={values} />
   );
 };

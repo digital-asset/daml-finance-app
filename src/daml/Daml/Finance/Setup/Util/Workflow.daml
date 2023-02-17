@@ -9,6 +9,8 @@ import DA.Map qualified as M (Map, fromList)
 import DA.Set (fromList, singleton)
 import DA.Text (parseInt)
 import DA.Time (time)
+import Daml.Finance.App.Clearing.Model qualified as Clearing (Approve(..), Clear(..), ClearingRequest)
+import Daml.Finance.App.Clearing.Service qualified as Clearing (RequestClearing(..), Service)
 import Daml.Finance.App.Custody.Service qualified as Custody (Deposit(..), OpenAccount(..), RequestDeposit(..), RequestOpenAccount(..), Service)
 import Daml.Finance.App.Data.AccountDirectory (AccountDirectory(..))
 import Daml.Finance.App.Distribution.Auction.Model qualified as Auction (T)
@@ -24,6 +26,9 @@ import Daml.Finance.App.Issuance.Service qualified as Issuance (CreateIssuance(.
 import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Service, DeclareDividend(..), DeclareStockSplit(..), DeclareReplacement(..))
 import Daml.Finance.App.Listing.Model qualified as Listing (T)
 import Daml.Finance.App.Listing.Service qualified as Listing (CreateListing(..), RequestCreateListing(..), Service)
+import Daml.Finance.App.Quoting.Model qualified as Quoting (Side, Quote, QuoteRequest)
+import Daml.Finance.App.Quoting.Service qualified as Quoting (AcceptQuote(..), CreateQuote(..), RequestQuote(..), Service)
+import Daml.Finance.App.Settlement.Service qualified as Settlement (Service)
 import Daml.Finance.App.Trading.Model qualified as Trading (Order, Side(..))
 import Daml.Finance.App.Trading.Service qualified as Trading (CreateOrder(..), RequestCreateOrder(..), Service)
 import Daml.Finance.Data.Numeric.Observation qualified as Data (Observation(..))
@@ -328,8 +333,8 @@ claimEffect operator custodian owner public effectCid holdingCids batchId = do
 allocateAndApprove : Party -> Party -> ContractId Instruction.I -> Settlement.Allocation -> Settlement.Approval -> Script (ContractId Instruction.I)
 allocateAndApprove operator settler instructionCid allocation approval = do
   Some i <- queryContractId @Instruction.T settler $ coerceContractId instructionCid
-  instructionCid <- fst <$> submit i.routedStep.sender do exerciseCmd instructionCid Instruction.Allocate with actors = singleton settler; allocation
-  submit i.routedStep.receiver do exerciseCmd instructionCid Instruction.Approve with actors = singleton settler; approval
+  instructionCid <- fst <$> submit i.routedStep.sender do exerciseCmd instructionCid Instruction.Allocate with actors = singleton i.routedStep.sender; allocation
+  submit i.routedStep.receiver do exerciseCmd instructionCid Instruction.Approve with actors = singleton i.routedStep.receiver; approval
 
 createInvestmentRequest : Party -> Party -> Party -> Party -> Text -> Date -> ContractId Fund.T -> ContractId Transferable.I -> Script (ContractId Investment.InvestmentRequest)
 createInvestmentRequest operator provider customer public id asOfDate fundCid cashCid =
@@ -342,3 +347,27 @@ poolInvestmentRequests operator provider customer public id asOfDate fundCid cas
 fulfillPooledInvestmentRequest : Party -> Party -> Party -> Party -> ContractId Fund.T -> ContractId Fund.PooledInvestmentRequest -> ContractId NumericObservable.I -> Script [ContractId Holding.I]
 fulfillPooledInvestmentRequest operator provider customer public fundCid pooledInvestmentRequestCid navObservableCid =
   submitMulti [provider] [public] do exerciseByKeyCmd @Fund.S (operator, provider, customer) Fund.FulfillPooledInvestmentRequest with fundCid; pooledInvestmentRequestCid; navObservableCid
+
+requestQuote : Party -> Party -> Party -> Id -> Quoting.Side -> InstrumentQuantity -> Script (ContractId Quoting.QuoteRequest)
+requestQuote operator provider customer id side quantity =
+  submitMulti [customer] [] do exerciseByKeyCmd @Quoting.Service (operator, provider, customer) Quoting.RequestQuote with id; side; quantity
+
+quote : Party -> Party -> Party -> ContractId Quoting.QuoteRequest -> InstrumentQuantity -> Script (ContractId Quoting.Quote)
+quote operator provider customer quoteRequestCid price =
+  submitMulti [provider] [] do exerciseByKeyCmd @Quoting.Service (operator, provider, customer) Quoting.CreateQuote with quoteRequestCid; price
+
+acceptQuote : Party -> Party -> Party -> ContractId Quoting.Quote -> ContractId Settlement.Service -> Script (ContractId Batch.I, [ContractId Instruction.I])
+acceptQuote operator provider customer quoteCid settlementServiceCid =
+  submit customer do exerciseByKeyCmd @Quoting.Service (operator, provider, customer) Quoting.AcceptQuote with quoteCid; settlementServiceCid
+
+requestClearing : Party -> Party -> Party -> Id -> ContractId Holding.I -> AccountKey -> Script (ContractId Clearing.ClearingRequest)
+requestClearing operator provider customer id holdingCid clearingAccount =
+  submit customer do exerciseByKeyCmd @Clearing.Service (operator, provider, customer) Clearing.RequestClearing with id; holdingCid; clearingAccount
+
+approveClearing : Party -> ContractId Clearing.ClearingRequest -> AccountKey -> Script (ContractId Clearing.ClearingRequest)
+approveClearing counterparty clearingRequestCid clearingAccount =
+  submit counterparty do exerciseCmd clearingRequestCid Clearing.Approve with clearingAccount
+
+clear : Party -> Party -> ContractId Clearing.ClearingRequest -> Script (ContractId Holding.I, ContractId Holding.I)
+clear clearer public clearingRequestCid =
+  submitMulti [clearer] [public] do exerciseCmd clearingRequestCid Clearing.Clear
