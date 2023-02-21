@@ -183,22 +183,25 @@ export const scenarios : Scenario[] = [
     useNetworkLogin: true
   },
   {
-    label: "Decentralized Finance",
-    description: "Experimental Decentralized Financial protocols",
-    apps: [ custody, defi, network ],
-    image: scenarioDecentralizedFinance,
+    label: "Money Market Tokenization",
+    description: "Subscription and Redemption for MM Funds",
+    apps: [ structuring, issuance, custody, distribution, servicing, listing, trading, settlement, network ],
+    image: scenarioFundTokenization,
     positions: new Map([
-      [ "Operator",   { x:    0, y:   0 } ],
-      [ "Public",     { x:    0, y:   0 } ],
-      [ "FED",        { x:    0, y:   0 } ],
-      [ "ECB",        { x:  200, y:   0 } ],
-      [ "SNB",        { x:  400, y:   0 } ],
-      [ "BOE",        { x:  600, y:   0 } ],
-      [ "Consortium", { x:  200, y: 300 } ],
-      [ "Trader",     { x:  400, y: 300 } ],
+      [ "Operator",         { x:    0, y:   0 } ],
+      [ "Public",           { x:    0, y:   0 } ],
+      [ "CashRail",     { x:  300, y:   150 } ],
+      [ "TransferAgent",     { x:  300, y: 300 } ],
+      [ "FundManager", { x:    0, y: 300 } ],
+      [ "Custodian",        { x:    0, y: 150 } ],
+      [ "SwapsDealer",        { x:  650, y: 375 } ],
+      [ "InsuranceCo",        { x:  650, y: 450 } ],
+      [ "PrimeBroker",        { x:  650, y: 300 } ],
+      [ "HedgeFund2",        { x: 650, y: 225} ],
+      [ "HedgeFund1",        { x: 650, y: 150}]
     ]),
     useNetworkLogin: true
-  }
+  },
 ];
 
 const ScenarioContext = React.createContext<ScenarioState>({ selected: scenarios[0], select: _ => scenarios[0] });
