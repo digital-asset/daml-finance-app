@@ -92,7 +92,7 @@ run = do
   usd   <- originateToken                    cashProvider  cashProvider  pub epoch "USD"   "United States Dollar"
   fund1 <- originateEquity                    custodian     fm            pub epoch "MMF1" "MMF1 Units"
   fund2 <- originateEquity                    custodian     fm            pub epoch "MMF2" "MMF2 Units"
-  fund3 <- originateToken                    custodian     fm             pub epoch "MMF3" "MMF3 Units (Token)"
+  fund3 <- originateEquity                    custodian     fm             pub epoch "MMF3" "MMF3 Units (Token)"
 
   -- Holdings
   taCashCid   <- deposit operator cashProvider ta    public (Instrument.qty  300_000_000.0 usd) taCashAccount
@@ -107,6 +107,7 @@ run = do
   navFund1Cid <- createObservation fm "NAV_MMF1_USD" [ (todayTime,   10_100_000_000.0) ] pub
   navFund2Cid <- createObservation fm "NAV_MMF2_USD" [ (todayTime,   12_500_000_000.0) ] pub
   navFund3Cid <- createObservation fm "NAV_MMF3_USD" [ (todayTime,   25_500_000_000.0) ] pub
+  navFund4Cid <- createObservation fm "NAV_MMF4_USD" [ (todayTime, 10_000_000_000.0) ] pub
 
   createAccountDirectory custodian  [(usd, custodianCashAccount)] $ singleton public
   createAccountDirectory ta         [(usd, taCashAccount), (fund1, taSecAccount), (fund2, taSecAccount), (fund3, taSecAccount)] $ singleton public
