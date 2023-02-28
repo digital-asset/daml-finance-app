@@ -58,12 +58,13 @@ run = do
     custodyServiceParties = (cashProvider `xx` [ta, custodian]) ++ (ta `xx` investors) ++ (custodian `xx` [ta, fm])
   mapA_ (\(by, to) -> createCustodyService operator by to paths accountFactoryCid holdingFactoryCid) custodyServiceParties
 
-  createIssuanceService         operator custodian    fm
-  createIssuanceAutoService     operator custodian    fm
-  createStructuringService      operator custodian    fm
-  createStructuringAutoService  operator custodian    fm
-  mapA_ (createInvestmentService operator ta) investors
-  createFundService             operator fm           ta       paths
+  createIssuanceService           operator custodian    fm
+  createIssuanceAutoService       operator custodian    fm
+  createStructuringService        operator custodian    fm
+  createStructuringAutoService    operator custodian    fm
+  mapA_ (createInvestmentService  operator ta)          investors
+  createFundService               operator fm           ta        paths
+  createLifecycleService          operator custodian    fm        public
 
   -- Accounts
   taCashAccount         <- createAccount operator cashProvider  ta        public "TransferAgent@CashRail/Cash"        $ fromList [("FM", singleton fm)]
@@ -89,9 +90,9 @@ run = do
 
   -- Instruments
   usd   <- originateToken                    cashProvider  cashProvider  pub epoch "USD"   "United States Dollar"
-  fund1 <- originateToken                    custodian     fm            pub epoch "MMF1" "MMF1 Units"
-  fund2 <- originateToken                    custodian     fm            pub epoch "MMF2" "MMF2 Units"
-  fund3 <- originateToken                    custodian     fm            pub epoch "MMF3" "MMF3 Units"
+  fund1 <- originateEquity                    custodian     fm            pub epoch "MMF1" "MMF1 Units"
+  fund2 <- originateEquity                    custodian     fm            pub epoch "MMF2" "MMF2 Units"
+  fund3 <- originateEquity                    custodian     fm            pub epoch "MMF3" "MMF3 Units"
 
   -- Holdings
   taCashCid   <- deposit operator cashProvider ta    public (Instrument.qty 10_000_000.0 usd) taCashAccount
