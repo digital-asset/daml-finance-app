@@ -36,7 +36,7 @@ The TA is principally responsible for:
 
 The system or party responsible for onboarding and off-boarding cash. Typically a wire system. 
 
-#### Custodian 
+#### Registry 
 
 The system or party responsible for maintaining Token definitions and global account balances. 
 
@@ -46,9 +46,15 @@ The system responsible for maintaining bilateral collateral agreements between I
 
 ### Principal Workflows 
 
+### (MMF) Create a new MMF
+
+Allows a FM to create a new MMF. For now, some things are hard-coded for the demo. Specifically, as *Fund Manager*, 
+1. Create a new Equity called `MMF4`. 
+2. Issue exactly 10,000,000,000 (That's 10 Billion) of it. 
+
 #### (MMF) Subscriptions 
 
-This workflow allows investors to request a conversion of their already onboarded USD to MMF tokens at a 1:1 rate. 
+Allows investors to request a conversion of their already onboarded USD to MMF tokens at a 1:1 rate. 
 
 1. *Investors* request MMF tokens
 2. *TA* reviews and pools those requests

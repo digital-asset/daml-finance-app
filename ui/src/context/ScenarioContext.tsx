@@ -193,7 +193,7 @@ export const scenarios : Scenario[] = [
       [ "CashRail",     { x:  300, y:   150 } ],
       [ "TransferAgent",     { x:  300, y: 300 } ],
       [ "FundManager", { x:    0, y: 300 } ],
-      [ "Custodian",        { x:    0, y: 150 } ],
+      [ "Registry",        { x:    0, y: 150 } ],
       [ "SwapsDealer",        { x:  650, y: 375 } ],
       [ "InsuranceCo",        { x:  650, y: 450 } ],
       [ "PrimeBroker",        { x:  650, y: 300 } ],
