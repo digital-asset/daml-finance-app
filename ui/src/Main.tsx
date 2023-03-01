@@ -19,7 +19,6 @@ import { CssBaseline } from "@mui/material";
 export const Main : React.FC = () => {
   const user = useUserState();
   const branding = useBranding();
-
   const theme = React.useMemo(() => createTheme(branding.options), [branding]);
 
   return (

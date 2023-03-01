@@ -1,0 +1,48 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Clearing.Model where
+
+import DA.Optional (isNone, fromSome)
+import Daml.Finance.Interface.Account.Account qualified as Account (Credit(..), Debit(..), I, exerciseInterfaceByKey)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id)
+import Daml.Finance.Interface.Util.Common (qty)
+
+template ClearingRequest
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Id
+    holdingCid : ContractId Holding.I
+    counterparty : Party
+    customerClearingAccount : AccountKey
+    counterpartyClearingAccount : Optional AccountKey
+  where
+    signatory [operator, provider, customer] <> if isNone counterpartyClearingAccount then [] else [ counterparty ]
+    observer counterparty
+
+    key (operator, provider, id) : (Party, Party, Id)
+    maintainer key._1
+
+    choice Approve : ContractId ClearingRequest
+      with
+        clearingAccount : AccountKey
+      controller counterparty
+      do
+        assertMsg "Counterparty clearing account owner must be clearing provider" $ provider == clearingAccount.owner
+        assertMsg "Counterparty clearing account custodian must be counterparty" $ counterparty == clearingAccount.custodian
+        create this with counterpartyClearingAccount = Some clearingAccount
+
+    choice Clear : (ContractId Holding.I, ContractId Holding.I)
+      controller provider
+      do
+        holding <- view <$> fetch holdingCid
+        let
+          quantity = qty holding.amount holding.instrument
+          cptyAccount = fromSome counterpartyClearingAccount
+        Account.exerciseInterfaceByKey @Account.I holding.account customer Account.Debit with holdingCid
+        customerHoldingCid <- Account.exerciseInterfaceByKey @Account.I customerClearingAccount customer Account.Credit with quantity
+        counterpartyHoldingCid <- Account.exerciseInterfaceByKey @Account.I cptyAccount counterparty Account.Credit with quantity
+        pure (customerHoldingCid, counterpartyHoldingCid)

@@ -50,16 +50,18 @@ type AppInfo = {
 
 const structuring   = { name: "Structuring",  path: "structuring",  elem: <App key={0}  label="Structuring"   description="Structure and design new assets"         image={appStructuring}  path="/app/structuring/instruments" /> };
 const issuance      = { name: "Issuance",     path: "issuance",     elem: <App key={1}  label="Issuance"      description="Issue new assets"                        image={appIssuance}     path="/app/issuance/issuances" /> };
-const custody       = { name: "Custody",      path: "custody",      elem: <App key={2}  label="Custody"       description="Manage assets in custody"                image={appCustody}      path="/app/custody/assets" /> };
-const defi          = { name: "DeFi",         path: "defi",         elem: <App key={3}  label="DeFi"          description="Explore Decentralized Finance protocols" image={appDefi}         path="/app/defi/exchanges" /> };
-const distribution  = { name: "Distribution", path: "distribution", elem: <App key={4}  label="Distribution"  description="Distribute assets in the primary market" image={appDistribution} path="/app/distribution/auctions" /> };
-const lending       = { name: "Lending",      path: "lending",      elem: <App key={5}  label="Lending"       description="Borrow and lend securities"              image={appLending}      path="/app/lending/trades" /> };
-const servicing     = { name: "Servicing",    path: "servicing",    elem: <App key={6}  label="Servicing"     description="Service and lifecycle your assets"       image={appServicing}    path="/app/servicing/instruments" /> };
-const simulation    = { name: "Simulation",   path: "simulation",   elem: <App key={7}  label="Simulation"    description="Run market scenarios on your assets"     image={appSimulation}   path="/app/simulation/scenario" /> };
-const listing       = { name: "Listing",      path: "listing",      elem: <App key={8}  label="Listing"       description="List your assets on trading venues"      image={appListing}      path="/app/listing/listings" /> };
-const trading       = { name: "Trading",      path: "trading",      elem: <App key={9}  label="Trading"       description="Trade assets in the secondary market"    image={appTrading}      path="/app/trading/markets" /> };
-const network       = { name: "Network",      path: "network",      elem: <App key={10} label="Network"       description="Explore the distributed ledger network"  image={appNetwork}      path="/app/network/overview" /> };
-const settlement    = { name: "Settlement",   path: "settlement",   elem: <App key={11} label="Settlement"    description="Settle instructions in batches"          image={appSimulation}   path="/app/settlement/batches" /> };
+const clearing      = { name: "Clearing",     path: "clearing",     elem: <App key={2}  label="Clearing"      description="Clear bilateral derivative trades"       image={appDistribution} path="/app/clearing/trades" /> };
+const custody       = { name: "Custody",      path: "custody",      elem: <App key={3}  label="Custody"       description="Manage assets in custody"                image={appCustody}      path="/app/custody/assets" /> };
+const defi          = { name: "DeFi",         path: "defi",         elem: <App key={4}  label="DeFi"          description="Explore Decentralized Finance protocols" image={appDefi}         path="/app/defi/exchanges" /> };
+const distribution  = { name: "Distribution", path: "distribution", elem: <App key={5}  label="Distribution"  description="Distribute assets in the primary market" image={appDistribution} path="/app/distribution/auctions" /> };
+const lending       = { name: "Lending",      path: "lending",      elem: <App key={6}  label="Lending"       description="Borrow and lend securities"              image={appLending}      path="/app/lending/trades" /> };
+const servicing     = { name: "Servicing",    path: "servicing",    elem: <App key={7}  label="Servicing"     description="Service and lifecycle your assets"       image={appServicing}    path="/app/servicing/instruments" /> };
+const simulation    = { name: "Simulation",   path: "simulation",   elem: <App key={8}  label="Simulation"    description="Run market scenarios on your assets"     image={appSimulation}   path="/app/simulation/scenario" /> };
+const listing       = { name: "Listing",      path: "listing",      elem: <App key={9}  label="Listing"       description="List your assets on trading venues"      image={appListing}      path="/app/listing/listings" /> };
+const quoting       = { name: "Quoting",      path: "quoting",      elem: <App key={10} label="Quoting"       description="Request trade quotes from dealers"       image={appTrading}      path="/app/quoting/quotes" /> };
+const trading       = { name: "Trading",      path: "trading",      elem: <App key={11} label="Trading"       description="Trade assets in the secondary market"    image={appTrading}      path="/app/trading/markets" /> };
+const network       = { name: "Network",      path: "network",      elem: <App key={12} label="Network"       description="Explore the distributed ledger network"  image={appNetwork}      path="/app/network/overview" /> };
+const settlement    = { name: "Settlement",   path: "settlement",   elem: <App key={13} label="Settlement"    description="Settle instructions in batches"          image={appSimulation}   path="/app/settlement/batches" /> };
 
 export const scenarios : Scenario[] = [
   {
@@ -179,6 +181,21 @@ export const scenarios : Scenario[] = [
       [ "Investor1",        { x:    0, y: 450 } ],
       [ "Investor2",        { x:  300, y: 525 } ],
       [ "Investor3",        { x:  600, y: 450 } ]
+    ]),
+    useNetworkLogin: true
+  },
+  {
+    label: "OTC Swaps",
+    description: "OTC swap quoting and trading",
+    apps: [ structuring, quoting, custody, clearing, servicing, settlement ],
+    image: scenarioSecuritiesLending,
+    positions: new Map([
+      [ "Operator",         { x:    0, y:   0 } ],
+      [ "Public",           { x:    0, y:   0 } ],
+      [ "CashProvider",     { x:    0, y:   0 } ],
+      [ "Clearer",          { x:  300, y:   0 } ],
+      [ "Seller",           { x:    0, y: 150 } ],
+      [ "Buyer",            { x:  300, y: 300 } ],
     ]),
     useNetworkLogin: true
   },

@@ -46,4 +46,3 @@ exit /b 0
   echo Getting dependency %package_name% v%version%
   if not exist ".lib/%package_name%-%version%.dar" (curl -Lf# %url% -o .lib/%package_name%-%version%.dar)
   exit /b 0
-
