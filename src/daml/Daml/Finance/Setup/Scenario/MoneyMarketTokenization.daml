@@ -29,9 +29,9 @@ run = do
   let 
     scenario = "Money Market Tokenization"
     investorNames = ["HedgeFund1", "HedgeFund2", "PrimeBroker", "SwapsDealer", "InsuranceCo"]
-  parties <- allocateParties scenario (["Operator", "CashRail", "TransferAgent", "FundManager", "Registry"] ++ investorNames) "Public"
+  parties <- allocateParties scenario (["Operator", "CashRail", "TransferAgent", "FundManager", "Registry", "CollateralClearer"] ++ investorNames) "Public"
   let
-    all@[operator, cashProvider, ta, fm, registry, inv1, inv2, inv3, inv4, inv5, public] = map (.id) parties
+    all@[operator, cashProvider, ta, fm, registry, cc, inv1, inv2, inv3, inv4, inv5, public] = map (.id) parties
     pub = fromList [("Public", singleton public)]
     investors = [inv1, inv2, inv3, inv4, inv5]
 
@@ -52,6 +52,7 @@ run = do
   createCustodianRole operator ta
   createDistributorRole operator ta
   createDistributorRole operator fm
+  createCollateralClearerRole operator cc
 
   -- Services
   let 
@@ -65,6 +66,7 @@ run = do
   mapA_ (createInvestmentService  operator ta)          investors
   createFundService               operator fm           ta        paths
   createLifecycleService          operator registry    fm        public
+  mapA_ (createCollateralService operator cc) investors
 
   -- Accounts
   taCashAccount         <- createAccount operator cashProvider  ta        public "TransferAgent@CashRail/Cash"        $ fromList [("FM", singleton fm)]

@@ -1,0 +1,92 @@
+module Daml.Finance.App.Collateral.Service where
+
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentKey, InstrumentQuantity, Parties, PartiesMap)
+import DA.Map (Map)
+
+import Daml.Finance.App.Collateral.Model
+
+template Service
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, customer) : (Party, Party, Party)
+    maintainer key._1
+
+    nonconsuming choice ProposeBilateralAgreement: ContractId BilateralAgreementProposal
+      with 
+        id: Text 
+        customers: (Party, Party)
+        signed: Date 
+        marginCurrency:  InstrumentKey
+        thresholds: (Decimal, Decimal)
+        minTansfer: (Decimal, Decimal)
+        independentAmount: (Decimal, Decimal)
+        haircuts: Map InstrumentKey Decimal
+        observers: PartiesMap
+      controller customer 
+      do 
+        let 
+          otherCustomer
+            | customer == customers._1 = customers._1
+            | customer == customers._2 = customers._2
+            | otherwise = error "Something"
+
+        create BilateralAgreementProposal 
+          with
+            ..
+
+    nonconsuming choice AcceptBilateralAgreementProposal: ContractId BilateralAgreement
+      with 
+        proposalCid: ContractId BilateralAgreementProposal
+      controller customer 
+      do 
+        exercise proposalCid CounterSign 
+        
+template Offer
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider
+    observer customer
+
+    choice Accept : ContractId Service
+      controller customer
+      do
+        create Service with operator; provider; customer
+
+    choice Decline : ()
+      controller customer
+      do
+        return ()
+
+    choice Withdraw : ()
+      controller provider
+      do pure ()
+
+template Request
+  with
+    customer : Party
+    provider : Party
+  where
+    signatory customer
+
+    choice Cancel : ()
+      controller customer
+      do pure ()
+
+    choice Reject : ()
+      controller provider
+      do pure ()
+
+    choice Approve : ContractId Service
+      with
+        operator : Party
+      controller operator, provider
+      do
+        create Service with operator; provider; customer

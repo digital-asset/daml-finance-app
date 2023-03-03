@@ -1,0 +1,58 @@
+module Daml.Finance.App.Collateral.Model where
+
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentKey, InstrumentQuantity, Parties, PartiesMap)
+import DA.Map (Map)
+
+template BilateralAgreement 
+  with 
+    operator: Party 
+    provider: Party 
+    customers: (Party, Party)
+    id: Text
+
+    signed: Date 
+    digitized: Time 
+    marginCurrency:  InstrumentKey
+    thresholds: (Decimal, Decimal)
+    minTansfer: (Decimal, Decimal)
+    independentAmount: (Decimal, Decimal)
+    haircuts: Map InstrumentKey Decimal 
+
+    observers: PartiesMap
+  where 
+    signatory operator, provider, customers._1, customers._2 
+
+    key (operator, provider, customers._1, customers._2, id): (Party, Party, Party, Party, Text)
+    maintainer key._1 
+
+template BilateralAgreementProposal 
+  with 
+    operator: Party 
+    provider: Party 
+    customers: (Party, Party)
+    customer: Party
+    otherCustomer: Party 
+    id: Text
+
+    signed: Date 
+    marginCurrency:  InstrumentKey
+    thresholds: (Decimal, Decimal)
+    minTansfer: (Decimal, Decimal)
+    independentAmount: (Decimal, Decimal)
+    haircuts: Map InstrumentKey Decimal 
+
+    observers: PartiesMap
+  where 
+    signatory operator, provider, customer 
+    observer otherCustomer 
+
+    ensure customers == (customer, otherCustomer) || customers == (otherCustomer, customer)
+
+    choice CounterSign: ContractId BilateralAgreement 
+      controller otherCustomer
+      do 
+        digitized <- getTime 
+        create BilateralAgreement with ..
+
+
+

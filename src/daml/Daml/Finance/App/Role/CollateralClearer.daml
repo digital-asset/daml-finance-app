@@ -1,0 +1,63 @@
+module Daml.Finance.App.Role.CollateralClearer where
+
+import Daml.Finance.App.Collateral.Service qualified as Collateral (Offer(..), Service, Request, Approve(..))
+
+template Role
+  with
+    operator : Party
+    provider : Party
+  where
+    signatory operator, provider
+
+    key (operator, provider) :  (Party, Party)
+    maintainer key._1
+
+    nonconsuming choice OfferCollateralService: ContractId Collateral.Offer 
+      with 
+        customer: Party 
+      controller provider 
+      do 
+        create Collateral.Offer with ..
+
+    nonconsuming choice ApproveCollateralRequest: ContractId Collateral.Service 
+      with 
+        collateralRequestCid: ContractId Collateral.Request 
+      controller provider 
+      do 
+        exercise collateralRequestCid Collateral.Approve with operator 
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+  where
+    signatory operator
+    observer provider
+
+    choice Accept : ContractId Role
+      controller provider
+      do
+        create Role with ..
+
+    choice Decline : ()
+      controller provider
+      do
+        return ()
+
+template Request
+  with
+    provider : Party
+    operator : Party
+  where
+    signatory provider
+    observer operator
+
+    choice Approve : ContractId Role
+      controller operator
+      do
+        create Role with ..
+
+    choice Reject : ()
+      controller operator
+      do
+        return ()
