@@ -47,6 +47,7 @@ export const useNetwork = () : Network => {
     svc.subscription,
     svc.listing,
     svc.trading,
+    svc.collateral
   ]);
 
   const createNode = (p : string, i : number) => ({

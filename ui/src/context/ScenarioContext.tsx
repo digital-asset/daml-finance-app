@@ -62,6 +62,7 @@ const quoting       = { name: "Quoting",      path: "quoting",      elem: <App k
 const trading       = { name: "Trading",      path: "trading",      elem: <App key={11} label="Trading"       description="Trade assets in the secondary market"    image={appTrading}      path="/app/trading/markets" /> };
 const network       = { name: "Network",      path: "network",      elem: <App key={12} label="Network"       description="Explore the distributed ledger network"  image={appNetwork}      path="/app/network/overview" /> };
 const settlement    = { name: "Settlement",   path: "settlement",   elem: <App key={13} label="Settlement"    description="Settle instructions in batches"          image={appSimulation}   path="/app/settlement/batches" /> };
+const collateral    = { name: "Collateral",   path: "collateral",   elem: <App key={14} label="Collateral"    description="Issue and Settle Margin Calls"           image={appTrading}      path="/app/collateral/agreements" />};
 
 export const scenarios : Scenario[] = [
   {
@@ -202,7 +203,7 @@ export const scenarios : Scenario[] = [
   {
     label: "Money Market Tokenization",
     description: "Subscription and Redemption for MM Funds",
-    apps: [ structuring, issuance, custody, distribution, servicing, listing, trading, settlement, network ],
+    apps: [ structuring, issuance, custody, distribution, servicing, collateral, settlement, network ],
     image: scenarioFundTokenization,
     positions: new Map([
       [ "Operator",         { x:    0, y:   0 } ],
@@ -215,7 +216,8 @@ export const scenarios : Scenario[] = [
       [ "InsuranceCo",        { x:  650, y: 450 } ],
       [ "PrimeBroker",        { x:  650, y: 300 } ],
       [ "HedgeFund2",        { x: 650, y: 225} ],
-      [ "HedgeFund1",        { x: 650, y: 150}]
+      [ "HedgeFund1",        { x: 650, y: 150}],
+      [ "CollateralClearer", {x: 1000, y: 300}]
     ]),
     useNetworkLogin: true
   },
