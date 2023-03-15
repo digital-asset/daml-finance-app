@@ -30,12 +30,12 @@ run  = do
 
   -- Factories
   let
-    assets = ["TSLA", "NFLX", "FWD1", "BOND1", "SWAP1", "BSWAP1", "OPT1", "OPT2"]
+    assets = ["EQT1", "EQT2", "FWD1", "BOND1", "SWAP1", "BSWAP1", "OPT1", "OPT2"]
     cashSettlementPaths = [[issuer], [registry], [inv1], [inv2], [inv3]]
     securitiesSettlementPaths = [[issuer], [inv1], [inv2], [inv3]]
     cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = cashSettlementPaths
     secRoute = Settlement.Hierarchy with rootCustodian = registry; pathsToRootCustodian = securitiesSettlementPaths
-    paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
+    paths = fromList $ ("CAD", cashRoute) :: map (\a -> (a, secRoute)) assets
   accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
   holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
 
@@ -102,29 +102,28 @@ run  = do
 
   -- Observables
   let
-    libor3M = "USD/LIBOR/3M"
-    libor6M = "USD/LIBOR/6M"
-    amd = "AMD"
-    qc = "QUALCOMM"
-    tslaObs = "TSLA"
+    cdor3M = "CAD/CDOR/3M"
+    cdor6M = "CAD/CDOR/6M"
+    eq1Obs = "EQT1"
+    eq2Obs = "EQT2"
 
   -- Instruments
-  usd     <- originateToken    centralBank centralBank pub yday "USD"     "United States Dollar"
-  tsla    <- originateEquity   registry    issuer      pub yday "TSLA"    "Tesla, Inc. Common Stock"
-  nflx    <- originateEquity   registry    issuer      pub yday "NFLX"    "Netflix, Inc. Common Stock"
-  fwd     <- originateGeneric  registry    issuer      pub yday "FWD1"    "Forward on TSLA"                 $ futureDvp tsla 20.0 usd 10_000.0 today
-  bnd     <- originateGeneric  registry    issuer      pub yday "BOND1"   "Bond 5Y @ 4.875%"                $ bond usd 1.0 0.04875 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
-  swp     <- originateGeneric  registry    issuer      pub yday "SWAP1"   "Swap LIBOR-6M vs 0.25%"          $ interestRateSwap libor6M 0.0025 usd $ unrollDates todayYear (todayYear + 2) [todayMonth] todayDay
-  bswp    <- originateGeneric  registry    issuer      pub yday "BSWAP1"  "Basis Swap LIBOR-6M vs 3M+0.15%" $ basisSwap libor3M libor6M 0.0015 usd $ unrollDates todayYear (todayYear + 2) [todayMonth] todayDay
-  opt     <- originateGeneric  registry    issuer      pub yday "OPT1"    "Call on TSLA @ 500.0 (physical)" $ callOptionPhysical tsla 20.0 usd 10_000.0 (date (todayYear + 1) todayMonth todayDay)
-  opt2    <- originateGeneric  registry    issuer      pub yday "OPT2"    "Call on TSLA @ 700.0 (cash)"     $ callOptionCash tslaObs usd 700.0 (date (todayYear + 1) todayMonth todayDay)
-  let securities = [tsla, nflx, fwd, bnd, swp, bswp, opt, opt2 ]
+  cad     <- originateToken    centralBank centralBank pub yday "CAD"     "Canadian Dollar"
+  eq1    <- originateEquity   registry    issuer      pub yday "EQT1"    "LargeCo, Inc. Common Stock"
+  eq2    <- originateEquity   registry    issuer      pub yday "EQT2"    "GigaCo, Inc. Common Stock"
+  fwd     <- originateGeneric  registry    issuer      pub yday "FWD1"    "Forward on LargeCo"                 $ futureDvp eq1 20.0 cad 10_000.0 today
+  bnd     <- originateGeneric  registry    issuer      pub yday "BOND1"   "Bond 5Y @ 4.875%"                $ bond cad 1.0 0.04875 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
+  swp     <- originateGeneric  registry    issuer      pub yday "SWAP1"   "Swap CDOR-6M vs 0.25%"          $ interestRateSwap cdor6M 0.0025 cad $ unrollDates todayYear (todayYear + 2) [todayMonth] todayDay
+  bswp    <- originateGeneric  registry    issuer      pub yday "BSWAP1"  "Basis Swap CDOR-6M vs 3M+0.15%" $ basisSwap cdor3M cdor6M 0.0015 cad $ unrollDates todayYear (todayYear + 2) [todayMonth] todayDay
+  opt     <- originateGeneric  registry    issuer      pub yday "OPT1"    "Call on EQT1 @ 500.0 (physical)" $ callOptionPhysical eq1 20.0 cad 10_000.0 (date (todayYear + 1) todayMonth todayDay)
+  opt2    <- originateGeneric  registry    issuer      pub yday "OPT2"    "Call on EQT2 @ 700.0 (cash)"     $ callOptionCash eq1Obs cad 700.0 (date (todayYear + 1) todayMonth todayDay)
+  let securities = [eq1, eq2, fwd, bnd, swp, bswp, opt, opt2 ]
 
   -- Distribution
-  inv1CashCid <- deposit operator centralBank inv1 public (Instrument.qty 1_000_000.0 usd) inv1CashAccount
-  inv2CashCid <- deposit operator centralBank inv2 public (Instrument.qty 1_000_000.0 usd) inv2CashAccount
-  inv3CashCid <- deposit operator centralBank inv3 public (Instrument.qty 1_000_000.0 usd) inv3CashAccount
-  regCashCid <- deposit operator centralBank registry public (Instrument.qty 1_000_000.0 usd) registryCashAccount
+  inv1CashCid <- deposit operator centralBank inv1 public (Instrument.qty 1_000_000.0 cad) inv1CashAccount
+  inv2CashCid <- deposit operator centralBank inv2 public (Instrument.qty 1_000_000.0 cad) inv2CashAccount
+  inv3CashCid <- deposit operator centralBank inv3 public (Instrument.qty 1_000_000.0 cad) inv3CashAccount
+  regCashCid <- deposit operator centralBank registry public (Instrument.qty 1_000_000.0 cad) registryCashAccount
 
   (_, ad1) <- issue operator registry issuer public (Instrument.qty 1.0 fwd)           issuerSecAccount
   (_, ad2) <- issue operator registry issuer public (Instrument.qty 1_000_000.0 bnd)   issuerSecAccount
@@ -132,35 +131,35 @@ run  = do
   (_, ad4) <- issue operator registry issuer public (Instrument.qty 10_000_000.0 bswp) issuerSecAccount
 
   -- Data
-  createObservation issuer libor3M [(todayTime, 0.0018825)] pub
-  createObservation issuer libor6M [(todayTime, 0.0022363)] pub
+  createObservation issuer cdor3M [(todayTime, 0.0018825)] pub
+  createObservation issuer cdor6M [(todayTime, 0.0022363)] pub
   createCalendar issuer "FED" [Saturday, Sunday] [] pub
-  createAccountDirectory issuer ([(usd, issuerCashAccount)] <> map (\s -> (s, issuerSecAccount)) securities)  $ singleton public
-  createAccountDirectory inv1   ([(usd, inv1CashAccount)] <> map (\s -> (s, inv1SecAccount)) securities)      $ singleton public
-  createAccountDirectory inv2   ([(usd, inv2CashAccount)] <> map (\s -> (s, inv2SecAccount)) securities)      $ singleton public
-  createAccountDirectory inv3   ([(usd, inv3CashAccount)] <> map (\s -> (s, inv3SecAccount)) securities)      $ singleton public
+  createAccountDirectory issuer ([(cad, issuerCashAccount)] <> map (\s -> (s, issuerSecAccount)) securities)  $ singleton public
+  createAccountDirectory inv1   ([(cad, inv1CashAccount)] <> map (\s -> (s, inv1SecAccount)) securities)      $ singleton public
+  createAccountDirectory inv2   ([(cad, inv2CashAccount)] <> map (\s -> (s, inv2SecAccount)) securities)      $ singleton public
+  createAccountDirectory inv3   ([(cad, inv3CashAccount)] <> map (\s -> (s, inv3SecAccount)) securities)      $ singleton public
 
   -- Workflows
   let
     doAuction = do
       let quantity = Instrument.qty 1_000_000.0 bnd
-      auctionCid        <- createAuction operator agent issuer public "AUCTION1" quantity usd 0.95 (coerceContractId ad2) issuerCashAccount
-      inv1CollateralCid <- coerceContractId <$> getHolding inv1 (Instrument.qty 500_000.0 usd)
-      inv2CollateralCid <- coerceContractId <$> getHolding inv2 (Instrument.qty 392_000.0 usd)
-      inv3CollateralCid <- coerceContractId <$> getHolding inv3 (Instrument.qty 297_000.0 usd)
+      auctionCid        <- createAuction operator agent issuer public "AUCTION1" quantity cad 0.95 (coerceContractId ad2) issuerCashAccount
+      inv1CollateralCid <- coerceContractId <$> getHolding inv1 (Instrument.qty 500_000.0 cad)
+      inv2CollateralCid <- coerceContractId <$> getHolding inv2 (Instrument.qty 392_000.0 cad)
+      inv3CollateralCid <- coerceContractId <$> getHolding inv3 (Instrument.qty 297_000.0 cad)
       inv1BidCid        <- createAuctionBid operator agent inv1 public auctionCid 500_000.0 1.0  inv1CollateralCid inv1SecAccount
       inv2BidCid        <- createAuctionBid operator agent inv2 public auctionCid 400_000.0 0.98 inv2CollateralCid inv2SecAccount
       inv3BidCid        <- createAuctionBid operator agent inv3 public auctionCid 300_000.0 0.99 inv3CollateralCid inv3SecAccount
       processAuction operator agent issuer public auctionCid [inv1BidCid, inv2BidCid, inv3BidCid]
 
     doTrade = do
-      list operator exchange issuer "SWAP/USD" swp usd $ singleton public
-      createAskOrder operator exchange issuer public (Id "1") (Instrument.qty 250_000.0 swp) (Instrument.qty 1.00 usd) $ singleton public
-      createAskOrder operator exchange issuer public (Id "2") (Instrument.qty 250_000.0 swp) (Instrument.qty 1.00 usd) $ singleton public
-      createBidOrder operator exchange inv1  public (Id "3") (Instrument.qty 400_000.0 swp) (Instrument.qty 1.00 usd) $ singleton public
-      -- createAskOrder operator exchange issuer public "1" (Instrument.qty 250_000.0 swp) (Instrument.qty 0.80 usd) $ singleton public
-      -- createAskOrder operator exchange issuer public "2" (Instrument.qty 250_000.0 swp) (Instrument.qty 0.90 usd) $ singleton public
-      -- createBidOrder operator exchange inv1  public "3" (Instrument.qty 500_000.0 swp) (Instrument.qty 0.90 usd) $ singleton public
+      list operator exchange issuer "SWAP/CAD" swp cad $ singleton public
+      createAskOrder operator exchange issuer public (Id "1") (Instrument.qty 250_000.0 swp) (Instrument.qty 1.00 cad) $ singleton public
+      createAskOrder operator exchange issuer public (Id "2") (Instrument.qty 250_000.0 swp) (Instrument.qty 1.00 cad) $ singleton public
+      createBidOrder operator exchange inv1  public (Id "3") (Instrument.qty 400_000.0 swp) (Instrument.qty 1.00 cad) $ singleton public
+      -- createAskOrder operator exchange issuer public "1" (Instrument.qty 250_000.0 swp) (Instrument.qty 0.80 cad) $ singleton public
+      -- createAskOrder operator exchange issuer public "2" (Instrument.qty 250_000.0 swp) (Instrument.qty 0.90 cad) $ singleton public
+      -- createBidOrder operator exchange inv1  public "3" (Instrument.qty 500_000.0 swp) (Instrument.qty 0.90 cad) $ singleton public
 
   --doAuction
   --doTrade
