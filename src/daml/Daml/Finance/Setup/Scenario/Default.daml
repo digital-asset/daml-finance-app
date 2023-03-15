@@ -102,8 +102,8 @@ run  = do
 
   -- Observables
   let
+    cdor1M = "CAD/CDOR/1M"
     cdor3M = "CAD/CDOR/3M"
-    cdor6M = "CAD/CDOR/6M"
     eq1Obs = "EQT1"
     eq2Obs = "EQT2"
 
@@ -113,8 +113,8 @@ run  = do
   eq2    <- originateEquity   registry    issuer      pub yday "EQT2"    "GigaCo, Inc. Common Stock"
   fwd     <- originateGeneric  registry    issuer      pub yday "FWD1"    "Forward on LargeCo"                 $ futureDvp eq1 20.0 cad 10_000.0 today
   bnd     <- originateGeneric  registry    issuer      pub yday "BOND1"   "Bond 5Y @ 4.875%"                $ bond cad 1.0 0.04875 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
-  swp     <- originateGeneric  registry    issuer      pub yday "SWAP1"   "Swap CDOR-6M vs 0.25%"          $ interestRateSwap cdor6M 0.0025 cad $ unrollDates todayYear (todayYear + 2) [todayMonth] todayDay
-  bswp    <- originateGeneric  registry    issuer      pub yday "BSWAP1"  "Basis Swap CDOR-6M vs 3M+0.15%" $ basisSwap cdor3M cdor6M 0.0015 cad $ unrollDates todayYear (todayYear + 2) [todayMonth] todayDay
+  swp     <- originateGeneric  registry    issuer      pub yday "SWAP1"   "Swap CDOR-3M vs 0.25%"          $ interestRateSwap cdor3M 0.0025 cad $ unrollDates todayYear (todayYear + 2) [todayMonth] todayDay
+  bswp    <- originateGeneric  registry    issuer      pub yday "BSWAP1"  "Basis Swap CDOR-3M vs 1M+0.15%" $ basisSwap cdor3M cdor1M 0.0015 cad $ unrollDates todayYear (todayYear + 2) [todayMonth] todayDay
   opt     <- originateGeneric  registry    issuer      pub yday "OPT1"    "Call on EQT1 @ 500.0 (physical)" $ callOptionPhysical eq1 20.0 cad 10_000.0 (date (todayYear + 1) todayMonth todayDay)
   opt2    <- originateGeneric  registry    issuer      pub yday "OPT2"    "Call on EQT2 @ 700.0 (cash)"     $ callOptionCash eq1Obs cad 700.0 (date (todayYear + 1) todayMonth todayDay)
   let securities = [eq1, eq2, fwd, bnd, swp, bswp, opt, opt2 ]
@@ -131,8 +131,8 @@ run  = do
   (_, ad4) <- issue operator registry issuer public (Instrument.qty 10_000_000.0 bswp) issuerSecAccount
 
   -- Data
-  createObservation issuer cdor3M [(todayTime, 0.0018825)] pub
-  createObservation issuer cdor6M [(todayTime, 0.0022363)] pub
+  createObservation issuer cdor1M [(todayTime, 0.0018825)] pub
+  createObservation issuer cdor3M [(todayTime, 0.0022363)] pub
   createCalendar issuer "FED" [Saturday, Sunday] [] pub
   createAccountDirectory issuer ([(cad, issuerCashAccount)] <> map (\s -> (s, issuerSecAccount)) securities)  $ singleton public
   createAccountDirectory inv1   ([(cad, inv1CashAccount)] <> map (\s -> (s, inv1SecAccount)) securities)      $ singleton public

@@ -98,20 +98,22 @@ run = do
   cad   <- originateToken               centralBank centralBank pub epoch "CAD"   "Canadian Dollar"
   bond1 <- originateZeroCouponBond      registry    issuer                "BOND1" "Zero Coupon Bond 5Y"                         pub (tt $ date 2022 tm td) (date 2022 tm td) (date 2027 tm td) cad
   bond2 <- originateFixedRateBond       registry    issuer                "BOND2" "Fixed Rate Bond 5Y @ 1.1%"                   pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.011 M 12 cad
-  bond3 <- originateFloatingRateBond    registry    issuer                "BOND3" "Floating Rate Bond 5Y @ CDOR-12M + 0.5%"    pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.005 M 12 cad "CDOR-12M"
+  bond3 <- originateFloatingRateBond    registry    issuer                "BOND3" "Floating Rate Bond 5Y @ CDOR-3M + 0.5%"    pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.005 M 12 cad "CDOR-3M"
   bond4 <- originateInflationLinkedBond registry    issuer                "BOND4" "Inflation Linked Bond 5Y @ 0.5% * (1 + CPI)" pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.005 M 12 cad "CPI" 100.0
   let securities = [bond1, bond2, bond3, bond4]
 
   -- Data
   let
-    libor =
+    cdor =
       [ (tt $ date 2020 tm td,   0.0010)
       , (tt $ date 2021 tm td,   0.0015)
-      , (tt $ date 2022 tm td,   0.0020) ]
+      , (tt $ date 2022 tm td,   0.0020)
+      , (tt $ date 2023 tm td,   0.0515) ]
     cpi =
       [ (tt $ date 2021 tm td, 102.2500)
-      , (tt $ date 2022 tm td, 104.5000) ]
-  obsCid1 <- createObservation issuer "CDOR-12M"  libor pub
+      , (tt $ date 2022 tm td, 104.5000)
+      , (tt $ date 2023 tm td, 105.6000) ]
+  obsCid1 <- createObservation issuer "CDOR-3M"  cdor pub
   obsCid2 <- createObservation issuer "CPI"            cpi   pub
   createCalendar registry "EMPTY" [] [] pub
   createAccountDirectory issuer     ([(cad, issuerCashAccount)] <> map (\s -> (s, issuerSecAccount)) securities)        $ singleton public
