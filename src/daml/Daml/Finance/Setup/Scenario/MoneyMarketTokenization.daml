@@ -20,6 +20,7 @@ import Daml.Finance.Setup.Util.Workflow
 import Daml.Script
 import DA.Foldable (mapA_)
 import DA.List ((!!))
+import qualified DA.Map as Map
 
 xx : a -> [b] -> [(a, b)]
 xx f ys = map (\y -> (f, y)) ys
@@ -120,6 +121,12 @@ run = do
   createAccountDirectory (inv!!3)       [(usd, invCashAccounts!!3), (fund1, invSecAccounts!!3), (fund2, invSecAccounts!!3), (fund3, invSecAccounts!!3)] $ singleton public
   createAccountDirectory (inv!!4)       [(usd, invCashAccounts!!4), (fund1, invSecAccounts!!4), (fund2, invSecAccounts!!4), (fund3, invSecAccounts!!4)] $ singleton public
 
+  -- CSAs 
+  let 
+    haircuts = fromList [(fund1, 0.98), (fund2, 0.98), (fund3, 0.98)]
+  csa20 <- signBilateralCsa operator cc (inv!!2) (inv!!0) "CSA PB HF1" (date 2017 Dec 1) usd 1_000_000.00 1_000.00 0.0 haircuts $ fromList [("TA", singleton ta)]
+  csa21 <- signBilateralCsa operator cc (inv!!2) (inv!!1) "CSA PB HF2" (date 2017 Dec 1) usd 1_000_000.00 1_000.00 0.0 haircuts $ fromList [("TA", singleton ta)]
+  csa23 <- signBilateralCsa operator cc (inv!!2) (inv!!3) "CSA PB SWP" (date 2017 Dec 1) usd 1_000_000.00 1_000.00 0.0 haircuts $ fromList [("TA", singleton ta)]
 
   -- -- Workflows
   -- let

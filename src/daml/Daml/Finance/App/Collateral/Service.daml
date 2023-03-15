@@ -23,16 +23,16 @@ template Service
         signed: Date 
         marginCurrency:  InstrumentKey
         thresholds: (Decimal, Decimal)
-        minTansfer: (Decimal, Decimal)
-        independentAmount: (Decimal, Decimal)
+        minTransfers: (Decimal, Decimal)
+        independentAmounts: (Decimal, Decimal)
         haircuts: Map InstrumentKey Decimal
         observers: PartiesMap
       controller customer 
       do 
         let 
           otherCustomer
-            | customer == customers._1 = customers._1
-            | customer == customers._2 = customers._2
+            | customer == customers._1 = customers._2
+            | customer == customers._2 = customers._1
             | otherwise = error "Something"
 
         create BilateralAgreementProposal 

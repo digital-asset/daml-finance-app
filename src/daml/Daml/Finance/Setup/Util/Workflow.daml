@@ -11,6 +11,8 @@ import DA.Text (parseInt)
 import DA.Time (time)
 import Daml.Finance.App.Clearing.Model qualified as Clearing (Approve(..), Clear(..), ClearingRequest)
 import Daml.Finance.App.Clearing.Service qualified as Clearing (RequestClearing(..), Service)
+import Daml.Finance.App.Collateral.Model qualified as Collateral (T)
+import Daml.Finance.App.Collateral.Service qualified as Collateral (AcceptBilateralAgreementProposal(..), ProposeBilateralAgreement(..), Service)
 import Daml.Finance.App.Custody.Service qualified as Custody (Deposit(..), OpenAccount(..), RequestDeposit(..), RequestOpenAccount(..), Service)
 import Daml.Finance.App.Data.AccountDirectory (AccountDirectory(..))
 import Daml.Finance.App.Distribution.Auction.Model qualified as Auction (T)
@@ -72,6 +74,7 @@ import Daml.Finance.Interface.Types.Date.Schedule (Frequency(..), PeriodicSchedu
 import Daml.Finance.Settlement.Instruction qualified as Instruction (T)
 import Daml.Finance.Setup.Util.Common (getHolding)
 import Daml.Script
+import DA.Tuple (dupe)
 
 createAccount : Party -> Party -> Party -> Party -> Text -> PartiesMap -> Script AccountKey
 createAccount operator custodian owner public id observers = do
@@ -371,3 +374,14 @@ approveClearing counterparty clearingRequestCid clearingAccount =
 clear : Party -> Party -> ContractId Clearing.ClearingRequest -> Script (ContractId Holding.I, ContractId Holding.I)
 clear clearer public clearingRequestCid =
   submitMulti [clearer] [public] do exerciseCmd clearingRequestCid Clearing.Clear
+
+signBilateralCsa: Party -> Party -> Party -> Party -> Text -> Date -> InstrumentKey -> Decimal -> Decimal -> Decimal -> M.Map InstrumentKey Decimal -> PartiesMap  -> Script (ContractId Collateral.T)
+signBilateralCsa operator clearer a b id signed marginCurrency threshold mta ia haircuts observers = do
+  proposalCid <- submit a do exerciseByKeyCmd @Collateral.Service (operator, clearer, a) Collateral.ProposeBilateralAgreement 
+                              with 
+                                customers = (a,b)
+                                thresholds = dupe threshold 
+                                minTransfers = dupe mta
+                                independentAmounts = dupe ia 
+                                ..
+  submit b do exerciseByKeyCmd @Collateral.Service (operator, clearer, b) Collateral.AcceptBilateralAgreementProposal with ..

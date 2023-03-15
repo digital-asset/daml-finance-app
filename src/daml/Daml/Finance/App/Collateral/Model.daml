@@ -3,6 +3,8 @@ module Daml.Finance.App.Collateral.Model where
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentKey, InstrumentQuantity, Parties, PartiesMap)
 import DA.Map (Map)
 
+type T = BilateralAgreement
+
 template BilateralAgreement 
   with 
     operator: Party 
@@ -14,8 +16,8 @@ template BilateralAgreement
     digitized: Time 
     marginCurrency:  InstrumentKey
     thresholds: (Decimal, Decimal)
-    minTansfer: (Decimal, Decimal)
-    independentAmount: (Decimal, Decimal)
+    minTransfers: (Decimal, Decimal)
+    independentAmounts: (Decimal, Decimal)
     haircuts: Map InstrumentKey Decimal 
 
     observers: PartiesMap
@@ -37,8 +39,8 @@ template BilateralAgreementProposal
     signed: Date 
     marginCurrency:  InstrumentKey
     thresholds: (Decimal, Decimal)
-    minTansfer: (Decimal, Decimal)
-    independentAmount: (Decimal, Decimal)
+    minTransfers: (Decimal, Decimal)
+    independentAmounts: (Decimal, Decimal)
     haircuts: Map InstrumentKey Decimal 
 
     observers: PartiesMap
