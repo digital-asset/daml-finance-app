@@ -22,7 +22,11 @@ export const Agreements : React.FC = () => {
 
   const { loading: l1, collateral } = useServices();
   const { loading: l2, contracts: agreements } = useStreamQueries(BilateralAgreement);
+
+  const myServices = collateral.filter(s => s.payload.customer === party);
+
   if (l1 || l2) return <Spinner />;
+  console.log("We got here...");
 
   const createRow = (c : CreateEvent<BilateralAgreement>) : any[] => {
     return [
@@ -30,19 +34,38 @@ export const Agreements : React.FC = () => {
       c.payload.marginCurrency.id.unpack,
       getName(c.payload.customers._1),
       fmt(c.payload.thresholds._1, 0),
-      fmt(c.payload.minTansfer._1, 0),
-      fmt(c.payload.independentAmount._1, 0),
+      fmt(c.payload.minTransfers._1, 0),
+      fmt(c.payload.independentAmounts._1, 0),
       getName(c.payload.customers._2),
       fmt(c.payload.thresholds._2, 0),
-      fmt(c.payload.minTansfer._2, 0),
-      fmt(c.payload.independentAmount._2, 0),
-      <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => {} }>Call Margin</Button>
+      fmt(c.payload.minTransfers._2, 0),
+      fmt(c.payload.independentAmounts._2, 0)
     ];
   }
-  const headers = ["Agreement", "Currency", "A", "Threshold", "MTA", "Ind. Amt", "B", "Threshold", "MTA", "Ind. Amt"]
+  const headers = [
+    "Agreement", 
+    "Currency", 
+    "A", 
+    "Threshold", 
+    "MTA", 
+    "Ind. Amt", 
+    "B", 
+    "Threshold", 
+    "MTA", 
+    "Ind. Amt"]
   const values : any[] = agreements.map(createRow);
-  const alignment : Alignment[] = ["left", "left", "left", "right", "right", "right", "left", "right", "right", "right"];
+  const alignment : Alignment[] = [
+    "left", 
+    "left", 
+    "left", 
+    "right", 
+    "right", 
+    "right", 
+    "left", 
+    "right", 
+    "right", 
+    "right"];
   return (
-    <HorizontalTable title="Funds" variant={"h3"} headers={headers} values={values} alignment={alignment} />
+    <HorizontalTable title="Agrements" variant={"h3"} headers={headers} values={values} alignment={alignment} />
   );
 };

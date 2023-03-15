@@ -22,6 +22,7 @@ import { AccountProvider } from "./context/AccountContext";
 import { DeFi } from "./apps/DeFi";
 import { Clearing } from "./apps/Clearing";
 import { Quoting } from "./apps/Quoting";
+import { Collateral } from "./apps/Collateral";
 
 export const Root : React.FC = () => {
 
@@ -46,6 +47,7 @@ export const Root : React.FC = () => {
               <Route path="/simulation/*" element={<Simulation />} />
               <Route path="/structuring/*" element={<Structuring />} />
               <Route path="/trading/*" element={<Trading />} />
+              <Route path="/collateral/*" element={<Collateral />} />
             </Routes>
           </AccountProvider>
         </HoldingProvider>

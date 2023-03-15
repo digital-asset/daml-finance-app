@@ -6,8 +6,5 @@ import { App } from "./App";
 export const Collateral : React.FC = () => {
   const entries =
     [ { label: "Agreements", path: "agreements", element: <Agreements /> }];
-
-  // const paths =
-  //   [ { path: "agreements/:contractId", element: <Agreement /> } ];
-  return <App app="Clearing" entries={entries} paths={[]} />;
+  return <App app="Collateral" entries={entries} paths={[]} />;
 }
