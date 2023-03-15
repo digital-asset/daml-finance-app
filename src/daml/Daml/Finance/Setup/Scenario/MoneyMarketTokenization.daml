@@ -30,16 +30,16 @@ run = do
   let 
     scenario = "Money Market Tokenization"
     investorNames = ["HedgeFund1", "HedgeFund2", "PrimeBroker", "SwapsDealer", "InsuranceCo"]
-  parties <- allocateParties scenario (["Operator", "CashRail", "TransferAgent", "FundManager", "Registry", "CollateralClearer"] ++ investorNames) "Public"
+  parties <- allocateParties scenario (["Operator", "CashRail", "TransferAgent", "AssetManager", "Registry", "CollateralClearer"] ++ investorNames) "Public"
   let
-    all@[operator, cashProvider, ta, fm, registry, cc, inv0, inv1, inv2, inv3, inv4, public] = map (.id) parties
+    all@[operator, cashProvider, ta, am, registry, cc, inv0, inv1, inv2, inv3, inv4, public] = map (.id) parties
     pub = fromList [("Public", singleton public)]
     inv = [inv0, inv1, inv2, inv3, inv4]
 
   -- Factories
   let
     assets = ["MMF1", "MMF2", "MMF3", "MMF4"]
-    settlementPaths = [[registry], [ta], [fm], [inv!!0, ta], [inv!!1, ta], [inv!!2, ta], [inv!!3, ta], [inv!!4, ta]]
+    settlementPaths = [[registry], [ta], [am], [inv!!0, ta], [inv!!1, ta], [inv!!2, ta], [inv!!3, ta], [inv!!4, ta]]
     cashRoute = Settlement.Hierarchy with rootCustodian = cashProvider; pathsToRootCustodian = settlementPaths
     secRoute = Settlement.Hierarchy with rootCustodian = registry; pathsToRootCustodian = settlementPaths
     paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
@@ -52,36 +52,36 @@ run = do
   createCustodianRole operator registry
   createCustodianRole operator ta
   createDistributorRole operator ta
-  createDistributorRole operator fm
+  createDistributorRole operator am
   createCollateralClearerRole operator cc
 
   -- Services
   let 
-    custodyServiceParties = (cashProvider `xx` [ta, registry]) ++ (ta `xx` inv) ++ (registry `xx` [ta, fm])
+    custodyServiceParties = (cashProvider `xx` [ta, registry]) ++ (ta `xx` inv) ++ (registry `xx` [ta, am])
   mapA_ (\(by, to) -> createCustodyService operator by to paths accountFactoryCid holdingFactoryCid) custodyServiceParties
 
-  createIssuanceService           operator registry    fm
-  createIssuanceAutoService       operator registry    fm
-  createStructuringService        operator registry    fm
-  createStructuringAutoService    operator registry    fm
+  createIssuanceService           operator registry    am
+  createIssuanceAutoService       operator registry    am
+  createStructuringService        operator registry    am
+  createStructuringAutoService    operator registry    am
   mapA_ (createInvestmentService  operator ta)          inv
-  createFundService               operator fm           ta        paths
-  createLifecycleService          operator registry    fm        public
+  createFundService               operator am           ta        paths
+  createLifecycleService          operator registry    am        public
   mapA_ (createCollateralService operator cc) inv
 
   -- Accounts
-  taCashAccount         <- createAccount operator cashProvider  ta        public "TransferAgent@CashRail/Cash"        $ fromList [("FM", singleton fm)]
-  custodianCashAccount  <- createAccount operator cashProvider  registry public "Custodian@CashRail/Cash"           $ fromList [("FM", singleton fm)]
+  taCashAccount         <- createAccount operator cashProvider  ta        public "TransferAgent@CashRail/Cash"        $ fromList [("AM", singleton am)]
+  custodianCashAccount  <- createAccount operator cashProvider  registry public "Custodian@CashRail/Cash"           $ fromList [("AM", singleton am)]
   let
     invCashAccountNames = (<> "@TransferAgent/Cash") <$> investorNames
-  invCashAccounts <- mapA (\(inv, name) -> createAccount operator ta inv public name $ fromList [("FM", singleton fm)]) (zip inv invCashAccountNames)
+  invCashAccounts <- mapA (\(inv, name) -> createAccount operator ta inv public name $ fromList [("AM", singleton am)]) (zip inv invCashAccountNames)
 
-  taSecAccount          <- createAccount operator registry     ta        public "TransferAgent@Custodian/Securities"      $ fromList [("FM", singleton fm)]
-  fmSecAccount          <- createAccount operator registry     fm        public "FundManager@Custodian/Securities" empty
+  taSecAccount          <- createAccount operator registry     ta        public "TransferAgent@Custodian/Securities"      $ fromList [("AM", singleton am)]
+  amSecAccount          <- createAccount operator registry     am        public "FundManager@Custodian/Securities" empty
 
   let 
     invSecAccountNames =  (<> "@TransferAgent/Securities") <$> investorNames 
-  invSecAccounts <- mapA (\(inv, name) -> createAccount operator ta inv public name $ fromList [("FM", singleton fm)]) (zip inv invSecAccountNames)
+  invSecAccounts <- mapA (\(inv, name) -> createAccount operator ta inv public name $ fromList [("AM", singleton am)]) (zip inv invSecAccountNames)
 
   -- Time
   t <- getTime
@@ -93,9 +93,9 @@ run = do
 
   -- Instruments
   usd   <- originateToken                    cashProvider  cashProvider  pub epoch "USD"   "United States Dollar"
-  fund1 <- originateEquity                    registry     fm            pub epoch "MMF1" "MMF1 Units"
-  fund2 <- originateEquity                    registry     fm            pub epoch "MMF2" "MMF2 Units"
-  fund3 <- originateEquity                    registry     fm            pub epoch "MMF3" "MMF3 Units"
+  fund1 <- originateEquity                    registry     am            pub epoch "MMF1" "MMF1 Units"
+  fund2 <- originateEquity                    registry     am            pub epoch "MMF2" "MMF2 Units"
+  fund3 <- originateEquity                    registry     am            pub epoch "MMF3" "MMF3 Units"
 
   -- Holdings
   taCashCid   <- deposit operator cashProvider ta    public (Instrument.qty  300_000_000.0 usd) taCashAccount
@@ -104,14 +104,14 @@ run = do
   inv2CashCid <- deposit operator ta           (inv!!2)  public (Instrument.qty  100_000_000.0 usd) $ invCashAccounts!!2
 
   -- -- Data
-  fund1Cid <- submitMulti [operator, registry, fm] [] do createCmd Fund with operator; custodian = registry; manager = fm; id = Id "MMF1"; description = "Money-Market Fund 1"; instrument = fund1; currency = usd; custodianCashAccount; managerFundAccount = fmSecAccount; totalUnits =  10_100_000_000.0; observers = singleton public
-  fund2Cid <- submitMulti [operator, registry, fm] [] do createCmd Fund with operator; custodian = registry; manager = fm; id = Id "MMF2"; description = "Money-Market Fund 2"; instrument = fund2; currency = usd; custodianCashAccount; managerFundAccount = fmSecAccount; totalUnits =  12_500_000_000.0; observers = singleton public
-  fund3Cid <- submitMulti [operator, registry, fm] [] do createCmd Fund with operator; custodian = registry; manager = fm; id = Id "MMF3"; description = "Money-Market Fund 3"; instrument = fund3; currency = usd; custodianCashAccount; managerFundAccount = fmSecAccount; totalUnits =  25_500_000_000.0; observers = singleton public
-  --fund4Cid <- submitMulti [operator, registry, fm] [] do createCmd Fund with operator; custodian = registry; manager = fm; id = Id "MMF4"; description = "Money-Market Fund 4"; instrument = fund4; currency = usd; custodianCashAccount; managerFundAccount = fmSecAccount; totalUnits =  10_000_000_000.0; observers = singleton public
-  navFund1Cid <- createObservation fm "NAV_MMF1_USD" [ (todayTime,   10_100_000_000.0) ] pub
-  navFund2Cid <- createObservation fm "NAV_MMF2_USD" [ (todayTime,   12_500_000_000.0) ] pub
-  navFund3Cid <- createObservation fm "NAV_MMF3_USD" [ (todayTime,   25_500_000_000.0) ] pub
-  navFund4Cid <- createObservation fm "NAV_MMF4_USD" [ (todayTime,   10_000_000_000.0) ] pub
+  fund1Cid <- submitMulti [operator, registry, am] [] do createCmd Fund with operator; custodian = registry; manager = am; id = Id "MMF1"; description = "Money-Market Fund 1"; instrument = fund1; currency = usd; custodianCashAccount; managerFundAccount = amSecAccount; totalUnits =  10_100_000_000.0; observers = singleton public
+  fund2Cid <- submitMulti [operator, registry, am] [] do createCmd Fund with operator; custodian = registry; manager = am; id = Id "MMF2"; description = "Money-Market Fund 2"; instrument = fund2; currency = usd; custodianCashAccount; managerFundAccount = amSecAccount; totalUnits =  12_500_000_000.0; observers = singleton public
+  fund3Cid <- submitMulti [operator, registry, am] [] do createCmd Fund with operator; custodian = registry; manager = am; id = Id "MMF3"; description = "Money-Market Fund 3"; instrument = fund3; currency = usd; custodianCashAccount; managerFundAccount = amSecAccount; totalUnits =  25_500_000_000.0; observers = singleton public
+  --fund4Cid <- submitMulti [operator, registry, am] [] do createCmd Fund with operator; custodian = registry; manager = am; id = Id "MMF4"; description = "Money-Market Fund 4"; instrument = fund4; currency = usd; custodianCashAccount; managerFundAccount = amSecAccount; totalUnits =  10_000_000_000.0; observers = singleton public
+  navFund1Cid <- createObservation am "NAV_MMF1_USD" [ (todayTime,   10_100_000_000.0) ] pub
+  navFund2Cid <- createObservation am "NAV_MMF2_USD" [ (todayTime,   12_500_000_000.0) ] pub
+  navFund3Cid <- createObservation am "NAV_MMF3_USD" [ (todayTime,   25_500_000_000.0) ] pub
+  navFund4Cid <- createObservation am "NAV_MMF4_USD" [ (todayTime,   10_000_000_000.0) ] pub
 
   createAccountDirectory registry  [(usd, custodianCashAccount)] $ singleton public
   createAccountDirectory ta         [(usd, taCashAccount), (fund1, taSecAccount), (fund2, taSecAccount), (fund3, taSecAccount)] $ singleton public
@@ -134,8 +134,8 @@ run = do
   --     ir1Cid <- createInvestmentRequest operator ta inv!!0 public "REQ-MMF1-INV1" today fund1Cid (coerceContractId inv!!0CashCid)
   --     ir2Cid <- createInvestmentRequest operator ta inv!!1 public "REQ-MMF2-INV2" today fund1Cid (coerceContractId inv!!1CashCid)
   --     ir3Cid <- createInvestmentRequest operator ta inv!!2 public "REQ-MMF3-INV3" today fund1Cid (coerceContractId inv!!2CashCid)
-  --     pirCid <- poolInvestmentRequests operator fm ta public "REQ-MMF1-POOLED" today fund1Cid (coerceContractId amCashCid) [ir1Cid, ir2Cid, ir3Cid]
-  --     fulfillPooledInvestmentRequest operator fm ta public fund1Cid pirCid navFund1Cid
+  --     pirCid <- poolInvestmentRequests operator am ta public "REQ-MMF1-POOLED" today fund1Cid (coerceContractId amCashCid) [ir1Cid, ir2Cid, ir3Cid]
+  --     fulfillPooledInvestmentRequest operator am ta public fund1Cid pirCid navFund1Cid
   -- -- doDistribution
 
   pure parties

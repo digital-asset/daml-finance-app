@@ -203,14 +203,14 @@ export const scenarios : Scenario[] = [
   {
     label: "Money Market Tokenization",
     description: "Subscription and Redemption for MM Funds",
-    apps: [ structuring, issuance, custody, distribution, servicing, collateral, settlement, network ],
+    apps: [ structuring, issuance, custody, distribution, servicing, collateral, settlement, network, listing, trading ],
     image: scenarioFundTokenization,
     positions: new Map([
       [ "Operator",         { x:    0, y:   0 } ],
       [ "Public",           { x:    0, y:   0 } ],
       [ "CashRail",     { x:  300, y:   150 } ],
       [ "TransferAgent",     { x:  300, y: 300 } ],
-      [ "FundManager", { x:    0, y: 300 } ],
+      [ "AssetManager", { x:    0, y: 300 } ],
       [ "Registry",        { x:    0, y: 150 } ],
       [ "SwapsDealer",        { x:  650, y: 375 } ],
       [ "InsuranceCo",        { x:  650, y: 450 } ],
