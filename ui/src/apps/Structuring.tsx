@@ -13,6 +13,8 @@ import { NewFloatingRateBond } from "../pages/structuring/bond/NewFloatingRateBo
 import { NewInflationLinkedBond } from "../pages/structuring/bond/NewInflationLinkedBond";
 import { NewZeroCouponBond } from "../pages/structuring/bond/NewZeroCouponBond";
 import { NewStock } from "../pages/structuring/equity/NewStock";
+import { NewCarbonOffsetToken } from "../pages/structuring/other/NewCarbonOffsetToken";
+
 
 export const Structuring : React.FC = () => {
   const entries = [
@@ -25,6 +27,7 @@ export const Structuring : React.FC = () => {
     { path: "new/bond/floatingrate", element: <NewFloatingRateBond /> },
     { path: "new/bond/inflationlinked", element: <NewInflationLinkedBond /> },
     { path: "new/bond/zerocoupon", element: <NewZeroCouponBond /> },
+    { path: "new/other/carbonoffsettoken", element: <NewCarbonOffsetToken /> },
     { path: "new/other/token", element: <NewToken /> },
     { path: "new/other/generic", element: <NewGeneric /> },
     { path: "instruments/:key", element: <Instrument /> }

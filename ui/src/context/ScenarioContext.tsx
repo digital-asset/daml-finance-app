@@ -11,6 +11,7 @@ import scenarioFundTokenization from "../images/scenario/fundTokenization.png";
 import scenarioSecuritiesLending from "../images/scenario/securitiesLending.png";
 import scenarioStructuredNotes from "../images/scenario/structuredNotes.png";
 import scenarioNaturalGas from "../images/scenario/naturalGas.png";
+import scenarioCarbonOffset from "../images/scenario/default.png";
 import appStructuring from "../images/app/structuring.png";
 import appIssuance from "../images/app/issuance.png";
 import appLending from "../images/app/lending.jpg";
@@ -215,7 +216,27 @@ export const scenarios : Scenario[] = [
       [ "Trader",     { x:  400, y: 300 } ],
     ]),
     useNetworkLogin: true
+  },
+  {
+    label: "Carbon Offset",
+    description: "Carbon Offset markets workflows",
+    image: scenarioCarbonOffset,
+    apps: [ structuring, issuance, custody, distribution, servicing, simulation, listing, trading, settlement ],
+    positions: new Map([
+      [ "Operator",     { x:    0, y:   0 } ],
+      [ "Public",       { x:    0, y:   0 } ],
+      [ "CentralBank",  { x:  400, y:   0 } ],
+      [ "Registry",     { x:  800, y:  50 } ],
+      [ "Exchange",     { x:  800, y: 550 } ],
+      [ "Agent",        { x:  400, y: 600 } ],
+      [ "Issuer",       { x: 1200, y: 300 } ],
+      [ "Investor1",    { x:    0, y: 300 } ],
+      [ "Investor2",    { x:  400, y: 300 } ],
+      [ "Investor3",    { x:  800, y: 300 } ]
+    ]),
+    useNetworkLogin: true
   }
+  
 ];
 
 const ScenarioContext = React.createContext<ScenarioState>({ selected: scenarios[0], select: _ => scenarios[0] });

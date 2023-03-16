@@ -161,6 +161,21 @@ template Service
       do
         create CreateZeroCouponBondRequest with ..
 
+    nonconsuming choice RequestCreateCarbonOffsetToken : ContractId CreateCarbonOffsetTokenRequest
+      with
+        id : Text
+        description : Text
+        validAsOf : Time
+        observers : PartiesMap
+        country : Text
+        projectType : Text
+        expiryDate : Date
+        sustainableDevelopmentGoals : Text
+      controller customer
+      do
+        create CreateCarbonOffsetTokenRequest with ..
+
+
     nonconsuming choice CreateToken : ContractId Instrument.I
       with
         createTokenRequestCid : ContractId CreateTokenRequest
@@ -238,6 +253,20 @@ template Service
           instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"
           zeroCoupon = ZeroCoupon with ..
         exercise factories.zeroCouponBond ZeroCouponBond.Create with zeroCoupon; observers
+    
+    nonconsuming choice CreateCarbonOffsetToken : ContractId Instrument.I
+      with
+        createCarbonOffsetTokenRequestCid : ContractId CreateCarbonOffsetTokenRequest
+      controller provider
+      do
+        CreateCarbonOffsetTokenRequest{..} <- fetchAndArchive createCarbonOffsetTokenRequestCid
+        create CarbonOffsetTokenMetadata with ..
+        let
+          instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"
+          token = Token with ..
+        exercise factories.token Token.Create with token; observers
+        
+
 
     choice Terminate : ()
       with

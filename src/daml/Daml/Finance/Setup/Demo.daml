@@ -12,18 +12,21 @@ import Daml.Finance.Setup.Scenario.NaturalGas           qualified as NaturalGas
 import Daml.Finance.Setup.Scenario.OtcSwaps             qualified as OtcSwaps
 import Daml.Finance.Setup.Scenario.SecuritiesLending    qualified as SecuritiesLending
 import Daml.Finance.Setup.Scenario.StructuredNotes      qualified as StructuredNotes
+import Daml.Finance.Setup.Scenario.CarbonOffset         qualified as CarbonOffset
 import Daml.Finance.Setup.Util.Common (PartyInfo)
 import Daml.Script
 
 demo : Script [PartyInfo]
 demo = do
-  p1 <- BondIssuance.run
-  p2 <- CorporateActions.run
-  p3 <- Default.run
-  p4 <- NaturalGas.run
-  p5 <- SecuritiesLending.run
-  p6 <- StructuredNotes.run
-  p7 <- FundTokenization.run
-  p8 <- DecentralizedFinance.run
-  p9 <- OtcSwaps.run
-  pure $ p1 <> p2 <> p3 <> p4 <> p5 <> p6 <> p7 <> p8 <> p9
+  -- p1 <- BondIssuance.run
+  -- p2 <- CorporateActions.run
+  -- p3 <- Default.run
+  -- p4 <- NaturalGas.run
+  -- p5 <- SecuritiesLending.run
+  -- p6 <- StructuredNotes.run
+  -- p7 <- FundTokenization.run
+  -- p8 <- DecentralizedFinance.run
+  -- p9 <- OtcSwaps.run
+  p10 <- CarbonOffset.run
+  -- pure $ p1 <> p2 <> p3 <> p4 <> p5 <> p6 <> p7 <> p8 <> p9 <> p10
+  pure p10

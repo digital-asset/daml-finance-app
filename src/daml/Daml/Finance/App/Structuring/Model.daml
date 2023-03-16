@@ -135,3 +135,35 @@ template CreateZeroCouponBondRequest
   where
     signatory operator, provider, customer
 
+template CreateCarbonOffsetTokenRequest
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Text
+    description : Text
+    validAsOf : Time
+    observers : PartiesMap
+    country : Text
+    projectType : Text
+    expiryDate : Date
+    sustainableDevelopmentGoals : Text
+  where
+    signatory operator, provider, customer
+
+
+template CarbonOffsetTokenMetadata
+  with 
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Text
+    country : Text
+    projectType : Text
+    expiryDate : Date
+    sustainableDevelopmentGoals : Text
+  where
+    signatory operator, provider, customer
+    key (operator, provider, customer, id) : (Party, Party, Party, Text)
+    maintainer key._1
+

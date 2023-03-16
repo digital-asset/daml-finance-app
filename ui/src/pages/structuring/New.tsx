@@ -23,6 +23,7 @@ export const New : React.FC = () => {
           <InstrumentCard label="Zero Coupon Bond" path="bond/zerocoupon" />
         </InstrumentPanel>
         <InstrumentPanel label="Other" expanded={expanded} setExpanded={setExpanded}>
+          <InstrumentCard label="Carbon Offset Token" path="other/carbonoffsettoken" />
           <InstrumentCard label="Token Instrument" path="other/token" />
           <InstrumentCard label="Generic Instrument" path="other/generic" />
         </InstrumentPanel>

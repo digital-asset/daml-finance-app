@@ -140,6 +140,21 @@ template Service
       do
         createZeroCouponBondRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreateZeroCouponBond with ..
         exerciseByKey @S.Service (operator, provider, customer) S.CreateZeroCouponBond with createZeroCouponBondRequestCid
+    
+    nonconsuming choice RequestAndCreateCarbonOffsetToken : ContractId Instrument.I
+      with
+        id : Text
+        description : Text
+        validAsOf : Time
+        observers : PartiesMap
+        country : Text
+        projectType : Text
+        expiryDate : Date
+        sustainableDevelopmentGoals : Text
+      controller customer
+      do
+        createCarbonOffsetTokenRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreateCarbonOffsetToken with ..
+        exerciseByKey @S.Service (operator, provider, customer) S.CreateCarbonOffsetToken with createCarbonOffsetTokenRequestCid
 
     choice Terminate : ()
       with
