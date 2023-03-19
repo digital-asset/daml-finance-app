@@ -1,0 +1,93 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Audit.Service where
+
+
+import Daml.Finance.Interface.Types.Common.Types ( Id, InstrumentQuantity)
+import Daml.Finance.App.Audit.Model (CreateAuditRequest(..), Audit(..))
+import Daml.Finance.App.Util (fetchAndArchive)
+
+template Service
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, customer) : (Party, Party, Party)
+    maintainer key._1
+
+    nonconsuming choice RequestCreateAudit : ContractId CreateAuditRequest
+      with
+        id : Id
+        description : Text
+        quantity : InstrumentQuantity
+      controller customer
+      do
+        create CreateAuditRequest with ..
+
+   
+    nonconsuming choice CreateAudit : ContractId Audit
+      with
+        createAuditRequestCid : ContractId CreateAuditRequest
+      controller provider
+      do
+        CreateAuditRequest{id; description; quantity} <- fetchAndArchive createAuditRequestCid
+        create Audit with operator; provider; customer; id; description; quantity
+
+
+
+    choice Terminate : ()
+      with
+        actor : Party
+      controller actor
+      do
+        assert $ actor == operator || actor == provider || actor == customer
+        pure ()
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider
+    observer customer
+
+    choice Accept : ContractId Service
+      controller customer
+      do
+        create Service with ..
+
+    choice Decline : ()
+      controller customer
+      do pure ()
+
+    choice Withdraw : ()
+      controller provider
+      do pure ()
+
+template Request
+  with
+    customer : Party
+    provider : Party
+  where
+    signatory customer
+    observer provider
+
+    choice Cancel : ()
+      controller customer
+      do pure ()
+
+    choice Reject : ()
+      controller provider
+      do pure ()
+
+    choice Approve : ContractId Service
+      with
+        operator : Party
+      controller operator, provider
+      do
+        create Service with ..

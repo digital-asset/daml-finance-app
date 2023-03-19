@@ -4,10 +4,11 @@
 module Daml.Finance.Setup.Util.Role where
 
 import Daml.Script
-import Daml.Finance.App.Role.Operator qualified as Operator (OfferCustodianRole(..), OfferDistributorRole(..), OfferExchangeRole(..), Role(..))
+import Daml.Finance.App.Role.Operator qualified as Operator (OfferCustodianRole(..), OfferDistributorRole(..), OfferExchangeRole(..), OfferAuditorRole(..), Role(..))
 import Daml.Finance.App.Role.Custodian qualified as Custodian (Accept(..), Role)
 import Daml.Finance.App.Role.Distributor qualified as Distributor (Accept(..), Role)
 import Daml.Finance.App.Role.Exchange qualified as Exchange (Accept(..), Role)
+import Daml.Finance.App.Role.Auditor qualified as Auditor (Accept(..), Role)
 
 createOperatorRole : Party -> Script (ContractId Operator.Role)
 createOperatorRole operator = do
@@ -28,3 +29,8 @@ createDistributorRole operator distributor = do
   offerCid    <- submit operator    do exerciseByKeyCmd @Operator.Role operator Operator.OfferDistributorRole with provider = distributor
   roleCid     <- submit distributor do exerciseCmd offerCid Distributor.Accept
   pure roleCid
+
+createAuditorRole : Party -> Party -> Script (ContractId Auditor.Role)
+createAuditorRole operator auditor = do
+  offerCid <- submit operator do exerciseByKeyCmd @Operator.Role operator Operator.OfferAuditorRole with provider = auditor
+  submit auditor do exerciseCmd offerCid Auditor.Accept

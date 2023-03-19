@@ -20,13 +20,14 @@ import Daml.Finance.Setup.Util.Service
 import Daml.Finance.Setup.Util.Workflow
 import Daml.Script
 import Daml.Finance.App.Structuring.Auto.Service qualified as S
+import Daml.Finance.App.Audit.Auto.Service qualified as As
 
 run : Script [PartyInfo]
 run  = do
   let scenario = "Carbon Offset"
-  parties <- allocateParties scenario ["Operator", "CentralBank", "Registry", "Exchange", "Agent", "Issuer", "Investor1", "Investor2", "Investor3"] "Public"
+  parties <- allocateParties scenario ["Operator", "CentralBank", "Registry", "Exchange", "Agent", "Issuer", "Investor1", "Investor2", "Investor3","Auditor"] "Public"
   let
-    all@[operator, centralBank, registry, exchange, agent, issuer, inv1, inv2, inv3, public] = map (.id) parties
+    all@[operator, centralBank, registry, exchange, agent, issuer, inv1, inv2, inv3, auditor, public] = map (.id) parties
     pub = fromList [("Public", singleton public)]
 
   -- Factories
@@ -47,6 +48,7 @@ run  = do
   createCustodianRole   operator registry
   createExchangeRole    operator exchange
   createDistributorRole operator agent
+  createAuditorRole operator auditor
 
   -- Services
   createCustodyService          operator centralBank issuer     paths accountFactoryCid holdingFactoryCid
@@ -60,6 +62,8 @@ run  = do
   createCustodyService          operator registry    inv3       paths accountFactoryCid holdingFactoryCid
   createIssuanceService         operator registry    issuer
   createIssuanceAutoService     operator registry    issuer
+  createAuditService         operator auditor    issuer
+  createAuditAutoService     operator auditor    issuer
   createStructuringService      operator registry    issuer
   createStructuringAutoService  operator registry    issuer
   createLifecycleService        operator registry    issuer public
@@ -81,6 +85,7 @@ run  = do
   createBiddingAutoService      operator agent       inv2
   createBiddingService          operator agent       inv3
   createBiddingAutoService      operator agent       inv3
+  
 
   -- Accounts
   issuerCashAccount   <- createAccount operator centralBank  issuer   public "Issuer@CentralBank"    empty
@@ -179,6 +184,13 @@ run  = do
       projectType ="test"
       expiryDate = today
       sustainableDevelopmentGoals="test"
+
+  -- y <- submit issuer do
+  --   exerciseByKeyCmd @As.Service(operator,auditor,issuer) As.RequestAndCreateAudit with
+  --     id ="test"
+  --     description ="audit"
+  --     quantity = 100.0
+
 
 
   pure parties

@@ -6,6 +6,7 @@ module Daml.Finance.App.Role.Operator where
 import Daml.Finance.App.Role.Custodian qualified as Custodian (Approve(..), Offer(..), Request, Role)
 import Daml.Finance.App.Role.Distributor qualified as Distributor (Approve(..), Offer(..), Request, Role)
 import Daml.Finance.App.Role.Exchange qualified as Exchange (Approve(..), Offer(..), Request, Role)
+import Daml.Finance.App.Role.Auditor qualified as Auditor (Approve(..), Offer(..), Request, Role)
 
 template Role
   with
@@ -57,3 +58,17 @@ template Role
       controller operator
       do
         exercise distributorRequestCid Distributor.Approve
+
+    nonconsuming choice OfferAuditorRole : ContractId Auditor.Offer
+      with
+        provider : Party
+      controller operator
+      do
+        create Auditor.Offer with ..
+
+    nonconsuming choice ApproveAuditorRequest : ContractId Auditor.Role
+      with
+        auditorRequestCid : ContractId Auditor.Request
+      controller operator
+      do
+        exercise auditorRequestCid Auditor.Approve

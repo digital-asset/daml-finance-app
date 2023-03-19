@@ -1,0 +1,104 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Role.Auditor where
+
+import Daml.Finance.App.Audit.Auto.Service qualified as AuditAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Audit.Service qualified as Audit (Approve(..), Offer(..), Request, Service, Terminate(..))
+
+
+template Role
+  with
+    operator : Party
+    provider : Party
+  where
+    signatory operator, provider
+
+    key (operator, provider) :  (Party, Party)
+    maintainer key._1
+
+    
+
+    nonconsuming choice OfferAuditService : ContractId Audit.Offer
+      with
+        customer : Party
+      controller provider
+      do
+        create Audit.Offer with ..
+
+    nonconsuming choice ApproveAuditRequest : ContractId Audit.Service
+      with
+        auditServiceRequestCid : ContractId Audit.Request
+      controller provider
+      do
+        exercise auditServiceRequestCid Audit.Approve with ..
+
+    nonconsuming choice TerminateAuditService : ()
+      with
+        customer : Party
+      controller provider
+      do
+        exerciseByKey @Audit.Service (operator, provider, customer) Audit.Terminate with actor = provider
+
+    nonconsuming choice OfferAuditAutoService : ContractId AuditAuto.Offer
+      with
+        customer : Party
+      controller provider
+      do
+        create AuditAuto.Offer with ..
+
+    nonconsuming choice ApproveAuditAutoRequest : ContractId AuditAuto.Service
+      with
+        auditServiceRequestCid : ContractId AuditAuto.Request
+      controller provider
+      do
+        exercise auditServiceRequestCid AuditAuto.Approve with ..
+
+    nonconsuming choice TerminateAuditAutoService : ()
+      with
+        customer : Party
+      controller provider
+      do
+        exerciseByKey @AuditAuto.Service (operator, provider, customer) AuditAuto.Terminate with actor = provider
+
+    
+    choice TerminateRole: ()
+      controller operator
+      do
+        return ()
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+  where
+    signatory operator
+    observer provider
+
+    choice Accept : ContractId Role
+      controller provider
+      do
+        create Role with ..
+
+    choice Decline : ()
+      controller provider
+      do
+        return ()
+
+template Request
+  with
+    provider : Party
+    operator : Party
+  where
+    signatory provider
+    observer operator
+
+    choice Approve : ContractId Role
+      controller operator
+      do
+        create Role with ..
+
+    choice Reject : ()
+      controller operator
+      do
+        return ()

@@ -12,6 +12,8 @@ import Daml.Finance.App.Decentralized.Exchange.Model qualified as DecentralizedE
 import Daml.Finance.App.Decentralized.Exchange.Service qualified as DecentralizedExchange (Service(..))
 import Daml.Finance.App.Issuance.Auto.Service qualified as IssuanceAuto (Accept(..), Service)
 import Daml.Finance.App.Issuance.Service qualified as Issuance (Accept(..), Service)
+import Daml.Finance.App.Audit.Auto.Service qualified as AuditAuto (Accept(..), Service)
+import Daml.Finance.App.Audit.Service qualified as Audit (Accept(..), Service)
 import Daml.Finance.App.BackToBack.Service qualified as BackToBack (Accept(..), Service)
 import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Accept(..), Service)
 import Daml.Finance.App.Trading.Auto.Service qualified as TradingAuto (Accept(..), Service)
@@ -28,6 +30,7 @@ import Daml.Finance.App.Distribution.Investment.Service qualified as Investment 
 import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Accept(..), Service)
 import Daml.Finance.App.Quoting.Service qualified as Quoting (Accept(..), Service)
 import Daml.Finance.App.Role.Custodian qualified as Custodian
+import Daml.Finance.App.Role.Auditor qualified as Auditor
 import Daml.Finance.App.Role.Distributor qualified as Distributor
 import Daml.Finance.App.Role.Exchange qualified as Exchange
 import Daml.Finance.App.Settlement.Service qualified as Settlement (Accept(..), Offer(..), Service)
@@ -77,6 +80,16 @@ createIssuanceAutoService : Party -> Party -> Party -> Script (ContractId Issuan
 createIssuanceAutoService operator custodian customer = do
   offerCid <- submit custodian do exerciseByKeyCmd @Custodian.Role (operator, custodian) Custodian.OfferIssuanceAutoService with ..
   submit customer do exerciseCmd offerCid IssuanceAuto.Accept
+
+createAuditService : Party -> Party -> Party -> Script (ContractId Audit.Service)
+createAuditService operator auditor customer = do
+  offerCid <- submit auditor do exerciseByKeyCmd @Auditor.Role (operator, auditor) Auditor.OfferAuditService with ..
+  submit customer do exerciseCmd offerCid Audit.Accept
+
+createAuditAutoService : Party -> Party -> Party -> Script (ContractId AuditAuto.Service)
+createAuditAutoService operator auditor customer = do
+  offerCid <- submit auditor do exerciseByKeyCmd @Auditor.Role (operator, auditor) Auditor.OfferAuditAutoService with ..
+  submit customer do exerciseCmd offerCid AuditAuto.Accept
 
 createStructuringService : Party -> Party -> Party -> Script (ContractId Structuring.Service)
 createStructuringService operator custodian customer = do

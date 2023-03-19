@@ -1,0 +1,83 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Audit.Auto.Service where
+
+import Daml.Finance.App.Audit.Model (Audit)
+import Daml.Finance.App.Audit.Service qualified as S (CreateAudit(..), RequestCreateAudit(..), Service)
+import Daml.Finance.Interface.Types.Common.Types ( Id, InstrumentQuantity)
+
+template Service
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, customer) : (Party, Party, Party)
+    maintainer key._1
+
+    nonconsuming choice RequestAndCreateAudit : ContractId Audit 
+      with
+        id : Id
+        description : Text
+        quantity : InstrumentQuantity
+      controller customer
+      do
+        createAuditRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreateAudit with id; description; quantity
+        exerciseByKey @S.Service (operator, provider, customer) S.CreateAudit with createAuditRequestCid
+
+   
+    choice Terminate : ()
+      with
+        actor : Party
+      controller actor
+      do
+        assert $ actor == operator || actor == provider || actor == customer
+        pure ()
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider
+    observer customer
+
+    choice Accept : ContractId Service
+      controller customer
+      do
+        create Service with ..
+
+    choice Decline : ()
+      controller customer
+      do pure ()
+
+    choice Withdraw : ()
+      controller provider
+      do pure ()
+
+template Request
+  with
+    customer : Party
+    provider : Party
+  where
+    signatory customer
+    observer provider
+
+    choice Cancel : ()
+      controller customer
+      do pure ()
+
+    choice Reject : ()
+      controller provider
+      do pure ()
+
+    choice Approve : ContractId Service
+      with
+        operator : Party
+      controller operator, provider
+      do
+        create Service with ..

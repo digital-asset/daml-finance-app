@@ -23,6 +23,7 @@ import appSimulation from "../images/app/simulation.png";
 import appListing from "../images/app/listing.png";
 import appTrading from "../images/app/trading.png";
 import appNetwork from "../images/app/network.png";
+import appAudit from "../images/app/audit.jpg";
 
 type Position = {
   x : number
@@ -63,6 +64,7 @@ const quoting       = { name: "Quoting",      path: "quoting",      elem: <App k
 const trading       = { name: "Trading",      path: "trading",      elem: <App key={11} label="Trading"       description="Trade assets in the secondary market"    image={appTrading}      path="/app/trading/markets" /> };
 const network       = { name: "Network",      path: "network",      elem: <App key={12} label="Network"       description="Explore the distributed ledger network"  image={appNetwork}      path="/app/network/overview" /> };
 const settlement    = { name: "Settlement",   path: "settlement",   elem: <App key={13} label="Settlement"    description="Settle instructions in batches"          image={appSimulation}   path="/app/settlement/batches" /> };
+const audit         = { name: "Audit",        path: "audit",        elem: <App key={14} label="Audit"         description="Audit new assets"                        image={appAudit}        path="/app/audit/audits" /> };
 
 export const scenarios : Scenario[] = [
   {
@@ -221,7 +223,7 @@ export const scenarios : Scenario[] = [
     label: "Carbon Offset",
     description: "Carbon Offset markets workflows",
     image: scenarioCarbonOffset,
-    apps: [ structuring, issuance, custody, distribution, servicing, simulation, listing, trading, settlement ],
+    apps: [ structuring, issuance, custody, distribution, servicing, simulation, listing, trading, settlement, audit ],
     positions: new Map([
       [ "Operator",     { x:    0, y:   0 } ],
       [ "Public",       { x:    0, y:   0 } ],
