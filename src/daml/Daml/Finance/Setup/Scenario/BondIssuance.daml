@@ -29,15 +29,15 @@ import Daml.Script
 
 run : Script [PartyInfo]
 run = do
-  let scenario = "Bond Issuance"
-  parties <- allocateParties scenario ["Operator", "CentralBank", "Registry", "Issuer", "Custodian", "Investor1", "Investor2", "Investor3"] "Public"
+  let scenario = "Loan Servicing"
+  parties <- allocateParties scenario ["Operator", "CashRail", "Registry", "AgentBank", "Custodian", "Investor1", "Investor2", "Investor3"] "Public"
   let
     all@[operator, centralBank, registry, issuer, custodian, inv1, inv2, inv3, public] = map (.id) parties
     pub = fromList [("Public", singleton public)]
 
   -- Factories
   let
-    assets = ["BOND1", "BOND2", "BOND3", "BOND4"]
+    assets = ["LOAN1", "LOAN2", "LOAN3", "LOAN4"]
     settlementPaths = [[issuer], [custodian], [inv1, custodian], [inv2, custodian], [inv3, custodian]]
     cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = settlementPaths
     secRoute = Settlement.Hierarchy with rootCustodian = registry; pathsToRootCustodian = settlementPaths
@@ -96,10 +96,10 @@ run = do
 
   -- Instruments
   usd   <- originateToken               centralBank centralBank pub epoch "USD"   "United States Dollar"
-  bond1 <- originateZeroCouponBond      registry    issuer                "BOND1" "Zero Coupon Bond 5Y"                         pub (tt $ date 2022 tm td) (date 2022 tm td) (date 2027 tm td) usd
-  bond2 <- originateFixedRateBond       registry    issuer                "BOND2" "Fixed Rate Bond 5Y @ 1.1%"                   pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.011 M 12 usd
-  bond3 <- originateFloatingRateBond    registry    issuer                "BOND3" "Floating Rate Bond 5Y @ LIBOR-12M + 0.5%"    pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.005 M 12 usd "USD-LIBOR-12M"
-  bond4 <- originateInflationLinkedBond registry    issuer                "BOND4" "Inflation Linked Bond 5Y @ 0.5% * (1 + CPI)" pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.005 M 12 usd "CPI" 100.0
+  bond1 <- originateZeroCouponBond      registry    issuer                "LOAN1" "LargeCo Bullet Loan 5Y"                         pub (tt $ date 2022 tm td) (date 2022 tm td) (date 2027 tm td) usd
+  bond2 <- originateFixedRateBond       registry    issuer                "LOAN2" "LargeCo 5Y @ 1.1%"                   pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.011 M 12 usd
+  bond3 <- originateFloatingRateBond    registry    issuer                "LOAN3" "LargeCo 5Y @ LIBOR-12M + 0.5%"    pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.005 M 12 usd "USD-LIBOR-12M"
+  bond4 <- originateInflationLinkedBond registry    issuer                "LOAN4" "LargeCo Inflation Linked 5Y @ 0.5% * (1 + CPI)" pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.005 M 12 usd "CPI" 100.0
   let securities = [bond1, bond2, bond3, bond4]
 
   -- Data
@@ -107,10 +107,12 @@ run = do
     libor =
       [ (tt $ date 2020 tm td,   0.0010)
       , (tt $ date 2021 tm td,   0.0015)
-      , (tt $ date 2022 tm td,   0.0020) ]
+      , (tt $ date 2022 tm td,   0.0020)
+      , (tt $ date 2023 tm td,   0.0030) ]
     cpi =
       [ (tt $ date 2021 tm td, 102.2500)
-      , (tt $ date 2022 tm td, 104.5000) ]
+      , (tt $ date 2022 tm td, 104.5000)
+      , (tt $ date 2023 tm td, 105.6000) ]
   obsCid1 <- createObservation issuer "USD-LIBOR-12M"  libor pub
   obsCid2 <- createObservation issuer "CPI"            cpi   pub
   createCalendar registry "EMPTY" [] [] pub
