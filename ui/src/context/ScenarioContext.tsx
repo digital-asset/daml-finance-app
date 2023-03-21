@@ -84,17 +84,17 @@ export const scenarios : Scenario[] = [
     useNetworkLogin: true
   },
   {
-    label: "Bond Issuance",
-    description: "Simple bond issuance custody scenario",
+    label: "Loan Servicing",
+    description: "Simple loan servicing scenario",
     image: scenarioBondIssuance,
     apps: [ structuring, issuance, custody, distribution, servicing, listing, trading, settlement, network ],
     positions: new Map([
       [ "Operator",     { x:    0, y:   0 } ],
       [ "Public",       { x:    0, y:   0 } ],
-      [ "CentralBank",  { x:  400, y:   0 } ],
+      [ "CashRail",  { x:  400, y:   0 } ],
       [ "Registry",     { x:  800, y:   0 } ],
       [ "Custodian",    { x:  400, y: 300 } ],
-      [ "Issuer",       { x:  800, y: 300 } ],
+      [ "AgentBank",       { x:  800, y: 300 } ],
       [ "Investor1",    { x:    0, y: 600 } ],
       [ "Investor2",    { x:  400, y: 600 } ],
       [ "Investor3",    { x:  800, y: 600 } ]
