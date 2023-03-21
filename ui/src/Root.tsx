@@ -23,6 +23,7 @@ import { DeFi } from "./apps/DeFi";
 import { Clearing } from "./apps/Clearing";
 import { Quoting } from "./apps/Quoting";
 import { Audit } from "./apps/Audit";
+import{AuditedIssuance} from "./apps/AuditedIssuance";
 
 
 export const Root : React.FC = () => {
@@ -49,6 +50,8 @@ export const Root : React.FC = () => {
               <Route path="/structuring/*" element={<Structuring />} />
               <Route path="/trading/*" element={<Trading />} />
               <Route path="/audit/*" element={<Audit />} />
+              <Route path="/auditedIssuance/*" element={<AuditedIssuance />} />
+              
             </Routes>
           </AccountProvider>
         </HoldingProvider>

@@ -23,6 +23,9 @@ import Daml.Finance.App.Distribution.Investment.Model qualified as Investment (I
 import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (RequestInvestment(..), S)
 import Daml.Finance.App.Issuance.Model qualified as Issuance (T)
 import Daml.Finance.App.Issuance.Service qualified as Issuance (CreateIssuance(..), RequestCreateIssuance(..), Service)
+
+import Daml.Finance.App.Structuring.Auto.Service qualified as StructuringAuto ( RequestAndCreateCarbonOffsetToken(..), Service)
+
 import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Service, DeclareDividend(..), DeclareStockSplit(..), DeclareReplacement(..))
 import Daml.Finance.App.Listing.Model qualified as Listing (T)
 import Daml.Finance.App.Listing.Service qualified as Listing (CreateListing(..), RequestCreateListing(..), Service)
@@ -371,3 +374,29 @@ approveClearing counterparty clearingRequestCid clearingAccount =
 clear : Party -> Party -> ContractId Clearing.ClearingRequest -> Script (ContractId Holding.I, ContractId Holding.I)
 clear clearer public clearingRequestCid =
   submitMulti [clearer] [public] do exerciseCmd clearingRequestCid Clearing.Clear
+
+
+originateCarbonToken :  Party -> Party -> Party -> PartiesMap -> Time -> Text -> Text -> Text  -> Text -> Text->  Date -> Script InstrumentKey
+originateCarbonToken operator provider customer observers validAsOf id description country projectType sustainableDevelopmentGoals expiryDate = do
+  cid <- submit customer do exerciseByKeyCmd @StructuringAuto.Service (operator, provider, customer) StructuringAuto.RequestAndCreateCarbonOffsetToken with id; description; validAsOf; observers; country; projectType; expiryDate; sustainableDevelopmentGoals
+  createReference cid  provider customer observers
+
+-- x <- submit issuer do
+--     exerciseByKeyCmd @S.Service (operator, registry, issuer) S.RequestAndCreateCarbonOffsetToken with
+--       id ="test"
+--       description ="test"
+--       validAsOf = todayTime
+--       observers = pub
+--       country ="test"
+--       projectType ="test"
+--       expiryDate = today
+--       sustainableDevelopmentGoals="test"
+
+
+-- issueCarbon : Party -> Party -> Party -> Party -> InstrumentQuantity -> AccountKey -> Script (ContractId Issuance.T, ContractId Holding.I)
+-- issueCarbon operator provider customer public quantity account = do
+--   let
+--     id = Id $ "ISSUANCE-" <> show quantity.unit.id
+--     description = "Issuance of " <> show quantity.amount <> " " <> show quantity.unit.id
+--   createIssuanceRequestCid <- submit customer do exerciseByKeyCmd @Issuance.Service (operator, provider, customer) Issuance.RequestCreateIssuance with id; description; quantity; account
+--   submitMulti [provider] [public] do exerciseByKeyCmd @Issuance.Service (operator, provider, customer) Issuance.CreateIssuance with ..

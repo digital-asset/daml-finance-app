@@ -21,6 +21,11 @@ template Audit
     key (operator, provider, id) : (Party, Party, Id)
     maintainer key._1
 
+    choice Consume :()
+      controller customer
+      do pure ()
+
+
 template CreateAuditRequest
   with
     operator : Party

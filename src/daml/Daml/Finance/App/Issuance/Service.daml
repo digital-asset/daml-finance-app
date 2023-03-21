@@ -8,7 +8,8 @@ import Daml.Finance.Interface.Account.Util (getAccount)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Holding.Util (getAmount)
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity)
-import Daml.Finance.App.Issuance.Model (CreateIssuanceRequest(..), ReduceIssuanceRequest(..), Issuance(..))
+import Daml.Finance.App.Issuance.Model (CreateIssuanceRequest(..), ReduceIssuanceRequest(..), Issuance(..),CreateAuditedIssuanceRequest(..))
+import Daml.Finance.App.Audit.Model (Consume(..), Audit)
 import Daml.Finance.App.Util (fetchAndArchive)
 
 template Service
@@ -52,6 +53,7 @@ template Service
         transferableCid <- exercise ref.cid Account.Credit with quantity
         pure (issuanceCid, transferableCid)
 
+
     nonconsuming choice ReduceIssuance : ContractId Issuance
       with
         reduceIssuanceRequestCid : ContractId ReduceIssuanceRequest
@@ -68,6 +70,38 @@ template Service
         archive issuanceCid
         create issuance with quantity = (issuance.quantity with amount = issuance.quantity.amount - amount)
 
+
+    nonconsuming choice RequestCreateAuditedIssuance : ContractId CreateAuditedIssuanceRequest
+      with
+        id : Id
+        description : Text
+        quantity : InstrumentQuantity
+        account : AccountKey
+        auditCid : ContractId Audit
+      controller customer
+      do
+        auditDetails <- fetch auditCid
+        exercise auditCid Consume
+        create CreateAuditedIssuanceRequest with 
+          quantityAudited = auditDetails.quantity
+          ..
+
+    nonconsuming choice CreateAuditedIssuance : (ContractId Issuance, ContractId Holding.I)
+      with
+        createAuditedIssuanceRequestCid : ContractId CreateAuditedIssuanceRequest
+      controller provider
+      do
+
+        CreateAuditedIssuanceRequest{id; description; account; quantity; quantityAudited} <- fetchAndArchive createAuditedIssuanceRequestCid
+        assert $ quantity.amount <= quantityAudited.amount
+        assert $ quantity.unit.id == quantityAudited.unit.id
+        issuanceCid <- create Issuance with operator; provider; customer; id; description; quantity 
+
+        (_, ref) <- fetchByKey @Account.R account
+        transferableCid <- exercise ref.cid Account.Credit with quantity
+        pure (issuanceCid, transferableCid)
+
+  
     choice Terminate : ()
       with
         actor : Party

@@ -10,7 +10,7 @@ import DA.Set (singleton)
 import DA.Time (time)
 import Daml.Finance.Account.Account qualified as Account (Factory(..))
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty,toKey)
 import Daml.Finance.Interface.Types.Common.Types (Id(..))
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
 import Daml.Finance.Setup.Payoff
@@ -20,7 +20,9 @@ import Daml.Finance.Setup.Util.Service
 import Daml.Finance.Setup.Util.Workflow
 import Daml.Script
 import Daml.Finance.App.Structuring.Auto.Service qualified as S
-import Daml.Finance.App.Audit.Auto.Service qualified as As
+import Daml.Finance.App.Audit.Auto.Service qualified as AuditAuto
+import Daml.Finance.App.Issuance.Auto.Service qualified as IssuanceAuto
+-- import Module Daml.Finance.Interface.Instrument.Base.Instrument 
 
 run : Script [PartyInfo]
 run  = do
@@ -32,7 +34,7 @@ run  = do
 
   -- Factories
   let
-    assets = ["TSLA", "NFLX", "FWD1", "BOND1", "SWAP1", "BSWAP1", "OPT1", "OPT2"]
+    assets = ["TSLA", "NFLX", "FWD1", "BOND1", "SWAP1", "BSWAP1", "OPT1", "OPT2","COFST"]
     cashSettlementPaths = [[issuer], [registry], [inv1], [inv2], [inv3]]
     securitiesSettlementPaths = [[issuer], [inv1], [inv2], [inv3]]
     cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = cashSettlementPaths
@@ -117,15 +119,16 @@ run  = do
 
   -- Instruments
   usd     <- originateToken    centralBank centralBank pub yday "USD"     "United States Dollar"
-  tsla    <- originateEquity   registry    issuer      pub yday "TSLA"    "Tesla, Inc. Common Stock"
-  nflx    <- originateEquity   registry    issuer      pub yday "NFLX"    "Netflix, Inc. Common Stock"
-  fwd     <- originateGeneric  registry    issuer      pub yday "FWD1"    "Forward on TSLA"                 $ futureDvp tsla 20.0 usd 10_000.0 today
+  -- tsla    <- originateEquity   registry    issuer      pub yday "TSLA"    "Tesla, Inc. Common Stock"
+  -- nflx    <- originateEquity   registry    issuer      pub yday "NFLX"    "Netflix, Inc. Common Stock"
+  -- fwd     <- originateGeneric  registry    issuer      pub yday "FWD1"    "Forward on TSLA"                 $ futureDvp tsla 20.0 usd 10_000.0 today
   bnd     <- originateGeneric  registry    issuer      pub yday "BOND1"   "Bond 5Y @ 4.875%"                $ bond usd 1.0 0.04875 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
-  swp     <- originateGeneric  registry    issuer      pub yday "SWAP1"   "Swap LIBOR-6M vs 0.25%"          $ interestRateSwap libor6M 0.0025 usd $ unrollDates todayYear (todayYear + 2) [todayMonth] todayDay
-  bswp    <- originateGeneric  registry    issuer      pub yday "BSWAP1"  "Basis Swap LIBOR-6M vs 3M+0.15%" $ basisSwap libor3M libor6M 0.0015 usd $ unrollDates todayYear (todayYear + 2) [todayMonth] todayDay
-  opt     <- originateGeneric  registry    issuer      pub yday "OPT1"    "Call on TSLA @ 500.0 (physical)" $ callOptionPhysical tsla 20.0 usd 10_000.0 (date (todayYear + 1) todayMonth todayDay)
-  opt2    <- originateGeneric  registry    issuer      pub yday "OPT2"    "Call on TSLA @ 700.0 (cash)"     $ callOptionCash tslaObs usd 700.0 (date (todayYear + 1) todayMonth todayDay)
-  let securities = [tsla, nflx, fwd, bnd, swp, bswp, opt, opt2 ]
+  -- swp     <- originateGeneric  registry    issuer      pub yday "SWAP1"   "Swap LIBOR-6M vs 0.25%"          $ interestRateSwap libor6M 0.0025 usd $ unrollDates todayYear (todayYear + 2) [todayMonth] todayDay
+  -- bswp    <- originateGeneric  registry    issuer      pub yday "BSWAP1"  "Basis Swap LIBOR-6M vs 3M+0.15%" $ basisSwap libor3M libor6M 0.0015 usd $ unrollDates todayYear (todayYear + 2) [todayMonth] todayDay
+  -- opt     <- originateGeneric  registry    issuer      pub yday "OPT1"    "Call on TSLA @ 500.0 (physical)" $ callOptionPhysical tsla 20.0 usd 10_000.0 (date (todayYear + 1) todayMonth todayDay)
+  -- opt2    <- originateGeneric  registry    issuer      pub yday "OPT2"    "Call on TSLA @ 700.0 (cash)"     $ callOptionCash tslaObs usd 700.0 (date (todayYear + 1) todayMonth todayDay)
+  -- let securities = [tsla, nflx, fwd, bnd, swp, bswp, opt, opt2 ]
+  let securities = [bnd]
 
   -- Distribution
   inv1CashCid <- deposit operator centralBank inv1 public (Instrument.qty 1_000_000.0 usd) inv1CashAccount
@@ -133,10 +136,10 @@ run  = do
   inv3CashCid <- deposit operator centralBank inv3 public (Instrument.qty 1_000_000.0 usd) inv3CashAccount
   regCashCid <- deposit operator centralBank registry public (Instrument.qty 1_000_000.0 usd) registryCashAccount
 
-  (_, ad1) <- issue operator registry issuer public (Instrument.qty 1.0 fwd)           issuerSecAccount
+  -- (_, ad1) <- issue operator registry issuer public (Instrument.qty 1.0 fwd)           issuerSecAccount
   (_, ad2) <- issue operator registry issuer public (Instrument.qty 1_000_000.0 bnd)   issuerSecAccount
-  (_, ad3) <- issue operator registry issuer public (Instrument.qty 10_000_000.0 swp)  issuerSecAccount
-  (_, ad4) <- issue operator registry issuer public (Instrument.qty 10_000_000.0 bswp) issuerSecAccount
+  -- (_, ad3) <- issue operator registry issuer public (Instrument.qty 10_000_000.0 swp)  issuerSecAccount
+  -- (_, ad4) <- issue operator registry issuer public (Instrument.qty 10_000_000.0 bswp) issuerSecAccount
 
   -- Data
   createObservation issuer libor3M [(todayTime, 0.0018825)] pub
@@ -149,9 +152,70 @@ run  = do
   
  
   -- Workflows
+  -- let
+  --   doAuction = do
+  --     let quantity = Instrument.qty 1_000_000.0 bnd
+  --     auctionCid        <- createAuction operator agent issuer public "AUCTION1" quantity usd 0.95 (coerceContractId ad2) issuerCashAccount
+  --     inv1CollateralCid <- coerceContractId <$> getHolding inv1 (Instrument.qty 500_000.0 usd)
+  --     inv2CollateralCid <- coerceContractId <$> getHolding inv2 (Instrument.qty 392_000.0 usd)
+  --     inv3CollateralCid <- coerceContractId <$> getHolding inv3 (Instrument.qty 297_000.0 usd)
+  --     inv1BidCid        <- createAuctionBid operator agent inv1 public auctionCid 500_000.0 1.0  inv1CollateralCid inv1SecAccount
+  --     inv2BidCid        <- createAuctionBid operator agent inv2 public auctionCid 400_000.0 0.98 inv2CollateralCid inv2SecAccount
+  --     inv3BidCid        <- createAuctionBid operator agent inv3 public auctionCid 300_000.0 0.99 inv3CollateralCid inv3SecAccount
+  --     processAuction operator agent issuer public auctionCid [inv1BidCid, inv2BidCid, inv3BidCid]
+
+  --   doTrade = do
+  --     list operator exchange issuer "SWAP/USD" swp usd $ singleton public
+  --     createAskOrder operator exchange issuer public (Id "1") (Instrument.qty 250_000.0 swp) (Instrument.qty 1.00 usd) $ singleton public
+  --     createAskOrder operator exchange issuer public (Id "2") (Instrument.qty 250_000.0 swp) (Instrument.qty 1.00 usd) $ singleton public
+  --     createBidOrder operator exchange inv1  public (Id "3") (Instrument.qty 400_000.0 swp) (Instrument.qty 1.00 usd) $ singleton public
+  --     -- createAskOrder operator exchange issuer public "1" (Instrument.qty 250_000.0 swp) (Instrument.qty 0.80 usd) $ singleton public
+  --     -- createAskOrder operator exchange issuer public "2" (Instrument.qty 250_000.0 swp) (Instrument.qty 0.90 usd) $ singleton public
+  --     -- createBidOrder operator exchange inv1  public "3" (Instrument.qty 500_000.0 swp) (Instrument.qty 0.90 usd) $ singleton public
+
+  --doAuction
+  --doTrade
+  
+  -- Test Carbon Structuring
+  cofst <- submit issuer do
+    exerciseByKeyCmd @S.Service (operator, registry, issuer) S.RequestAndCreateCarbonOffsetToken with
+      id ="COFST"
+      description ="carbon offset"
+      validAsOf = todayTime
+      observers = pub
+      country ="Brazil"
+      projectType ="Nature"
+      expiryDate = today
+      sustainableDevelopmentGoals="No Poverty"
+  
+  Some cofstView <- queryInterfaceContractId issuer cofst
+  let cofstKey = Instrument.toKey cofstView
+
+  
+  
+  
+  
+  -- cofst1     <- originateCarbonToken    operator registry issuer pub todayTime "cofst1" "cofst" "india" "nature" "sdg1" today
+            -- originateCarbonToken operator provider customer observers validAsOf id description country projectType sustainableDevelopmentGoals expiryDate = do
+
+
+  cofst1Audit <- submit issuer do
+    exerciseByKeyCmd @AuditAuto.Service(operator,auditor,issuer) AuditAuto.RequestAndCreateAudit with
+      id = Id "COFST"
+      description ="audit"
+      quantity = Instrument.qty 1_000_000.0 cofstKey
+
+  cofstIssuance <- submit issuer do
+    exerciseByKeyCmd @IssuanceAuto.Service(operator,registry,issuer) IssuanceAuto.RequestAndCreateAuditedIssuance with
+      id = Id "COFST"
+      description ="Issue"
+      quantity = Instrument.qty 1_000_000.0 cofstKey
+      account = issuerSecAccount
+      auditCid = cofst1Audit
+  
   let
     doAuction = do
-      let quantity = Instrument.qty 1_000_000.0 bnd
+      let quantity = Instrument.qty 1_000_000.0 cofstKey
       auctionCid        <- createAuction operator agent issuer public "AUCTION1" quantity usd 0.95 (coerceContractId ad2) issuerCashAccount
       inv1CollateralCid <- coerceContractId <$> getHolding inv1 (Instrument.qty 500_000.0 usd)
       inv2CollateralCid <- coerceContractId <$> getHolding inv2 (Instrument.qty 392_000.0 usd)
@@ -162,34 +226,17 @@ run  = do
       processAuction operator agent issuer public auctionCid [inv1BidCid, inv2BidCid, inv3BidCid]
 
     doTrade = do
-      list operator exchange issuer "SWAP/USD" swp usd $ singleton public
-      createAskOrder operator exchange issuer public (Id "1") (Instrument.qty 250_000.0 swp) (Instrument.qty 1.00 usd) $ singleton public
-      createAskOrder operator exchange issuer public (Id "2") (Instrument.qty 250_000.0 swp) (Instrument.qty 1.00 usd) $ singleton public
-      createBidOrder operator exchange inv1  public (Id "3") (Instrument.qty 400_000.0 swp) (Instrument.qty 1.00 usd) $ singleton public
-      -- createAskOrder operator exchange issuer public "1" (Instrument.qty 250_000.0 swp) (Instrument.qty 0.80 usd) $ singleton public
-      -- createAskOrder operator exchange issuer public "2" (Instrument.qty 250_000.0 swp) (Instrument.qty 0.90 usd) $ singleton public
-      -- createBidOrder operator exchange inv1  public "3" (Instrument.qty 500_000.0 swp) (Instrument.qty 0.90 usd) $ singleton public
+      list operator exchange issuer "COFST/USD" cofstKey usd $ singleton public
+      createAskOrder operator exchange issuer public (Id "1") (Instrument.qty 250_000.0 cofstKey) (Instrument.qty 1.00 usd) $ singleton public
+      createAskOrder operator exchange issuer public (Id "2") (Instrument.qty 250_000.0 cofstKey) (Instrument.qty 1.00 usd) $ singleton public
+      createBidOrder operator exchange inv1  public (Id "3") (Instrument.qty 400_000.0 cofstKey) (Instrument.qty 1.00 usd) $ singleton public
+      -- createAskOrder operator exchange issuer public "1" (Instrument.qty 250_000.0 cofstKey) (Instrument.qty 0.80 usd) $ singleton public
+      -- createAskOrder operator exchange issuer public "2" (Instrument.qty 250_000.0 cofstKey) (Instrument.qty 0.90 usd) $ singleton public
+      -- createBidOrder operator exchange inv1  public "3" (Instrument.qty 500_000.0 cofstKey) (Instrument.qty 0.90 usd) $ singleton public
 
-  --doAuction
-  --doTrade
-  
-  -- Test Carbon Structuring
-  x <- submit issuer do
-    exerciseByKeyCmd @S.Service (operator, registry, issuer) S.RequestAndCreateCarbonOffsetToken with
-      id ="test"
-      description ="test"
-      validAsOf = todayTime
-      observers = pub
-      country ="test"
-      projectType ="test"
-      expiryDate = today
-      sustainableDevelopmentGoals="test"
+  -- doAuction
+  -- doTrade
 
-  -- y <- submit issuer do
-  --   exerciseByKeyCmd @As.Service(operator,auditor,issuer) As.RequestAndCreateAudit with
-  --     id ="test"
-  --     description ="audit"
-  --     quantity = 100.0
 
 
 

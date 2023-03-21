@@ -109,7 +109,7 @@ export const New : React.FC = () => {
               <SelectInput  label="Instrument"  value={instrumentLabel} setValue={setInstrumentLabel} values={toValues(aggregates)} />
               <TextInput    label="Amount"      value={amount}          setValue={setAmount} />
               {hasB2B && <FormGroup><FormControlLabel control={<Checkbox checked={isB2B} onChange={e => setIsB2B(e.target.checked)}/>} label="Issue back-to-back" /></FormGroup>}
-              <Button className={classnames(cls.fullWidth, cls.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={requestAudit}>{hasAuto ? "Issue" : "Request Audit"}</Button>
+              <Button className={classnames(cls.fullWidth, cls.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={requestAudit}>{hasAuto ? "Audit" : "Request Audit"}</Button>
             </Paper>
           </Grid>
           <Grid item xs={4} />

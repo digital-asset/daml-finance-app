@@ -4,9 +4,11 @@
 module Daml.Finance.App.Issuance.Auto.Service where
 
 import Daml.Finance.App.Issuance.Model (Issuance)
-import Daml.Finance.App.Issuance.Service qualified as S (CreateIssuance(..), ReduceIssuance(..), RequestCreateIssuance(..), RequestReduceIssuance(..), Service)
+import Daml.Finance.App.Issuance.Service qualified as S (CreateIssuance(..), ReduceIssuance(..), RequestCreateIssuance(..), RequestReduceIssuance(..), RequestCreateAuditedIssuance(..), CreateAuditedIssuance(..), Service)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity)
+-- import Daml.Finance.App.Audit.Model qualified as AuditModel (Audit(..))
+import Daml.Finance.App.Audit.Model (Audit)
 
 template Service
   with
@@ -38,6 +40,18 @@ template Service
       do
         reduceIssuanceRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestReduceIssuance with id; holdingCid
         exerciseByKey @S.Service (operator, provider, customer) S.ReduceIssuance with reduceIssuanceRequestCid
+
+    nonconsuming choice RequestAndCreateAuditedIssuance : (ContractId Issuance, ContractId Holding.I)
+      with
+        id : Id
+        description : Text
+        quantity : InstrumentQuantity
+        account : AccountKey
+        auditCid : ContractId Audit
+      controller customer
+      do
+        createAuditedIssuanceRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreateAuditedIssuance with id; description; quantity; account; auditCid
+        exerciseByKey @S.Service (operator, provider, customer) S.CreateAuditedIssuance with createAuditedIssuanceRequestCid
 
     choice Terminate : ()
       with

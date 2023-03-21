@@ -65,7 +65,8 @@ const trading       = { name: "Trading",      path: "trading",      elem: <App k
 const network       = { name: "Network",      path: "network",      elem: <App key={12} label="Network"       description="Explore the distributed ledger network"  image={appNetwork}      path="/app/network/overview" /> };
 const settlement    = { name: "Settlement",   path: "settlement",   elem: <App key={13} label="Settlement"    description="Settle instructions in batches"          image={appSimulation}   path="/app/settlement/batches" /> };
 const audit         = { name: "Audit",        path: "audit",        elem: <App key={14} label="Audit"         description="Audit new assets"                        image={appAudit}        path="/app/audit/audits" /> };
-
+const auditedIssuance={ name: "AuditedIssuance",        path: "auditedIssuance",        elem: <App key={15} label="AuditedIssuance"         description="Issue new audited assets"                        image={appIssuance}        path="/app/auditedIssuance/issuances" /> };
+ 
 export const scenarios : Scenario[] = [
   {
     label: "Default",
@@ -219,11 +220,12 @@ export const scenarios : Scenario[] = [
     ]),
     useNetworkLogin: true
   },
+  
   {
     label: "Carbon Offset",
     description: "Carbon Offset markets workflows",
     image: scenarioCarbonOffset,
-    apps: [ structuring, issuance, custody, distribution, servicing, simulation, listing, trading, settlement, audit ],
+    apps: [ structuring, audit, auditedIssuance , custody, distribution, listing, trading ],
     positions: new Map([
       [ "Operator",     { x:    0, y:   0 } ],
       [ "Public",       { x:    0, y:   0 } ],
@@ -238,6 +240,26 @@ export const scenarios : Scenario[] = [
     ]),
     useNetworkLogin: true
   }
+
+  // {
+  //   label: "Carbon Offset",
+  //   description: "Carbon Offset markets workflows",
+  //   image: scenarioCarbonOffset,
+  //   apps: [ structuring, issuance, custody, distribution, servicing, simulation, listing, trading, settlement, audit,auditedIssuance ],
+  //   positions: new Map([
+  //     [ "Operator",     { x:    0, y:   0 } ],
+  //     [ "Public",       { x:    0, y:   0 } ],
+  //     [ "CentralBank",  { x:  400, y:   0 } ],
+  //     [ "Registry",     { x:  800, y:  50 } ],
+  //     [ "Exchange",     { x:  800, y: 550 } ],
+  //     [ "Agent",        { x:  400, y: 600 } ],
+  //     [ "Issuer",       { x: 1200, y: 300 } ],
+  //     [ "Investor1",    { x:    0, y: 300 } ],
+  //     [ "Investor2",    { x:  400, y: 300 } ],
+  //     [ "Investor3",    { x:  800, y: 300 } ]
+  //   ]),
+  //   useNetworkLogin: true
+  // } 
   
 ];
 

@@ -8,6 +8,7 @@ import Daml.Finance.Interface.Types.Common.Types (Id, InstrumentKey, PartiesMap)
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum)
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum)
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (flattenObservers)
 
 template CreateTokenRequest
   with
@@ -157,6 +158,7 @@ template CarbonOffsetTokenMetadata
     operator : Party
     provider : Party
     customer : Party
+    observers : PartiesMap
     id : Text
     country : Text
     projectType : Text
@@ -164,6 +166,8 @@ template CarbonOffsetTokenMetadata
     sustainableDevelopmentGoals : Text
   where
     signatory operator, provider, customer
+    observer Disclosure.flattenObservers observers
     key (operator, provider, customer, id) : (Party, Party, Party, Text)
     maintainer key._1
+    
 

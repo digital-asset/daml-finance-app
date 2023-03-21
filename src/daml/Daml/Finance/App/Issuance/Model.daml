@@ -43,3 +43,17 @@ template ReduceIssuanceRequest
     holdingCid : ContractId Holding.I
   where
     signatory operator, provider, customer
+
+
+template CreateAuditedIssuanceRequest
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Id
+    description : Text
+    quantity : InstrumentQuantity
+    account : AccountKey
+    quantityAudited : InstrumentQuantity
+  where
+    signatory operator, provider, customer
