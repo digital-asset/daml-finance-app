@@ -41,6 +41,7 @@ run  = do
     secRoute = Settlement.Hierarchy with rootCustodian = registry; pathsToRootCustodian = securitiesSettlementPaths
     paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
     -- paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
+    -- paths = fromList $ ("USD", cashRoute) :: ("EUR", cashRoute) :: map (\a -> (a, secRoute)) assets
   accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
   holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
 
