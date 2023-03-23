@@ -19,6 +19,7 @@ import Daml.Finance.Setup.Util.Common
 import Daml.Finance.Setup.Util.Role
 import Daml.Finance.Setup.Util.Service
 import Daml.Finance.Setup.Util.Workflow
+import Daml.Finance.Setup.Payoff
 import Daml.Script
 
 run : Script [PartyInfo]
@@ -31,12 +32,12 @@ run = do
 
   -- Factories
   let
-    assets = ["NewCo", "Acme"]
+    assets = ["NewCo", "Acme", "PE"]
     cashSettlementPaths = [[issuer], [registry], [custodian], [inv1, custodian], [inv2, custodian], [inv3, custodian]]
     securitiesSettlementPaths = [[registry], [custodian, registry], [inv1, custodian, registry], [inv2, custodian, registry], [inv3, custodian, registry]]
     cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = cashSettlementPaths
     secRoute = Settlement.Hierarchy with rootCustodian = issuer; pathsToRootCustodian = securitiesSettlementPaths
-    paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
+    paths = fromList $ ("USD", cashRoute) :: ("USD-CALL", cashRoute) :: map (\a -> (a, secRoute)) assets
   accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
   holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
 
@@ -94,27 +95,40 @@ run = do
 
   -- Instruments
   usd     <- originateToken  centralBank centralBank pub epoch "USD"    "United States Dollar"
+  capcall <- originateGeneric registry issuer pub epoch "USD-CALL" "USD Capital Call" $ capitalCall usd  
   equity  <- originateEquity registry    issuer      pub epoch "NewCo"  "NewCo, Inc. Common Stock"
   equity2 <- originateEquity registry    issuer      pub epoch "Acme"   "Acme, Inc. Common Stock"
+  pe <- originatePrivateEquity registry issuer       pub epoch "PE" "Private Equity Common Stock" capcall 0.0
 
   -- Data
-  createAccountDirectory issuer     [(usd, issuerCashAccount), (equity, issuerSecAccount)]        $ singleton public
-  createAccountDirectory registry   [(usd, registryCashAccount), (equity, registrySecAccount)]    $ singleton public
-  createAccountDirectory custodian  [(usd, custodianCashAccount), (equity, custodianSecAccount)]  $ singleton public
-  createAccountDirectory inv1       [(usd, inv1CashAccount), (equity, inv1SecAccount)]            $ singleton public
-  createAccountDirectory inv2       [(usd, inv2CashAccount), (equity, inv2SecAccount)]            $ singleton public
-  createAccountDirectory inv3       [(usd, inv3CashAccount), (equity, inv3SecAccount)]            $ singleton public
+  createAccountDirectory issuer     [(usd, issuerCashAccount), (equity, issuerSecAccount), (pe, issuerSecAccount)]        $ singleton public
+  createAccountDirectory registry   [(usd, registryCashAccount), (equity, registrySecAccount), (pe, registrySecAccount)]    $ singleton public
+  createAccountDirectory custodian  [(usd, custodianCashAccount), (equity, custodianSecAccount), (pe, custodianSecAccount)]  $ singleton public
+  createAccountDirectory inv1       [(usd, inv1CashAccount), (equity, inv1SecAccount), (pe, inv1SecAccount)]            $ singleton public
+  createAccountDirectory inv2       [(usd, inv2CashAccount), (equity, inv2SecAccount), (pe, inv2SecAccount)]            $ singleton public
+  createAccountDirectory inv3       [(usd, inv3CashAccount), (equity, inv3SecAccount), (pe, inv3SecAccount)]            $ singleton public
 
   -- Distribution
   registryEquityCid     <- deposit  operator issuer   registry    public (qty 1_000_000.0 equity) registrySecAccount
+  registryPeCid         <- deposit  operator issuer   registry    public (qty 1_000_000.0 pe) registrySecAccount
   (_, issuerEquityCid)  <- issue    operator registry issuer      public (qty 1_000_000.0 equity) issuerSecAccount
+  (_, issuerPeCid)      <- issue    operator registry issuer      public (qty 1_000_000.0 pe) issuerSecAccount
   custodianEquityCid    <- transfer issuer   custodianSecAccount  public $ coerceContractId issuerEquityCid
+  custodianPeCid        <- transfer issuer   custodianSecAccount  public $ coerceContractId issuerPeCid
   inv1EquityCid         <- deposit  operator custodian inv1       public (qty 500_000.0 equity) inv1SecAccount
+  inv1PeCid            <- deposit  operator custodian inv1       public (qty 500_000.0 pe) inv1SecAccount
   inv2EquityCid         <- deposit  operator custodian inv2       public (qty 300_000.0 equity) inv2SecAccount
+  inv2PeCid             <- deposit  operator custodian inv2       public (qty 300_000.0 pe) inv2SecAccount
   inv3EquityCid         <- deposit  operator custodian inv3       public (qty 200_000.0 equity) inv3SecAccount
+  inv3PeCid             <- deposit  operator custodian inv3       public (qty 200_000.0 pe) inv3SecAccount
+  --capitalCallCid        <- deposit operator custodian inv1        public (qty 200_000.00 capcall) inv1SecAccount
+
 
   issuerCashCid         <- coerceContractId <$> deposit  operator centralBank issuer     public (qty 500_000.0 usd) issuerCashAccount
   registryCashCid       <- coerceContractId <$> deposit  operator centralBank registry   public (qty 500_000.0 usd) registryCashAccount
+
+  effectCid <- declareCapitalCall operator registry issuer public pe todayTime 0.25
+  (batchCid, instructionCids) <- claimEffect operator custodian inv1 public effectCid [toInterfaceContractId inv1PeCid] (Id "Investor1-Settlement")
 
   -- Workflows
   let
@@ -144,6 +158,6 @@ run = do
 
       pure ()
 
-  -- processDividend
+  --processDividend
 
   pure parties

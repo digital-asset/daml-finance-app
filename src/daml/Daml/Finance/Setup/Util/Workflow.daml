@@ -23,7 +23,7 @@ import Daml.Finance.App.Distribution.Investment.Model qualified as Investment (I
 import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (RequestInvestment(..), S)
 import Daml.Finance.App.Issuance.Model qualified as Issuance (T)
 import Daml.Finance.App.Issuance.Service qualified as Issuance (CreateIssuance(..), RequestCreateIssuance(..), Service)
-import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Service, DeclareDividend(..), DeclareStockSplit(..), DeclareReplacement(..))
+import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (DeclareCapitalCall(..), Service, DeclareDividend(..), DeclareStockSplit(..), DeclareReplacement(..))
 import Daml.Finance.App.Listing.Model qualified as Listing (T)
 import Daml.Finance.App.Listing.Service qualified as Listing (CreateListing(..), RequestCreateListing(..), Service)
 import Daml.Finance.App.Quoting.Model qualified as Quoting (Side, Quote, QuoteRequest)
@@ -38,6 +38,7 @@ import Daml.Finance.Data.Time.DateClockUpdate qualified as Data (DateClockUpdate
 import Daml.Finance.Data.Time.DateClock.Types (Unit(..))
 import Daml.Finance.Instrument.Token.Instrument qualified as Token (Instrument(..))
 import Daml.Finance.Instrument.Equity.Instrument qualified as Equity (Instrument(..))
+import Daml.Finance.Instrument.PrivateEquity.Instrument qualified as PrivateEquity (Instrument(..))
 import Daml.Finance.Instrument.Bond.FixedRate.Instrument qualified as FixedRate (Instrument(..))
 import Daml.Finance.Instrument.Bond.FloatingRate.Instrument qualified as FloatingRate (Instrument(..))
 import Daml.Finance.Instrument.Bond.InflationLinked.Instrument qualified as InflationLinked (Instrument(..))
@@ -64,7 +65,7 @@ import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Claim (ClaimEffe
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (I)
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (I, Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Types qualified as Settlement (Allocation, Approval)
-import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id(..), InstrumentKey, InstrumentQuantity, Parties, PartiesMap)
+import Daml.Finance.Interface.Types.Common.Types (Quantity(..), AccountKey, Id(..), InstrumentKey, InstrumentQuantity, Parties, PartiesMap)
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayAdjustment(..), BusinessDayConventionEnum, HolidayCalendarData(..))
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum, RollConventionEnum(..))
@@ -147,6 +148,12 @@ originateEquity : Party -> Party -> PartiesMap -> Time -> Text -> Text -> Script
 originateEquity depository issuer observers validAsOf id description = do
   cid <- coerceContractId <$> submitMulti [depository, issuer] [] do
     createCmd Equity.Instrument with depository; issuer; id = Id id; version = "0"; observers; validAsOf; description
+  createReference cid depository issuer observers
+
+originatePrivateEquity : Party -> Party -> PartiesMap -> Time -> Text -> Text -> InstrumentKey -> Numeric 10-> Script InstrumentKey 
+originatePrivateEquity depository issuer observers validAsOf id description callInstrument called = do
+  cid <- coerceContractId <$> submitMulti [depository, issuer] [] do
+    createCmd PrivateEquity.Instrument with depository; issuer; id = Id id; version = "0"; observers; validAsOf; description; callInstrument; called
   createReference cid depository issuer observers
 
 originateGeneric : Party -> Party -> PartiesMap -> Time -> Text -> Text -> C -> Script InstrumentKey
@@ -296,6 +303,21 @@ declareDividend operator provider issuer public equity effectiveTime perUnitDist
         description = id
         effectiveTime
         perUnitDistribution
+
+declareCapitalCall : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> Numeric 10 -> Script (ContractId Effect.I)
+declareCapitalCall operator provider issuer public pe effectiveTime amount = do 
+  let 
+    id = "Capital-Call-"<> show pe.id <> "-" <> pe.version 
+    Some version = parseInt pe.version 
+  head <$> submitMulti [issuer][public] do 
+    exerciseByKeyCmd @Lifecycle.Service (operator, provider, issuer) Lifecycle.DeclareCapitalCall 
+      with 
+        privateEquity = pe 
+        newVersion = show (version + 1)
+        id = Id id
+        description = id
+        effectiveTime
+        amount
 
 declareReplacement : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> [InstrumentQuantity] -> Script (ContractId Effect.I)
 declareReplacement operator provider issuer public equity effectiveTime perUnitReplacement = do

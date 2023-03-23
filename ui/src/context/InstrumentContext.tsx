@@ -21,6 +21,7 @@ import { Claim } from "@daml.js/daml-finance-interface-claims/lib/Daml/Finance/I
 import { Id, InstrumentKey } from "@daml.js/daml-finance-interface-types-common/lib/Daml/Finance/Interface/Types/Common/Types";
 import { key } from "../util";
 import { Disclosure } from "@daml.js/daml-finance-interface-util/lib/Daml/Finance/Interface/Util/Disclosure";
+import { Instrument as PrivateEquity } from "@daml.js/daml-finance-app/lib/Daml/Finance/Instrument/PrivateEquity/Instrument";
 
 type InstrumentState = {
   loading               : boolean
@@ -28,6 +29,7 @@ type InstrumentState = {
   latests               : InstrumentAggregate[]
   tokens                : InstrumentAggregate[]
   equities              : InstrumentAggregate[]
+  privateEquities       : InstrumentAggregate[]
   generics              : InstrumentAggregate[]
   fixedRateBonds        : InstrumentAggregate[]
   floatingRateBonds     : InstrumentAggregate[]
@@ -46,6 +48,7 @@ export type InstrumentAggregate = CreateEvent<Base> & {
   claim               : CreateEvent<Claim> | undefined
   token               : CreateEvent<Token> | undefined
   equity              : CreateEvent<Equity> | undefined
+  privateEquity       : CreateEvent<PrivateEquity> | undefined 
   generic             : CreateEvent<Generic> | undefined
   fixedRateBond       : CreateEvent<FixedRateBond> | undefined
   floatingRateBond    : CreateEvent<FloatingRateBond> | undefined
@@ -74,6 +77,7 @@ const empty = {
   latests: [],
   tokens: [],
   equities: [],
+  privateEquities: [],
   generics: [],
   fixedRateBonds: [],
   floatingRateBonds: [],
@@ -95,6 +99,7 @@ export const InstrumentProvider : React.FC = ({ children }) => {
   const { loading: l3,  contracts: claims }               = useStreamQueries(Claim);
   const { loading: l4,  contracts: tokens }               = useStreamQueries(Token);
   const { loading: l5,  contracts: equities }             = useStreamQueries(Equity);
+  const { loading: l5_1, contracts: privateEquities }     = useStreamQueries(PrivateEquity);
   const { loading: l6,  contracts: generics }             = useStreamQueries(Generic);
   const { loading: l7,  contracts: fixedRateBonds }       = useStreamQueries(FixedRateBond);
   const { loading: l8,  contracts: floatingRateBonds }    = useStreamQueries(FloatingRateBond);
@@ -105,7 +110,7 @@ export const InstrumentProvider : React.FC = ({ children }) => {
   const { loading: l13, contracts: foreignExchangeSwaps } = useStreamQueries(ForeignExchangeSwap);
   const { loading: l14, contracts: interestRateSwaps }    = useStreamQueries(InterestRateSwap);
   const { loading: l15, contracts: disclosures }          = useStreamQueries(Disclosure);
-  const loading = l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8 || l9 || l10 || l11 || l12 || l13 || l14 || l15;
+  const loading = l1 || l2 || l3 || l4 || l5 || l5_1 || l6 || l7 || l8 || l9 || l10 || l11 || l12 || l13 || l14 || l15;
 
   if (loading) {
     return (
@@ -119,6 +124,7 @@ export const InstrumentProvider : React.FC = ({ children }) => {
     const claimsByCid               : Map<string, CreateEvent<Claim>>               = new Map(claims.map(c => [c.contractId, c]));
     const tokensByCid               : Map<string, CreateEvent<Token>>               = new Map(tokens.map(c => [c.contractId, c]));
     const equitiesByCid             : Map<string, CreateEvent<Equity>>              = new Map(equities.map(c => [c.contractId, c]));
+    const privateEquitiesByCid      : Map<String, CreateEvent<PrivateEquity>>       = new Map(privateEquities.map(c => [c.contractId, c]));
     const genericsByCid             : Map<string, CreateEvent<Generic>>             = new Map(generics.map(c => [c.contractId, c]));
     const fixedRateBondsByCid       : Map<string, CreateEvent<FixedRateBond>>       = new Map(fixedRateBonds.map(c => [c.contractId, c]));
     const floatingRateBondsByCid    : Map<string, CreateEvent<FloatingRateBond>>    = new Map(floatingRateBonds.map(c => [c.contractId, c]));
@@ -138,6 +144,7 @@ export const InstrumentProvider : React.FC = ({ children }) => {
         claim: claimsByCid.get(c.contractId),
         token: tokensByCid.get(c.contractId),
         equity: equitiesByCid.get(c.contractId),
+        privateEquity: privateEquitiesByCid.get(c.contractId),
         generic: genericsByCid.get(c.contractId),
         fixedRateBond: fixedRateBondsByCid.get(c.contractId),
         floatingRateBond: floatingRateBondsByCid.get(c.contractId),
@@ -171,6 +178,7 @@ export const InstrumentProvider : React.FC = ({ children }) => {
       latests,
       tokens: latests.filter(a => !!a.token),
       equities: latests.filter(a => !!a.equity),
+      privateEquities: latests.filter(a => !!a.privateEquity),
       generics: latests.filter(a => !!a.generic),
       fixedRateBonds: latests.filter(a => !!a.fixedRateBond),
       floatingRateBonds: latests.filter(a => !!a.floatingRateBond),

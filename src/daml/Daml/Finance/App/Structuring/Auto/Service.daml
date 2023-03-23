@@ -6,7 +6,7 @@ module Daml.Finance.App.Structuring.Auto.Service where
 import Daml.Finance.App.Structuring.Service qualified as S
 import Daml.Finance.Interface.Claims.Types (C)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I)
-import Daml.Finance.Interface.Types.Common.Types (Id, InstrumentKey, PartiesMap)
+import Daml.Finance.Interface.Types.Common.Types (InstrumentQuantity, Id, InstrumentKey, PartiesMap)
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum)
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum)
@@ -44,6 +44,20 @@ template Service
       do
         createEquityRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreateEquity with ..
         exerciseByKey @S.Service (operator, provider, customer) S.CreateEquity with createEquityRequestCid
+
+    nonconsuming choice RequestAndCreatePrivateEquity: ContractId Instrument.I 
+      with 
+        id : Id 
+        description : Text 
+        version: Text 
+        validAsOf : Time 
+        observers: PartiesMap 
+        callInstrument: InstrumentKey
+        called: Numeric 10
+      controller customer 
+      do 
+        createPrivateEquityRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreatePrivateEquity with .. 
+        exerciseByKey @S.Service (operator, provider, customer) S.CreatePrivateEquity with createPrivateEquityRequestCid 
 
     nonconsuming choice RequestAndCreateGeneric : ContractId Instrument.I
       with

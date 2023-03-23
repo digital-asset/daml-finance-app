@@ -11,6 +11,7 @@ import ContingentClaims.Valuation.Stochastic (Expr)
 import Daml.Finance.Claims.Util.Lifecycle qualified as Claim (lifecycle, lifecycleClaims, timeEvent)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I, R)
 import Daml.Finance.Interface.Instrument.Equity.Instrument qualified as Equity (I, DeclareDividend(..), DeclareReplacement(..), DeclareStockSplit(..))
+import Daml.Finance.Instrument.PrivateEquity.Instrument qualified as PrivateEquity (T)
 import Daml.Finance.Interface.Claims.Claim qualified as Claim (Claim, getClaims, GetClaims(..))
 import Daml.Finance.Interface.Claims.Types (C, Pending, TaggedClaim)
 import Daml.Finance.Interface.Lifecycle.Effect qualified as Effect (I)
@@ -18,9 +19,11 @@ import Daml.Finance.Interface.Lifecycle.Event qualified as Event (I)
 import Daml.Finance.Interface.Lifecycle.Observable.NumericObservable qualified as NumericObservable (I)
 import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (I, Evolve(..))
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I)
-import Daml.Finance.Interface.Types.Common.Types (Id, InstrumentKey(..), InstrumentQuantity)
+import Daml.Finance.Interface.Types.Common.Types (Quantity(..), Id, InstrumentKey(..), InstrumentQuantity)
 import Daml.Finance.App.Lifecycle.Pricing qualified as Pricing
 import Daml.Finance.App.Structuring.Auto.Service qualified as Structuring
+
+import Daml.Finance.Setup.Payoff (capitalCall)
 
 template Service
   with
@@ -60,6 +63,46 @@ template Service
         snd <$> exercise distributionRuleCid Lifecycle.Evolve with
           eventCid
           instrument = equity
+          observableCids = []
+
+    nonconsuming choice DeclareCapitalCall : [ContractId Effect.I]
+      with
+        privateEquity : InstrumentKey
+        newVersion : Text
+        id : Id
+        description : Text
+        effectiveTime : Time
+        amount: Numeric 10
+      controller customer
+      do
+        now <- getTime
+        (_, peRef) <- fetchByKey @Instrument.R privateEquity 
+        peInstrument <- fetch (coerceContractId peRef.cid: ContractId PrivateEquity.T)
+
+        let
+          disclosure = toInterface @Disclosure.I peInstrument
+          dv = view disclosure
+          newInstrument = InstrumentKey with depository = provider; issuer = customer; id = privateEquity.id; version = newVersion
+          newLiabilityInstrument = InstrumentKey with depository = provider; issuer = customer; id = privateEquity.id; version = "0"
+          antiDividend = Quantity 
+            with 
+              unit = peInstrument.callInstrument 
+              amount 
+
+        exerciseByKey @Structuring.Service (operator, provider, customer) Structuring.RequestAndCreatePrivateEquity 
+          with 
+            id = privateEquity.id
+            description = peInstrument.description
+            version = newVersion
+            validAsOf = now
+            observers = dv.observers
+            callInstrument = peInstrument.callInstrument
+            called = peInstrument.called + amount
+
+        eventCid <- exercise (coerceContractId peRef.cid : ContractId Equity.I) Equity.DeclareDividend with id; description; effectiveTime; newInstrument; perUnitDistribution=[antiDividend]
+        snd <$> exercise distributionRuleCid Lifecycle.Evolve with
+          eventCid
+          instrument = privateEquity
           observableCids = []
 
     nonconsuming choice DeclareReplacement : [ContractId Effect.I]

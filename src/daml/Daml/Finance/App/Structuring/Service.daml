@@ -24,7 +24,7 @@ import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayAdjustment(..), Bu
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum, RollConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.Schedule (Frequency(..), PeriodicSchedule(..))
-import Daml.Finance.Interface.Types.Common.Types (Id(..), InstrumentKey(..), PartiesMap)
+import Daml.Finance.Interface.Types.Common.Types (InstrumentQuantity, Id(..), InstrumentKey(..), PartiesMap)
 
 data Factories = Factories
   with
@@ -69,6 +69,19 @@ template Service
       controller customer
       do
         create CreateEquityRequest with ..
+
+    nonconsuming choice RequestCreatePrivateEquity : ContractId CreatePrivateEquityRequest 
+      with 
+        id : Id 
+        description: Text 
+        version : Text 
+        validAsOf: Time 
+        observers : PartiesMap 
+        callInstrument: InstrumentKey
+        called: Numeric 10
+      controller customer 
+      do 
+        create CreatePrivateEquityRequest with ..
 
     nonconsuming choice RequestCreateGeneric : ContractId CreateGenericRequest
       with
@@ -178,6 +191,16 @@ template Service
       controller provider
       do
         CreateEquityRequest{..} <- fetchAndArchive createEquityRequestCid
+        let
+          instrument = InstrumentKey with depository = provider; issuer = customer; id; version
+        exercise factories.equity Equity.Create with ..
+
+    nonconsuming choice CreatePrivateEquity : ContractId Instrument.I
+      with
+        createPrivateEquityRequestCid : ContractId CreatePrivateEquityRequest
+      controller provider
+      do
+        CreatePrivateEquityRequest{..} <- fetchAndArchive createPrivateEquityRequestCid
         let
           instrument = InstrumentKey with depository = provider; issuer = customer; id; version
         exercise factories.equity Equity.Create with ..
