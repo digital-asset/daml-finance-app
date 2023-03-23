@@ -181,6 +181,14 @@ export const Instrument : React.FC = () => {
                         <TableCell key={0} className={classes.tableCellSmall}><b>ValidAsOf</b></TableCell>
                         <TableCell key={1} className={classes.tableCellSmall}>{instrument.payload.validAsOf}</TableCell>
                       </TableRow>
+                      <TableRow key={6} className={classes.tableRow}>
+                        <TableCell key={0} className={classes.tableCellSmall}><b>Called</b></TableCell>
+                        <TableCell key={1} className={classes.tableCellSmall}>{!!instrument.privateEquity ? instrument.privateEquity.payload.called : "N/A"}</TableCell>
+                      </TableRow>
+                      <TableRow key={7} className={classes.tableRow}>
+                        <TableCell key={0} className={classes.tableCellSmall}><b>Call Currency</b></TableCell>
+                        <TableCell key={1} className={classes.tableCellSmall}>{!!instrument.privateEquity ? instrument.privateEquity.payload.callInstrument.id.unpack : "N/A"}</TableCell>
+                      </TableRow>
                     </TableBody>
                   </Table>
                   {!!instrument.claim &&
