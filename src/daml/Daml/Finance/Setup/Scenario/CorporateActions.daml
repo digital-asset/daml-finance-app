@@ -128,7 +128,7 @@ run = do
   registryCashCid       <- coerceContractId <$> deposit  operator centralBank registry   public (qty 500_000.0 usd) registryCashAccount
 
   effectCid <- declareCapitalCall operator registry issuer public pe todayTime 0.25
-  (batchCid, instructionCids) <- claimEffect operator custodian inv1 public effectCid [toInterfaceContractId inv1PeCid] (Id "Investor1-Settlement")
+  --(batchCid, instructionCids) <- claimEffect operator custodian inv1 public effectCid [toInterfaceContractId inv1PeCid] (Id "Investor1-Settlement")
 
   -- Workflows
   let

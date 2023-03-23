@@ -17,6 +17,7 @@ import Daml.Finance.Interface.Instrument.Bond.InflationLinked.Types (InflationLi
 import Daml.Finance.Interface.Instrument.Bond.ZeroCoupon.Factory qualified as ZeroCouponBond (Factory, Create(..))
 import Daml.Finance.Interface.Instrument.Bond.ZeroCoupon.Types (ZeroCoupon(..))
 import Daml.Finance.Interface.Instrument.Equity.Factory qualified as Equity (Factory, Create(..))
+import Daml.Finance.Instrument.PrivateEquity.Instrument qualified as PrivateEquity (Instrument(..))
 import Daml.Finance.Interface.Instrument.Generic.Factory qualified as Generic (Factory, Create(..))
 import Daml.Finance.Interface.Instrument.Token.Factory qualified as Token (Factory, Create(..))
 import Daml.Finance.Interface.Instrument.Token.Types (Token(..))
@@ -203,7 +204,14 @@ template Service
         CreatePrivateEquityRequest{..} <- fetchAndArchive createPrivateEquityRequestCid
         let
           instrument = InstrumentKey with depository = provider; issuer = customer; id; version
-        exercise factories.equity Equity.Create with ..
+        cid <- create PrivateEquity.Instrument 
+          with 
+            issuer = customer 
+            depository = provider 
+            ..
+        pure (coerceContractId cid : ContractId Instrument.I)
+
+        --exercise factories.equity Equity.Create with ..
 
     nonconsuming choice CreateGeneric : ContractId Instrument.I
       with
