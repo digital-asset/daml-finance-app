@@ -15,6 +15,7 @@ export const New : React.FC = () => {
       <Grid item xs={12}>
         <InstrumentPanel label="Equity" expanded={expanded} setExpanded={setExpanded}>
           <InstrumentCard label="Stock" path="equity/stock" />
+          <InstrumentCard label="Private Equity" path="equity/pe" />
         </InstrumentPanel>
         <InstrumentPanel label="Bond" expanded={expanded} setExpanded={setExpanded}>
           <InstrumentCard label="Fixed Rate Bond" path="bond/fixedrate" />

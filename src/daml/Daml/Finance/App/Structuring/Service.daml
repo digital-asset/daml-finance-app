@@ -7,7 +7,7 @@ import DA.Date (toGregorian)
 import Daml.Finance.App.Structuring.Model
 import Daml.Finance.App.Util (fetchAndArchive)
 import Daml.Finance.Interface.Claims.Types (C)
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I)
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (createReference, I)
 import Daml.Finance.Interface.Instrument.Bond.FixedRate.Factory qualified as FixedRateBond (Factory, Create(..))
 import Daml.Finance.Interface.Instrument.Bond.FixedRate.Types (FixedRate(..))
 import Daml.Finance.Interface.Instrument.Bond.FloatingRate.Factory qualified as FloatingRateBond (Factory, Create(..))
@@ -204,11 +204,14 @@ template Service
         CreatePrivateEquityRequest{..} <- fetchAndArchive createPrivateEquityRequestCid
         let
           instrument = InstrumentKey with depository = provider; issuer = customer; id; version
+
         cid <- create PrivateEquity.Instrument 
           with 
             issuer = customer 
             depository = provider 
             ..
+
+        Instrument.createReference instrument.depository (coerceContractId cid: ContractId Instrument.I)
         pure (coerceContractId cid : ContractId Instrument.I)
 
         --exercise factories.equity Equity.Create with ..

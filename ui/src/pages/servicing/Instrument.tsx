@@ -73,6 +73,7 @@ export const Instrument : React.FC = () => {
   const canDeclareDividend = !!description && !!effectiveDate && !!currency && !!amount;
   const canDeclareStockSplit = !!description && !!effectiveDate && !!amount;
   const canDeclareReplacement = !!description && !!effectiveDate && !!currency && !!amount;
+  const canDeclareCapitalCall = !!description && !!effectiveDate && !!amount;
 
   const previewLifecycle = async () => {
     const observableCids = numericObservables.map(c => c.contractId);
@@ -112,6 +113,20 @@ export const Instrument : React.FC = () => {
       perUnitDistribution: [ { amount, unit: ccy.key } ]
     };
     await ledger.exercise(Lifecycle.DeclareDividend, svc.contractId, arg);
+    navigate("/app/servicing/effects");
+  };
+
+  const declareCapitalCall = async () => {
+    if (!instrument.privateEquity) throw new Error("Cannot call for capital, unless the instrument is private equity.");
+    const arg = {
+      privateEquity: instrument.key,
+      newVersion: (parseInt(instrument.payload.version) + 1).toString(),
+      id: { unpack: uuidv4() },
+      description,
+      effectiveTime: parseDateAsTime(effectiveDate),
+      amount: amount
+    };
+    await ledger.exercise(Lifecycle.DeclareCapitalCall, svc.contractId, arg);
     navigate("/app/servicing/effects");
   };
 
@@ -280,6 +295,17 @@ export const Instrument : React.FC = () => {
                     <SelectInput  label="Replacement Asset" value={currency}      setValue={setCurrency} values={toValues(equities)} />
                     <TextInput    label="Per Unit Amount"   value={amount}        setValue={setAmount} />
                     <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canDeclareReplacement} onClick={declareReplacement}>Declare Replacement</Button>
+                  </AccordionDetails>
+                </Accordion>
+                <Accordion expanded={expanded === "Capital Call"} onChange={() => toggle("Capital Call")}>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <Typography gutterBottom variant="h5" component="h2">Capital Call</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <TextInput    label="Description"     value={description}   setValue={setDescription} />
+                    <DateInput    label="Effective Date"  value={effectiveDate} setValue={setEffectiveDate} />
+                    <TextInput    label="Amount"          value={amount}        setValue={setAmount} />
+                    <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canDeclareCapitalCall} onClick={declareCapitalCall}>Declare Capital Call</Button>
                   </AccordionDetails>
                 </Accordion>
               </Grid>}

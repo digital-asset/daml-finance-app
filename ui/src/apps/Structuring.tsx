@@ -13,6 +13,7 @@ import { NewFloatingRateBond } from "../pages/structuring/bond/NewFloatingRateBo
 import { NewInflationLinkedBond } from "../pages/structuring/bond/NewInflationLinkedBond";
 import { NewZeroCouponBond } from "../pages/structuring/bond/NewZeroCouponBond";
 import { NewStock } from "../pages/structuring/equity/NewStock";
+import { NewPrivateEquity } from "../pages/structuring/equity/NewPrivateEquity";
 
 export const Structuring : React.FC = () => {
   const entries = [
@@ -21,6 +22,7 @@ export const Structuring : React.FC = () => {
   ];
   const paths = [
     { path: "new/equity/stock", element: <NewStock /> },
+    { path: "new/equity/pe", element: <NewPrivateEquity /> },
     { path: "new/bond/fixedrate", element: <NewFixedRateBond /> },
     { path: "new/bond/floatingrate", element: <NewFloatingRateBond /> },
     { path: "new/bond/inflationlinked", element: <NewInflationLinkedBond /> },
