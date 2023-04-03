@@ -120,6 +120,24 @@ export const scenarios : Scenario[] = [
     useNetworkLogin: true
   },
   {
+    label: "Private Equity",
+    description: "PE Issuance and Capital Calls",
+    image: scenarioCorporateActions,
+    apps: [ structuring, issuance, custody, distribution, servicing, listing, trading, settlement, network ],
+    positions: new Map([
+      [ "Operator",     { x:    0, y:   0 } ],
+      [ "Public",       { x:    0, y:   0 } ],
+      [ "Admin",  { x:  300, y:   300 } ],
+      [ "TransferAgent",     { x:  0, y:   0 } ],
+      [ "WealthManager",    { x:  0, y: 400 } ],
+      [ "Issuer",       { x:  400, y: 0 } ],
+      [ "Investor1",    { x:    0, y: 600 } ],
+      [ "Investor2",    { x:  400, y: 600 } ],
+      [ "Investor3",    { x:  800, y: 600 } ]
+    ]),
+    useNetworkLogin: true
+  },
+  {
     label: "Securities Lending",
     description: "Stock borrowing and lending scenario",
     image: scenarioSecuritiesLending,

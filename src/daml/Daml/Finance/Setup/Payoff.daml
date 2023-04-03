@@ -388,5 +388,8 @@ loan startDate endDate underlying interestAmount interestCurrency interestDates 
 capitalCall : InstrumentKey -> C
 capitalCall ccy = give $ one ccy 
 
+capitalCommitment : InstrumentKey -> Time -> C 
+capitalCommitment ccy start = anytime (at start) $ one ccy 
+
 rollDaily : Date -> Date -> [Date]
 rollDaily d end = if d > end then [] else d :: rollDaily (addDays d 1) end

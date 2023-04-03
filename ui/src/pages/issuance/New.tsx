@@ -33,7 +33,8 @@ export const New : React.FC = () => {
   const { loading: l2, latests } = useInstruments();
   const { contracts: accounts, loading: l3 } = useStreamQueries(Reference);
 
-  const aggregates = latests.filter(c => c.payload.issuer === party);
+  // const aggregates = latests.filter(c => c.payload.issuer === party);
+  const aggregates = latests
   const aggregate = aggregates.find(c => c.payload.id.unpack === instrumentLabel);
 
   if (l1 || l2 || l3) return <Spinner />;

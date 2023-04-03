@@ -1,0 +1,123 @@
+module Daml.Finance.Setup.Scenario.PrivateEquity where
+
+import DA.Map (empty, fromList)
+import DA.Set (singleton)
+
+import Daml.Script 
+
+import Daml.Finance.Account.Account qualified as Account (Factory(..))
+import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
+import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
+
+import Daml.Finance.Setup.Util.Common
+import Daml.Finance.Setup.Util.Role
+import Daml.Finance.Setup.Util.Service
+import Daml.Finance.Setup.Util.Workflow
+import Daml.Finance.Setup.Payoff
+import DA.Foldable (mapA_)
+import DA.Date
+import DA.Time (time)
+import Daml.Finance.Interface.Util.Common (qty)
+
+run: Script [PartyInfo]
+run = do 
+  let scenario = "Private Equity"
+  parties <- allocateParties scenario ["Operator", "Issuer", "Admin", "TransferAgent", "WealthManager", "Investor1", "Investor2", "Investor3"] "Public"
+  let 
+    all@[operator, issuer, admin, ta, wm, inv1, inv2, inv3, public] = map (.id) parties 
+    pub = fromList [("Public", singleton public)]
+
+  -- Factories
+  let 
+    assetLabels = ["PE1", "PE2", "PE3"]
+    settlementPaths = [[ta], [admin], [wm]]
+    cashRoute = Settlement.Hierarchy 
+      with 
+        rootCustodian = ta
+        pathsToRootCustodian = settlementPaths 
+    secRoute = Settlement.Hierarchy 
+      with 
+        rootCustodian = ta 
+        pathsToRootCustodian = settlementPaths 
+    paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assetLabels
+  accountFactoryCid<- toInterfaceContractId 
+    <$> submit operator do createCmd Account.Factory  with provider = operator; observers = pub 
+  holdingFactoryCid <- toInterfaceContractId
+    <$> submit operator do createCmd Fungible.Factory with provider = operator; observers = pub 
+
+  -- Roles 
+  createOperatorRole      operator 
+  createCustodianRole     operator ta 
+  createCustodianRole     operator wm 
+  createCustodianRole     operator admin
+  createDistributorRole   operator admin 
+
+  -- Services 
+
+  let 
+    custodyServices = [
+      (ta, wm),
+      (ta, admin), 
+      (ta, issuer), 
+      (wm, inv1), 
+      (wm, inv2), 
+      (wm, inv3)]
+
+  -- custody services
+  mapA_ (\(provider, customer) -> createCustodyService 
+    operator provider customer paths accountFactoryCid holdingFactoryCid) custodyServices
+
+  -- Admin is going to Structure Equities and Capital Commitments.
+  createStructuringService      operator ta admin 
+  createStructuringAutoService  operator ta admin
+
+  -- Issuer will issue PE Tokens. 
+  createIssuanceService         operator admin issuer 
+  createIssuanceAutoService     operator admin issuer         
+
+  -- WMs will issue Capital commitments 
+  createIssuanceService         operator admin wm
+  createIssuanceAutoService     operator admin wm 
+
+  createLifecycleService        operator ta issuer public 
+
+  mapA_ (\(provider, customer) -> createSettlementService 
+    operator provider customer paths ) custodyServices
+  
+  -- Time 
+  t <- getTime 
+  let 
+    today = toDateUTC t 
+    todayTime = time today 0 0 0
+    tt d = time d 0 0 0 
+    epoch = tt $ date 1970 Jan 1
+    (ty, tm, td) = toGregorian today 
+  (clockCid, eventCid) <- createClockAndEvent all today $ singleton public
+
+  -- Instruments 
+  usd       <- originateToken ta ta pub epoch "USD" "United States Dollar"
+  commitUsd <- originateGeneric ta admin pub epoch "COMMIT-USD" "USD Capital Commitment" $ capitalCommitment usd epoch
+  
+  -- Accounts
+  let 
+    createAccount' provider customer name obs = createAccount operator provider customer public name obs
+
+  issuerCashAccount     <- createAccount'   ta issuer "Issuer@TA|Cash"  empty 
+  issuerCashCid         <- deposit operator ta issuer public (qty 50_000_000.00 usd) issuerCashAccount
+  adminCashAccount      <- createAccount'   ta admin  "Admin@TA|Cash"   empty
+  adminCashCid          <- deposit operator ta admin  public (qty 100_000_000.00 usd) adminCashAccount
+  invCashAccounts       <- mapA (\(name, party) -> createAccount' ta wm (name <>"@WM|Cash") $ fromList [(name, singleton party)]) [
+    ("Investor1", inv1),
+    ("Investor2", inv2),
+    ("Investor3", inv3)]
+  mapA_ (deposit operator ta wm public (qty 80_000_000.00 usd)) invCashAccounts
+
+  issuerSecAccount     <- createAccount' ta issuer "Issuer@TA|Securities"  empty 
+  adminSecAccount      <- createAccount' ta admin  "Admin@TA|Securities"   empty
+  invSecAccounts        <- mapA (\(name, party) -> createAccount' ta wm (name <>"@WM|Securities") $ fromList [(name, singleton party)]) [
+    ("Investor1", inv1),
+    ("Investor2", inv2),
+    ("Investor3", inv3)]
+
+
+  pure parties

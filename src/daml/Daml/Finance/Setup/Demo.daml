@@ -12,8 +12,10 @@ import Daml.Finance.Setup.Scenario.NaturalGas           qualified as NaturalGas
 import Daml.Finance.Setup.Scenario.OtcSwaps             qualified as OtcSwaps
 import Daml.Finance.Setup.Scenario.SecuritiesLending    qualified as SecuritiesLending
 import Daml.Finance.Setup.Scenario.StructuredNotes      qualified as StructuredNotes
+import Daml.Finance.Setup.Scenario.PrivateEquity     qualified as PrivateEquity
 import Daml.Finance.Setup.Util.Common (PartyInfo)
 import Daml.Script
+
 
 demo : Script [PartyInfo]
 demo = do
@@ -26,4 +28,5 @@ demo = do
   p7 <- FundTokenization.run
   p8 <- DecentralizedFinance.run
   p9 <- OtcSwaps.run
-  pure $ p1 <> p2 <> p3 <> p4 <> p5 <> p6 <> p7 <> p8 <> p9
+  p10 <- PrivateEquity.run 
+  pure $ p1 <> p2 <> p3 <> p4 <> p5 <> p6 <> p7 <> p8 <> p9 <> p10
