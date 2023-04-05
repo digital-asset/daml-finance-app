@@ -47,6 +47,7 @@ run  = do
   createDistributorRole operator agent
 
   -- Services
+  createCustodyService          operator centralBank centralBank paths accountFactoryCid holdingFactoryCid
   createCustodyService          operator centralBank issuer     paths accountFactoryCid holdingFactoryCid
   createCustodyService          operator centralBank inv1       paths accountFactoryCid holdingFactoryCid
   createCustodyService          operator centralBank inv2       paths accountFactoryCid holdingFactoryCid
@@ -58,6 +59,8 @@ run  = do
   createCustodyService          operator registry    inv3       paths accountFactoryCid holdingFactoryCid
   createIssuanceService         operator registry    issuer
   createIssuanceAutoService     operator registry    issuer
+  createIssuanceService         operator centralBank centralBank
+  createIssuanceAutoService     operator centralBank centralBank
   createStructuringService      operator registry    issuer
   createStructuringAutoService  operator registry    issuer
   createLifecycleService        operator registry    issuer public
@@ -81,6 +84,7 @@ run  = do
   createBiddingAutoService      operator agent       inv3
 
   -- Accounts
+  centralBankOwnAccount <- createAccount operator centralBank centralBank public "CentralBank@CentralBank" empty
   issuerCashAccount   <- createAccount operator centralBank  issuer   public "Issuer@CentralBank"    empty
   registryCashAccount <- createAccount operator centralBank  registry public "Registry@CentralBank"  empty
   inv1CashAccount     <- createAccount operator centralBank  inv1     public "Investor1@CentralBank" empty
