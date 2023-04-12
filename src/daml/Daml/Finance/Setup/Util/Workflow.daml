@@ -53,7 +53,7 @@ import Daml.Finance.Instrument.Swap.InterestRate.Instrument qualified as Interes
 import Daml.Finance.Interface.Account.Account qualified as Account (Controllers(..), R)
 import Daml.Finance.Interface.Claims.Types (C)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
-import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..), SplitResult)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I, Transfer(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (GetView(..), I, Reference(..))
 import Daml.Finance.Interface.Instrument.Swap.Fpml.FpmlTypes (SwapStream)
@@ -234,6 +234,11 @@ originateInterestRateSwap depository issuer id description observers lastEventTi
 transfer : Party -> AccountKey -> Party -> ContractId Transferable.I -> Script (ContractId Transferable.I)
 transfer from toAccount public depositCid = do
   submitMulti [from, toAccount.owner] [public] do exerciseCmd depositCid Transferable.Transfer with actors = fromList [from, toAccount.owner]; newOwnerAccount = toAccount
+
+split : Party -> Decimal -> ContractId Fungible.I -> Script (ContractId Fungible.I, Optional (ContractId Fungible.I))
+split owner amount depositCid  = do 
+  sr <- submit owner $ exerciseCmd depositCid Fungible.Split with amounts = [amount]
+  return (head sr.splitCids, sr.rest)
 
 deposit : Party -> Party -> Party -> Party -> InstrumentQuantity -> AccountKey -> Script (ContractId Holding.I)
 deposit operator provider customer public quantity account = do

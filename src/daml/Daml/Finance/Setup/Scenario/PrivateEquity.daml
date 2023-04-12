@@ -18,6 +18,7 @@ import DA.Foldable (mapA_)
 import DA.Date
 import DA.Time (time)
 import Daml.Finance.Interface.Util.Common (qty)
+import DA.List ((!!))
 
 run: Script [PartyInfo]
 run = do 
@@ -26,6 +27,10 @@ run = do
   let 
     all@[operator, issuer, admin, ta, wm, inv1, inv2, inv3, public] = map (.id) parties 
     pub = fromList [("Public", singleton public)]
+    investorNames = [
+      ("Investor1", inv1),
+      ("Investor2", inv2),
+      ("Investor3", inv3)]
 
   -- Factories
   let 
@@ -48,7 +53,6 @@ run = do
   -- Roles 
   createOperatorRole      operator 
   createCustodianRole     operator ta 
-  createCustodianRole     operator wm 
   createCustodianRole     operator admin
   createDistributorRole   operator admin 
 
@@ -59,9 +63,13 @@ run = do
       (ta, wm),
       (ta, admin), 
       (ta, issuer), 
-      (wm, inv1), 
-      (wm, inv2), 
-      (wm, inv3)]
+      (admin, inv1), 
+      (admin, inv2), 
+      (admin, inv3),
+      (admin, issuer),
+      (ta, inv1), 
+      (ta, inv2), 
+      (ta, inv3)]
 
   -- custody services
   mapA_ (\(provider, customer) -> createCustodyService 
@@ -72,14 +80,22 @@ run = do
   createStructuringAutoService  operator ta admin
 
   -- Issuer will issue PE Tokens. 
-  createIssuanceService         operator admin issuer 
-  createIssuanceAutoService     operator admin issuer         
+  -- createIssuanceService         operator admin issuer 
+  -- createIssuanceAutoService     operator admin issuer         
 
   -- WMs will issue Capital commitments 
-  createIssuanceService         operator admin wm
-  createIssuanceAutoService     operator admin wm 
+  -- createIssuanceService         operator admin wm
+  -- createIssuanceAutoService     operator admin wm 
+
+  -- Investors will issuer their own capital commitments 
+  mapA_ (\(_, inv) -> do 
+    createIssuanceService         operator admin inv 
+    createStructuringAutoService  operator admin inv) (investorNames)
 
   createLifecycleService        operator ta issuer public 
+  createLifecycleService        operator admin issuer public 
+
+  --mapA_ (\(_, inv) -> createLifecycleService operator admin inv public) investorNames
 
   mapA_ (\(provider, customer) -> createSettlementService 
     operator provider customer paths ) custodyServices
@@ -96,7 +112,10 @@ run = do
 
   -- Instruments 
   usd       <- originateToken ta ta pub epoch "USD" "United States Dollar"
-  commitUsd <- originateGeneric ta admin pub epoch "COMMIT-USD" "USD Capital Commitment" $ capitalCommitment usd epoch
+  usdCommits <- mapA (\(name, inv) -> originateGeneric admin inv pub epoch ("USD-COMMIT-" <> name) (name <>" USD Capital Commitment") $ capitalCommitment usd epoch) investorNames
+  pe1        <- originateEquity admin issuer pub epoch "PE1" "Private Equity Fund 1" 
+  pe2        <- originateEquity admin issuer pub epoch "PE2" "Private Equity Fund 2"
+  pe3        <- originateEquity admin issuer pub epoch "PE3" "Private Equity Fund 3"
   
   -- Accounts
   let 
@@ -106,18 +125,27 @@ run = do
   issuerCashCid         <- deposit operator ta issuer public (qty 50_000_000.00 usd) issuerCashAccount
   adminCashAccount      <- createAccount'   ta admin  "Admin@TA|Cash"   empty
   adminCashCid          <- deposit operator ta admin  public (qty 100_000_000.00 usd) adminCashAccount
-  invCashAccounts       <- mapA (\(name, party) -> createAccount' ta wm (name <>"@WM|Cash") $ fromList [(name, singleton party)]) [
-    ("Investor1", inv1),
-    ("Investor2", inv2),
-    ("Investor3", inv3)]
-  mapA_ (deposit operator ta wm public (qty 80_000_000.00 usd)) invCashAccounts
 
   issuerSecAccount     <- createAccount' ta issuer "Issuer@TA|Securities"  empty 
+  issuerCommitAccount  <- createAccount' admin issuer "Issuer@Admin|Commitments" empty
   adminSecAccount      <- createAccount' ta admin  "Admin@TA|Securities"   empty
-  invSecAccounts        <- mapA (\(name, party) -> createAccount' ta wm (name <>"@WM|Securities") $ fromList [(name, singleton party)]) [
-    ("Investor1", inv1),
-    ("Investor2", inv2),
-    ("Investor3", inv3)]
+  invSecAccounts       <- mapA (\(name, party) -> createAccount' admin party (name <>"@WM|Securities") $ fromList [(name, singleton party), ("Admin", singleton admin)]) investorNames
+  invCashAccounts      <- mapA (\(name, party) -> createAccount' ta    party (name <>"@WM|Cash") $ fromList [(name, singleton party), ("Admin", singleton admin)]) investorNames
 
+  deposit operator ta inv1 public (qty 80_000_000.00 usd) $invCashAccounts !! 0 
+  deposit operator ta inv2 public (qty 80_000_000.00 usd) $invCashAccounts !! 1
+  deposit operator ta inv3 public (qty 80_000_000.00 usd) $invCashAccounts !! 2
+
+  (_, invCommitHolding1) <- issue operator admin inv1 public (qty 50_000_000.00 (usdCommits!!0)) $ invSecAccounts!!0
+  (_, invCommitHolding2) <- issue operator admin inv2 public (qty 50_000_000.00 (usdCommits!!1)) $ invSecAccounts!!1
+  (_, invCommitHolding3) <- issue operator admin inv3 public (qty 50_000_000.00 (usdCommits!!2)) $ invSecAccounts!!2
+
+  (toTransfer1, Some invCommitHolding1) <- split inv1 20_000_000.00 (coerceContractId invCommitHolding1) 
+  (toTransfer2, Some invCommitHolding2) <- split inv2 30_000_000.00 (coerceContractId invCommitHolding2)
+  (toTransfer3, Some invCommitHolding3) <- split inv3 40_000_000.00 (coerceContractId invCommitHolding3)
+
+  transfer inv1 issuerCommitAccount public $coerceContractId toTransfer1
+  transfer inv2 issuerCommitAccount public $coerceContractId toTransfer2
+  transfer inv3 issuerCommitAccount public $coerceContractId toTransfer3
 
   pure parties
