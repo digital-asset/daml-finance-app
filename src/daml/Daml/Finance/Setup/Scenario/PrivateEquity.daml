@@ -51,54 +51,66 @@ run = do
     <$> submit operator do createCmd Fungible.Factory with provider = operator; observers = pub 
 
   -- Roles 
-  createOperatorRole      operator 
-  createCustodianRole     operator ta 
-  createCustodianRole     operator admin
-  createDistributorRole   operator admin 
+  createOperatorRole operator
+  let 
+    custodianRoles = [inv1, inv2, inv3, ta, admin] 
+  mapA_ (createCustodianRole operator) custodianRoles
+  -- createDistributorRole   operator admin 
 
   -- Services 
-
+  -- Custody Services
   let 
     custodyServices = [
-      (ta, wm),
-      (ta, admin), 
+      (inv1, issuer), 
+      (inv2, issuer), 
+      (inv3, issuer),
+      (inv1, inv1), 
+      (inv2, inv2), 
+      (inv3, inv3),
       (ta, issuer), 
-      (admin, inv1), 
-      (admin, inv2), 
-      (admin, inv3),
-      (admin, issuer),
-      (ta, inv1), 
+      (ta, inv1),
       (ta, inv2), 
       (ta, inv3)]
 
-  -- custody services
   mapA_ (\(provider, customer) -> createCustodyService 
     operator provider customer paths accountFactoryCid holdingFactoryCid) custodyServices
+  -- custody services
+  
+  let 
+    issuanceServices = [
+      (inv1, inv1),
+      (inv2, inv2), 
+      (inv3, inv3), 
+      (ta, issuer)]
+
+  mapA_ (\(provider, customer) -> do 
+    createIssuanceService operator provider customer 
+    createIssuanceAutoService operator provider customer) issuanceServices
 
   -- Admin is going to Structure Equities and Capital Commitments.
-  createStructuringService      operator ta admin 
-  createStructuringAutoService  operator ta admin
+  -- createStructuringService      operator ta admin 
+  -- createStructuringAutoService  operator ta admin
 
-  -- Issuer will issue PE Tokens. 
-  -- createIssuanceService         operator admin issuer 
-  -- createIssuanceAutoService     operator admin issuer         
+  -- -- Issuer will issue PE Tokens. 
+  -- -- createIssuanceService         operator admin issuer 
+  -- -- createIssuanceAutoService     operator admin issuer         
 
-  -- WMs will issue Capital commitments 
-  -- createIssuanceService         operator admin wm
-  -- createIssuanceAutoService     operator admin wm 
+  -- -- WMs will issue Capital commitments 
+  -- -- createIssuanceService         operator admin wm
+  -- -- createIssuanceAutoService     operator admin wm 
 
-  -- Investors will issuer their own capital commitments 
-  mapA_ (\(_, inv) -> do 
-    createIssuanceService         operator admin inv 
-    createStructuringAutoService  operator admin inv) (investorNames)
+  -- -- Investors will issuer their own capital commitments 
+  -- mapA_ (\(_, inv) -> do 
+  --   createIssuanceService         operator admin inv 
+  --   createStructuringAutoService  operator admin inv) (investorNames)
 
-  createLifecycleService        operator ta issuer public 
-  createLifecycleService        operator admin issuer public 
+  -- createLifecycleService        operator ta issuer public 
+  -- createLifecycleService        operator admin issuer public 
 
-  --mapA_ (\(_, inv) -> createLifecycleService operator admin inv public) investorNames
+  -- --mapA_ (\(_, inv) -> createLifecycleService operator admin inv public) investorNames
 
-  mapA_ (\(provider, customer) -> createSettlementService 
-    operator provider customer paths ) custodyServices
+  -- mapA_ (\(provider, customer) -> createSettlementService 
+  --   operator provider customer paths ) custodyServices
   
   -- Time 
   t <- getTime 
@@ -112,40 +124,68 @@ run = do
 
   -- Instruments 
   usd       <- originateToken ta ta pub epoch "USD" "United States Dollar"
-  usdCommits <- mapA (\(name, inv) -> originateGeneric admin inv pub epoch ("USD-COMMIT-" <> name) (name <>" USD Capital Commitment") $ capitalCommitment usd epoch) investorNames
-  pe1        <- originateEquity admin issuer pub epoch "PE1" "Private Equity Fund 1" 
-  pe2        <- originateEquity admin issuer pub epoch "PE2" "Private Equity Fund 2"
-  pe3        <- originateEquity admin issuer pub epoch "PE3" "Private Equity Fund 3"
+  usdCommit <- originateGeneric ta admin pub epoch "USD-COMMIT" "USD Capital Commitment" $ capitalCommitment usd epoch
+  pe1        <- originateEquity admin issuer pub epoch "PE1" "Private Equity Fund 1 Shares" 
+  pe2        <- originateEquity admin issuer pub epoch "PE2" "Private Equity Fund 2 Shares"
+  pe3        <- originateEquity admin issuer pub epoch "PE3" "Private Equity Fund 3 Shares"
   
   -- Accounts
   let 
     createAccount' provider customer name obs = createAccount operator provider customer public name obs
+    adminObs = fromList [("Admin", singleton admin), ("Issuer", singleton issuer)]
 
-  issuerCashAccount     <- createAccount'   ta issuer "Issuer@TA|Cash"  empty 
-  issuerCashCid         <- deposit operator ta issuer public (qty 50_000_000.00 usd) issuerCashAccount
-  adminCashAccount      <- createAccount'   ta admin  "Admin@TA|Cash"   empty
-  adminCashCid          <- deposit operator ta admin  public (qty 100_000_000.00 usd) adminCashAccount
+  -- Commit Accounts
+  issuerCommitAccount1      <- createAccount'  inv1 issuer "Issuer@Inv1|Commitments" adminObs 
+  issuerCommitAccount2      <- createAccount'  inv2 issuer "Issuer@Inv2|Commitments" adminObs
+  issuerCommitAccount3      <- createAccount'  inv3 issuer "Issuer@Inv2|Commitments" adminObs
 
-  issuerSecAccount     <- createAccount' ta issuer "Issuer@TA|Securities"  empty 
-  issuerCommitAccount  <- createAccount' admin issuer "Issuer@Admin|Commitments" empty
-  adminSecAccount      <- createAccount' ta admin  "Admin@TA|Securities"   empty
-  invSecAccounts       <- mapA (\(name, party) -> createAccount' admin party (name <>"@WM|Securities") $ fromList [(name, singleton party), ("Admin", singleton admin)]) investorNames
-  invCashAccounts      <- mapA (\(name, party) -> createAccount' ta    party (name <>"@WM|Cash") $ fromList [(name, singleton party), ("Admin", singleton admin)]) investorNames
+  inv1UncommittedAccount <- createAccount'  inv1 inv1   "Investor1|Uncommitted" empty 
+  inv2UncommittedAccount <- createAccount'  inv2 inv2   "Investor2|Uncommitted" empty 
+  inv3UncommittedAccount <- createAccount'  inv3 inv3   "Investor3|Uncommitted" empty 
 
-  deposit operator ta inv1 public (qty 80_000_000.00 usd) $invCashAccounts !! 0 
-  deposit operator ta inv2 public (qty 80_000_000.00 usd) $invCashAccounts !! 1
-  deposit operator ta inv3 public (qty 80_000_000.00 usd) $invCashAccounts !! 2
+  -- Cash Accounts 
+  issuerCashAccount         <- createAccount' ta issuer "Issuer@TA|Cash" empty 
+  inv1CashAccount           <- createAccount' ta inv1   "Investor1@TA|Cash" empty 
+  inv2CashAccount           <- createAccount' ta inv2   "Investor2@TA|Cash" empty
+  inv3CashAccount           <- createAccount' ta inv3   "Investor3@TA|Cash" empty
 
-  (_, invCommitHolding1) <- issue operator admin inv1 public (qty 50_000_000.00 (usdCommits!!0)) $ invSecAccounts!!0
-  (_, invCommitHolding2) <- issue operator admin inv2 public (qty 50_000_000.00 (usdCommits!!1)) $ invSecAccounts!!1
-  (_, invCommitHolding3) <- issue operator admin inv3 public (qty 50_000_000.00 (usdCommits!!2)) $ invSecAccounts!!2
+  -- Security Accounts 
+  issuerSecAccount          <- createAccount' ta issuer "Issuer@TA|Securities" empty 
+  inv1SecAccount            <- createAccount' ta inv1   "Investor1@TA|Securities" empty 
+  inv2SecAccount            <- createAccount' ta inv2   "Investor2@TA|Securities" empty
+  inv3SecAccount            <- createAccount' ta inv3   "Investor3@TA|Securities" empty
 
-  (toTransfer1, Some invCommitHolding1) <- split inv1 20_000_000.00 (coerceContractId invCommitHolding1) 
-  (toTransfer2, Some invCommitHolding2) <- split inv2 30_000_000.00 (coerceContractId invCommitHolding2)
-  (toTransfer3, Some invCommitHolding3) <- split inv3 40_000_000.00 (coerceContractId invCommitHolding3)
+  -- Holdings 
+  issuerCommit1Cid <- deposit operator inv1 issuer public (qty 25_000_000.00 usdCommit) issuerCommitAccount1
+  issuerCommit2Cid <- deposit operator inv2 issuer public (qty 35_000_000.00 usdCommit) issuerCommitAccount2
+  issuerCommit3Cid <- deposit operator inv3 issuer public (qty 40_000_000.00 usdCommit) issuerCommitAccount3
 
-  transfer inv1 issuerCommitAccount public $coerceContractId toTransfer1
-  transfer inv2 issuerCommitAccount public $coerceContractId toTransfer2
-  transfer inv3 issuerCommitAccount public $coerceContractId toTransfer3
+  inv1CashCid      <- deposit operator ta inv1 public (qty 200_000_000.00 usd) inv1CashAccount
+  inv2CashCid      <- deposit operator ta inv2 public (qty 200_000_000.00 usd) inv2CashAccount
+  inv3CashCid      <- deposit operator ta inv3 public (qty 200_000_000.00 usd) inv3CashAccount
+
+  inv1UncommitedCid   <- deposit operator inv1 inv1 public (qty 60_000_000.00 usdCommit) inv1UncommittedAccount
+  inv2UncommitedCid   <- deposit operator inv2 inv2 public (qty 70_000_000.00 usdCommit) inv2UncommittedAccount
+  inv3UncommitedCid   <- deposit operator inv3 inv3 public (qty 90_000_000.00 usdCommit) inv3UncommittedAccount
+
+  inv1Shares1Cid    <- deposit operator ta inv1 public (qty 25_000_000.00 pe1) inv1SecAccount
+  inv2Shares1Cid    <- deposit operator ta inv2 public (qty 35_000_000.00 pe1) inv2SecAccount
+  inv3Shares1Cid    <- deposit operator ta inv3 public (qty 40_000_000.00 pe1) inv3SecAccount
+  
+  -- (_, invCommitHolding1) <- issue operator admin inv1 public (qty 50_000_000.00 (usdCommits!!0)) $ invSecAccounts!!0
+  -- (_, invCommitHolding2) <- issue operator admin inv2 public (qty 50_000_000.00 (usdCommits!!1)) $ invSecAccounts!!1
+  -- (_, invCommitHolding3) <- issue operator admin inv3 public (qty 50_000_000.00 (usdCommits!!2)) $ invSecAccounts!!2
+
+  -- (toTransfer1, Some invCommitHolding1) <- split inv1 20_000_000.00 (coerceContractId invCommitHolding1) 
+  -- (toTransfer2, Some invCommitHolding2) <- split inv2 30_000_000.00 (coerceContractId invCommitHolding2)
+  -- (toTransfer3, Some invCommitHolding3) <- split inv3 40_000_000.00 (coerceContractId invCommitHolding3)
+
+  -- transfer inv1 issuerCommitAccount public $coerceContractId toTransfer1
+  -- transfer inv2 issuerCommitAccount public $coerceContractId toTransfer2
+  -- transfer inv3 issuerCommitAccount public $coerceContractId toTransfer3
+
+  -- Issuances (Test)
+  (_, invCommitHolding1) <- issue operator inv1 inv1 public (qty 50_000_000.00 usdCommit) $ inv1UncommittedAccount
+  (_, issuerPe2Holding) <- issue operator ta issuer public (qty 80_000_000.00 pe2) $ issuerSecAccount
 
   pure parties
