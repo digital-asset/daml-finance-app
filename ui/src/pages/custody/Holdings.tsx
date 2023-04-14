@@ -29,8 +29,8 @@ export const Holdings : React.FC<HoldingsProps> = ({ showAssets }) => {
   const { loading: l1, holdings } = useHoldings();
   if (l1) return <Spinner />;
 
-  const filtered = holdings.filter(c => showAssets ? c.payload.account.owner === party : c.payload.account.custodian === party);
-
+  // const filtered = holdings.filter(c => showAssets ? c.payload.account.owner === party : c.payload.account.custodian === party);
+  const filtered = holdings
   const entries : PositionEntry[] = [];
   for (let i = 0; i < filtered.length; i++) {
     const a = filtered[i];
