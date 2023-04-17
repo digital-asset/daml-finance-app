@@ -65,7 +65,7 @@ export const Holdings : React.FC<HoldingsProps> = ({ showAssets }) => {
       fmt(e.available, 0)
     ];
   }
-  const headers = ["Custodian", "Owner", "Instrument", "Version", "Position", "Locked", "Available"]
+  const headers = ["Obligor", "Beneficiary", "Instrument", "Version", "Position", "Locked", "Available"]
   const values : any[] = entries.map(createRow);
   const alignment : Alignment[] = ["left", "left", "left", "left", "right", "right", "right"];
   return (

@@ -24,7 +24,7 @@ export const Accounts : React.FC = () => {
       c.signatories.map(getName).join(", ")
     ];
   }
-  const headers = ["Custodian", "Owner", "Account", "Signatories"]
+  const headers = ["Obligor", "Beneficiary", "Account", "Signatories"]
   const ownerValues : any[] = accounts.filter(s => s.payload.owner === party).map(createRow);
   const custodianValues : any[] = accounts.filter(s => s.payload.custodian === party).map(createRow);
 
