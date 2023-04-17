@@ -25,7 +25,7 @@ import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayAdjustment(..), Bu
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum, RollConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.Schedule (Frequency(..), PeriodicSchedule(..))
-import Daml.Finance.Interface.Types.Common.Types (InstrumentQuantity, Id(..), InstrumentKey(..), PartiesMap)
+import Daml.Finance.Interface.Types.Common.Types (Id(..), InstrumentKey(..), PartiesMap)
 
 data Factories = Factories
   with

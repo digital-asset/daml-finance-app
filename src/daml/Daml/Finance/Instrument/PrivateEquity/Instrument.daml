@@ -3,13 +3,12 @@ module Daml.Finance.Instrument.PrivateEquity.Instrument where
 import DA.Set (fromList, singleton)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as BaseInstrument (I, View(..), disclosureUpdateReference)
 import Daml.Finance.Interface.Instrument.Equity.Instrument qualified as Equity (DeclareDividend(..), DeclareReplacement(..), DeclareStockSplit(..), HasImplementation, I, View(..))
-import Daml.Finance.Interface.Types.Common.Types (InstrumentQuantity, Id, InstrumentKey(..), PartiesMap)
+import Daml.Finance.Interface.Types.Common.Types (Id, InstrumentKey(..), PartiesMap)
 import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, View(..), flattenObservers)
 import Daml.Finance.Lifecycle.Event.Distribution qualified as Distribution (Event(..))
 import Daml.Finance.Lifecycle.Event.Replacement qualified as Replacement (Event(..))
 import Daml.Finance.Util.Disclosure (addObserversImpl, removeObserversImpl, setObserversImpl)
-import Daml.Finance.Interface.Lifecycle.Event qualified as Event (I)
 
 -- | Type synonym for `Instrument`.
 type T = Instrument

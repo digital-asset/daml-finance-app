@@ -18,7 +18,6 @@ import DA.Foldable (mapA_)
 import DA.Date
 import DA.Time (time)
 import Daml.Finance.Interface.Util.Common (qty)
-import DA.List ((!!))
 
 run: Script [PartyInfo]
 run = do 

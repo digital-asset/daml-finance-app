@@ -53,7 +53,7 @@ import Daml.Finance.Instrument.Swap.InterestRate.Instrument qualified as Interes
 import Daml.Finance.Interface.Account.Account qualified as Account (Controllers(..), R)
 import Daml.Finance.Interface.Claims.Types (C)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
-import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..), SplitResult)
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..))
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I, Transfer(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (GetView(..), I, Reference(..))
 import Daml.Finance.Interface.Instrument.Swap.Fpml.FpmlTypes (SwapStream)
@@ -65,7 +65,7 @@ import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Claim (ClaimEffe
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (I)
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (I, Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Types qualified as Settlement (Allocation, Approval)
-import Daml.Finance.Interface.Types.Common.Types (Quantity(..), AccountKey, Id(..), InstrumentKey, InstrumentQuantity, Parties, PartiesMap)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id(..), InstrumentKey, InstrumentQuantity, Parties, PartiesMap)
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayAdjustment(..), BusinessDayConventionEnum, HolidayCalendarData(..))
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum, RollConventionEnum(..))
@@ -73,6 +73,7 @@ import Daml.Finance.Interface.Types.Date.Schedule (Frequency(..), PeriodicSchedu
 import Daml.Finance.Settlement.Instruction qualified as Instruction (T)
 import Daml.Finance.Setup.Util.Common (getHolding)
 import Daml.Script
+import ContingentClaims.Core.Claim (one)
 
 createAccount : Party -> Party -> Party -> Party -> Text -> PartiesMap -> Script AccountKey
 createAccount operator custodian owner public id observers = do
@@ -309,20 +310,20 @@ declareDividend operator provider issuer public equity effectiveTime perUnitDist
         effectiveTime
         perUnitDistribution
 
-declareCapitalCall : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> Numeric 10 -> Script (ContractId Effect.I)
-declareCapitalCall operator provider issuer public pe effectiveTime amount = do 
+declareCapitalCall : Party -> Party -> Party -> Party -> InstrumentKey -> InstrumentKey -> Time -> Numeric 10 -> Script (ContractId Effect.I)
+declareCapitalCall operator provider issuer public commitment ccy effectiveTime amount = do 
   let 
-    id = "Capital-Call-"<> show pe.id <> "-" <> pe.version 
-    Some version = parseInt pe.version 
+    id = "Capital-Call-"<> show commitment.id <> "-" <> commitment.version 
+    Some version = parseInt commitment.version 
   head <$> submitMulti [issuer][public] do 
     exerciseByKeyCmd @Lifecycle.Service (operator, provider, issuer) Lifecycle.DeclareCapitalCall 
       with 
-        privateEquity = pe 
-        newVersion = show (version + 1)
         id = Id id
-        description = id
-        effectiveTime
-        amount
+        description = id 
+        electionTime = effectiveTime 
+        amount 
+        commitment
+        claim = one ccy 
 
 declareReplacement : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> [InstrumentQuantity] -> Script (ContractId Effect.I)
 declareReplacement operator provider issuer public equity effectiveTime perUnitReplacement = do
@@ -350,6 +351,15 @@ declareStockSplit operator provider issuer public equity effectiveTime adjustmen
         description = id
         effectiveTime
         adjustmentFactor
+
+-- declareCapitalCall: Party -> Party -> Party -> Party -> InstrumentKey -> Script (ContractId Effect.I)
+-- declareCapitalCall operator provider issuer public instrument = do 
+--   let 
+--     id = "CapitalCall-" <> show instrument.id
+--   head <$> submitMulti [issuer][public] do 
+--     exerciseByKeyCmd @Lifecycle.Service (operator, provider, issuer) Lifecycle.DeclareElection 
+--       with 
+--         instrument 
 
 claimEffect : Party -> Party -> Party -> Party -> ContractId Effect.I -> [ContractId Holding.I] -> Id -> Script (ContractId Batch.I, [ContractId Instruction.I])
 claimEffect operator custodian owner public effectCid holdingCids batchId = do
