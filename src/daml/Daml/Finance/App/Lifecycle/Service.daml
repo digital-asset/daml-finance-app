@@ -136,7 +136,8 @@ template Service
           let (otherConsumed, otherProduced) = Claim.splitPending pending
           effectCid <- toInterfaceContractId <$>
             create ElectionEffect with
-              providers = fromList [instrumentT.issuer, instrumentT.depository]
+              --providers = fromList [instrumentT.issuer, instrumentT.depository]
+              providers = fromList [provider, customer]
               custodian = if electorIsOwner then counterparty else elector
               owner = if electorIsOwner then elector else counterparty
               id = id
