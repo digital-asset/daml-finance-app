@@ -18,6 +18,8 @@ import DA.Foldable (mapA_)
 import DA.Date
 import DA.Time (time)
 import Daml.Finance.Interface.Util.Common (qty)
+import Daml.Finance.Interface.Types.Common.Types (Id(..))
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
 
 run: Script [PartyInfo]
 run = do 
@@ -66,6 +68,9 @@ run = do
       (inv1, inv1), 
       (inv2, inv2), 
       (inv3, inv3),
+      (inv1, admin), 
+      (inv2, admin), 
+      (inv3, admin),
       (ta, issuer), 
       (ta, inv1),
       (ta, inv2), 
@@ -90,7 +95,10 @@ run = do
     lifecycleServices = [
       (inv1, admin), 
       (inv2, admin), 
-      (inv3, admin)]
+      (inv3, admin),
+      (inv1, issuer), 
+      (inv2, issuer), 
+      (inv3, issuer)]
 
   mapA_ (\(provider, customer) -> createLifecycleService operator provider customer public) lifecycleServices
 
@@ -131,7 +139,7 @@ run = do
 
   -- Instruments 
   usd       <- originateToken ta ta pub epoch "USD" "United States Dollar"
-  usdCommit <- originateGeneric ta admin pub epoch "USD-COMMIT" "USD Capital Commitment" $ capitalCommitment usd epoch
+  usdCommit <- originateGeneric ta admin pub epoch "PE1-COMMITMENT" "USD Commitment to PE1" $ capitalCommitment usd epoch
   pe1        <- originateEquity admin issuer pub epoch "PE1" "Private Equity Fund 1 Shares" 
   pe2        <- originateEquity admin issuer pub epoch "PE2" "Private Equity Fund 2 Shares"
   pe3        <- originateEquity admin issuer pub epoch "PE3" "Private Equity Fund 3 Shares"
@@ -144,7 +152,7 @@ run = do
   -- Commit Accounts
   issuerCommitAccount1      <- createAccount'  inv1 issuer "Issuer@Inv1|Commitments" adminObs 
   issuerCommitAccount2      <- createAccount'  inv2 issuer "Issuer@Inv2|Commitments" adminObs
-  issuerCommitAccount3      <- createAccount'  inv3 issuer "Issuer@Inv2|Commitments" adminObs
+  issuerCommitAccount3      <- createAccount'  inv3 issuer "Issuer@Inv3|Commitments" adminObs
 
   inv1UncommittedAccount <- createAccount'  inv1 inv1   "Investor1|Uncommitted" empty 
   inv2UncommittedAccount <- createAccount'  inv2 inv2   "Investor2|Uncommitted" empty 
@@ -164,6 +172,7 @@ run = do
 
   -- Holdings 
   issuerCommit1Cid <- deposit operator inv1 issuer public (qty 25_000_000.00 usdCommit) issuerCommitAccount1
+  --issuerCommit1Cid <- submit issuer $ coerceInterfaceContractId <$> exerciseCmd (toInterfaceContractId @Disclosure.I issuerCommit1Cid) Disclosure.AddObservers with disclosers = singleton issuer; observersToAdd = ("Admin", singleton admin)
   issuerCommit2Cid <- deposit operator inv2 issuer public (qty 35_000_000.00 usdCommit) issuerCommitAccount2
   issuerCommit3Cid <- deposit operator inv3 issuer public (qty 40_000_000.00 usdCommit) issuerCommitAccount3
 
@@ -178,18 +187,6 @@ run = do
   inv1Shares1Cid    <- deposit operator ta inv1 public (qty 25_000_000.00 pe1) inv1SecAccount
   inv2Shares1Cid    <- deposit operator ta inv2 public (qty 35_000_000.00 pe1) inv2SecAccount
   inv3Shares1Cid    <- deposit operator ta inv3 public (qty 40_000_000.00 pe1) inv3SecAccount
-  
-  -- (_, invCommitHolding1) <- issue operator admin inv1 public (qty 50_000_000.00 (usdCommits!!0)) $ invSecAccounts!!0
-  -- (_, invCommitHolding2) <- issue operator admin inv2 public (qty 50_000_000.00 (usdCommits!!1)) $ invSecAccounts!!1
-  -- (_, invCommitHolding3) <- issue operator admin inv3 public (qty 50_000_000.00 (usdCommits!!2)) $ invSecAccounts!!2
-
-  -- (toTransfer1, Some invCommitHolding1) <- split inv1 20_000_000.00 (coerceContractId invCommitHolding1) 
-  -- (toTransfer2, Some invCommitHolding2) <- split inv2 30_000_000.00 (coerceContractId invCommitHolding2)
-  -- (toTransfer3, Some invCommitHolding3) <- split inv3 40_000_000.00 (coerceContractId invCommitHolding3)
-
-  -- transfer inv1 issuerCommitAccount public $coerceContractId toTransfer1
-  -- transfer inv2 issuerCommitAccount public $coerceContractId toTransfer2
-  -- transfer inv3 issuerCommitAccount public $coerceContractId toTransfer3
 
   -- Issuances (Test)
   (_, invCommitHolding1) <- issue operator inv1 inv1 public (qty 50_000_000.00 usdCommit) $ inv1UncommittedAccount
@@ -199,7 +196,9 @@ run = do
 
   -- declareCapitalCall : Party -> Party -> Party -> Party -> InstrumentKey -> InstrumentKey -> Time -> Numeric 10 -> Script (ContractId Effect.I)
   -- declareCapitalCall operator provider issuer public commitment ccy effectiveTime amount
-  capitCallId <- declareCapitalCall operator inv1 admin public usdCommit usd t 5_000_000.00
+  capitalCallEffectId <- declareCapitalCall operator inv1 admin public usdCommit usd t 5_000_000.0
 
+  -- Need to do a split and expose first
+  (batchCid, instructionCids) <- claimEffect operator inv1 admin public capitalCallEffectId [issuerCommit1Cid] $ Id "Round 1"
 
   pure parties
