@@ -28,7 +28,7 @@ export const Instruments : React.FC = () => {
   if (l1 || l2 || l3 || l4) return <Spinner />;
 
   const myInstruments = latests.filter(a =>
-    //(a.payload.issuer === party) &&
+    (a.payload.issuer === party) &&
     (!!a.claim || !!a.equity));
 
   const lifecycleAll = async (cs : any[]) => {

@@ -116,19 +116,19 @@ export const Instrument : React.FC = () => {
     navigate("/app/servicing/effects");
   };
 
-  const declareCapitalCall = async () => {
-    if (!instrument.privateEquity) throw new Error("Cannot call for capital, unless the instrument is private equity.");
-    const arg = {
-      privateEquity: instrument.key,
-      newVersion: (parseInt(instrument.payload.version) + 1).toString(),
-      id: { unpack: uuidv4() },
-      description,
-      effectiveTime: parseDateAsTime(effectiveDate),
-      amount: amount
-    };
-    await ledger.exercise(Lifecycle.DeclareCapitalCall, svc.contractId, arg);
-    navigate("/app/servicing/effects");
-  };
+  // const declareCapitalCall = async () => {
+  //   if (!instrument.privateEquity) throw new Error("Cannot call for capital, unless the instrument is private equity.");
+  //   const arg = {
+  //     privateEquity: instrument.key,
+  //     newVersion: (parseInt(instrument.payload.version) + 1).toString(),
+  //     id: { unpack: uuidv4() },
+  //     description,
+  //     effectiveTime: parseDateAsTime(effectiveDate),
+  //     amount: amount
+  //   };
+  //   await ledger.exercise(Lifecycle.DeclareCapitalCall, svc.contractId, arg);
+  //   navigate("/app/servicing/effects");
+  // };
 
   const declareStockSplit = async () => {
     if (!instrument.equity) throw new Error("Cannot declare stock split on non-equity instrument");
@@ -305,7 +305,7 @@ export const Instrument : React.FC = () => {
                     <TextInput    label="Description"     value={description}   setValue={setDescription} />
                     <DateInput    label="Effective Date"  value={effectiveDate} setValue={setEffectiveDate} />
                     <TextInput    label="Amount"          value={amount}        setValue={setAmount} />
-                    <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canDeclareCapitalCall} onClick={declareCapitalCall}>Declare Capital Call</Button>
+                    <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canDeclareCapitalCall} >Declare Capital Call</Button>
                   </AccordionDetails>
                 </Accordion>
               </Grid>}

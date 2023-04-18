@@ -199,6 +199,6 @@ run = do
   capitalCallEffectId <- declareCapitalCall operator inv1 admin public usdCommit usd t 5_000_000.0
 
   -- Need to do a split and expose first
-  (batchCid, instructionCids) <- claimEffect operator inv1 admin public capitalCallEffectId [issuerCommit1Cid] $ Id "Round 1"
+  --(batchCid, instructionCids) <- claimEffect operator inv1 admin public capitalCallEffectId [issuerCommit1Cid] $ Id "Round 1"
 
   pure parties
