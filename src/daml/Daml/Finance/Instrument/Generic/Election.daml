@@ -52,7 +52,7 @@ template Election
         let v = view $ toInterface @Election.I this
         (newInstrument, effects) <- exercise exercisableCid Election.ApplyElection with
           observableCids
-          electionCid = toInterfaceContractId self
+          electionCid = toInterfaceContractId self 
         archive self -- this is needed as we can't write postconsuming choices on interfaces
         pure (newInstrument, effects)
       asEvent = toInterface @Event.I this

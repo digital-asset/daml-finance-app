@@ -8,22 +8,33 @@ import ContingentClaims.Core.Observation (Observation(..))
 import ContingentClaims.Lifecycle.Lifecycle qualified as Lifecycle
 import ContingentClaims.Lifecycle.Util (expiry, fixings, payoffs)
 import ContingentClaims.Valuation.Stochastic (Expr)
-import Daml.Finance.Claims.Util.Lifecycle qualified as Claim (lifecycle, lifecycleClaims, timeEvent)
+import Daml.Finance.Claims.Util.Lifecycle qualified as Claim (lifecycle, lifecycleClaims, timeEvent, splitPending)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I, R)
 import Daml.Finance.Interface.Instrument.Equity.Instrument qualified as Equity (I, DeclareDividend(..), DeclareReplacement(..), DeclareStockSplit(..))
 import Daml.Finance.Instrument.PrivateEquity.Instrument qualified as PrivateEquity (T)
-import Daml.Finance.Interface.Claims.Claim qualified as Claim (Claim, getClaims, GetClaims(..))
+import Daml.Finance.Interface.Claims.Claim qualified as Claim (Claim, I, getClaims, GetClaims(..))
 import Daml.Finance.Interface.Claims.Types (C, Pending, TaggedClaim)
-import Daml.Finance.Interface.Lifecycle.Effect qualified as Effect (I)
+import Daml.Finance.Interface.Lifecycle.Effect qualified as Effect (I, Effect)
 import Daml.Finance.Interface.Lifecycle.Event qualified as Event (I)
 import Daml.Finance.Interface.Lifecycle.Observable.NumericObservable qualified as NumericObservable (I)
 import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (I, Evolve(..))
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I)
 import Daml.Finance.Interface.Types.Common.Types (Quantity(..), Id, InstrumentKey(..), InstrumentQuantity)
 import Daml.Finance.Instrument.Generic.Election qualified as Election (Election(..))
+import Daml.Finance.Interface.Instrument.Generic.Election qualified as Election (ApplyElection(..), Exercisable(..), ExercisableView(..), getElectionTime)
 import Daml.Finance.App.Lifecycle.Pricing qualified as Pricing
 import Daml.Finance.App.Structuring.Auto.Service qualified as Structuring
+import Daml.Finance.Claims.Util.Lifecycle (electionEvent)
 
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as BaseInstrument (R, createReference, getKey)
+import Daml.Finance.Instrument.Generic.Instrument (Instrument(..))
+import Daml.Finance.Lifecycle.ElectionEffect (ElectionEffect(..))
+import Daml.Finance.Interface.Util.Common (fetchInterfaceByKey)
+import DA.Foldable (forA_)
+import DA.Optional (fromSome)
+import DA.Set (fromList)
+import DA.Text (sha256)
+import Daml.Finance.Claims.Util (isZero')
 
 template Service
   with
@@ -79,25 +90,67 @@ template Service
         commitmentInstrument <- fetch commitmentRef.cid 
         let 
           disclosure = toInterface @Disclosure.I commitmentInstrument 
-          v = view commitmentInstrument 
+          cv = view commitmentInstrument 
           dv = view disclosure
-        eventCid <- create Election.Election
-          with 
-            elector = customer 
-            counterparty = provider 
-            provider 
-            id 
-            description 
-            instrument = commitment 
-            amount 
-            claim 
-            electorIsOwner = True 
-            electionTime 
-            observers = dv.observers
-        snd <$> exercise genericRuleCid Lifecycle.Evolve with 
-          eventCid = (coerceContractId eventCid: ContractId Event.I)
-          instrument = commitment 
-          observableCids = []
+          electorIsOwner = True
+          instrument = commitment
+          elector = customer
+          counterparty = provider
+          election = Election.Election
+            with 
+              elector 
+              counterparty 
+              provider 
+              id 
+              description 
+              instrument 
+              amount 
+              claim 
+              electorIsOwner 
+              electionTime 
+              observers = dv.observers
+          --electionTime = Election.getElectionTime election
+          election = electionEvent electionTime electorIsOwner claim
+          lifecycler = customer
+
+        -- fetch claim tree
+        claimInstrument <- fetchInterfaceByKey @BaseInstrument.R instrument
+        claims <- Claim.getClaims (toInterface @Claim.I claimInstrument) $ Claim.GetClaims with
+          actor = lifecycler
+
+        -- lifecycle as of the time given by the event, by applying the corresponding election
+        (remaining, pending) <- Claim.lifecycle lifecycler [] claimInstrument [election]
+
+        -- create new instrument and return effect
+        if remaining == claims && null pending then
+          pure []
+        else do
+          let
+            instrumentT : Instrument = fromSome $ fromInterface claimInstrument
+            currentKey = BaseInstrument.getKey $ toInterface claimInstrument
+            newKey = currentKey with version = sha256 $ show remaining
+            [claim] = fmap (.claim) remaining
+            producedInstrument = if isZero' remaining then None else Some newKey
+          forA_ producedInstrument $
+            tryCreateNewInstrument lifecycler claim electionTime instrumentT
+          let (otherConsumed, otherProduced) = Claim.splitPending pending
+          effectCid <- toInterfaceContractId <$>
+            create ElectionEffect with
+              providers = fromList [instrumentT.issuer, instrumentT.depository]
+              custodian = if electorIsOwner then counterparty else elector
+              owner = if electorIsOwner then elector else counterparty
+              id = id
+              description = description
+              targetInstrument = currentKey
+              producedInstrument
+              amount = amount
+              otherConsumed
+              otherProduced
+              settlementTime = Some electionTime
+              observers = dv.observers
+          --pure (producedInstrument, [effectCid])
+          pure [effectCid]
+        
 
     nonconsuming choice DeclareAntiDividend : [ContractId Effect.I]
       with
@@ -334,3 +387,16 @@ template Request
       controller operator, provider
       do
         create Service with ..
+
+tryCreateNewInstrument : Party -> C -> Time -> Instrument -> InstrumentKey -> Update ()
+tryCreateNewInstrument actor newClaim eventTime oldInstrument newKey = do
+  existingRefCidOpt <- lookupByKey @BaseInstrument.R newKey
+  case existingRefCidOpt of
+    Some existingRefCid -> pure ()
+    None -> do
+      instCid <- create oldInstrument with
+        claims = newClaim
+        lastEventTimestamp = eventTime
+        version = newKey.version
+      BaseInstrument.createReference actor $ toInterfaceContractId instCid
+      pure ()

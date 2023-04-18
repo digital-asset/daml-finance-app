@@ -73,8 +73,8 @@ run = do
 
   mapA_ (\(provider, customer) -> createCustodyService 
     operator provider customer paths accountFactoryCid holdingFactoryCid) custodyServices
-  -- custody services
   
+  --issuance services
   let 
     issuanceServices = [
       (inv1, inv1),
@@ -85,6 +85,14 @@ run = do
   mapA_ (\(provider, customer) -> do 
     createIssuanceService operator provider customer 
     createIssuanceAutoService operator provider customer) issuanceServices
+
+  let 
+    lifecycleServices = [
+      (inv1, admin), 
+      (inv2, admin), 
+      (inv3, admin)]
+
+  mapA_ (\(provider, customer) -> createLifecycleService operator provider customer public) lifecycleServices
 
   -- Admin is going to Structure Equities and Capital Commitments.
   -- createStructuringService      operator ta admin 
@@ -186,5 +194,12 @@ run = do
   -- Issuances (Test)
   (_, invCommitHolding1) <- issue operator inv1 inv1 public (qty 50_000_000.00 usdCommit) $ inv1UncommittedAccount
   (_, issuerPe2Holding) <- issue operator ta issuer public (qty 80_000_000.00 pe2) $ issuerSecAccount
+
+  -- Capital Call (Test)
+
+  -- declareCapitalCall : Party -> Party -> Party -> Party -> InstrumentKey -> InstrumentKey -> Time -> Numeric 10 -> Script (ContractId Effect.I)
+  -- declareCapitalCall operator provider issuer public commitment ccy effectiveTime amount
+  capitCallId <- declareCapitalCall operator inv1 admin public usdCommit usd t 5_000_000.00
+
 
   pure parties
