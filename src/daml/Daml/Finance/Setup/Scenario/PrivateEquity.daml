@@ -20,6 +20,7 @@ import DA.Time (time)
 import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Interface.Types.Common.Types (Id(..))
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..))
 
 run: Script [PartyInfo]
 run = do 
@@ -36,16 +37,36 @@ run = do
   -- Factories
   let 
     assetLabels = ["PE1", "PE2", "PE3"]
-    settlementPaths = [[ta], [admin], [wm]]
+    settlementPaths = [[ta], [admin], [wm], [inv1], [inv2], [inv3], [issuer]]
     cashRoute = Settlement.Hierarchy 
       with 
         rootCustodian = ta
-        pathsToRootCustodian = settlementPaths 
+        pathsToRootCustodian = settlementPaths
     secRoute = Settlement.Hierarchy 
       with 
         rootCustodian = ta 
-        pathsToRootCustodian = settlementPaths 
-    paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assetLabels
+        pathsToRootCustodian = settlementPaths
+    commitments = map (<>"-COMMITMENT") assetLabels
+    commitmentRoute1 = Settlement.Hierarchy 
+      with 
+        rootCustodian = inv1 
+        pathsToRootCustodian = settlementPaths
+    commitmentRoute2 = Settlement.Hierarchy 
+      with 
+        rootCustodian = inv2 
+        pathsToRootCustodian = settlementPaths
+    commitmentRoute3 = Settlement.Hierarchy 
+      with 
+        rootCustodian = inv3 
+        pathsToRootCustodian = settlementPaths
+    
+    commitmentPaths = map (\(rootCustodian, i) -> (i, Settlement.Hierarchy with pathsToRootCustodian = settlementPaths; .. )) [
+      (inv1, "PE1-COMMITMENT"), 
+      (inv2, "PE1-COMMITMENT"), 
+      (inv3, "PE1-COMMITMENT")]
+
+    paths = fromList $ [("USD", cashRoute)] ++ commitmentPaths ++ map (\a -> (a, secRoute)) assetLabels
+
   accountFactoryCid<- toInterfaceContractId 
     <$> submit operator do createCmd Account.Factory  with provider = operator; observers = pub 
   holdingFactoryCid <- toInterfaceContractId
@@ -101,31 +122,6 @@ run = do
       (inv3, issuer)]
 
   mapA_ (\(provider, customer) -> createLifecycleService operator provider customer public) lifecycleServices
-
-  -- Admin is going to Structure Equities and Capital Commitments.
-  -- createStructuringService      operator ta admin 
-  -- createStructuringAutoService  operator ta admin
-
-  -- -- Issuer will issue PE Tokens. 
-  -- -- createIssuanceService         operator admin issuer 
-  -- -- createIssuanceAutoService     operator admin issuer         
-
-  -- -- WMs will issue Capital commitments 
-  -- -- createIssuanceService         operator admin wm
-  -- -- createIssuanceAutoService     operator admin wm 
-
-  -- -- Investors will issuer their own capital commitments 
-  -- mapA_ (\(_, inv) -> do 
-  --   createIssuanceService         operator admin inv 
-  --   createStructuringAutoService  operator admin inv) (investorNames)
-
-  -- createLifecycleService        operator ta issuer public 
-  -- createLifecycleService        operator admin issuer public 
-
-  -- --mapA_ (\(_, inv) -> createLifecycleService operator admin inv public) investorNames
-
-  -- mapA_ (\(provider, customer) -> createSettlementService 
-  --   operator provider customer paths ) custodyServices
   
   -- Time 
   t <- getTime 
@@ -139,7 +135,7 @@ run = do
 
   -- Instruments 
   usd       <- originateToken ta ta pub epoch "USD" "United States Dollar"
-  usdCommit <- originateGeneric ta admin pub epoch "PE1-COMMITMENT" "USD Commitment to PE1" $ capitalCommitment usd epoch
+  usdCommit <- originateGeneric admin issuer pub epoch "PE1-COMMITMENT" "USD Commitment to PE1" $ capitalCommitment usd epoch
   pe1        <- originateEquity admin issuer pub epoch "PE1" "Private Equity Fund 1 Shares" 
   pe2        <- originateEquity admin issuer pub epoch "PE2" "Private Equity Fund 2 Shares"
   pe3        <- originateEquity admin issuer pub epoch "PE3" "Private Equity Fund 3 Shares"
@@ -150,7 +146,7 @@ run = do
     adminObs = fromList [("Admin", singleton admin), ("Issuer", singleton issuer)]
 
   -- Commit Accounts
-  issuerCommitAccount1      <- createAccount'  inv1 issuer "Issuer@Inv1|Commitments" adminObs 
+  issuerCommitAccount1      <- createAccount'  inv1 issuer "Issuer@Inv1|Commitments" adminObs
   issuerCommitAccount2      <- createAccount'  inv2 issuer "Issuer@Inv2|Commitments" adminObs
   issuerCommitAccount3      <- createAccount'  inv3 issuer "Issuer@Inv3|Commitments" adminObs
 
@@ -189,16 +185,16 @@ run = do
   inv3Shares1Cid    <- deposit operator ta inv3 public (qty 40_000_000.00 pe1) inv3SecAccount
 
   -- Issuances (Test)
-  (_, invCommitHolding1) <- issue operator inv1 inv1 public (qty 50_000_000.00 usdCommit) $ inv1UncommittedAccount
-  (_, issuerPe2Holding) <- issue operator ta issuer public (qty 80_000_000.00 pe2) $ issuerSecAccount
+  --(_, invCommitHolding1) <- issue operator inv1 inv1 public (qty 50_000_000.00 usdCommit) $ inv1UncommittedAccount
+  --(_, issuerPe2Holding) <- issue operator ta issuer public (qty 80_000_000.00 pe2) $ issuerSecAccount
 
   -- Capital Call (Test)
 
   -- declareCapitalCall : Party -> Party -> Party -> Party -> InstrumentKey -> InstrumentKey -> Time -> Numeric 10 -> Script (ContractId Effect.I)
   -- declareCapitalCall operator provider issuer public commitment ccy effectiveTime amount
-  capitalCallEffectId <- declareCapitalCall operator inv1 admin public usdCommit usd t 5_000_000.0
+  capitalCallEffectId <- declareCapitalCall operator inv1 issuer public usdCommit usd t 5_000_000.0
 
-  -- Need to do a split and expose first
-  --(batchCid, instructionCids) <- claimEffect operator inv1 admin public capitalCallEffectId [issuerCommit1Cid] $ Id "Round 1"
+  claimCapitalCallEffect operator inv1 issuer public capitalCallEffectId 5_000_000.00 (coerceContractId issuerCommit1Cid: ContractId Fungible.I) $ Id "Round 1"
 
   pure parties
+
