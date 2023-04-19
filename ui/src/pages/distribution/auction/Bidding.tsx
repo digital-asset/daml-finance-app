@@ -56,6 +56,7 @@ export const Bidding : React.FC = () => {
   const requestCreateBid = async () => {
     const volume = price * amount;
     // TODO: Implicit assumption that account is held with depository
+    // const receivableAccount = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === instrument.payload.depository)?.key;
     const receivableAccount = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === instrument.payload.depository)?.key;
     const collateralCid = await getFungible(party, volume, auction.payload.currency);
     if (!receivableAccount) return;

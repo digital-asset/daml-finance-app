@@ -152,9 +152,9 @@ run = do
   -- Instruments 
   usd       <- originateToken ta ta pub epoch "USD" "United States Dollar"
   usdCommit <- originateGeneric ta admin pub epoch "PE1-COMMITMENT" "USD Commitment to PE1" $ capitalCommitment usd epoch
-  pe1        <- originateEquity admin issuer pub epoch "PE1" "Private Equity Fund 1 Shares" 
-  pe2        <- originateEquity admin issuer pub epoch "PE2" "Private Equity Fund 2 Shares"
-  pe3        <- originateEquity admin issuer pub epoch "PE3" "Private Equity Fund 3 Shares"
+  pe1        <- originateEquity ta issuer pub epoch "PE1" "Private Equity Fund 1 Shares" 
+  pe2        <- originateEquity ta issuer pub epoch "PE2" "Private Equity Fund 2 Shares"
+  pe3        <- originateEquity ta issuer pub epoch "PE3" "Private Equity Fund 3 Shares"
   
   -- Accounts
   let 
@@ -201,9 +201,8 @@ run = do
   -- inv3Shares1Cid    <- deposit operator ta inv3 public (qty 40_000_000.00 pe1) inv3SecAccount
   -- issuerShares1Cid  <- deposit operator ta issuer public (qty 1_000_00.00 pe1) issuerSecAccount
 
-  (_, ad1) <- issue operator ta issuer public (Instrument.qty 1_000_000.0 pe1)   issuerSecAccount
-
   -- Issuances (Test)
+  (_, ad1) <- issue operator ta issuer public (Instrument.qty 1_000_000.0 pe1)   issuerSecAccount
   -- (_, invCommitHolding1) <- issue operator inv1 inv1 public (qty 50_000_000.00 usdCommit) $ inv1UncommittedAccount
   -- (_, issuerPe2Holding) <- issue operator ta issuer public (qty 80_000_000.00 pe2) $ issuerSecAccount
 
@@ -216,7 +215,7 @@ run = do
   -- Need to do a split and expose first
   --(batchCid, instructionCids) <- claimEffect operator inv1 admin public capitalCallEffectId [issuerCommit1Cid] $ Id "Round 1"
 
-  -- Workflows
+  -- Auction (Test)
   let
     doAuction = do
       let quantity = Instrument.qty 1_000_000.0 pe1
@@ -230,6 +229,6 @@ run = do
       processAuction operator ta issuer public auctionCid [inv1BidCid, inv2BidCid, inv3BidCid]
 
     
-  doAuction
+  --doAuction
   --doTrade
   pure parties
