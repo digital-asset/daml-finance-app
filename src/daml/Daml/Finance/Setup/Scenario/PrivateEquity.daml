@@ -20,8 +20,7 @@ import DA.Time (time)
 import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Interface.Types.Common.Types (Id(..))
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
-
-import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..))
 
 run: Script [PartyInfo]
 run = do 
@@ -42,12 +41,32 @@ run = do
     cashRoute = Settlement.Hierarchy 
       with 
         rootCustodian = ta
-        pathsToRootCustodian = settlementPaths 
+        pathsToRootCustodian = settlementPaths
     secRoute = Settlement.Hierarchy 
       with 
         rootCustodian = ta 
-        pathsToRootCustodian = settlementPaths 
-    paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assetLabels
+        pathsToRootCustodian = settlementPaths
+    commitments = map (<>"-COMMITMENT") assetLabels
+    commitmentRoute1 = Settlement.Hierarchy 
+      with 
+        rootCustodian = inv1 
+        pathsToRootCustodian = settlementPaths
+    commitmentRoute2 = Settlement.Hierarchy 
+      with 
+        rootCustodian = inv2 
+        pathsToRootCustodian = settlementPaths
+    commitmentRoute3 = Settlement.Hierarchy 
+      with 
+        rootCustodian = inv3 
+        pathsToRootCustodian = settlementPaths
+    
+    commitmentPaths = map (\(rootCustodian, i) -> (i, Settlement.Hierarchy with pathsToRootCustodian = settlementPaths; .. )) [
+      (inv1, "PE1-COMMITMENT"), 
+      (inv2, "PE1-COMMITMENT"), 
+      (inv3, "PE1-COMMITMENT")]
+
+    paths = fromList $ [("USD", cashRoute)] ++ commitmentPaths ++ map (\a -> (a, secRoute)) assetLabels
+
   accountFactoryCid<- toInterfaceContractId 
     <$> submit operator do createCmd Account.Factory  with provider = operator; observers = pub 
   holdingFactoryCid <- toInterfaceContractId
@@ -77,7 +96,11 @@ run = do
       (ta, issuer), 
       (ta, inv1),
       (ta, inv2), 
-      (ta, inv3)]
+      (ta, inv3),
+      (admin, inv1),
+      (admin, inv2),
+      (admin, inv3),
+      (admin, issuer)]
 
   mapA_ (\(provider, customer) -> createCustodyService 
     operator provider customer paths accountFactoryCid holdingFactoryCid) custodyServices
@@ -113,31 +136,6 @@ run = do
   createBiddingAutoService      operator ta       inv2
   createBiddingService          operator ta       inv3
   createBiddingAutoService      operator ta       inv3
-
-  -- Admin is going to Structure Equities and Capital Commitments.
-  -- createStructuringService      operator ta admin 
-  -- createStructuringAutoService  operator ta admin
-
-  -- -- Issuer will issue PE Tokens. 
-  -- -- createIssuanceService         operator admin issuer 
-  -- -- createIssuanceAutoService     operator admin issuer         
-
-  -- -- WMs will issue Capital commitments 
-  -- -- createIssuanceService         operator admin wm
-  -- -- createIssuanceAutoService     operator admin wm 
-
-  -- -- Investors will issuer their own capital commitments 
-  -- mapA_ (\(_, inv) -> do 
-  --   createIssuanceService         operator admin inv 
-  --   createStructuringAutoService  operator admin inv) (investorNames)
-
-  -- createLifecycleService        operator ta issuer public 
-  -- createLifecycleService        operator admin issuer public 
-
-  -- --mapA_ (\(_, inv) -> createLifecycleService operator admin inv public) investorNames
-
-  -- mapA_ (\(provider, customer) -> createSettlementService 
-  --   operator provider customer paths ) custodyServices
   
   -- Time 
   t <- getTime 
@@ -151,10 +149,10 @@ run = do
 
   -- Instruments 
   usd       <- originateToken ta ta pub epoch "USD" "United States Dollar"
-  usdCommit <- originateGeneric ta admin pub epoch "PE1-COMMITMENT" "USD Commitment to PE1" $ capitalCommitment usd epoch
-  pe1        <- originateEquity ta issuer pub epoch "PE1" "Private Equity Fund 1 Shares" 
-  pe2        <- originateEquity ta issuer pub epoch "PE2" "Private Equity Fund 2 Shares"
-  pe3        <- originateEquity ta issuer pub epoch "PE3" "Private Equity Fund 3 Shares"
+  usdCommit <- originateGeneric admin issuer pub epoch "PE1-COMMITMENT" "USD Commitment to PE1" $ capitalCommitment usd epoch
+  pe1        <- originateEquity admin issuer pub epoch "PE1" "Private Equity Fund 1 Shares" 
+  pe2        <- originateEquity admin issuer pub epoch "PE2" "Private Equity Fund 2 Shares"
+  pe3        <- originateEquity admin issuer pub epoch "PE3" "Private Equity Fund 3 Shares"
   
   -- Accounts
   let 
@@ -162,7 +160,7 @@ run = do
     adminObs = fromList [("Admin", singleton admin), ("Issuer", singleton issuer)]
 
   -- Commit Accounts
-  issuerCommitAccount1      <- createAccount'  inv1 issuer "Issuer@Inv1|Commitments" adminObs 
+  issuerCommitAccount1      <- createAccount'  inv1 issuer "Issuer@Inv1|Commitments" adminObs
   issuerCommitAccount2      <- createAccount'  inv2 issuer "Issuer@Inv2|Commitments" adminObs
   issuerCommitAccount3      <- createAccount'  inv3 issuer "Issuer@Inv3|Commitments" adminObs
 
@@ -178,9 +176,10 @@ run = do
 
   -- Security Accounts 
   issuerSecAccount          <- createAccount' ta issuer "Issuer@TA|Securities" empty 
-  inv1SecAccount            <- createAccount' ta inv1   "Investor1@TA|Securities" empty 
-  inv2SecAccount            <- createAccount' ta inv2   "Investor2@TA|Securities" empty
-  inv3SecAccount            <- createAccount' ta inv3   "Investor3@TA|Securities" empty
+  -- inv1SecAccount            <- createAccount' ta inv1   "Investor1@TA|Securities" empty 
+  inv1SecAccount            <- createAccount' admin inv1   "Investor1@Admin|Securities" empty 
+  inv2SecAccount            <- createAccount' admin inv2   "Investor2@TA|Securities" empty
+  inv3SecAccount            <- createAccount' admin inv3   "Investor3@TA|Securities" empty
 
   -- Holdings 
   issuerCommit1Cid <- deposit operator inv1 issuer public (qty 25_000_000.00 usdCommit) issuerCommitAccount1
@@ -202,7 +201,7 @@ run = do
   -- issuerShares1Cid  <- deposit operator ta issuer public (qty 1_000_00.00 pe1) issuerSecAccount
 
   -- Issuances (Test)
-  (_, ad1) <- issue operator ta issuer public (Instrument.qty 1_000_000.0 pe1)   issuerSecAccount
+  (_, ad1) <- issue operator ta issuer public (qty 1_000_000.0 pe1)   issuerSecAccount
   -- (_, invCommitHolding1) <- issue operator inv1 inv1 public (qty 50_000_000.00 usdCommit) $ inv1UncommittedAccount
   -- (_, issuerPe2Holding) <- issue operator ta issuer public (qty 80_000_000.00 pe2) $ issuerSecAccount
 
@@ -210,25 +209,26 @@ run = do
 
   -- declareCapitalCall : Party -> Party -> Party -> Party -> InstrumentKey -> InstrumentKey -> Time -> Numeric 10 -> Script (ContractId Effect.I)
   -- declareCapitalCall operator provider issuer public commitment ccy effectiveTime amount
-  capitalCallEffectId <- declareCapitalCall operator inv1 admin public usdCommit usd t 5_000_000.0
+
+  capitalCallEffectId <- declareCapitalCall operator inv1 issuer public usdCommit usd t 5_000_000.0
+  claimCapitalCallEffect operator inv1 issuer public capitalCallEffectId 5_000_000.00 (coerceContractId issuerCommit1Cid: ContractId Fungible.I) $ Id "Round 1"
 
   -- Need to do a split and expose first
   --(batchCid, instructionCids) <- claimEffect operator inv1 admin public capitalCallEffectId [issuerCommit1Cid] $ Id "Round 1"
 
   -- Auction (Test)
-  let
-    doAuction = do
-      let quantity = Instrument.qty 1_000_000.0 pe1
-      auctionCid        <- createAuction operator ta issuer public "AUCTION1" quantity usd 0.95 (coerceContractId ad1) issuerCashAccount
-      inv1CollateralCid <- coerceContractId <$> getHolding inv1 (Instrument.qty 500_000.0 usd)
-      inv2CollateralCid <- coerceContractId <$> getHolding inv2 (Instrument.qty 392_000.0 usd)
-      inv3CollateralCid <- coerceContractId <$> getHolding inv3 (Instrument.qty 297_000.0 usd)
-      inv1BidCid        <- createAuctionBid operator ta inv1 public auctionCid 500_000.0 1.0  inv1CollateralCid inv1SecAccount
-      inv2BidCid        <- createAuctionBid operator ta inv2 public auctionCid 400_000.0 0.98 inv2CollateralCid inv2SecAccount
-      inv3BidCid        <- createAuctionBid operator ta inv3 public auctionCid 300_000.0 0.99 inv3CollateralCid inv3SecAccount
-      processAuction operator ta issuer public auctionCid [inv1BidCid, inv2BidCid, inv3BidCid]
+  -- let
+  --   doAuction = do
+  let quantity = qty 1_000_000.0 pe1
+  auctionCid        <- createAuction operator ta issuer public "AUCTION1" quantity usd 0.95 (coerceContractId ad1) issuerCashAccount
+  inv1CollateralCid <- coerceContractId <$> getHolding inv1 (qty 500_000.0 usd)
+  inv2CollateralCid <- coerceContractId <$> getHolding inv2 (qty 392_000.0 usd)
+  inv3CollateralCid <- coerceContractId <$> getHolding inv3 (qty 297_000.0 usd)
+  inv1BidCid        <- createAuctionBid operator ta inv1 public auctionCid 500_000.0 1.0  inv1CollateralCid inv1SecAccount
+  inv2BidCid        <- createAuctionBid operator ta inv2 public auctionCid 400_000.0 0.98 inv2CollateralCid inv2SecAccount
+  inv3BidCid        <- createAuctionBid operator ta inv3 public auctionCid 300_000.0 0.99 inv3CollateralCid inv3SecAccount
+  -- processAuction operator ta issuer public auctionCid [inv1BidCid, inv2BidCid, inv3BidCid]
 
-    
-  --doAuction
-  --doTrade
+  -- doAuction
   pure parties
+

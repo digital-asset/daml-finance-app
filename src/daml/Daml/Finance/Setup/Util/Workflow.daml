@@ -74,6 +74,7 @@ import Daml.Finance.Settlement.Instruction qualified as Instruction (T)
 import Daml.Finance.Setup.Util.Common (getHolding)
 import Daml.Script
 import ContingentClaims.Core.Claim (one)
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
 
 createAccount : Party -> Party -> Party -> Party -> Text -> PartiesMap -> Script AccountKey
 createAccount operator custodian owner public id observers = do
@@ -162,6 +163,8 @@ originateGeneric depository issuer observers acquisitionTime id description clai
   cid <- coerceContractId <$> submitMulti [depository, issuer] [] do
     createCmd Generic.Instrument with depository; issuer; id = Id id; description; version = "0"; acquisitionTime; claims; observers; lastEventTimestamp = acquisitionTime
   createReference cid depository issuer observers
+
+
 
 originateFixedRateBond : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Date -> [Text] -> Party -> Date-> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> InstrumentKey -> Script InstrumentKey
 originateFixedRateBond depository issuer id description observers lastEventTimestamp issueDate holidayCalendarIds calendarDataProvider firstCouponDate maturityDate dayCountConvention businessDayConvention couponRate couponPeriod couponPeriodMultiplier currency = do
@@ -408,3 +411,10 @@ approveClearing counterparty clearingRequestCid clearingAccount =
 clear : Party -> Party -> ContractId Clearing.ClearingRequest -> Script (ContractId Holding.I, ContractId Holding.I)
 clear clearer public clearingRequestCid =
   submitMulti [clearer] [public] do exerciseCmd clearingRequestCid Clearing.Clear
+
+claimCapitalCallEffect : Party -> Party -> Party -> Party -> ContractId Effect.I -> Decimal -> ContractId Fungible.I -> Id -> Script (Optional (ContractId Fungible.I), ContractId Batch.I, [ContractId Instruction.I])
+claimCapitalCallEffect operator inv issuer public effectId amount holdingId id = do 
+  (splitHoldingId, optRestHoldingId) <- split issuer amount holdingId 
+  --disclosedHoldingId <- submit issuer $ coerceInterfaceContractId <$> exerciseCmd (toInterfaceContractId @Disclosure.I splitHoldingId) Disclosure.AddObservers with disclosers = singleton issuer; observersToAdd = ("Admin", singleton issuer)
+  (batchCid, instructionsCids) <- claimEffect operator inv issuer public effectId [coerceInterfaceContractId splitHoldingId] id 
+  return (optRestHoldingId, batchCid, instructionsCids) 

@@ -8,6 +8,8 @@ import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
 import { useHoldings } from "../../context/HoldingContext";
 import { Alignment, HorizontalTable } from "../../components/Table/HorizontalTable";
+import { Button, TextField } from "@mui/material";
+import useStyles from "../styles";
 
 export type HoldingsProps = {
   showAssets : boolean
@@ -27,6 +29,7 @@ export const Holdings : React.FC<HoldingsProps> = ({ showAssets }) => {
   const party = useParty();
   const { getName } = useParties();
   const { loading: l1, holdings } = useHoldings();
+  const classes = useStyles();
   if (l1) return <Spinner />;
 
   const filtered = holdings.filter(c => showAssets ? c.payload.account.owner === party : c.payload.account.custodian === party);
@@ -62,10 +65,17 @@ export const Holdings : React.FC<HoldingsProps> = ({ showAssets }) => {
       e.version,
       fmt(e.position, 0),
       fmt(e.locked, 0),
-      fmt(e.available, 0)
+      fmt(e.available, 0),
+      <TextField 
+        required 
+        type="number" 
+        label={"Amount"} onChange={e => {}}
+        disabled={!e.instrument.match("PE1-COMMITMENT")}
+      />,
+      <Button color="primary" variant="contained"  onClick={() => {}} disabled={!e.instrument.match("PE1-COMMITMENT")}>Call</Button>
     ];
   }
-  const headers = ["Obligor", "Beneficiary", "Instrument", "Version", "Position", "Locked", "Available"]
+  const headers = ["Obligor", "Beneficiary", "Instrument", "Version", "Position", "Locked", "Available", "Capital"]
   const values : any[] = entries.map(createRow);
   const alignment : Alignment[] = ["left", "left", "left", "left", "right", "right", "right"];
   return (
