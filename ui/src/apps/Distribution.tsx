@@ -6,7 +6,11 @@ import { Entry } from "../components/Sidebar/Route";
 import { Auctions as BiddingAuctions } from "../pages/distribution/bidding/Auctions";
 import { Auctions } from "../pages/distribution/auction/Auctions";
 import { Auction } from "../pages/distribution/auction/Auction";
-import { New as NewAuction} from "../pages/distribution/auction/New";
+import { New as NewAuction } from "../pages/distribution/auction/New";
+import { PEDistributions as BiddingPEDistributions } from "../pages/distribution/bidding/PEDistributions";
+import { PEDistributions } from "../pages/distribution/pedistribution/PEDistributions";
+import { PEDistribution } from "../pages/distribution/pedistribution/PEDistribution";
+import { New as NewPEDistribution } from "../pages/distribution/pedistribution/New"
 import { New as NewSubscription} from "../pages/distribution/offering/New";
 import { useParty } from "@daml/react";
 import { Requests } from "../pages/distribution/auction/Requests";
@@ -45,6 +49,7 @@ export const Distribution : React.FC = () => {
     entries.push({ label: "Offerings", path: "offerings", element: <Offerings /> });
     entries.push({ label: "Requests", path: "requests", element: <Requests /> });
     entries.push({ label: "New Auction", path: "new/auction", element: <NewAuction />, action: true });
+    entries.push({ label: "New PE Distribution", path: "new/pedistribution", element: <NewPEDistribution />, action: true });
     entries.push({ label: "New Offering", path: "new/offering", element: <NewSubscription />, action: true });
   } else if (isAgent) {
     entries.push({ label: "Auctions", path: "auctions", element: <Auctions /> });

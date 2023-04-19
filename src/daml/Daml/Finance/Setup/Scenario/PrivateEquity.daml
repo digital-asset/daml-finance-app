@@ -178,8 +178,8 @@ run = do
   issuerSecAccount          <- createAccount' ta issuer "Issuer@TA|Securities" empty 
   -- inv1SecAccount            <- createAccount' ta inv1   "Investor1@TA|Securities" empty 
   inv1SecAccount            <- createAccount' admin inv1   "Investor1@Admin|Securities" empty 
-  inv2SecAccount            <- createAccount' admin inv2   "Investor2@TA|Securities" empty
-  inv3SecAccount            <- createAccount' admin inv3   "Investor3@TA|Securities" empty
+  inv2SecAccount            <- createAccount' admin inv2   "Investor2@Admin|Securities" empty
+  inv3SecAccount            <- createAccount' admin inv3   "Investor3@Admin|Securities" empty
 
   -- Holdings 
   issuerCommit1Cid <- deposit operator inv1 issuer public (qty 25_000_000.00 usdCommit) issuerCommitAccount1
@@ -223,10 +223,10 @@ run = do
   auctionCid        <- createAuction operator ta issuer public "AUCTION1" quantity usd 0.95 (coerceContractId ad1) issuerCashAccount
   inv1CollateralCid <- coerceContractId <$> getHolding inv1 (qty 500_000.0 usd)
   inv2CollateralCid <- coerceContractId <$> getHolding inv2 (qty 392_000.0 usd)
-  inv3CollateralCid <- coerceContractId <$> getHolding inv3 (qty 297_000.0 usd)
-  inv1BidCid        <- createAuctionBid operator ta inv1 public auctionCid 500_000.0 1.0  inv1CollateralCid inv1SecAccount
-  inv2BidCid        <- createAuctionBid operator ta inv2 public auctionCid 400_000.0 0.98 inv2CollateralCid inv2SecAccount
-  inv3BidCid        <- createAuctionBid operator ta inv3 public auctionCid 300_000.0 0.99 inv3CollateralCid inv3SecAccount
+  -- inv3CollateralCid <- coerceContractId <$> getHolding inv3 (qty 297_000.0 usdCommit)
+  -- inv1BidCid        <- createAuctionBid operator ta inv1 public auctionCid 500_000.0 1.0  inv1CollateralCid inv1SecAccount
+  -- inv2BidCid        <- createAuctionBid operator ta inv2 public auctionCid 400_000.0 0.98 inv2CollateralCid inv2SecAccount
+  -- inv3BidCid        <- createAuctionBid operator ta inv3 public auctionCid 300_000.0 0.99 inv3CollateralCid inv3SecAccount
   -- processAuction operator ta issuer public auctionCid [inv1BidCid, inv2BidCid, inv3BidCid]
 
   -- doAuction
