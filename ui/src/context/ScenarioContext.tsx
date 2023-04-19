@@ -123,7 +123,7 @@ export const scenarios : Scenario[] = [
     label: "Private Equity",
     description: "PE Issuance and Capital Calls",
     image: scenarioCorporateActions,
-    apps: [ structuring, issuance, custody, distribution, servicing, listing, trading, settlement, network ],
+    apps: [ structuring, issuance, custody, distribution, servicing, settlement, network ],
     positions: new Map([
       [ "Operator",     { x:    0, y:   0 } ],
       [ "Public",       { x:    0, y:   0 } ],
