@@ -18,9 +18,9 @@ import DA.Foldable (mapA_)
 import DA.Date
 import DA.Time (time)
 import Daml.Finance.Interface.Util.Common (qty)
-import Daml.Finance.Interface.Types.Common.Types (Id(..))
-import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
-import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..))
+-- import Daml.Finance.Interface.Types.Common.Types (Id(..))
+-- import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
+-- import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..))
 
 run: Script [PartyInfo]
 run = do 
@@ -111,7 +111,7 @@ run = do
       (inv1, inv1),
       (inv2, inv2), 
       (inv3, inv3), 
-      (ta, issuer)]
+      (admin, issuer)]
 
   mapA_ (\(provider, customer) -> do 
     createIssuanceService operator provider customer 
@@ -160,9 +160,9 @@ run = do
     adminObs = fromList [("Admin", singleton admin), ("Issuer", singleton issuer)]
 
   -- Commit Accounts
-  issuerCommitAccount1      <- createAccount'  inv1 issuer "Issuer@Inv1|Commitments" adminObs
-  issuerCommitAccount2      <- createAccount'  inv2 issuer "Issuer@Inv2|Commitments" adminObs
-  issuerCommitAccount3      <- createAccount'  inv3 issuer "Issuer@Inv3|Commitments" adminObs
+  issuerCommitAccount      <- createAccount'  admin issuer "Issuer@Inv1|Commitments" adminObs
+  -- issuerCommitAccount2      <- createAccount'  inv2 issuer "Issuer@Inv2|Commitments" adminObs
+  -- issuerCommitAccount3      <- createAccount'  inv3 issuer "Issuer@Inv3|Commitments" adminObs
 
   inv1UncommittedAccount <- createAccount'  inv1 inv1   "Investor1|Uncommitted" empty 
   inv2UncommittedAccount <- createAccount'  inv2 inv2   "Investor2|Uncommitted" empty 
@@ -175,17 +175,17 @@ run = do
   inv3CashAccount           <- createAccount' ta inv3   "Investor3@TA|Cash" empty
 
   -- Security Accounts 
-  issuerSecAccount          <- createAccount' ta issuer "Issuer@TA|Securities" empty 
+  issuerSecAccount          <- createAccount' admin issuer "Issuer@Admin|Securities" empty 
   -- inv1SecAccount            <- createAccount' ta inv1   "Investor1@TA|Securities" empty 
   inv1SecAccount            <- createAccount' admin inv1   "Investor1@Admin|Securities" empty 
   inv2SecAccount            <- createAccount' admin inv2   "Investor2@Admin|Securities" empty
   inv3SecAccount            <- createAccount' admin inv3   "Investor3@Admin|Securities" empty
 
   -- Holdings 
-  issuerCommit1Cid <- deposit operator inv1 issuer public (qty 25_000_000.00 usdCommit) issuerCommitAccount1
+ -- issuerCommit1Cid <- deposit operator inv1 issuer public (qty 25_000_000.00 usdCommit) issuerCommitAccount1
   --issuerCommit1Cid <- submit issuer $ coerceInterfaceContractId <$> exerciseCmd (toInterfaceContractId @Disclosure.I issuerCommit1Cid) Disclosure.AddObservers with disclosers = singleton issuer; observersToAdd = ("Admin", singleton admin)
-  issuerCommit2Cid <- deposit operator inv2 issuer public (qty 35_000_000.00 usdCommit) issuerCommitAccount2
-  issuerCommit3Cid <- deposit operator inv3 issuer public (qty 40_000_000.00 usdCommit) issuerCommitAccount3
+  --issuerCommit2Cid <- deposit operator inv2 issuer public (qty 35_000_000.00 usdCommit) issuerCommitAccount2
+  --issuerCommit3Cid <- deposit operator inv3 issuer public (qty 40_000_000.00 usdCommit) issuerCommitAccount3
 
   inv1CashCid      <- deposit operator ta inv1 public (qty 200_000_000.00 usd) inv1CashAccount
   inv2CashCid      <- deposit operator ta inv2 public (qty 200_000_000.00 usd) inv2CashAccount
@@ -201,7 +201,7 @@ run = do
   -- issuerShares1Cid  <- deposit operator ta issuer public (qty 1_000_00.00 pe1) issuerSecAccount
 
   -- Issuances (Test)
-  (_, ad1) <- issue operator ta issuer public (qty 1_000_000.0 pe1)   issuerSecAccount
+  (_, ad1) <- issue operator admin issuer public (qty 1_000_000.0 pe1)   issuerSecAccount
   -- (_, invCommitHolding1) <- issue operator inv1 inv1 public (qty 50_000_000.00 usdCommit) $ inv1UncommittedAccount
   -- (_, issuerPe2Holding) <- issue operator ta issuer public (qty 80_000_000.00 pe2) $ issuerSecAccount
 
@@ -210,8 +210,8 @@ run = do
   -- declareCapitalCall : Party -> Party -> Party -> Party -> InstrumentKey -> InstrumentKey -> Time -> Numeric 10 -> Script (ContractId Effect.I)
   -- declareCapitalCall operator provider issuer public commitment ccy effectiveTime amount
 
-  capitalCallEffectId <- declareCapitalCall operator inv1 issuer public usdCommit usd t 5_000_000.0
-  claimCapitalCallEffect operator inv1 issuer public capitalCallEffectId 5_000_000.00 (coerceContractId issuerCommit1Cid: ContractId Fungible.I) $ Id "Round 1"
+  --capitalCallEffectId <- declareCapitalCall operator inv1 issuer public usdCommit usd t 5_000_000.0
+  --claimCapitalCallEffect operator inv1 issuer public capitalCallEffectId 5_000_000.00 (coerceContractId issuerCommit1Cid: ContractId Fungible.I) $ Id "Round 1"
 
   -- Need to do a split and expose first
   --(batchCid, instructionCids) <- claimEffect operator inv1 admin public capitalCallEffectId [issuerCommit1Cid] $ Id "Round 1"
@@ -220,13 +220,13 @@ run = do
   -- let
   --   doAuction = do
   let quantity = qty 1_000_000.0 pe1
-  auctionCid        <- createAuction operator ta issuer public "AUCTION1" quantity usd 0.95 (coerceContractId ad1) issuerCashAccount
-  inv1CollateralCid <- coerceContractId <$> getHolding inv1 (qty 500_000.0 usd)
-  inv2CollateralCid <- coerceContractId <$> getHolding inv2 (qty 392_000.0 usd)
-  -- inv3CollateralCid <- coerceContractId <$> getHolding inv3 (qty 297_000.0 usdCommit)
-  -- inv1BidCid        <- createAuctionBid operator ta inv1 public auctionCid 500_000.0 1.0  inv1CollateralCid inv1SecAccount
-  -- inv2BidCid        <- createAuctionBid operator ta inv2 public auctionCid 400_000.0 0.98 inv2CollateralCid inv2SecAccount
-  -- inv3BidCid        <- createAuctionBid operator ta inv3 public auctionCid 300_000.0 0.99 inv3CollateralCid inv3SecAccount
+  auctionCid        <- createAuction operator ta issuer public "AUCTION1" quantity usdCommit 0.95 (coerceContractId ad1) issuerCashAccount
+  inv1CollateralCid <- coerceContractId <$> getHolding inv1 (qty 500_010.0 usdCommit)
+  inv2CollateralCid <- coerceContractId <$> getHolding inv2 (qty 392_000.0 usdCommit)
+  inv3CollateralCid <- coerceContractId <$> getHolding inv3 (qty 297_000.0 usdCommit)
+  inv1BidCid        <- createAuctionBid operator ta inv1 public auctionCid 500_010.0 1.0  inv1CollateralCid inv1SecAccount
+  inv2BidCid        <- createAuctionBid operator ta inv2 public auctionCid 392_000.0 1.0 inv2CollateralCid inv2SecAccount
+  inv3BidCid        <- createAuctionBid operator ta inv3 public auctionCid 297_000.0 1.0 inv3CollateralCid inv3SecAccount
   -- processAuction operator ta issuer public auctionCid [inv1BidCid, inv2BidCid, inv3BidCid]
 
   -- doAuction
