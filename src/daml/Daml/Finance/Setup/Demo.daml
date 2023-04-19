@@ -19,14 +19,14 @@ import Daml.Script
 
 demo : Script [PartyInfo]
 demo = do
-  p1 <- BondIssuance.run
-  p2 <- CorporateActions.run
-  p3 <- Default.run
-  p4 <- NaturalGas.run
-  p5 <- SecuritiesLending.run
-  p6 <- StructuredNotes.run
-  p7 <- FundTokenization.run
-  p8 <- DecentralizedFinance.run
-  p9 <- OtcSwaps.run
+  -- p1 <- BondIssuance.run
+  -- p2 <- CorporateActions.run
+  -- p3 <- Default.run
+  -- p4 <- NaturalGas.run
+  -- p5 <- SecuritiesLending.run
+  -- p6 <- StructuredNotes.run
+  -- p7 <- FundTokenization.run
+  -- p8 <- DecentralizedFinance.run
+  -- p9 <- OtcSwaps.run
   p10 <- PrivateEquity.run 
-  pure $ p1 <> p2 <> p3 <> p4 <> p5 <> p6 <> p7 <> p8 <> p9 <> p10
+  pure $ p10 -- <> p2 <> p3 <> p4 <> p5 <> p6 <> p7 <> p8 <> p9 <> p10

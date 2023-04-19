@@ -21,6 +21,8 @@ import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Interface.Types.Common.Types (Id(..))
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
 
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
+
 run: Script [PartyInfo]
 run = do 
   let scenario = "Private Equity"
@@ -36,7 +38,7 @@ run = do
   -- Factories
   let 
     assetLabels = ["PE1", "PE2", "PE3"]
-    settlementPaths = [[ta], [admin], [wm]]
+    settlementPaths = [[issuer], [ta], [admin], [wm], [inv1], [inv2], [inv3]]
     cashRoute = Settlement.Hierarchy 
       with 
         rootCustodian = ta
@@ -53,6 +55,7 @@ run = do
 
   -- Roles 
   createOperatorRole operator
+  createDistributorRole operator ta
   let 
     custodianRoles = [inv1, inv2, inv3, ta, admin] 
   mapA_ (createCustodianRole operator) custodianRoles
@@ -101,6 +104,15 @@ run = do
       (inv3, issuer)]
 
   mapA_ (\(provider, customer) -> createLifecycleService operator provider customer public) lifecycleServices
+
+  createAuctionService          operator ta       issuer paths
+  createAuctionAutoService      operator ta       issuer
+  createBiddingService          operator ta       inv1
+  createBiddingAutoService      operator ta       inv1
+  createBiddingService          operator ta       inv2
+  createBiddingAutoService      operator ta       inv2
+  createBiddingService          operator ta       inv3
+  createBiddingAutoService      operator ta       inv3
 
   -- Admin is going to Structure Equities and Capital Commitments.
   -- createStructuringService      operator ta admin 
@@ -184,13 +196,16 @@ run = do
   inv2UncommitedCid   <- deposit operator inv2 inv2 public (qty 70_000_000.00 usdCommit) inv2UncommittedAccount
   inv3UncommitedCid   <- deposit operator inv3 inv3 public (qty 90_000_000.00 usdCommit) inv3UncommittedAccount
 
-  inv1Shares1Cid    <- deposit operator ta inv1 public (qty 25_000_000.00 pe1) inv1SecAccount
-  inv2Shares1Cid    <- deposit operator ta inv2 public (qty 35_000_000.00 pe1) inv2SecAccount
-  inv3Shares1Cid    <- deposit operator ta inv3 public (qty 40_000_000.00 pe1) inv3SecAccount
+  -- inv1Shares1Cid    <- deposit operator ta inv1 public (qty 25_000_000.00 pe1) inv1SecAccount
+  -- inv2Shares1Cid    <- deposit operator ta inv2 public (qty 35_000_000.00 pe1) inv2SecAccount
+  -- inv3Shares1Cid    <- deposit operator ta inv3 public (qty 40_000_000.00 pe1) inv3SecAccount
+  -- issuerShares1Cid  <- deposit operator ta issuer public (qty 1_000_00.00 pe1) issuerSecAccount
+
+  (_, ad1) <- issue operator ta issuer public (Instrument.qty 1_000_000.0 pe1)   issuerSecAccount
 
   -- Issuances (Test)
-  (_, invCommitHolding1) <- issue operator inv1 inv1 public (qty 50_000_000.00 usdCommit) $ inv1UncommittedAccount
-  (_, issuerPe2Holding) <- issue operator ta issuer public (qty 80_000_000.00 pe2) $ issuerSecAccount
+  -- (_, invCommitHolding1) <- issue operator inv1 inv1 public (qty 50_000_000.00 usdCommit) $ inv1UncommittedAccount
+  -- (_, issuerPe2Holding) <- issue operator ta issuer public (qty 80_000_000.00 pe2) $ issuerSecAccount
 
   -- Capital Call (Test)
 
@@ -201,4 +216,20 @@ run = do
   -- Need to do a split and expose first
   --(batchCid, instructionCids) <- claimEffect operator inv1 admin public capitalCallEffectId [issuerCommit1Cid] $ Id "Round 1"
 
+  -- Workflows
+  let
+    doAuction = do
+      let quantity = Instrument.qty 1_000_000.0 pe1
+      auctionCid        <- createAuction operator ta issuer public "AUCTION1" quantity usd 0.95 (coerceContractId ad1) issuerCashAccount
+      inv1CollateralCid <- coerceContractId <$> getHolding inv1 (Instrument.qty 500_000.0 usd)
+      inv2CollateralCid <- coerceContractId <$> getHolding inv2 (Instrument.qty 392_000.0 usd)
+      inv3CollateralCid <- coerceContractId <$> getHolding inv3 (Instrument.qty 297_000.0 usd)
+      inv1BidCid        <- createAuctionBid operator ta inv1 public auctionCid 500_000.0 1.0  inv1CollateralCid inv1SecAccount
+      inv2BidCid        <- createAuctionBid operator ta inv2 public auctionCid 400_000.0 0.98 inv2CollateralCid inv2SecAccount
+      inv3BidCid        <- createAuctionBid operator ta inv3 public auctionCid 300_000.0 0.99 inv3CollateralCid inv3SecAccount
+      processAuction operator ta issuer public auctionCid [inv1BidCid, inv2BidCid, inv3BidCid]
+
+    
+  doAuction
+  --doTrade
   pure parties
