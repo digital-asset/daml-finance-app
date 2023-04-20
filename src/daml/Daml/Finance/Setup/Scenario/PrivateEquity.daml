@@ -21,6 +21,7 @@ import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Interface.Types.Common.Types (Id(..))
 -- import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..))
+import qualified DA.List as List (delete)
 
 run: Script [PartyInfo]
 run = do 
@@ -37,33 +38,23 @@ run = do
   -- Factories
   let 
     assetLabels = ["PE1", "PE2", "PE3"]
-    settlementPaths = [[issuer], [ta], [admin], [wm], [inv1], [inv2], [inv3]]
+    settlementPaths = [[issuer], [admin], [wm], [inv1], [inv2], [inv3]]
     cashRoute = Settlement.Hierarchy 
       with 
         rootCustodian = ta
-        pathsToRootCustodian = settlementPaths
+        pathsToRootCustodian = List.delete [ta] settlementPaths
     secRoute = Settlement.Hierarchy 
       with 
         rootCustodian = issuer 
-        pathsToRootCustodian = settlementPaths
+        pathsToRootCustodian = List.delete [issuer] settlementPaths
     commitments = map (<>"-COMMITMENT") assetLabels
-    commitmentRoute1 = Settlement.Hierarchy 
-      with 
-        rootCustodian = inv1 
-        pathsToRootCustodian = settlementPaths
-    commitmentRoute2 = Settlement.Hierarchy 
-      with 
-        rootCustodian = inv2 
-        pathsToRootCustodian = settlementPaths
-    commitmentRoute3 = Settlement.Hierarchy 
-      with 
-        rootCustodian = inv3 
-        pathsToRootCustodian = settlementPaths
     
-    commitmentPaths = map (\(rootCustodian, i) -> (i, Settlement.Hierarchy with pathsToRootCustodian = settlementPaths; .. )) [
-      (inv1, "PE1-COMMITMENT"), 
-      (inv2, "PE1-COMMITMENT"), 
+    commitmentPaths = map (\(rootCustodian, i) -> (i, Settlement.Hierarchy with pathsToRootCustodian = List.delete [rootCustodian] settlementPaths; .. )) [
+      (inv1, "PE1-COMMITMENT"),
+      (inv2, "PE1-COMMITMENT"),
       (inv3, "PE1-COMMITMENT")]
+
+    [commitmentPath1, commitmentPath2, commitmentPath3] = commitmentPaths
 
     paths = fromList $ [("USD", cashRoute)] ++ commitmentPaths ++ map (\a -> (a, secRoute)) assetLabels
 
@@ -83,31 +74,33 @@ run = do
   -- Services 
   -- Custody Services
   let 
+    cashPath = [("USD", cashRoute)]
+    secPath = map (\a -> (a, secRoute)) assetLabels
     custodyServices = [
-      (inv1, issuer), 
-      (inv2, issuer), 
-      (inv3, issuer),
-      (inv1, inv1), 
-      (inv2, inv2), 
-      (inv3, inv3),
-      (inv1, admin), 
-      (inv2, admin), 
-      (inv3, admin),
-      (ta, issuer), 
-      (ta, inv1),
-      (ta, inv2), 
-      (ta, inv3),
-      (admin, inv1),
-      (admin, inv2),
-      (admin, inv3),
-      (admin, issuer),
-      (issuer, issuer),
-      (issuer, inv1),
-      (issuer, inv2),
-      (issuer, inv3)]
+      (inv1, issuer, [commitmentPath1]++cashPath), 
+      (inv2, issuer, [commitmentPath2]++cashPath), 
+      (inv3, issuer, [commitmentPath3]++cashPath),
+      (inv1, inv1, [commitmentPath1]), 
+      (inv2, inv2, [commitmentPath2]), 
+      (inv3, inv3, [commitmentPath3]),
+      (inv1, admin, [commitmentPath1]), 
+      (inv2, admin, [commitmentPath2]), 
+      (inv3, admin, [commitmentPath3]),
+      (ta, issuer, cashPath), 
+      (ta, inv1, cashPath),
+      (ta, inv2, cashPath), 
+      (ta, inv3, cashPath),
+      (admin, inv1, []),
+      (admin, inv2, []),
+      (admin, inv3, []),
+      (admin, issuer, []),
+      (issuer, issuer, secPath),
+      (issuer, inv1, secPath),
+      (issuer, inv2, secPath),
+      (issuer, inv3, secPath)]
 
-  mapA_ (\(provider, customer) -> createCustodyService 
-    operator provider customer paths accountFactoryCid holdingFactoryCid) custodyServices
+  mapA_ (\(provider, customer, p) -> createCustodyService 
+    operator provider customer (fromList p) accountFactoryCid holdingFactoryCid) custodyServices
   
   --issuance services
   let 
@@ -195,6 +188,12 @@ run = do
   inv2SecAccount            <- createAccount' issuer inv2   "Investor2@Admin|Securities" empty
   inv3SecAccount            <- createAccount' issuer inv3   "Investor3@Admin|Securities" empty
 
+  -- Directories 
+  createAccountDirectory issuer [(usd, issuerCashAccount)]    $singleton public 
+  createAccountDirectory inv1 [(usd, inv1CashAccount)]        $singleton public
+  createAccountDirectory inv2 [(usd, inv2CashAccount)]        $singleton public
+  createAccountDirectory inv3 [(usd, inv3CashAccount)]        $singleton public
+
   -- Holdings 
   issuerCommit1Cid <- deposit operator inv1 issuer public (qty 25_000_000.00 usdCommit) issuerCommitAccount1
   issuerCommit2Cid <- deposit operator inv2 issuer public (qty 35_000_000.00 usdCommit) issuerCommitAccount2
@@ -225,6 +224,14 @@ run = do
 
   capitalCallEffectId <- declareCapitalCall operator inv1 issuer public usdCommit usd t 5_000_000.0
   claimCapitalCallEffect operator inv1 issuer public capitalCallEffectId 5_000_000.00 (coerceContractId issuerCommit1Cid: ContractId Fungible.I) $ Id "Round 1"
+
+  capitalCallEffectId <- declareCapitalCall operator inv2 issuer public usdCommit usd t 7_000_000.0
+  claimCapitalCallEffect operator inv2 issuer public capitalCallEffectId 7_000_000.00 (coerceContractId issuerCommit2Cid: ContractId Fungible.I) $ Id "Round 1"
+
+  capitalCallEffectId <- declareCapitalCall operator inv3 issuer public usdCommit usd t 8_000_000.0
+  claimCapitalCallEffect operator inv3 issuer public capitalCallEffectId 8_000_000.00 (coerceContractId issuerCommit3Cid: ContractId Fungible.I) $ Id "Round 1"
+
+
 
   -- Need to do a split and expose first
   --(batchCid, instructionCids) <- claimEffect operator inv1 admin public capitalCallEffectId [issuerCommit1Cid] $ Id "Round 1"

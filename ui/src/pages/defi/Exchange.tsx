@@ -102,7 +102,8 @@ export const Exchange : React.FC = () => {
   }
 
   const makeTrade = async () => {
-    const fungibleCid = isBuy ? await getFungible(party, price * quantity, dex.payload.p2.quantity.unit) : await getFungible(party, quantity, dex.payload.p1.quantity.unit);
+    const fungibleCid = isBuy ? await getFungible(
+      party, price * quantity, dex.payload.p2.quantity.unit) : await getFungible(party, quantity, dex.payload.p1.quantity.unit);
     const receivableAccount = getAccount(isBuy ? dex.payload.p1.quantity.unit : dex.payload.p2.quantity.unit);
     if (!fungibleCid) throw new Error("Insufficient funds");
     if (!receivableAccount) throw new Error("No suitable account found");

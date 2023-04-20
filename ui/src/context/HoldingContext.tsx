@@ -15,6 +15,7 @@ type HoldingState = {
   loading : boolean
   holdings : HoldingAggregate[]
   getFungible : (owner : string, amount : number | string, instrument: InstrumentKey) => Promise<ContractId<Fungible>>
+  getPreciseFungible : (custodian: string, owner : string, amount : number | string, instrument: InstrumentKey) => Promise<ContractId<Fungible>>
 };
 
 export type HoldingAggregate = CreateEvent<Base> & {
@@ -25,7 +26,8 @@ export type HoldingAggregate = CreateEvent<Base> & {
 const empty = {
   loading: true,
   holdings: [],
-  getFungible: (owner : string, amount : number | string, instrument: InstrumentKey) => { throw new Error("Not implemented"); }
+  getFungible: (owner : string, amount : number | string, instrument: InstrumentKey) => { throw new Error("Not implemented"); },
+  getPreciseFungible: (custodian : string, owner : string, amount : number | string, instrument: InstrumentKey) => { throw new Error("Not implemented"); }
 };
 
 const HoldingContext = React.createContext<HoldingState>(empty);
@@ -70,10 +72,31 @@ export const HoldingProvider : React.FC = ({ children }) => {
       return splitCids[0];
     }
 
+    const getPreciseFungible = async (custodian: string, owner : string, amount : number | string, instrument: InstrumentKey) : Promise<ContractId<Fungible>> => {
+      const qty = typeof amount === "string" ? parseFloat(amount) : amount;
+      const filtered = aggregates.filter(c => c.payload.account.custodian === custodian && c.payload.account.owner === owner && keyEquals(c.payload.instrument, instrument) && !c.payload.lock);
+      if (filtered.length === 0) throw new Error("Could not find unencumbered holding on instrument [" + instrument.id.unpack + "]");
+      if (!filtered[0].fungible) throw new Error("Holdings are not fungible, cannot right-size to correct amount.");
+      const sum = filtered.reduce((a, b) => a + parseFloat(b.payload.amount), 0);
+      if (filtered.length === 0 || sum < qty) throw new Error("Insufficient holdings (" + sum.toFixed(4) + ") for " + qty.toFixed(4) + " " + instrument.id.unpack);
+      if (filtered.length === 1 && sum === qty) return filtered[0].fungible.contractId;
+      if (filtered.length === 1 && sum > qty) {
+        const [ { splitCids, }, ] = await ledger.exercise(Fungible.Split, filtered[0].fungible.contractId, { amounts: [ qty.toString() ] });
+        return splitCids[0];
+      }
+      const [h, ...t] = filtered;
+      const [fungibleCid, ] = await ledger.exercise(Fungible.Merge, h.fungible!.contractId, { fungibleCids: t.map(c => c.fungible!.contractId) });
+      if (sum === qty) return fungibleCid;
+
+      const [ { splitCids, }, ] = await ledger.exercise(Fungible.Split, fungibleCid, { amounts: [ qty.toString() ] });
+      return splitCids[0];
+    }
+
     const value = {
       loading,
       holdings: aggregates,
-      getFungible
+      getFungible, 
+      getPreciseFungible
     };
 
     return (
