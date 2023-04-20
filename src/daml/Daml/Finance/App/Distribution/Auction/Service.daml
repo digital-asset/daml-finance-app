@@ -101,7 +101,7 @@ template Service
         bids <- zip bidCids <$> forA bidCids fetch
         collaterals <- mapA (fetch . (.collateralCid) . snd) bids
         assertMsg "Auction already successfully processed" (auction.status `elem` [Open, NoValidBids])
-
+        
         -- Split bids on those above / below the floor price -> Sort valid bids descendingly -> Execute Auction -> Split auction result on allocated / unallocated (ie, zero allocation)
         let
           collateralAccount = getAccount collateral
@@ -111,7 +111,7 @@ template Service
           sortedBids = sortOn (\(_, bid) -> Down bid.details) validBids
           ((remaining, finalPrice), allocations) = mapAccumL dutchAuction (auction.quantity.amount, 0.0) sortedBids
           (allocatedBids, unallocatedBids) = partitionEithers $ splitList (\allocation -> allocation.amount == 0.0) allocations
-
+        
         -- Return assets of all invalid and unallocated bids. Also update their bid status accordingly
         forA_ invalidBids (\(bidCid, bid) -> exerciseByKey @Bidding.S (bid.operator, bid.provider, bid.customer) Bidding.RejectBid with bidCid; newStatus = Bidding.Invalid)
         forA_ unallocatedBids (\Bidding.Allocation{bidCid, bid} -> exerciseByKey @Bidding.S (bid.operator, bid.provider, bid.customer) Bidding.RejectBid with bidCid; newStatus = Bidding.NoAllocation)
@@ -121,17 +121,18 @@ template Service
 
         -- Generate Settlement instructions for allocated bids
         let settleAllocations = (\allocation -> Bidding.SettleAllocation with allocation; price = finalPrice; issuer = customer) <$> allocatedBids
-
+        
         -- Hardcode receivable accoounts
         let settleAllocations1 = filter (\a -> a.allocation.bid.receivableAccount.id == Id "Investor1@Admin|Securities") settleAllocations
         let settleAllocations2 = filter (\a -> a.allocation.bid.receivableAccount.id == Id "Investor2@Admin|Securities") settleAllocations
         let settleAllocations3 = filter (\a -> a.allocation.bid.receivableAccount.id == Id "Investor3@Admin|Securities") settleAllocations        
         -- Here need to generate multiple settlement instructions, one for each receivable account
         --(remainingDepositCidOpt, batchCids) <- foldlA (generateSettlementInstruction settlementServiceCid provider auction.receivableAccount) (Some auctionCollateralClid, []) settleAllocations
+        debug "BUG BELOW"
         (remainingDepositCidOpt1, batchCids1) <- foldlA (generateSettlementInstruction settlementServiceCid provider receivableAccount1) (Some auctionCollateralClid, []) settleAllocations1
         (remainingDepositCidOpt2, batchCids2) <- foldlA (generateSettlementInstruction settlementServiceCid provider receivableAccount2) (Some auctionCollateralClid, []) settleAllocations2
         (remainingDepositCidOpt3, batchCids3) <- foldlA (generateSettlementInstruction settlementServiceCid provider receivableAccount3) (Some auctionCollateralClid, []) settleAllocations3
-
+        debug "BUG ABOVE"
         let batchCids = batchCids1 <> batchCids2 <> batchCids3
         -- Settle transfers
         forA_ batchCids (`exercise` Batch.Settle with actors = singleton provider)
@@ -144,11 +145,11 @@ template Service
         whenSome remainingDepositCidOpt2 \depositCid -> do
           exercise (coerceContractId depositCid : ContractId Disclosure.I) Disclosure.RemoveObservers with disclosers = singleton customer; observersToRemove = (auction.id, singleton provider)
           pure ()
-
+        
         whenSome remainingDepositCidOpt3 \depositCid -> do
           exercise (coerceContractId depositCid : ContractId Disclosure.I) Disclosure.RemoveObservers with disclosers = singleton customer; observersToRemove = (auction.id, singleton provider)
           pure ()
-
+        
         -- Undisclose accounts
         Account.exerciseInterfaceByKey @Disclosure.I receivableAccount1 provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (auction.id, singleton provider)
         Account.exerciseInterfaceByKey @Disclosure.I receivableAccount2 provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (auction.id, singleton provider)
@@ -164,6 +165,7 @@ template Service
               | remaining > 0.0 -> PartiallyAllocated with finalPrice; remaining
               | otherwise -> FullyAllocated with finalPrice
         archive auctionCid
+        debug "END"
         create auction with status = newStatus
 
     choice Terminate : ()

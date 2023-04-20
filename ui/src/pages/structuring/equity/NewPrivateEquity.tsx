@@ -24,7 +24,7 @@ export const NewPrivateEquity : React.FC = () => {
 
   const [ id, setId ] = useState("");
   const [ description, setDescription ] = useState("");
-  const [ callInstrument, setCallInstrument] = useState("");
+  const [ currency, setCurrency] = useState("");
 
   const canRequest = !!id && !!description;
 
@@ -32,21 +32,35 @@ export const NewPrivateEquity : React.FC = () => {
   const { getParty } = useParties();
   const { loading: l1, structuring, structuringAuto } = useServices();
   const { loading: l2, generics } = useInstruments();
+  const { loading: l3, tokens } = useInstruments();
+  const epoch = new Date(1970, 1, 1).toISOString();
 
-  if (l1 || l2) return <Spinner />;
+  if (l1 || l2 || l3) return <Spinner />;
   if (structuring.length === 0) return <Message text="No structuring service found" />
 
+/*        id : Id
+        description : Text
+        version : Text
+        validAsOf : Time
+        observers : PartiesMap
+        currency: InstrumentKey 
+        start: Time 
+        acquisitionTime: Time 
+        lastEventTimestamp: Time */
+
   const createPrivateEquity = async () => {
-    const callCcy = generics.find(c => c.payload.id.unpack === callInstrument);
-    if (!callCcy) throw new Error("Couldn't find call instrument " + callCcy);
+    const ccy = tokens.find(c => c.payload.id.unpack === currency);
+    if (!ccy) throw new Error("Couldn't find currency " + currency);
     const arg = {
       id: { unpack: id },
       description,
       observers: emptyMap<string, any>().set("Public", singleton(getParty("Public"))),
       version: "0",
       validAsOf: new Date().toISOString(), 
-      called: "0",
-      callInstrument: callCcy.key
+      currency: ccy.key, 
+      acquisitionTime: epoch,
+      lastEventTimestamp: epoch, 
+      start: epoch
     };
     if (structuringAuto.length > 0) await ledger.exercise(StructuringAuto.RequestAndCreatePrivateEquity, structuringAuto[0].contractId, arg);
     else await ledger.exercise(Structuring.RequestCreatePrivateEquity, structuring[0].contractId, arg);
@@ -67,7 +81,7 @@ export const NewPrivateEquity : React.FC = () => {
                   <Typography variant="h5" className={classes.heading}>Parameters</Typography>
                   <TextField className={classes.inputField} fullWidth label="Id" type="text" value={id} onChange={e => setId(e.target.value as string)} />
                   <TextField className={classes.inputField} fullWidth label="Description" type="text" value={description} onChange={e => setDescription(e.target.value as string)} />
-                  <SelectInput  label="Call Instrument" value={callInstrument}              setValue={setCallInstrument}              values={toValues(generics)} />
+                  <SelectInput  label="Currency" value={currency}              setValue={setCurrency}              values={toValues(tokens)} />
                   <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={createPrivateEquity}>Create Instrument</Button>
                 </Paper>
               </Grid>

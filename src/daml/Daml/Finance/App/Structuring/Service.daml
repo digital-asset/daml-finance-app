@@ -3,6 +3,7 @@
 
 module Daml.Finance.App.Structuring.Service where
 
+import ContingentClaims.Core.Claim (at, anytime, one)
 import DA.Date (toGregorian)
 import Daml.Finance.App.Structuring.Model
 import Daml.Finance.App.Util (fetchAndArchive)
@@ -71,18 +72,41 @@ template Service
       do
         create CreateEquityRequest with ..
 
-    nonconsuming choice RequestCreatePrivateEquity : ContractId CreatePrivateEquityRequest 
+    -- nonconsuming choice RequestCreatePrivateEquity : ContractId CreatePrivateEquityRequest 
+    --   with 
+    --     id : Id 
+    --     description: Text 
+    --     version : Text 
+    --     validAsOf: Time 
+    --     observers : PartiesMap 
+    --     callInstrument: InstrumentKey
+    --     called: Numeric 10
+    --   controller customer 
+    --   do 
+    --     create CreatePrivateEquityRequest with ..
+
+    nonconsuming choice RequestCreatePrivateEquity: (ContractId CreateEquityRequest, ContractId CreateGenericRequest)
       with 
-        id : Id 
-        description: Text 
-        version : Text 
-        validAsOf: Time 
-        observers : PartiesMap 
-        callInstrument: InstrumentKey
-        called: Numeric 10
+        id : Id
+        description : Text
+        version : Text
+        validAsOf : Time
+        observers : PartiesMap
+        currency: InstrumentKey 
+        start: Time 
+        acquisitionTime: Time 
+        lastEventTimestamp: Time 
       controller customer 
       do 
-        create CreatePrivateEquityRequest with ..
+        equityCid <- create CreateEquityRequest with .. 
+        commitmentCid <- create CreateGenericRequest 
+          with 
+            claims =  anytime (at start) $ one currency
+            id = show id <>"-COMMITMENT"
+            description = show currency.id <> " commitment for "<> show id 
+            ..
+
+        pure (equityCid, commitmentCid)
 
     nonconsuming choice RequestCreateGeneric : ContractId CreateGenericRequest
       with

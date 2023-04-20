@@ -55,10 +55,11 @@ generateSettlementInstruction settlementServiceCid settler issuerAccount (Some i
   -- | Process bid side
   bid <- fetch allocation.bidCid
   (bidCid, bidDepositCid) <- exerciseByKey @Bidding.Service (bid.operator, bid.provider, bid.customer) Bidding.ProcessAllocation with bidCid = allocation.bidCid; amount = allocatedAmount; price
+  
   let
     buyer = bid.customer
     payment = Step with sender = bid.customer; receiver = issuer; quantity = (Instrument.qty allocatedNotional bid.details.price.unit)
-
+  
   -- | Process issuer side
   -- 1/ Extract their deposit
   -- 2/ Split allocation quantity from this deposit, get the deposit matching the allocation. Can only result in either :
@@ -73,7 +74,7 @@ generateSettlementInstruction settlementServiceCid settler issuerAccount (Some i
   let
     delivery = Step with sender = issuer; receiver = buyer; quantity = (Instrument.qty (getAmount allocatedDeposit) (getInstrument allocatedDeposit))
     id = bid.auctionId <> "-" <> partyToText buyer
-
+  
   (batchCid, [deliveryCid, paymentCid]) <- exercise settlementServiceCid Settlement.DiscoverAndInstruct
     with
       actor = settler
@@ -83,10 +84,18 @@ generateSettlementInstruction settlementServiceCid settler issuerAccount (Some i
       settlementTime = None
       settlers = singleton settler
       steps = [delivery, payment]
-
+  
+  -- paymentD <- fetch paymentCid 
+  -- debug (view paymentD)
+  
   deliveryCid <- fst <$> exercise deliveryCid Allocate with actors = singleton issuer; allocation = Pledge $ toInterfaceContractId allocatedDepositCid
+  
   exercise bidCid Bidding.ApproveInstruction with instructionCid = deliveryCid; account = bid.receivableAccount
+  
+  debug "BUG BELOW Util"
   paymentCid <- exercise bidCid Bidding.AllocateInstruction with instructionCid = paymentCid; transferableCid = toInterfaceContractId bidDepositCid
-  exercise paymentCid Approve with actors = singleton issuer; approval = TakeDelivery issuerAccount
+  debug "BUG ABOVE Util"
 
+  exercise paymentCid Approve with actors = singleton issuer; approval = TakeDelivery issuerAccount
+  
   pure (splitResult.rest, batchCid :: batchCids)

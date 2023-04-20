@@ -135,6 +135,12 @@ createListingAutoService operator exchange customer = do
   offerCid <- submit exchange do exerciseByKeyCmd @Exchange.Role (operator, exchange) Exchange.OfferListingAutoService with ..
   submit customer do exerciseCmd offerCid ListingAuto.Accept
 
+-- createAuctionService : Party -> Party -> Party -> SettlementPaths -> AccountKey -> AccountKey -> AccountKey -> Script (ContractId Auction.Service)
+-- createAuctionService operator provider customer paths receivableAccount1 receivableAccount2 receivableAccount3 = do
+--   settlementServiceCid <- createSettlementService operator provider customer paths
+--   offerCid <- submit provider do exerciseByKeyCmd @Distributor.Role (operator, provider) Distributor.OfferAuctionService with customer; settlementServiceCid; receivableAccount1; receivableAccount2; receivableAccount3 
+--   submit customer do exerciseCmd offerCid Auction.Accept
+
 createAuctionService : Party -> Party -> Party -> SettlementPaths -> AccountKey -> AccountKey -> AccountKey -> Script (ContractId Auction.Service)
 createAuctionService operator provider customer paths receivableAccount1 receivableAccount2 receivableAccount3 = do
   settlementServiceCid <- createSettlementService operator provider customer paths

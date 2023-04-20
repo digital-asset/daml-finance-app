@@ -153,45 +153,45 @@ template Service
           pure [effectCid]
         
 
-    nonconsuming choice DeclareAntiDividend : [ContractId Effect.I]
-      with
-        privateEquity : InstrumentKey
-        newVersion : Text
-        id : Id
-        description : Text
-        effectiveTime : Time
-        amount: Numeric 10
-      controller customer
-      do
-        now <- getTime
-        (_, peRef) <- fetchByKey @Instrument.R privateEquity 
-        peInstrument <- fetch (coerceContractId peRef.cid: ContractId PrivateEquity.T)
+    -- nonconsuming choice DeclareAntiDividend : [ContractId Effect.I]
+    --   with
+    --     privateEquity : InstrumentKey
+    --     newVersion : Text
+    --     id : Id
+    --     description : Text
+    --     effectiveTime : Time
+    --     amount: Numeric 10
+    --   controller customer
+    --   do
+    --     now <- getTime
+    --     (_, peRef) <- fetchByKey @Instrument.R privateEquity 
+    --     peInstrument <- fetch (coerceContractId peRef.cid: ContractId PrivateEquity.T)
 
-        let
-          disclosure = toInterface @Disclosure.I peInstrument
-          dv = view disclosure
-          newInstrument = InstrumentKey with depository = provider; issuer = customer; id = privateEquity.id; version = newVersion
-          newLiabilityInstrument = InstrumentKey with depository = provider; issuer = customer; id = privateEquity.id; version = "0"
-          antiDividend = Quantity 
-            with 
-              unit = peInstrument.callInstrument 
-              amount 
+    --     let
+    --       disclosure = toInterface @Disclosure.I peInstrument
+    --       dv = view disclosure
+    --       newInstrument = InstrumentKey with depository = provider; issuer = customer; id = privateEquity.id; version = newVersion
+    --       newLiabilityInstrument = InstrumentKey with depository = provider; issuer = customer; id = privateEquity.id; version = "0"
+    --       antiDividend = Quantity 
+    --         with 
+    --           unit = peInstrument.callInstrument 
+    --           amount 
 
-        exerciseByKey @Structuring.Service (operator, provider, customer) Structuring.RequestAndCreatePrivateEquity 
-          with 
-            id = privateEquity.id
-            description = peInstrument.description
-            version = newVersion
-            validAsOf = now
-            observers = dv.observers
-            callInstrument = peInstrument.callInstrument
-            called = peInstrument.called + amount
+    --     exerciseByKey @Structuring.Service (operator, provider, customer) Structuring.RequestAndCreatePrivateEquity 
+    --       with 
+    --         id = privateEquity.id
+    --         description = peInstrument.description
+    --         version = newVersion
+    --         validAsOf = now
+    --         observers = dv.observers
+    --         callInstrument = peInstrument.callInstrument
+    --         called = peInstrument.called + amount
 
-        eventCid <- exercise (coerceContractId peRef.cid : ContractId Equity.I) Equity.DeclareDividend with id; description; effectiveTime; newInstrument; perUnitDistribution=[antiDividend]
-        snd <$> exercise distributionRuleCid Lifecycle.Evolve with
-          eventCid
-          instrument = privateEquity
-          observableCids = []
+    --     eventCid <- exercise (coerceContractId peRef.cid : ContractId Equity.I) Equity.DeclareDividend with id; description; effectiveTime; newInstrument; perUnitDistribution=[antiDividend]
+    --     snd <$> exercise distributionRuleCid Lifecycle.Evolve with
+    --       eventCid
+    --       instrument = privateEquity
+    --       observableCids = []
 
     nonconsuming choice DeclareReplacement : [ContractId Effect.I]
       with

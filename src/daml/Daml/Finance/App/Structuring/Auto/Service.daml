@@ -45,19 +45,37 @@ template Service
         createEquityRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreateEquity with ..
         exerciseByKey @S.Service (operator, provider, customer) S.CreateEquity with createEquityRequestCid
 
-    nonconsuming choice RequestAndCreatePrivateEquity: ContractId Instrument.I 
+    nonconsuming choice RequestAndCreatePrivateEquity: (ContractId Instrument.I, ContractId Instrument.I)
       with 
-        id : Id 
-        description : Text 
-        version: Text 
-        validAsOf : Time 
-        observers: PartiesMap 
-        callInstrument: InstrumentKey
-        called: Numeric 10
+        id : Id
+        description : Text
+        version : Text
+        validAsOf : Time
+        observers : PartiesMap
+        currency: InstrumentKey 
+        start: Time 
+        acquisitionTime: Time 
+        lastEventTimestamp: Time 
       controller customer 
       do 
-        createPrivateEquityRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreatePrivateEquity with .. 
-        exerciseByKey @S.Service (operator, provider, customer) S.CreatePrivateEquity with createPrivateEquityRequestCid 
+        (createEquityRequestCid, createGenericRequestCid) <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreatePrivateEquity with .. 
+        equity <- exerciseByKey @S.Service (operator, provider, customer) S.CreateEquity with createEquityRequestCid
+        commitment <- exerciseByKey @S.Service (operator, provider, customer) S.CreateGeneric with createGenericRequestCid
+        return (equity, commitment)
+
+    -- nonconsuming choice RequestAndCreatePrivateEquity: ContractId Instrument.I 
+    --   with 
+    --     id : Id 
+    --     description : Text 
+    --     version: Text 
+    --     validAsOf : Time 
+    --     observers: PartiesMap 
+    --     callInstrument: InstrumentKey
+    --     called: Numeric 10
+    --   controller customer 
+    --   do 
+    --     createPrivateEquityRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreatePrivateEquity with .. 
+    --     exerciseByKey @S.Service (operator, provider, customer) S.CreatePrivateEquity with createPrivateEquityRequestCid 
 
     nonconsuming choice RequestAndCreateGeneric : ContractId Instrument.I
       with

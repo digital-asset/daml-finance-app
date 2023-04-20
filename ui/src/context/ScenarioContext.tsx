@@ -130,7 +130,7 @@ export const scenarios : Scenario[] = [
       [ "Admin",  { x:  300, y:   300 } ],
       [ "TransferAgent",     { x:  0, y:   0 } ],
       [ "WealthManager",    { x:  0, y: 400 } ],
-      [ "Issuer",       { x:  400, y: 0 } ],
+      [ "FundManager",       { x:  400, y: 0 } ],
       [ "Investor1",    { x:    0, y: 600 } ],
       [ "Investor2",    { x:  400, y: 600 } ],
       [ "Investor3",    { x:  800, y: 600 } ]
