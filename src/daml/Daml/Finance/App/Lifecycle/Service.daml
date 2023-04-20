@@ -3,7 +3,7 @@
 
 module Daml.Finance.App.Lifecycle.Service where
 
-import ContingentClaims.Core.Claim (Claim)
+import ContingentClaims.Core.Claim (Claim, one)
 import ContingentClaims.Core.Observation (Observation(..))
 import ContingentClaims.Lifecycle.Lifecycle qualified as Lifecycle
 import ContingentClaims.Lifecycle.Util (expiry, fixings, payoffs)
@@ -76,6 +76,93 @@ template Service
           instrument = equity
           observableCids = []
 
+    -- nonconsuming choice DeclareAndClaimCapitalCall: (Optional (ContractId Fungible.I), ContractId Batch.I, [ContractId Instruction.I])
+    --   with 
+    --     id: Id 
+    --     description: Text 
+    --     electionTime: Time 
+    --     amount: Decimal 
+    --     commitment: InstrumentKey 
+    --     claim: C
+    --   controller customer 
+    --   do 
+    --     (_, commitmentRef) <- fetchByKey @Instrument.R commitment 
+    --     commitmentInstrument <- fetch commitmentRef.cid 
+    --     let 
+    --       disclosure = toInterface @Disclosure.I commitmentInstrument 
+    --       cv = view commitmentInstrument 
+    --       dv = view disclosure
+    --       electorIsOwner = True
+    --       instrument = commitment
+    --       elector = customer
+    --       counterparty = provider
+    --       election = Election.Election
+    --         with 
+    --           elector 
+    --           counterparty 
+    --           provider 
+    --           id 
+    --           description 
+    --           instrument 
+    --           amount 
+    --           claim 
+    --           electorIsOwner 
+    --           electionTime 
+    --           observers = dv.observers
+    --       --electionTime = Election.getElectionTime election
+    --       election = electionEvent electionTime electorIsOwner claim
+    --       lifecycler = customer
+
+    --     -- fetch claim tree
+    --     claimInstrument <- fetchInterfaceByKey @BaseInstrument.R instrument
+    --     claims <- Claim.getClaims (toInterface @Claim.I claimInstrument) $ Claim.GetClaims with
+    --       actor = lifecycler
+
+    --     -- lifecycle as of the time given by the event, by applying the corresponding election
+    --     (remaining, pending) <- Claim.lifecycle lifecycler [] claimInstrument [election]
+
+    --     -- create new instrument and return effect
+    --     if remaining == claims && null pending then
+    --       pure []
+    --     else do
+    --       let
+    --         instrumentT : Instrument = fromSome $ fromInterface claimInstrument
+    --         currentKey = BaseInstrument.getKey $ toInterface claimInstrument
+    --         newKey = currentKey with version = sha256 $ show remaining
+    --         [claim] = fmap (.claim) remaining
+    --         producedInstrument = if isZero' remaining then None else Some newKey
+    --       forA_ producedInstrument $
+    --         tryCreateNewInstrument lifecycler claim electionTime instrumentT
+    --       let (otherConsumed, otherProduced) = Claim.splitPending pending
+    --       effectCid <- toInterfaceContractId <$>
+    --         create ElectionEffect with
+    --           --providers = fromList [instrumentT.issuer, instrumentT.depository]
+    --           providers = fromList [provider, customer]
+    --           custodian = if electorIsOwner then counterparty else elector
+    --           owner = if electorIsOwner then elector else counterparty
+    --           id = id
+    --           description = description
+    --           targetInstrument = currentKey
+    --           producedInstrument
+    --           amount = amount
+    --           otherConsumed
+    --           otherProduced
+    --           settlementTime = Some electionTime
+    --           observers = dv.observers
+    --       --pure (producedInstrument, [effectCid])
+    --       splitResult <- submit owner $ exerciseCmd depositCid Fungible.Split with amounts = [amount]
+    --       splitHoldingId <- head splitResult.splitCids 
+    --       optRestHoldingId <- splitResults.rest 
+    --       (batch, instructionsCids) <- 
+          
+
+-- claimCapitalCallEffect : Party -> Party -> Party -> Party -> ContractId Effect.I -> Decimal -> ContractId Fungible.I -> Id -> Script (Optional (ContractId Fungible.I), ContractId Batch.I, [ContractId Instruction.I])
+-- claimCapitalCallEffect operator inv issuer public effectId amount holdingId id = do 
+--   (splitHoldingId, optRestHoldingId) <- split issuer amount holdingId 
+--   --disclosedHoldingId <- submit issuer $ coerceInterfaceContractId <$> exerciseCmd (toInterfaceContractId @Disclosure.I splitHoldingId) Disclosure.AddObservers with disclosers = singleton issuer; observersToAdd = ("Admin", singleton issuer)
+--   (batchCid, instructionsCids) <- claimEffect operator inv issuer public effectId [coerceInterfaceContractId splitHoldingId] id 
+--   return (optRestHoldingId, batchCid, instructionsCids) 
+
     nonconsuming choice DeclareCapitalCall: [ContractId Effect.I] 
       with 
         id: Id 
@@ -83,7 +170,7 @@ template Service
         electionTime: Time 
         amount: Decimal 
         commitment: InstrumentKey 
-        claim: C
+        currency: InstrumentKey
       controller customer 
       do 
         (_, commitmentRef) <- fetchByKey @Instrument.R commitment 
@@ -96,6 +183,7 @@ template Service
           instrument = commitment
           elector = customer
           counterparty = provider
+          claim = one currency
           election = Election.Election
             with 
               elector 

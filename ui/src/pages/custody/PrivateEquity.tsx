@@ -1,15 +1,24 @@
 // Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import React from "react";
-import { useParty } from "@daml/react";
+import React, { useState } from "react";
+import { useLedger, useParty } from "@daml/react";
 import { fmt } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
 import { useHoldings } from "../../context/HoldingContext";
+import { useServices } from "../../context/ServiceContext";
 import { Alignment, HorizontalTable } from "../../components/Table/HorizontalTable";
-import { Button, TextField } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Button, TextField, Typography } from "@mui/material";
 import useStyles from "../styles";
+import { useInstruments } from "../../context/InstrumentContext";
+import { SelectionTable } from "../../components/Table/SelectionTable";
+import { TextInput } from "../../components/Form/TextInput";
+import classnames from "classnames";
+import { ExpandMore } from "@mui/icons-material";
+import { Service as Lifecycle } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Service";
+import { v4 as uuidv4 } from "uuid";
+import { useNavigate } from "react-router-dom";
 
 export type HoldingsProps = {
 }
@@ -37,10 +46,54 @@ const positionEntryCmp = (p1: PositionEntry, p2: PositionEntry) => {
 
 const Holdings : React.FC<HoldingsProps> = ({ }) => {
   const party = useParty();
+  const ledger = useLedger();
+  const navigate = useNavigate();
+  //const [ expanded, setExpanded ] = useState("");
+  const [ owner, setOwner ] = useState("");
+  const [ custodian, setCustodian ] = useState("");
+  const [ instrument, setInstrument ] = useState("");
+  const [ callAmount, setCallAmount ] = useState("");
   const { getName } = useParties();
   const { loading: l1, holdings } = useHoldings();
+  const { loading: l2, lifecycle } = useServices();
+  const { loading: l3, tokens, equities, getByCid } = useInstruments();
   const classes = useStyles();
-  if (l1) return <Spinner />;
+  if (l1 || l2 || l3) return <Spinner />;
+  const svc = lifecycle.find(c => c.payload.customer === party);
+
+
+  const toggle = (cust : string, own : string, inst: string) => {
+    if (cust === custodian && own === owner && inst === instrument) {
+      setCustodian("");
+      setOwner(""); 
+      setInstrument("");
+      setCallAmount("");
+    }
+    else { 
+      setCustodian(cust);
+      setOwner(own); 
+      setInstrument(inst);
+      setCallAmount("");
+    }
+  };
+
+  const declareCapitalCall = async () => {
+    const holding = holdings.find(h => h.payload.account.owner === owner && h.payload.account.custodian === custodian && h.payload.instrument.id.unpack === instrument);
+    const usd = tokens.find(h => h.payload.id.unpack === "USD");
+    if (!svc) throw new Error("Couldn't find lifecycle service");
+    if (!holding) throw new Error("Couldn't find Instrument "+instrument);
+    if (!usd) throw new Error("Could not find USD!!");
+    const arg = {
+      id: { unpack: uuidv4() },
+      description: "Capital Call on " +instrument,
+      electionTime: new Date().toISOString(),
+      amount: callAmount, 
+      commitment: holding.payload.instrument,
+      currency: usd.key
+    };  
+    await ledger.exercise(Lifecycle.DeclareCapitalCall, svc.contractId, arg);
+    navigate("/app/servicing/effects");
+  };
 
   const filtered = holdings.filter(c => c.payload.account.owner === party && c.payload.instrument.id.unpack.match("-COMMITMENT") );
   const liabilities = holdings.filter(c => c.payload.account.custodian === party);
@@ -90,13 +143,15 @@ const Holdings : React.FC<HoldingsProps> = ({ }) => {
       fmt(e.position, 0),
       fmt(e.locked, 0),
       fmt(e.available, 0),
-      <TextField 
-        required 
-        type="number" 
-        label={"Amount"} onChange={e => {}}
-        disabled={!e.instrument.match("PE1-COMMITMENT")}
-      />,
-      <Button color="primary" variant="contained"  onClick={() => {}} disabled={!e.instrument.match("PE1-COMMITMENT")}>Call</Button>
+      <Accordion expanded={custodian === e.custodian && owner === e.owner && instrument === e.instrument} onChange={() => toggle(e.custodian,  e.owner, e.instrument)}>
+      <AccordionSummary expandIcon={<ExpandMore />}>
+        <Typography gutterBottom variant="h6" component="h3">Capital</Typography>
+      </AccordionSummary>
+      <AccordionDetails>
+        <TextInput label="Amount in USD"   value={callAmount}        setValue={setCallAmount} />
+        <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" onClick={()=>declareCapitalCall()}>call</Button>
+      </AccordionDetails>
+      </Accordion>
     ];
   }
   const headers = ["Obligor", "Beneficiary", "Instrument", "Version", "Initial", "Total Remaining", "Locked Remaining", "Available Remaining", "Capital"]
@@ -110,3 +165,4 @@ const Holdings : React.FC<HoldingsProps> = ({ }) => {
 export const PrivateEquity : React.FC = () => {
   return <Holdings />;
 };
+
