@@ -324,7 +324,7 @@ declareCapitalCall operator provider issuer public commitment ccy effectiveTime 
         electionTime = effectiveTime 
         amount 
         commitment
-        claim = one ccy 
+        currency = ccy 
 
 declareReplacement : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> [InstrumentQuantity] -> Script (ContractId Effect.I)
 declareReplacement operator provider issuer public equity effectiveTime perUnitReplacement = do
