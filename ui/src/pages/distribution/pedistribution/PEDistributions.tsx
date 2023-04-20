@@ -18,7 +18,7 @@ export const PEDistributions : React.FC = () => {
   if (l1) return <Spinner />;
 
   const createRow = (c : CreateEvent<Auction>) : any[] => {
-    const path = (party === c.payload.provider || party === c.payload.customer ? "/app/distribution/auctions/" : "/app/distribution/auction/") + c.contractId;
+    const path = (party === c.payload.provider || party === c.payload.customer ? "/app/distribution/pedistributions/" : "/app/distribution/pedistribution/") + c.contractId;
     return [
       c.payload.id,
       getName(c.payload.provider),
@@ -33,6 +33,6 @@ export const PEDistributions : React.FC = () => {
   const values : any[] = auctions.map(createRow);
   const alignment : Alignment[] = ["left", "left", "left", "right", "right", "left", "left"];
   return (
-    <HorizontalTable title="Auctions" variant={"h3"} headers={headers} values={values} alignment={alignment} />
+    <HorizontalTable title="PE Distributions" variant={"h3"} headers={headers} values={values} alignment={alignment} />
   );
 };

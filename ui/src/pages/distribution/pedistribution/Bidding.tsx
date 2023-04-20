@@ -26,8 +26,8 @@ export const Bidding : React.FC = () => {
   const classes = useStyles();
 
   const [ amount, setAmount ] = useState<number>(0);
-  const [ price, setPrice ] = useState<number>(0);
-
+  // const [ price, setPrice ] = useState<number>(0);
+  const price = 1.0
   const { getName } = useParties();
   const party = useParty();
   const ledger = useLedger();
@@ -61,7 +61,7 @@ export const Bidding : React.FC = () => {
     if (!receivableAccount) return;
     const arg = {
       auctionCid: auction.contractId,
-      price: price.toString(),
+      price: "1.0",
       amount: amount.toString(),
       collateralCid,
       receivableAccount
@@ -85,7 +85,7 @@ export const Bidding : React.FC = () => {
             <Grid container direction="column">
               <Grid xs={12}>
                 <Paper className={classnames(classes.fullWidth, classes.paper)}>
-                  <Typography variant="h5" className={classes.heading}>Auction Details</Typography>
+                  <Typography variant="h5" className={classes.heading}>Distribution Details</Typography>
                   <Table size="small">
                     <TableBody>
                       <TableRow key={0} className={classes.tableRow}>
@@ -119,7 +119,7 @@ export const Bidding : React.FC = () => {
               <Grid xs={12}>
                 {!!bid &&
                   <Paper className={classnames(classes.fullWidth, classes.paper)}>
-                    <Typography variant="h5" className={classes.heading}>Bid</Typography>
+                    <Typography variant="h5" className={classes.heading}>Offer</Typography>
                     <Table size="small">
                       <TableBody>
                         <TableRow key={0} className={classes.tableRow}>
@@ -153,14 +153,14 @@ export const Bidding : React.FC = () => {
                             <TextField required autoFocus fullWidth type="number" label={"Quantity (" + auction.payload.quantity.unit.id.unpack + ")"} onChange={e => setAmount(parseFloat(e.target.value))} />
                           </TableCell>
                         </TableRow>
-                        <TableRow key={1} className={classes.tableRow}>
+                        {/* <TableRow key={1} className={classes.tableRow}>
                           <TableCell className={classes.tableCell}>
                             <TextField required fullWidth className={classes.inputField} type="number" label={"Price (" + auction.payload.currency.id.unpack + ")"} onChange={e => setPrice(parseFloat(e.target.value))} />
                           </TableCell>
-                        </TableRow>
+                        </TableRow> */}
                         <TableRow key={2} className={classes.tableRow}>
                           <TableCell className={classes.tableCell}>
-                            <Button color="primary" className={classnames(classes.fullWidth, classes.buttonMargin)} variant="contained" disabled={price === 0 || amount === 0} onClick={() => requestCreateBid()}>Bid</Button>
+                            <Button color="primary" className={classnames(classes.fullWidth, classes.buttonMargin)} variant="contained" disabled={amount === 0} onClick={() => requestCreateBid()}>Bid</Button>
                           </TableCell>
                         </TableRow>
                       </TableBody>

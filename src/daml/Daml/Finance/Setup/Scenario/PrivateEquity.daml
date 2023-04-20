@@ -158,9 +158,9 @@ run = do
   -- Instruments 
   usd       <- originateToken ta ta pub epoch "USD" "United States Dollar"
   usdCommit1 <- originateGeneric admin issuer pub epoch "PE1-COMMITMENT" "USD Commitment to PE1" $ capitalCommitment usd epoch
-  pe1        <- originateEquity admin issuer pub epoch "PE1" "Private Equity Fund 1 Shares" 
-  pe2        <- originateEquity admin issuer pub epoch "PE2" "Private Equity Fund 2 Shares"
-  pe3        <- originateEquity admin issuer pub epoch "PE3" "Private Equity Fund 3 Shares"
+  pe1        <- originateEquity issuer issuer pub epoch "PE1" "Private Equity Fund 1 Shares" 
+  pe2        <- originateEquity issuer issuer pub epoch "PE2" "Private Equity Fund 2 Shares"
+  pe3        <- originateEquity issuer issuer pub epoch "PE3" "Private Equity Fund 3 Shares"
   usdCommit2 <- originateGeneric admin issuer pub epoch "PE2-COMMITMENT" "USD Commitment to PE2" $ capitalCommitment usd epoch
   usdCommit3 <- originateGeneric admin issuer pub epoch "PE3-COMMITMENT" "USD Commitment to PE3" $ capitalCommitment usd epoch
   let usdCommit = usdCommit1
@@ -173,6 +173,8 @@ run = do
   issuerCommitAccount1      <- createAccount'  inv1 issuer "FundManager@Inv1|Commitments" adminObs
   issuerCommitAccount2      <- createAccount'  inv2 issuer "FundManager@Inv2|Commitments" adminObs
   issuerCommitAccount3      <- createAccount'  inv3 issuer "FundManager@Inv3|Commitments" adminObs
+  -- 'Dummy' account to enable creation of an auction in the UI but not used to hold commitments
+  issuerCommitAccountD      <- createAccount'  admin issuer "FundManager@Admin|Commitments" adminObs
 
   -- Hardcode three auction settlement accounts into the Auction Service
   createAuctionService          operator issuer       issuer paths issuerCommitAccount1 issuerCommitAccount2 issuerCommitAccount3
@@ -202,14 +204,14 @@ run = do
   inv2CashCid      <- deposit operator ta inv2 public (qty 200_000_000.00 usd) inv2CashAccount
   inv3CashCid      <- deposit operator ta inv3 public (qty 200_000_000.00 usd) inv3CashAccount
 
-  --inv1UncommitedCid   <- deposit operator inv1 inv1 public (qty 60_000_000.00 usdCommit) inv1UncommittedAccount
+  inv1UncommitedCid   <- deposit operator inv1 inv1 public (qty 60_000_000.00 usdCommit) inv1UncommittedAccount
   inv2UncommitedCid   <- deposit operator inv2 inv2 public (qty 70_000_000.00 usdCommit) inv2UncommittedAccount
   inv3UncommitedCid   <- deposit operator inv3 inv3 public (qty 90_000_000.00 usdCommit) inv3UncommittedAccount
 
   inv1Shares1Cid    <- deposit operator issuer inv1 public (qty 25_000_000.00 pe1) inv1SecAccount
   inv2Shares1Cid    <- deposit operator issuer inv2 public (qty 35_000_000.00 pe1) inv2SecAccount
   inv3Shares1Cid    <- deposit operator issuer inv3 public (qty 40_000_000.00 pe1) inv3SecAccount
-  issuerShares1Cid  <- deposit operator issuer issuer public (qty 1_000_00.00 pe1) issuerSecAccount
+  -- issuerShares1Cid  <- deposit operator issuer issuer public (qty 1_000_00.00 pe1) issuerSecAccount
 
   -- Issuances (Test)
   (_, ad1) <- issue operator issuer issuer public (qty 1_000_000.0 pe1)   issuerSecAccount
@@ -231,7 +233,7 @@ run = do
   -- let
   --   doAuction = do
   -- let quantity = qty 1_000_000.0 pe1
-  -- auctionCid        <- createAuction operator issuer issuer public "AUCTION1" quantity usdCommit 0.95 (coerceContractId ad1) issuerCashAccount
+  -- auctionCid        <- createAuction operator issuer issuer public "DISTRIBUTION1" quantity usdCommit 1.0 (coerceContractId ad1) issuerCashAccount
   -- inv1CollateralCid <- coerceContractId <$> getHolding inv1 (qty 500_010.0 usdCommit)
   -- inv2CollateralCid <- coerceContractId <$> getHolding inv2 (qty 392_000.0 usdCommit)
   -- inv3CollateralCid <- coerceContractId <$> getHolding inv3 (qty 297_000.0 usdCommit)

@@ -15,6 +15,7 @@ import { New as NewSubscription} from "../pages/distribution/offering/New";
 import { useParty } from "@daml/react";
 import { Requests } from "../pages/distribution/auction/Requests";
 import { Bidding } from "../pages/distribution/auction/Bidding";
+import { Bidding as PEBidding} from "../pages/distribution/pedistribution/Bidding";
 import { Requests as InvestmentRequests} from "../pages/distribution/investment/Requests";
 import { New as NewInvestment} from "../pages/distribution/investment/New";
 import { Spinner } from "../components/Spinner/Spinner";
@@ -45,11 +46,12 @@ export const Distribution : React.FC = () => {
 
   const entries : Entry[] = [];
   if (isIssuer) {
+    entries.push({ label: "PE Distributions", path: "pedistributions", element: <PEDistributions /> });
     entries.push({ label: "Auctions", path: "auctions", element: <Auctions /> });
     entries.push({ label: "Offerings", path: "offerings", element: <Offerings /> });
     entries.push({ label: "Requests", path: "requests", element: <Requests /> });
-    entries.push({ label: "New Auction", path: "new/auction", element: <NewAuction />, action: true });
     entries.push({ label: "New PE Distribution", path: "new/pedistribution", element: <NewPEDistribution />, action: true });
+    entries.push({ label: "New Auction", path: "new/auction", element: <NewAuction />, action: true });
     entries.push({ label: "New Offering", path: "new/offering", element: <NewSubscription />, action: true });
   } else if (isAgent) {
     entries.push({ label: "Auctions", path: "auctions", element: <Auctions /> });
@@ -67,15 +69,23 @@ export const Distribution : React.FC = () => {
     entries.push({ label: "Funds", path: "funds", element: <Funds /> });
     entries.push({ label: "Pooled Investment Requests", path: "pooledrequests", element: <PooledRequests /> });
   } else {
-    entries.push({ label: "Auctions", path: "auctions", element: <BiddingAuctions /> });
+    entries.push({ label: "PE Distributions", path: "pedistributions", element: <PEDistributions /> });
+    entries.push({ label: "Auctions", path: "auctions", element: <Auctions /> });
     entries.push({ label: "Offerings", path: "offerings", element: <Offerings /> });
+    entries.push({ label: "Requests", path: "requests", element: <Requests /> });
+    entries.push({ label: "New PE Distribution", path: "new/pedistribution", element: <NewPEDistribution />, action: true });
+    entries.push({ label: "New Auction", path: "new/auction", element: <NewAuction />, action: true });
+    entries.push({ label: "New Offering", path: "new/offering", element: <NewSubscription />, action: true });
   }
 
   const paths = [
+    { path: "pedistributions/:contractId", element: <PEDistribution /> },
+    { path: "pedistribution/:contractId", element: <PEBidding />},
     { path: "auctions/:contractId", element: <Auction /> },
     { path: "auction/:contractId", element: <Bidding /> },
     { path: "subscriptions/:contractId", element: <Offering /> },
     { path: "new/auction", element: <NewAuction /> },
+    { path: "new/pedistribution", element: <NewPEDistribution />},
     { path: "new/offering", element: <NewSubscription /> },
   ];
 

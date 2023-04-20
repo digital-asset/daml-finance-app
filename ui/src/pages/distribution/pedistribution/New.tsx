@@ -26,7 +26,8 @@ export const New : React.FC = () => {
   const [ instrumentLabel, setInstrumentLabel ] = useState("");
   // const [ currencyLabel, setCurrencyLabel ] = useState("");
   const [ amount, setAmount ] = useState("");
-  const [ floor, setFloor ] = useState("");
+  // const [ floor, setFloor ] = useState("");
+  const floor = "1.0";
   const [ id, setId ] = useState("");
 
   const ledger = useLedger();
@@ -88,7 +89,7 @@ export const New : React.FC = () => {
                 <Paper className={classnames(classes.fullWidth, classes.paper)}>
                   <Typography variant="h5" className={classes.heading}>Details</Typography>
                   <FormControl className={classes.inputField} fullWidth>
-                    <InputLabel className={classes.selectLabel}>Auctioned Asset</InputLabel>
+                    <InputLabel className={classes.selectLabel}>Distributed Asset</InputLabel>
                     <Select fullWidth value={instrumentLabel} onChange={e => setInstrumentLabel(e.target.value as string)} MenuProps={menuProps}>
                       {myHoldingLabels.filter(a => a !== currencyLabel).map((a, i) => (<MenuItem key={i} value={a}>{a}</MenuItem>))}
                     </Select>
@@ -100,8 +101,8 @@ export const New : React.FC = () => {
                     </Select>
                   </FormControl> */}
                   <TextField className={classes.inputField} fullWidth label="Quantity" type="number" value={amount} onChange={e => setAmount(e.target.value as string)} />
-                  <TextField className={classes.inputField} fullWidth label="Floor Price" type="number" value={floor} onChange={e => setFloor(e.target.value as string)} />
-                  <TextField className={classes.inputField} fullWidth label="Auction Id" type="text" value={id} onChange={e => setId(e.target.value as string)} />
+                  {/* <TextField className={classes.inputField} fullWidth label="Floor Price" type="number" value={floor} onChange={e => setFloor(e.target.value as string)} /> */}
+                  <TextField className={classes.inputField} fullWidth label="Distribution Id" type="text" value={id} onChange={e => setId(e.target.value as string)} />
                   <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={requestCreateAuction}>Request Auction</Button>
                 </Paper>
               </Grid>

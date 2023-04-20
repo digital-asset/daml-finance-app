@@ -28,7 +28,7 @@ export const PEDistributions: React.FC = () => {
       <Grid container direction="row">
         <Grid item xs={12}>
           <Paper className={classes.paper}>
-            <Grid container direction="row" justifyContent="center" className={classes.paperHeading}><Typography variant="h2">Auctions</Typography></Grid>
+            <Grid container direction="row" justifyContent="center" className={classes.paperHeading}><Typography variant="h2">PE Distributions</Typography></Grid>
             <Table size="small">
               <TableHead>
                 <TableRow className={classes.tableRow}>
