@@ -46,7 +46,7 @@ template CallForReturn
     maintainer key._1 
 
     choice Return : ()
-      controller provider
+      controller receivingParty
       do
         -- Disclose holding
         -- investorHolding <- fetch collateralCid
