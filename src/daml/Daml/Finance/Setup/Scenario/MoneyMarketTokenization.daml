@@ -128,7 +128,7 @@ run = do
   csa21 <- signBilateralCsa operator cc (inv!!2) (inv!!1) "CSA PB HF2" (date 2017 Dec 1) usd 1_000_000.00 1_000.00 0.0 haircuts $ fromList [("TA", singleton ta)]
   csa23 <- signBilateralCsa operator cc (inv!!2) (inv!!3) "CSA PB SWP" (date 2017 Dec 1) usd 1_000_000.00 1_000.00 0.0 haircuts $ fromList [("TA", singleton ta)]
 
-  -- -- Workflows
+  -- -- -- Workflows
   -- let
   --   doDistribution = do
   --     ir1Cid <- createInvestmentRequest operator ta inv!!0 public "REQ-MMF1-INV1" today fund1Cid (coerceContractId inv!!0CashCid)
@@ -136,7 +136,7 @@ run = do
   --     ir3Cid <- createInvestmentRequest operator ta inv!!2 public "REQ-MMF3-INV3" today fund1Cid (coerceContractId inv!!2CashCid)
   --     pirCid <- poolInvestmentRequests operator am ta public "REQ-MMF1-POOLED" today fund1Cid (coerceContractId amCashCid) [ir1Cid, ir2Cid, ir3Cid]
   --     fulfillPooledInvestmentRequest operator am ta public fund1Cid pirCid navFund1Cid
-  -- -- doDistribution
+  -- doDistribution
 
   pure parties
 

@@ -8,8 +8,8 @@ import { useParties } from "../../context/PartiesContext";
 import { Alignment, HorizontalTable } from "../../components/Table/HorizontalTable";
 import { useHoldings } from "../../context/HoldingContext";
 import { ClearingRequest } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Clearing/Model";
-import { BilateralAgreement,MarginCall } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Collateral/Model";
-import { Button, Accordion, AccordionSummary, AccordionDetails,Typography  } from "@mui/material";
+import { BilateralAgreement,CallForDelivery,CallForReturn } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Collateral/Model";
+import { Button, Accordion, AccordionSummary, AccordionDetails,Typography, Grid  } from "@mui/material";
 import { ExpandMore } from "@mui/icons-material";
 import { TextInput } from "../../components/Form/TextInput";
 import { DateInput } from "../../components/Form/DateInput";
@@ -36,9 +36,11 @@ export const MarginCalls : React.FC = () => {
   const [ instrumentLabel, setInstrumentLabel ] = useState("");
   
   const { loading: l1, collateral } = useServices();
-  const { loading: l2, contracts: agreements } = useStreamQueries(MarginCall);
+  const { loading: l2, contracts: callForDeliveries } = useStreamQueries(CallForDelivery);
   const { loading: l3, getFungible } = useHoldings();
   const { loading: l4, tokens, equities,latests, getByCid } = useInstruments();
+  const { loading: l5, contracts: callForReturns } = useStreamQueries(CallForReturn);
+  
 
   // const aggregates = latests.filter(c => c.payload.issuer === party);
   // const aggregate = aggregates.find(c => c.payload.id.unpack === instrumentLabel);
@@ -51,12 +53,13 @@ export const MarginCalls : React.FC = () => {
 
   const myServices = collateral.filter(s => s.payload.customer === party);
   // const canDeclareReplacement = !!description && !!effectiveDate && !!currency && !!amount;
-  const canCoverMarginCall = !!instrumentLabel;
+  const canDoDelivery = !!instrumentLabel;
+  const canDoReturn = true
 
   if (l1 || l2) return <Spinner />;
   console.log("We got here...");
 
-  const coverMarginCall = async (c : CreateEvent<MarginCall>) => {
+  const doDelivery = async (c : CreateEvent<CallForDelivery>) => {
     // const service = providerServices.find(s => s.payload.customer === c.payload.customer);
     // if (!service) throw new Error("No auction service found");
     // await ledger.exercise(Service.CreateAuction, service.contractId, { createAuctionRequestCid: c.contractId });
@@ -73,63 +76,90 @@ export const MarginCalls : React.FC = () => {
     const collateralCid = await getFungible(party, margin.toString(), collateralInstrument.key);
     
     
-    await ledger.exercise(MarginCall.CoverMarginCall, c.contractId,{collateralCid: collateralCid});
+    await ledger.exercise(CallForDelivery.Delivery, c.contractId,{collateralCid: collateralCid});
     navigate("/app/custody/assets");
   }
 
-  const createRow = (c : CreateEvent<MarginCall>) : any[] => {
+  const doReturn = async (c : CreateEvent<CallForReturn>) => {
+    
+    // if (!collateralInstrument) return;
+
+   
+    // const margin = Number(c.payload.margin) / Number(c.payload.haircuts.get(collateralInstrument.key)) ;
+    // const collateralCid = await getFungible(party, margin.toString(), collateralInstrument.key);
+    
+    
+    await ledger.exercise(CallForReturn.Return, c.contractId,{});
+    navigate("/app/custody/assets");
+  }
+
+
+  const createRow = (c : CreateEvent<CallForDelivery>) : any[] => {
     return [
       c.payload.id,
       c.payload.marginCurrency.id.unpack,
-      getName(c.payload.customers._1),
-      fmt(c.payload.thresholds._1, 0),
-      fmt(c.payload.minTransfers._1, 0),
-      fmt(c.payload.independentAmounts._1, 0),
-      getName(c.payload.customers._2),
-      fmt(c.payload.thresholds._2, 0),
-      fmt(c.payload.minTransfers._2, 0),
-      fmt(c.payload.independentAmounts._2, 0),
+      getName(c.payload.callingParty),
+      getName(c.payload.receivingParty),
       fmt(c.payload.margin, 0),
-      // <Button color="primary" size="small" className={classes.choiceButton} variant="contained" onClick={() => coverMarginCall(c)}>cover</Button>,
-      <Accordion expanded={expanded === "Cover Margin Call"} onChange={() => toggle("Cover Margin Call")}>
+      <Accordion expanded={expanded === c.payload.id} onChange={() => toggle(c.payload.id)}>
       <AccordionSummary expandIcon={<ExpandMore />}>
         <Typography gutterBottom variant="h6" component="h2">Cover Margin Call</Typography>
       </AccordionSummary>
       <AccordionDetails>
-        {/* <TextInput    label="Description"       value={description}   setValue={setDescription} /> */}
-        {/* <DateInput    label="Effective Date"    value={effectiveDate} setValue={setEffectiveDate} /> */}
         <SelectInput  label="Collateral Asset" value={instrumentLabel}      setValue={setInstrumentLabel} values={toValues(latests)} />
-        {/* <TextInput    label="Per Unit Amount"   value={amount}        setValue={setAmount} /> */}
-        <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canCoverMarginCall} onClick={() => coverMarginCall(c)}>Cover</Button>
+        <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canDoDelivery} onClick={() => doDelivery(c)}>Deliver</Button>
       </AccordionDetails>
       </Accordion>
     ];
   }
   const headers = [
-    "Agreement", 
+    "Reference", 
     "Currency", 
-    "A", 
-    "Threshold", 
-    "MTA", 
-    "Ind. Amt", 
-    "B", 
-    "Threshold", 
-    "MTA", 
-    "Ind. Amt",
+    "Calling Party", 
+    "Receiving Party", 
     "Margin"]
-  const values : any[] = agreements.map(createRow);
+  const values : any[] = callForDeliveries.map(createRow);
   const alignment : Alignment[] = [
     "left", 
     "left", 
     "left", 
-    "right", 
-    "right", 
-    "right", 
     "left", 
-    "right", 
-    "right", 
     "right"];
+
+
+    const createRowReturnCalls = (c : CreateEvent<CallForReturn>) : any[] => {
+      return [
+        c.payload.id,
+        c.payload.marginCurrency.id.unpack,
+        getName(c.payload.callingParty),
+        getName(c.payload.receivingParty),
+        fmt(c.payload.collateralCid, 0),
+        // <Accordion expanded={expanded === c.payload.id} onChange={() => toggle(c.payload.id)}>
+        // <AccordionSummary expandIcon={<ExpandMore />}>
+        //   <Typography gutterBottom variant="h6" component="h2">Cover Margin Call</Typography>
+        // </AccordionSummary>
+        // <AccordionDetails>
+        //   <SelectInput  label="Collateral Asset" value={instrumentLabel}      setValue={setInstrumentLabel} values={toValues(latests)} />
+        //   {/* <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canDoDelivery} onClick={() => doDelivery(c)}>Delivery</Button> */}
+        // </AccordionDetails>
+        // </Accordion>,
+        <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canDoReturn} onClick={() => doReturn(c)}>Return</Button>
+        
+      ];
+    }
+    const headersReturnCalls = [
+      "Reference", 
+      "Currency", 
+      "Calling Party", 
+      "Receiving Party", 
+      "Margin"]
+    const valuesReturnCalls : any[] = callForReturns.map(createRowReturnCalls);
   return (
-    <HorizontalTable title="MarginCalls" variant={"h3"} headers={headers} values={values} alignment={alignment} />
+    <Grid>
+
+    
+    <HorizontalTable title="Delivery Calls" variant={"h3"} headers={headers} values={values} alignment={alignment} />
+    <HorizontalTable title="Return Calls" variant={"h3"} headers={headersReturnCalls} values={valuesReturnCalls} alignment={alignment} />
+    </Grid>
   );
 };

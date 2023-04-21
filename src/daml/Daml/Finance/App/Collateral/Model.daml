@@ -5,7 +5,10 @@ import DA.Map (Map)
 import DA.Assert ((===))
 import DA.List (head)
 import DA.Optional (fromSome)
-import DA.Set (singleton)
+import DA.Set (singleton,toList,fromList)
+-- import DA.Set 
+import DA.Time (time)
+import DA.List ((!!))
 import Daml.Finance.Interface.Account.Account qualified as Account (R)
 import Daml.Finance.Interface.Account.Util (getAccount)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..), SplitResult(..))
@@ -16,19 +19,59 @@ import Daml.Finance.Interface.Holding.Util (getAmount, getInstrument)
 -- import Daml.Finance.Interface.Types.Common.Types (AccountKey)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I, RemoveObservers(..))
 
-template MarginCall 
+template CallForReturn 
   with 
     operator: Party 
     provider: Party 
     customers: (Party, Party)
     id: Text
     -- To be optimized later
-    signed: Date 
-    digitized: Time 
+    -- signed: Date 
+    -- digitized: Time 
     marginCurrency:  InstrumentKey
-    thresholds: (Decimal, Decimal)
-    minTransfers: (Decimal, Decimal)
-    independentAmounts: (Decimal, Decimal)
+    -- thresholds: (Decimal, Decimal)
+    -- minTransfers: (Decimal, Decimal)
+    -- independentAmounts: (Decimal, Decimal)
+    haircuts: Map InstrumentKey Decimal 
+    collateralCid : ContractId Holding.I
+    -- collateralCid : ContractId Fungible.I
+    callingParty : Party
+    receivingParty: Party
+
+    observers: PartiesMap
+  where 
+    signatory operator, provider, customers._1, customers._2 
+
+    key (operator, provider, customers._1, customers._2, id): (Party, Party, Party, Party, Text)
+    maintainer key._1 
+
+    choice Return : ()
+      controller provider
+      do
+        -- Disclose holding
+        -- investorHolding <- fetch collateralCid
+        -- investorHoldingCid : ContractId Fungible.I <- coerceContractId <$> exercise (coerceContractId collateralCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton receivingParty; observersToAdd = (id, singleton provider)
+        -- Lock holding
+        let observerList = fromList [provider,receivingParty]
+        collateralCid <- coerceContractId <$> exercise collateralCid Holding.Release with  context = id
+        exercise (coerceContractId collateralCid : ContractId Disclosure.I) Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (id, observerList)
+          
+        return()
+
+
+template CallForDelivery 
+  with 
+    operator: Party 
+    provider: Party 
+    customers: (Party, Party)
+    id: Text
+    -- To be optimized later
+    -- signed: Date 
+    -- digitized: Time 
+    marginCurrency:  InstrumentKey
+    -- thresholds: (Decimal, Decimal)
+    -- minTransfers: (Decimal, Decimal)
+    -- independentAmounts: (Decimal, Decimal)
     haircuts: Map InstrumentKey Decimal 
     margin : Decimal
     callingParty : Party
@@ -41,14 +84,15 @@ template MarginCall
     key (operator, provider, customers._1, customers._2, id): (Party, Party, Party, Party, Text)
     maintainer key._1 
 
-    choice CoverMarginCall : ()
+    choice Delivery : ()
       with 
         collateralCid : ContractId Fungible.I
       controller receivingParty
       do
         -- Disclose holding
+        let observerList = fromList [provider,callingParty]
         investorHolding <- fetch collateralCid
-        investorHoldingCid : ContractId Fungible.I <- coerceContractId <$> exercise (coerceContractId collateralCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton receivingParty; observersToAdd = (id, singleton provider)
+        investorHoldingCid : ContractId Fungible.I <- coerceContractId <$> exercise (coerceContractId collateralCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton receivingParty; observersToAdd = (id, observerList)
         -- Lock holding
         collateralCid <- coerceContractId <$> exercise (coerceContractId investorHoldingCid : ContractId Holding.I) Holding.Acquire with newLockers = singleton provider; context = id; lockType = Holding.Semaphore
         return()
@@ -79,7 +123,7 @@ template BilateralAgreement
     key (operator, provider, customers._1, customers._2, id): (Party, Party, Party, Party, Text)
     maintainer key._1 
 
-    nonconsuming choice MakeMarginCall: ContractId MarginCall
+    nonconsuming choice MakeCallForDelivery: ContractId CallForDelivery
       with
         callingParty : Party
         margin : Decimal
@@ -90,8 +134,31 @@ template BilateralAgreement
         -- assert $ callingParty == customer || callingParty == otherCustomer
         assert $ callingParty == customers._1 || callingParty == customers._2
         let receivingParty = if (callingParty == customers._1) then customers._2 else customers._1
-         
-        create MarginCall with
+        timeNow <- getTime
+        
+        create CallForDelivery with
+          -- margin = 10000.0 -- To be changed to a parameter
+          id = id <> show timeNow
+          ..
+    nonconsuming choice MakeCallForReturn: ContractId CallForReturn
+      with
+        callingParty : Party
+        collateralCid : ContractId Holding.I
+      controller callingParty
+      do
+        -- let customer = customers._1
+        -- let otherCustomer = customers._2
+        -- assert $ callingParty == customer || callingParty == otherCustomer
+        assert $ callingParty == customers._1 || callingParty == customers._2
+        let receivingParty = if (callingParty == customers._1) then customers._2 else customers._1
+        lockedCollateral <- view <$> fetch collateralCid
+        let Some lockDetails =  lockedCollateral.lock
+        let  lockContext = (toList lockDetails.context)
+       
+        
+        -- timeNow <- getTime
+        create CallForReturn with
+          id = lockContext!!0
           -- margin = 10000.0 -- To be changed to a parameter
           ..
 
