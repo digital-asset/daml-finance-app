@@ -54,10 +54,13 @@ run = do
       (inv2, "PE1-COMMITMENT"),
       (inv3, "PE1-COMMITMENT")]
 
+
     [commitmentPath1, commitmentPath2, commitmentPath3] = commitmentPaths
 
+ -- POSSIBLE BUG HERE AS KEY DUPLICATES IN COMMITMENT PATHS SO ONLY ROOT CUSTODIAN = INVESTOR3 INCLUDED 
     paths = fromList $ [("USD", cashRoute)] ++ commitmentPaths ++ map (\a -> (a, secRoute)) assetLabels
-
+  
+  debug commitmentPath1
   accountFactoryCid<- toInterfaceContractId 
     <$> submit operator do createCmd Account.Factory  with provider = operator; observers = pub 
   holdingFactoryCid <- toInterfaceContractId
@@ -77,9 +80,9 @@ run = do
     cashPath = [("USD", cashRoute)]
     secPath = map (\a -> (a, secRoute)) assetLabels
     custodyServices = [
-      (inv1, issuer, [commitmentPath1]++cashPath), 
-      (inv2, issuer, [commitmentPath2]++cashPath), 
-      (inv3, issuer, [commitmentPath3]++cashPath),
+      (inv1, issuer, [commitmentPath1] ++ cashPath),
+      (inv2, issuer, [commitmentPath2] ++ cashPath), 
+      (inv3, issuer, [commitmentPath3] ++ cashPath),
       (inv1, inv1, [commitmentPath1]), 
       (inv2, inv2, [commitmentPath2]), 
       (inv3, inv3, [commitmentPath3]),
@@ -90,9 +93,6 @@ run = do
       (ta, inv1, cashPath),
       (ta, inv2, cashPath), 
       (ta, inv3, cashPath),
-      (admin, inv1, []),
-      (admin, inv2, []),
-      (admin, inv3, []),
       (admin, issuer, []),
       (issuer, issuer, secPath),
       (issuer, inv1, secPath),
