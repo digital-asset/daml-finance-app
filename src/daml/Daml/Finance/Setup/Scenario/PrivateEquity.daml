@@ -38,7 +38,7 @@ run = do
   -- Factories
   let 
     assetLabels = ["PE1", "PE2", "PE3"]
-    settlementPaths = [[issuer],[wm], [inv1], [inv2], [inv3]]
+    settlementPaths = [[issuer], [inv1], [inv2], [inv3]]
     cashRoute = Settlement.Hierarchy 
       with 
         rootCustodian = ta
@@ -50,17 +50,20 @@ run = do
     commitments = map (<>"-COMMITMENT") assetLabels
     
     commitmentPaths = map (\(rootCustodian, i) -> (i, Settlement.Hierarchy with pathsToRootCustodian = List.delete [rootCustodian] settlementPaths; .. )) [
-      (inv3, "PE1-COMMITMENT"),
+      (inv1, "PE1-COMMITMENT"),
       (inv2, "PE1-COMMITMENT"),
-      (inv1, "PE1-COMMITMENT")]
-
+      (inv3, "PE1-COMMITMENT")]
 
     [commitmentPath1, commitmentPath2, commitmentPath3] = commitmentPaths
 
  -- POSSIBLE BUG HERE AS KEY DUPLICATES IN COMMITMENT PATHS SO ONLY ROOT CUSTODIAN = INVESTOR3 INCLUDED 
     paths = fromList $ [("USD", cashRoute)] ++ commitmentPaths ++ map (\a -> (a, secRoute)) assetLabels
+
+    paths1 = fromList $ commitmentPath1 :: [("USD", cashRoute)] <> map (\a -> (a, secRoute)) assetLabels
+    paths2 = fromList $ commitmentPath1 :: [("USD", cashRoute)] <> map (\a -> (a, secRoute)) assetLabels
+    paths3 = fromList $ commitmentPath1 :: [("USD", cashRoute)] <> map (\a -> (a, secRoute)) assetLabels
   
-  -- debug commitmentPath1
+  debug commitmentPaths
   accountFactoryCid<- toInterfaceContractId 
     <$> submit operator do createCmd Account.Factory  with provider = operator; observers = pub 
   holdingFactoryCid <- toInterfaceContractId
@@ -80,9 +83,9 @@ run = do
     cashPath = [("USD", cashRoute)]
     secPath = map (\a -> (a, secRoute)) assetLabels
     custodyServices = [
-      (inv1, issuer, [commitmentPath1] ++ cashPath),
-      (inv2, issuer, [commitmentPath2] ++ cashPath), 
-      (inv3, issuer, [commitmentPath3] ++ cashPath),
+      (inv1, issuer, commitmentPath1 :: cashPath),
+      (inv2, issuer, commitmentPath2 :: cashPath), 
+      (inv3, issuer, commitmentPath3 :: cashPath),
       (inv1, inv1, [commitmentPath1]), 
       (inv2, inv2, [commitmentPath2]), 
       (inv3, inv3, [commitmentPath3]),
@@ -161,7 +164,7 @@ run = do
   issuerCommitAccountD      <- createAccount'  admin issuer "FundManager@Admin|Commitments" adminObs
 
   -- Hardcode three auction settlement accounts into the Auction Service
-  createAuctionService          operator ta       issuer paths issuerCommitAccount1 issuerCommitAccount2 issuerCommitAccount3
+  createAuctionService          operator ta       issuer paths --commitmentPath1 commitmentPath2 commitmentPath3
   createAuctionAutoService      operator ta       issuer
   createBiddingService          operator ta       inv1
   createBiddingAutoService      operator ta       inv1
@@ -245,7 +248,7 @@ run = do
   inv1BidCid        <- createAuctionBid operator ta inv1 public auctionCid 500_000.0 1.0  inv1CollateralCid inv1SecAccount
   inv2BidCid        <- createAuctionBid operator ta inv2 public auctionCid 300_000.0 1.0 inv2CollateralCid inv2SecAccount
   inv3BidCid        <- createAuctionBid operator ta inv3 public auctionCid 200_000.0 1.0 inv3CollateralCid inv3SecAccount
-  --processAuction operator ta issuer public auctionCid [inv1BidCid, inv2BidCid, inv3BidCid]
+--  processAuction operator ta issuer public auctionCid [inv1BidCid, inv2BidCid, inv3BidCid]
 
   -- doAuction
   pure parties

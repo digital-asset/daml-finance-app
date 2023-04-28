@@ -135,16 +135,10 @@ createListingAutoService operator exchange customer = do
   offerCid <- submit exchange do exerciseByKeyCmd @Exchange.Role (operator, exchange) Exchange.OfferListingAutoService with ..
   submit customer do exerciseCmd offerCid ListingAuto.Accept
 
--- createAuctionService : Party -> Party -> Party -> SettlementPaths -> AccountKey -> AccountKey -> AccountKey -> Script (ContractId Auction.Service)
--- createAuctionService operator provider customer paths receivableAccount1 receivableAccount2 receivableAccount3 = do
---   settlementServiceCid <- createSettlementService operator provider customer paths
---   offerCid <- submit provider do exerciseByKeyCmd @Distributor.Role (operator, provider) Distributor.OfferAuctionService with customer; settlementServiceCid; receivableAccount1; receivableAccount2; receivableAccount3 
---   submit customer do exerciseCmd offerCid Auction.Accept
-
-createAuctionService : Party -> Party -> Party -> SettlementPaths -> AccountKey -> AccountKey -> AccountKey -> Script (ContractId Auction.Service)
-createAuctionService operator provider customer paths receivableAccount1 receivableAccount2 receivableAccount3 = do
+createAuctionService : Party -> Party -> Party -> SettlementPaths -> Script (ContractId Auction.Service)
+createAuctionService operator provider customer paths = do
   settlementServiceCid <- createSettlementService operator provider customer paths
-  offerCid <- submit provider do exerciseByKeyCmd @Distributor.Role (operator, provider) Distributor.OfferAuctionService with customer; settlementServiceCid; receivableAccount1; receivableAccount2; receivableAccount3 
+  offerCid <- submit provider do exerciseByKeyCmd @Distributor.Role (operator, provider) Distributor.OfferAuctionService with customer; settlementServiceCid
   submit customer do exerciseCmd offerCid Auction.Accept
 
 createAuctionAutoService : Party -> Party -> Party -> Script (ContractId AuctionAuto.Service)
@@ -213,4 +207,3 @@ createDecentralizedExchangeService consortium public id shares quantity1 account
     p1 = DecentralizedExchange.Pool with quantity = quantity1; account = account1; fungibleCid = fungible1Cid
     p2 = DecentralizedExchange.Pool with quantity = quantity2; account = account2; fungibleCid = fungible2Cid
   submit consortium do createCmd DecentralizedExchange.Service with consortium; public; id = Id id; description = id; shares; p1; p2
-

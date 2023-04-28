@@ -11,7 +11,6 @@ import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (Approve(..)
 import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Settlement.Service qualified as Settlement (Service)
-import Daml.Finance.Interface.Types.Common.Types (AccountKey)
 
 template Role
   with
@@ -27,9 +26,6 @@ template Role
       with
         customer : Party
         settlementServiceCid : ContractId Settlement.Service
-        receivableAccount1 : AccountKey
-        receivableAccount2 : AccountKey
-        receivableAccount3 : AccountKey
       controller provider
       do
         create Auction.Offer with ..
