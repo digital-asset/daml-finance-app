@@ -1,0 +1,90 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Distribution.Auction.Auto.Service where
+
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentKey, InstrumentQuantity, Parties)
+import Daml.Finance.App.Distribution.Auction.Model (Auction)
+import Daml.Finance.App.Distribution.Auction.Service qualified as S (CreateAuction(..), RequestCreateAuction(..), Service)
+
+type S = Service
+
+template Service
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, customer) : (Party, Party, Party)
+    maintainer key._1
+
+    nonconsuming choice RequestAndCreateAuction : ContractId Auction
+      with
+        id : Text
+        quantity : InstrumentQuantity
+        currency : InstrumentKey
+        floor : Decimal
+        collateralCid : ContractId Fungible.I
+        receivableAccount : AccountKey
+        observers : Parties
+      controller customer
+      do
+        createAuctionRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreateAuction with id; quantity; currency; floor; collateralCid; receivableAccount; observers
+        exerciseByKey @S.Service (operator, provider, customer) S.CreateAuction with createAuctionRequestCid
+
+    choice Terminate : ()
+      with
+        actor : Party
+      controller actor
+      do
+        assert $ actor == operator || actor == provider || actor == customer
+        pure ()
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider
+    observer customer
+
+    choice Accept : ContractId Service
+      controller customer
+      do
+        create Service with ..
+
+    choice Decline : ()
+      controller customer
+      do
+        return ()
+
+    choice Withdraw : ()
+      controller provider
+      do pure ()
+
+template Request
+  with
+    provider : Party
+    customer : Party
+  where
+    signatory customer
+    observer provider
+
+    choice Cancel : ()
+      controller customer
+      do pure ()
+
+    choice Reject : ()
+      controller provider
+      do pure ()
+
+    choice Approve : ContractId Service
+      with
+        operator : Party
+      controller operator, provider
+      do
+        create Service with ..
