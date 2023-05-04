@@ -1,12 +1,12 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module Daml.Finance.App.Distribution.Auction.Auto.Service where
+module Daml.Finance.App.Distribution.PrivateEquity.Auto.Service where
 
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentKey, InstrumentQuantity, Parties)
-import Daml.Finance.App.Distribution.Auction.Model (Auction)
-import Daml.Finance.App.Distribution.Auction.Service qualified as S (CreateAuction(..), RequestCreateAuction(..), Service)
+import Daml.Finance.App.Distribution.PrivateEquity.Model (PrivateEquity)
+import Daml.Finance.App.Distribution.PrivateEquity.Service qualified as S (CreatePrivateEquity(..), RequestCreatePrivateEquity(..), Service)
 
 type S = Service
 
@@ -21,7 +21,7 @@ template Service
     key (operator, provider, customer) : (Party, Party, Party)
     maintainer key._1
 
-    nonconsuming choice RequestAndCreateAuction : ContractId Auction
+    nonconsuming choice RequestAndCreatePrivateEquity : ContractId PrivateEquity
       with
         id : Text
         quantity : InstrumentQuantity
@@ -32,8 +32,8 @@ template Service
         observers : Parties
       controller customer
       do
-        createAuctionRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreateAuction with id; quantity; currency; floor; collateralCid; receivableAccount; observers
-        exerciseByKey @S.Service (operator, provider, customer) S.CreateAuction with createAuctionRequestCid
+        createPrivateEquityRequestCid <- exerciseByKey @S.Service (operator, provider, customer) S.RequestCreatePrivateEquity with id; quantity; currency; floor; collateralCid; receivableAccount; observers
+        exerciseByKey @S.Service (operator, provider, customer) S.CreatePrivateEquity with createPrivateEquityRequestCid
 
     choice Terminate : ()
       with

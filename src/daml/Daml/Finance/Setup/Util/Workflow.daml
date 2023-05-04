@@ -15,6 +15,8 @@ import Daml.Finance.App.Custody.Service qualified as Custody (Deposit(..), OpenA
 import Daml.Finance.App.Data.AccountDirectory (AccountDirectory(..))
 import Daml.Finance.App.Distribution.Auction.Model qualified as Auction (T)
 import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (CreateAuction(..), ProcessAuction(..), RequestCreateAuction(..), S)
+import Daml.Finance.App.Distribution.PrivateEquity.Model qualified as PrivateEquity (T)
+import Daml.Finance.App.Distribution.PrivateEquity.Service qualified as PrivateEquity (CreatePrivateEquity(..), ProcessPrivateEquity(..), RequestCreatePrivateEquity(..), S)
 import Daml.Finance.App.Distribution.Bidding.Model qualified as Bidding (Bid)
 import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (CreateBid(..), RequestCreateBid(..), S)
 import Daml.Finance.App.Distribution.Fund.Model qualified as Fund (PooledInvestmentRequest, T)
@@ -294,6 +296,24 @@ processAuction operator provider customer public auctionCid bidCids = do
     exerciseByKeyCmd @Auction.S (operator, provider, customer) Auction.ProcessAuction
       with
         auctionCid
+        bidCids
+
+createPrivateEquity : Party -> Party -> Party -> Party -> Text -> InstrumentQuantity -> InstrumentKey -> Decimal -> ContractId Fungible.I -> AccountKey -> Script (ContractId PrivateEquity.T)
+createPrivateEquity operator provider customer public id quantity currency floor collateralCid receivableAccount = do
+  createPrivateEquityRequestCid <- submit customer do exerciseByKeyCmd @PrivateEquity.S (operator, provider, customer) PrivateEquity.RequestCreatePrivateEquity with id; quantity; currency; floor; collateralCid; receivableAccount; observers = singleton public
+  submit provider do exerciseByKeyCmd @PrivateEquity.S (operator, provider, customer) PrivateEquity.CreatePrivateEquity with createPrivateEquityRequestCid
+
+createPrivateEquityBid : Party -> Party -> Party -> Party -> ContractId PrivateEquity.T -> Decimal -> Decimal -> ContractId Fungible.I -> AccountKey -> Script (ContractId Bidding.Bid)
+createPrivateEquityBid operator provider customer public privateEquityCid amount price collateralCid receivableAccount = do
+  createBidRequestCid <- submitMulti [customer] [public] do exerciseByKeyCmd @Bidding.S (operator, provider, customer) Bidding.RequestCreateBid with privateEquityCid; amount; price; collateralCid; receivableAccount
+  submit provider do exerciseByKeyCmd @Bidding.S (operator, provider, customer) Bidding.CreateBid with createBidRequestCid
+
+processPrivateEquity : Party -> Party -> Party -> Party -> ContractId PrivateEquity.T -> [ContractId Bidding.Bid] -> Script (ContractId PrivateEquity.T)
+processPrivateEquity operator provider customer public privateEquityCid bidCids = do
+  submitMulti [provider] [public] do
+    exerciseByKeyCmd @PrivateEquity.S (operator, provider, customer) PrivateEquity.ProcessPrivateEquity
+      with
+        privateEquityCid
         bidCids
 
 declareDividend : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> [InstrumentQuantity] -> Script (ContractId Effect.I)

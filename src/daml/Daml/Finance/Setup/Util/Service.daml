@@ -21,6 +21,8 @@ import Daml.Finance.App.Listing.Auto.Service qualified as ListingAuto (Accept(..
 import Daml.Finance.App.Listing.Service qualified as Listing (Accept(..), Service)
 import Daml.Finance.App.Distribution.Auction.Auto.Service qualified as AuctionAuto (Accept(..), Service)
 import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (Accept(..), Service)
+import Daml.Finance.App.Distribution.PrivateEquity.Auto.Service qualified as PrivateEquityAuto (Accept(..), Service)
+import Daml.Finance.App.Distribution.PrivateEquity.Service qualified as PrivateEquity (Accept(..), Service)
 import Daml.Finance.App.Distribution.Bidding.Auto.Service qualified as BiddingAuto (Accept(..), Service)
 import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Accept(..), Service)
 import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (Accept(..), Service)
@@ -146,6 +148,17 @@ createAuctionAutoService operator distributor customer = do
   offerCid <- submit distributor do exerciseByKeyCmd @Distributor.Role (operator, distributor) Distributor.OfferAuctionAutoService with customer
   submit customer do exerciseCmd offerCid AuctionAuto.Accept
 
+createPrivateEquityService : Party -> Party -> Party -> SettlementPaths -> Script (ContractId PrivateEquity.Service)
+createPrivateEquityService operator provider customer paths = do
+  settlementServiceCid <- createSettlementService operator provider customer paths
+  offerCid <- submit provider do exerciseByKeyCmd @Distributor.Role (operator, provider) Distributor.OfferPrivateEquityService with customer; settlementServiceCid
+  submit customer do exerciseCmd offerCid PrivateEquity.Accept
+
+createPrivateEquityAutoService : Party -> Party -> Party -> Script (ContractId PrivateEquityAuto.Service)
+createPrivateEquityAutoService operator distributor customer = do
+  offerCid <- submit distributor do exerciseByKeyCmd @Distributor.Role (operator, distributor) Distributor.OfferPrivateEquityAutoService with customer
+  submit customer do exerciseCmd offerCid PrivateEquityAuto.Accept
+  
 createBiddingService : Party -> Party -> Party -> Script (ContractId Bidding.Service)
 createBiddingService operator distributor customer = do
   offerCid <- submit distributor do exerciseByKeyCmd @Distributor.Role (operator, distributor) Distributor.OfferBiddingService with ..

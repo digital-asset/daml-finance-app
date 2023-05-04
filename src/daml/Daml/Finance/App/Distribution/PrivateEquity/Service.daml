@@ -11,8 +11,8 @@ import DA.Foldable (forA_)
 import DA.List (sortOn, mapAccumL)
 import DA.Optional (whenSome)
 import DA.Set (fromList, singleton)
-import Daml.Finance.App.Distribution.Auction.Model (Auction(..), CreateAuctionRequest(..), Status(..))
-import Daml.Finance.App.Distribution.Auction.Utils (dutchAuction, splitList, generateSettlementInstruction)
+import Daml.Finance.App.Distribution.PrivateEquity.Model (PrivateEquity(..), CreatePrivateEquityRequest(..), Status(..))
+import Daml.Finance.App.Distribution.PrivateEquity.Utils (dutchAuction, splitList, generateSettlementInstruction)
 import Daml.Finance.App.Distribution.Bidding.Model qualified as Bidding (Allocation(..), Bid, SettleAllocation(..), Status(..))
 import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (RejectBid(..), S)
 import Daml.Finance.App.Settlement.Service qualified as Settlement (Service)
@@ -39,7 +39,7 @@ template Service
     key (operator, provider, customer) : (Party, Party, Party)
     maintainer key._1
 
-    nonconsuming choice RequestCreateAuction : ContractId CreateAuctionRequest
+    nonconsuming choice RequestCreatePrivateEquity : ContractId CreatePrivateEquityRequest
       with
         id : Text
         quantity : InstrumentQuantity
@@ -62,85 +62,85 @@ template Service
         (_, recRef) <- fetchByKey @Account.R receivableAccount
         exercise (coerceContractId recRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (id, singleton provider)
 
-        create CreateAuctionRequest with operator; provider; customer; id; quantity; currency; floor; collateralCid; receivableAccount; observers
+        create CreatePrivateEquityRequest with operator; provider; customer; id; quantity; currency; floor; collateralCid; receivableAccount; observers
 
-    nonconsuming choice CancelAuctionRequest : ()
+    nonconsuming choice CancelPrivateEquityRequest : ()
       with
-        createAuctionRequestCid : ContractId CreateAuctionRequest
+        createPrivateEquityRequestCid : ContractId CreatePrivateEquityRequest
       controller customer
       do
-        archive createAuctionRequestCid
+        archive createPrivateEquityRequestCid
 
-    nonconsuming choice CreateAuction : ContractId Auction
+    nonconsuming choice CreatePrivateEquity : ContractId PrivateEquity
       with
-        createAuctionRequestCid : ContractId CreateAuctionRequest
+        createPrivateEquityRequestCid : ContractId CreatePrivateEquityRequest
       controller provider
       do
-        CreateAuctionRequest{id; quantity; currency; floor; collateralCid; receivableAccount; observers} <- fetchAndArchive createAuctionRequestCid
+        CreatePrivateEquityRequest{id; quantity; currency; floor; collateralCid; receivableAccount; observers} <- fetchAndArchive createPrivateEquityRequestCid
         collateralCid <- coerceContractId <$> exercise (toInterfaceContractId collateralCid : ContractId Holding.I) Holding.Acquire with newLockers = fromList [ provider ]; context = id; lockType = Holding.Semaphore
-        create Auction with operator; provider; customer; id; quantity; currency; floor; collateralCid; receivableAccount; status = Open; observers
+        create PrivateEquity with operator; provider; customer; id; quantity; currency; floor; collateralCid; receivableAccount; status = Open; observers
 
-    nonconsuming choice RejectAuction : ()
+    nonconsuming choice RejectPrivateEquity : ()
       with
-        createAuctionRequestCid : ContractId CreateAuctionRequest
+        createPrivateEquityRequestCid : ContractId CreatePrivateEquityRequest
       controller provider
       do
-        archive createAuctionRequestCid
+        archive createPrivateEquityRequestCid
 
-    nonconsuming choice ProcessAuction : ContractId Auction
+    nonconsuming choice ProcessPrivateEquity : ContractId PrivateEquity
       with
-        auctionCid : ContractId Auction
+        privateEquityCid : ContractId PrivateEquity
         bidCids : [ContractId Bidding.Bid]
       controller provider
       do
-        auction <- fetch auctionCid
-        collateral <- fetch auction.collateralCid
+        privateEquity <- fetch privateEquityCid
+        collateral <- fetch privateEquity.collateralCid
         bids <- zip bidCids <$> forA bidCids fetch
         collaterals <- mapA (fetch . (.collateralCid) . snd) bids
-        assertMsg "Auction already successfully processed" (auction.status `elem` [Open, NoValidBids])
+        assertMsg "PrivateEquity already successfully processed" (privateEquity.status `elem` [Open, NoValidBids])
 
-        -- Split bids on those above / below the floor price -> Sort valid bids descendingly -> Execute Auction -> Split auction result on allocated / unallocated (ie, zero allocation)
+        -- Split bids on those above / below the floor price -> Sort valid bids descendingly -> Execute PrivateEquity -> Split PrivateEquity result on allocated / unallocated (ie, zero allocation)
         let
           collateralAccount = getAccount collateral
           collateralAccounts = map getAccount collaterals
           receivableAccounts = map ((.receivableAccount) . snd) bids
-          (invalidBids, validBids) = partitionEithers $ splitList (\(_, bid) -> bid.details.price.amount >= auction.floor) bids
+          (invalidBids, validBids) = partitionEithers $ splitList (\(_, bid) -> bid.details.price.amount >= privateEquity.floor) bids
           sortedBids = sortOn (\(_, bid) -> Down bid.details) validBids
-          ((remaining, finalPrice), allocations) = mapAccumL dutchAuction (auction.quantity.amount, 0.0) sortedBids
+          ((remaining, finalPrice), allocations) = mapAccumL dutchAuction (privateEquity.quantity.amount, 0.0) sortedBids
           (allocatedBids, unallocatedBids) = partitionEithers $ splitList (\allocation -> allocation.amount == 0.0) allocations
 
         -- Return assets of all invalid and unallocated bids. Also update their bid status accordingly
         forA_ invalidBids (\(bidCid, bid) -> exerciseByKey @Bidding.S (bid.operator, bid.provider, bid.customer) Bidding.RejectBid with bidCid; newStatus = Bidding.Invalid)
         forA_ unallocatedBids (\Bidding.Allocation{bidCid, bid} -> exerciseByKey @Bidding.S (bid.operator, bid.provider, bid.customer) Bidding.RejectBid with bidCid; newStatus = Bidding.NoAllocation)
 
-        -- Unlock auction collateral
-        auctionCollateralClid <- coerceContractId <$> exercise (toInterfaceContractId auction.collateralCid : ContractId Holding.I) Holding.Release with context = auction.id
+        -- Unlock PrivateEquity collateral
+        privateEquityCollateralClid <- coerceContractId <$> exercise (toInterfaceContractId privateEquity.collateralCid : ContractId Holding.I) Holding.Release with context = privateEquity.id
 
         -- Generate Settlement instructions for allocated bids
         let settleAllocations = (\allocation -> Bidding.SettleAllocation with allocation; price = finalPrice; issuer = customer) <$> allocatedBids
-        (remainingDepositCidOpt, batchCids) <- foldlA (generateSettlementInstruction settlementServiceCid provider auction.receivableAccount) (Some auctionCollateralClid, []) settleAllocations
+        (remainingDepositCidOpt, batchCids) <- foldlA (generateSettlementInstruction settlementServiceCid provider privateEquity.receivableAccount) (Some privateEquityCollateralClid, []) settleAllocations
 
         -- Settle transfers
         forA_ batchCids (`exercise` Batch.Settle with actors = singleton provider)
 
         -- Undisclose unallocated deposit
         whenSome remainingDepositCidOpt \depositCid -> do
-          exercise (coerceContractId depositCid : ContractId Disclosure.I) Disclosure.RemoveObservers with disclosers = singleton customer; observersToRemove = (auction.id, singleton provider)
+          exercise (coerceContractId depositCid : ContractId Disclosure.I) Disclosure.RemoveObservers with disclosers = singleton customer; observersToRemove = (privateEquity.id, singleton provider)
           pure ()
 
         -- Undisclose accounts
-        Account.exerciseInterfaceByKey @Disclosure.I auction.receivableAccount provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (auction.id, singleton provider)
-        Account.exerciseInterfaceByKey @Disclosure.I collateralAccount provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (auction.id, singleton provider)
-        forA_ receivableAccounts (\a -> Account.exerciseInterfaceByKey @Disclosure.I a provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (auction.id, singleton provider))
-        forA_ collateralAccounts (\a -> Account.exerciseInterfaceByKey @Disclosure.I a provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (auction.id, singleton provider))
+        Account.exerciseInterfaceByKey @Disclosure.I privateEquity.receivableAccount provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (privateEquity.id, singleton provider)
+        Account.exerciseInterfaceByKey @Disclosure.I collateralAccount provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (privateEquity.id, singleton provider)
+        forA_ receivableAccounts (\a -> Account.exerciseInterfaceByKey @Disclosure.I a provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (privateEquity.id, singleton provider))
+        forA_ collateralAccounts (\a -> Account.exerciseInterfaceByKey @Disclosure.I a provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (privateEquity.id, singleton provider))
 
-        -- Update Auction contract with the outcome of the auction processing
+        -- Update PrivateEquity contract with the outcome of the privateEquity processing
         let newStatus = if
-              | remaining == auction.quantity.amount -> NoValidBids
+              | remaining == privateEquity.quantity.amount -> NoValidBids
               | remaining > 0.0 -> PartiallyAllocated with finalPrice; remaining
               | otherwise -> FullyAllocated with finalPrice
-        archive auctionCid
-        create auction with status = newStatus
+        archive privateEquityCid
+        create privateEquity with status = newStatus
 
     choice Terminate : ()
       with

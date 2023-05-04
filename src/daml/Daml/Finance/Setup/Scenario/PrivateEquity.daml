@@ -163,9 +163,8 @@ run = do
   -- 'Dummy' account to enable creation of an auction in the UI but not used to hold commitments
   issuerCommitAccountD      <- createAccount'  admin issuer "FundManager@Admin|Commitments" adminObs
 
-  -- Hardcode three auction settlement accounts into the Auction Service
-  createAuctionService          operator ta       issuer paths --commitmentPath1 commitmentPath2 commitmentPath3
-  createAuctionAutoService      operator ta       issuer
+  createPrivateEquityService          operator ta       issuer paths --commitmentPath1 commitmentPath2 commitmentPath3
+  createPrivateEquityAutoService      operator ta       issuer
   createBiddingService          operator ta       inv1
   createBiddingAutoService      operator ta       inv1
   createBiddingService          operator ta       inv2
@@ -241,13 +240,13 @@ run = do
   -- let
   --   doAuction = do
   let quantity = qty 1_000_000.0 pe1
-  auctionCid        <- createAuction operator ta issuer public "DISTRIBUTION1" quantity usdCommit 1.0 (coerceContractId ad1) issuerCashAccount
+  auctionCid        <- createPrivateEquity operator ta issuer public "DISTRIBUTION1" quantity usdCommit 1.0 (coerceContractId ad1) issuerCashAccount
   inv1CollateralCid <- coerceContractId <$> getHolding inv1 (qty 500_000.0 usdCommit)
   inv2CollateralCid <- coerceContractId <$> getHolding inv2 (qty 300_000.0 usdCommit)
   inv3CollateralCid <- coerceContractId <$> getHolding inv3 (qty 200_000.0 usdCommit)
-  inv1BidCid        <- createAuctionBid operator ta inv1 public auctionCid 500_000.0 1.0  inv1CollateralCid inv1SecAccount
-  inv2BidCid        <- createAuctionBid operator ta inv2 public auctionCid 300_000.0 1.0 inv2CollateralCid inv2SecAccount
-  inv3BidCid        <- createAuctionBid operator ta inv3 public auctionCid 200_000.0 1.0 inv3CollateralCid inv3SecAccount
+  inv1BidCid        <- createPrivateEquityBid operator ta inv1 public auctionCid 500_000.0 1.0  inv1CollateralCid inv1SecAccount
+  inv2BidCid        <- createPrivateEquityBid operator ta inv2 public auctionCid 300_000.0 1.0 inv2CollateralCid inv2SecAccount
+  inv3BidCid        <- createPrivateEquityBid operator ta inv3 public auctionCid 200_000.0 1.0 inv3CollateralCid inv3SecAccount
 --  processAuction operator ta issuer public auctionCid [inv1BidCid, inv2BidCid, inv3BidCid]
 
   -- doAuction
