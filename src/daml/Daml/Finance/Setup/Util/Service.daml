@@ -26,7 +26,10 @@ import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Accep
 import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (Accept(..), Service)
 import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (Accept(..), Service)
 import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Accept(..), Service)
+import Daml.Finance.App.Distribution.PEDistribution.Auto.Service qualified as PEDistributionAuto (Accept(..), Service)
 import Daml.Finance.App.Distribution.PEDistribution.Service qualified as PEDistribution (Accept(..), Service)
+import Daml.Finance.App.Distribution.PEBidding.Auto.Service qualified as PEBiddingAuto (Accept(..), Service)
+import Daml.Finance.App.Distribution.PEBidding.Service qualified as PEBidding (Accept(..), Service)
 import Daml.Finance.App.Quoting.Service qualified as Quoting (Accept(..), Service)
 import Daml.Finance.App.Role.Custodian qualified as Custodian
 import Daml.Finance.App.Role.Distributor qualified as Distributor
@@ -156,6 +159,16 @@ createBiddingAutoService : Party -> Party -> Party -> Script (ContractId Bidding
 createBiddingAutoService operator distributor customer = do
   offerCid <- submit distributor do exerciseByKeyCmd @Distributor.Role (operator, distributor) Distributor.OfferBiddingAutoService with ..
   submit customer do exerciseCmd offerCid BiddingAuto.Accept
+
+createPEBiddingService : Party -> Party -> Party -> Script (ContractId PEBidding.Service)
+createPEBiddingService operator distributor customer = do
+  offerCid <- submit distributor do exerciseByKeyCmd @Distributor.Role (operator, distributor) Distributor.OfferPEBiddingService with ..
+  submit customer do exerciseCmd offerCid PEBidding.Accept
+
+createPEBiddingAutoService : Party -> Party -> Party -> Script (ContractId PEBiddingAuto.Service)
+createPEBiddingAutoService operator distributor customer = do
+  offerCid <- submit distributor do exerciseByKeyCmd @Distributor.Role (operator, distributor) Distributor.OfferPEBiddingAutoService with ..
+  submit customer do exerciseCmd offerCid PEBiddingAuto.Accept
 
 createSubscriptionService : Party -> Party -> Party -> SettlementPaths -> Script (ContractId Subscription.Service)
 createSubscriptionService operator provider customer paths = do

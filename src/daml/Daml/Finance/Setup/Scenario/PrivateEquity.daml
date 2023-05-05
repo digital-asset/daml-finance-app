@@ -41,7 +41,7 @@ run = do
   -- Factories
   let 
     assetLabels = ["PE1", "PE2", "PE3"]
-    settlementPaths = [[issuer], [admin], [wm], [inv1], [inv2], [inv3]]
+    settlementPaths = [[issuer], [inv1], [inv2], [inv3]]
     cashRoute = Settlement.Hierarchy 
       with 
         rootCustodian = ta
@@ -68,7 +68,7 @@ run = do
 
   -- Roles 
   createOperatorRole operator
-  createDistributorRole operator issuer
+  createDistributorRole operator ta
   let 
     custodianRoles = [inv1, inv2, inv3, ta, admin, issuer] 
   mapA_ (createCustodianRole operator) custodianRoles
@@ -86,9 +86,6 @@ run = do
       (inv1, inv1, [commitmentPath1]), 
       (inv2, inv2, [commitmentPath2]), 
       (inv3, inv3, [commitmentPath3]),
-      (inv1, admin, [commitmentPath1]), 
-      (inv2, admin, [commitmentPath2]), 
-      (inv3, admin, [commitmentPath3]),
       (ta, issuer, cashPath), 
       (ta, inv1, cashPath),
       (ta, inv2, cashPath), 
@@ -142,13 +139,15 @@ run = do
   -- createBiddingAutoService      operator issuer       inv2
   -- createBiddingService          operator issuer       inv3
   -- createBiddingAutoService      operator issuer       inv3
+
   createPEDistributionService operator ta issuer paths
-  createBiddingService          operator ta       inv1
-  createBiddingAutoService      operator ta       inv1
-  createBiddingService          operator ta       inv2
-  createBiddingAutoService      operator ta       inv2
-  createBiddingService          operator ta       inv3
-  createBiddingAutoService      operator ta       inv3
+
+  createPEBiddingService          operator ta       inv1
+  createPEBiddingAutoService      operator ta       inv1
+  createPEBiddingService          operator ta       inv2
+  createPEBiddingAutoService      operator ta       inv2
+  createPEBiddingService          operator ta       inv3
+  createPEBiddingAutoService      operator ta       inv3
   -- Time 
   t <- getTime 
   let 
@@ -202,10 +201,10 @@ run = do
   createAccountDirectory inv2 [(usd, inv2CashAccount)]        $singleton public
   createAccountDirectory inv3 [(usd, inv3CashAccount)]        $singleton public
 
-  -- Holdings 
-  issuerCommit1Cid <- deposit operator inv1 issuer public (qty 25_000_000.00 usdCommit) issuerCommitAccount1
-  issuerCommit2Cid <- deposit operator inv2 issuer public (qty 35_000_000.00 usdCommit) issuerCommitAccount2
-  issuerCommit3Cid <- deposit operator inv3 issuer public (qty 40_000_000.00 usdCommit) issuerCommitAccount3
+  -- -- Holdings 
+  -- issuerCommit1Cid <- deposit operator inv1 issuer public (qty 25_000_000.00 usdCommit) issuerCommitAccount1
+  -- issuerCommit2Cid <- deposit operator inv2 issuer public (qty 35_000_000.00 usdCommit) issuerCommitAccount2
+  -- issuerCommit3Cid <- deposit operator inv3 issuer public (qty 40_000_000.00 usdCommit) issuerCommitAccount3
 
   inv1CashCid      <- deposit operator ta inv1 public (qty 200_000_000.00 usd) inv1CashAccount
   inv2CashCid      <- deposit operator ta inv2 public (qty 200_000_000.00 usd) inv2CashAccount
@@ -215,10 +214,10 @@ run = do
   inv2UncommitedCid   <- deposit operator inv2 inv2 public (qty 70_000_000.00 usdCommit) inv2UncommittedAccount
   inv3UncommitedCid   <- deposit operator inv3 inv3 public (qty 90_000_000.00 usdCommit) inv3UncommittedAccount
 
-  inv1Shares1Cid    <- deposit operator issuer inv1 public (qty 25_000_000.00 pe1) inv1SecAccount
-  inv2Shares1Cid    <- deposit operator issuer inv2 public (qty 35_000_000.00 pe1) inv2SecAccount
-  inv3Shares1Cid    <- deposit operator issuer inv3 public (qty 40_000_000.00 pe1) inv3SecAccount
-  -- issuerShares1Cid  <- deposit operator issuer issuer public (qty 1_000_00.00 pe1) issuerSecAccount
+  -- inv1Shares1Cid    <- deposit operator issuer inv1 public (qty 25_000_000.00 pe1) inv1SecAccount
+  -- inv2Shares1Cid    <- deposit operator issuer inv2 public (qty 35_000_000.00 pe1) inv2SecAccount
+  -- inv3Shares1Cid    <- deposit operator issuer inv3 public (qty 40_000_000.00 pe1) inv3SecAccount
+  issuerShares1Cid  <- deposit operator issuer issuer public (qty 1_000_00.00 pe1) issuerSecAccount
 
   -- Issuances (Test)
   (_, ad1) <- issue operator issuer issuer public (qty 1_000_000.0 pe1)   issuerSecAccount
@@ -230,15 +229,16 @@ run = do
   -- declareCapitalCall : Party -> Party -> Party -> Party -> InstrumentKey -> InstrumentKey -> Time -> Numeric 10 -> Script (ContractId Effect.I)
   -- declareCapitalCall operator provider issuer public commitment ccy effectiveTime amount
 
-  capitalCallEffectId <- declareCapitalCall operator inv1 issuer public usdCommit usd t 5_000_000.0
-  claimCapitalCallEffect operator inv1 issuer public capitalCallEffectId 5_000_000.00 (coerceContractId issuerCommit1Cid: ContractId Fungible.I) $ Id "Round 1"
+  -- COMMENTED LEVE'S CODE BELOW
+  -- capitalCallEffectId <- declareCapitalCall operator inv1 issuer public usdCommit usd t 5_000_000.0
+  -- claimCapitalCallEffect operator inv1 issuer public capitalCallEffectId 5_000_000.00 (coerceContractId issuerCommit1Cid: ContractId Fungible.I) $ Id "Round 1"
 
-  capitalCallEffectId <- declareCapitalCall operator inv2 issuer public usdCommit usd t 7_000_000.0
-  claimCapitalCallEffect operator inv2 issuer public capitalCallEffectId 7_000_000.00 (coerceContractId issuerCommit2Cid: ContractId Fungible.I) $ Id "Round 1"
+  -- capitalCallEffectId <- declareCapitalCall operator inv2 issuer public usdCommit usd t 7_000_000.0
+  -- claimCapitalCallEffect operator inv2 issuer public capitalCallEffectId 7_000_000.00 (coerceContractId issuerCommit2Cid: ContractId Fungible.I) $ Id "Round 1"
 
-  capitalCallEffectId <- declareCapitalCall operator inv3 issuer public usdCommit usd t 8_000_000.0
-  claimCapitalCallEffect operator inv3 issuer public capitalCallEffectId 8_000_000.00 (coerceContractId issuerCommit3Cid: ContractId Fungible.I) $ Id "Round 1"
-
+  -- capitalCallEffectId <- declareCapitalCall operator inv3 issuer public usdCommit usd t 8_000_000.0
+  -- claimCapitalCallEffect operator inv3 issuer public capitalCallEffectId 8_000_000.00 (coerceContractId issuerCommit3Cid: ContractId Fungible.I) $ Id "Round 1"
+  -- END LEVE'S COMMENTED CODE
 
 
   -- Need to do a split and expose first
@@ -258,14 +258,14 @@ run = do
   --       customerHoldingCid = coerceContractId issuerAssetCid
   --       customerAccount = issuerCashAccount
   --       observers = singleton public
-  --auctionCid        <- createAuction operator issuer issuer public "DISTRIBUTION1" quantity usdCommit 1.0 (coerceContractId ad1) issuerCashAccount
-  -- inv1CollateralCid <- coerceContractId <$> getHolding inv1 (qty 500_010.0 usdCommit)
-  -- inv2CollateralCid <- coerceContractId <$> getHolding inv2 (qty 392_000.0 usdCommit)
-  -- inv3CollateralCid <- coerceContractId <$> getHolding inv3 (qty 297_000.0 usdCommit)
-  -- inv1BidCid        <- createAuctionBid operator issuer inv1 public auctionCid 500_010.0 1.0  inv1CollateralCid inv1SecAccount
-  -- inv2BidCid        <- createAuctionBid operator issuer inv2 public auctionCid 392_000.0 1.0 inv2CollateralCid inv2SecAccount
-  -- inv3BidCid        <- createAuctionBid operator issuer inv3 public auctionCid 297_000.0 1.0 inv3CollateralCid inv3SecAccount
-  --processAuction operator issuer issuer public auctionCid [inv1BidCid, inv2BidCid, inv3BidCid]
+  auctionCid        <- createPEDistribution operator ta issuer public "DISTRIBUTION1" quantity usdCommit 1.0 (coerceContractId ad1) issuerCashAccount
+  inv1CollateralCid <- coerceContractId <$> getHolding inv1 (qty 500_010.0 usdCommit)
+  inv2CollateralCid <- coerceContractId <$> getHolding inv2 (qty 392_000.0 usdCommit)
+  inv3CollateralCid <- coerceContractId <$> getHolding inv3 (qty 297_000.0 usdCommit)
+  inv1BidCid        <- createPEDistributionBid operator ta inv1 public auctionCid 500_010.0 1.0  inv1CollateralCid inv1SecAccount
+  inv2BidCid        <- createPEDistributionBid operator ta inv2 public auctionCid 392_000.0 1.0 inv2CollateralCid inv2SecAccount
+  inv3BidCid        <- createPEDistributionBid operator ta inv3 public auctionCid 297_000.0 1.0 inv3CollateralCid inv3SecAccount
+  --processPEDistribution operator ta issuer public auctionCid [inv1BidCid, inv2BidCid, inv3BidCid]
 
   -- doAuction
   pure parties

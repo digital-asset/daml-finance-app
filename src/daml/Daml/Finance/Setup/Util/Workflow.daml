@@ -19,6 +19,8 @@ import Daml.Finance.App.Distribution.PEDistribution.Model qualified as PEDistrib
 import Daml.Finance.App.Distribution.PEDistribution.Service qualified as PEDistribution (CreatePEDistribution(..), ProcessPEDistribution(..), RequestCreatePEDistribution(..), S)
 import Daml.Finance.App.Distribution.Bidding.Model qualified as Bidding (Bid)
 import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (CreateBid(..), RequestCreateBid(..), S)
+import Daml.Finance.App.Distribution.PEBidding.Model qualified as PEBidding (Bid)
+import Daml.Finance.App.Distribution.PEBidding.Service qualified as PEBidding (CreateBid(..), RequestCreateBid(..), S)
 import Daml.Finance.App.Distribution.Fund.Model qualified as Fund (PooledInvestmentRequest, T)
 import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (FulfillPooledInvestmentRequest(..), PoolInvestmentRequests(..), S)
 import Daml.Finance.App.Distribution.Investment.Model qualified as Investment (InvestmentRequest)
@@ -303,6 +305,19 @@ createPEDistribution operator provider customer public id quantity currency floo
   createPEDistributionRequestCid <- submit customer do exerciseByKeyCmd @PEDistribution.S (operator, provider, customer) PEDistribution.RequestCreatePEDistribution with id; quantity; currency; floor; collateralCid; receivableAccount; observers = singleton public
   submit provider do exerciseByKeyCmd @PEDistribution.S (operator, provider, customer) PEDistribution.CreatePEDistribution with createPEDistributionRequestCid
 
+createPEDistributionBid : Party -> Party -> Party -> Party -> ContractId PEDistribution.T -> Decimal -> Decimal -> ContractId Fungible.I -> AccountKey -> Script (ContractId PEBidding.Bid)
+createPEDistributionBid operator provider customer public auctionCid amount price collateralCid receivableAccount = do
+  debug "to here"
+  createBidRequestCid <- submitMulti [customer] [public] do exerciseByKeyCmd @PEBidding.S (operator, provider, customer) PEBidding.RequestCreateBid with auctionCid; amount; price; collateralCid; receivableAccount
+  submit provider do exerciseByKeyCmd @PEBidding.S (operator, provider, customer) PEBidding.CreateBid with createBidRequestCid
+
+processPEDistribution : Party -> Party -> Party -> Party -> ContractId PEDistribution.T -> [ContractId PEBidding.Bid] -> Script (ContractId PEDistribution.T)
+processPEDistribution operator provider customer public auctionCid bidCids = do
+  submitMulti [provider] [public] do
+    exerciseByKeyCmd @PEDistribution.S (operator, provider, customer) PEDistribution.ProcessPEDistribution
+      with
+        auctionCid
+        bidCids
 
 declareDividend : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> [InstrumentQuantity] -> Script (ContractId Effect.I)
 declareDividend operator provider issuer public equity effectiveTime perUnitDistribution = do
