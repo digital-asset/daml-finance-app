@@ -10,8 +10,8 @@ import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Appro
 import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Distribution.PEDistribution.Service qualified as PEDistribution (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Settlement.Service qualified as Settlement (Service)
-import Daml.Finance.Interface.Types.Common.Types (AccountKey)
 
 template Role
   with
@@ -27,9 +27,6 @@ template Role
       with
         customer : Party
         settlementServiceCid : ContractId Settlement.Service
-        receivableAccount1 : AccountKey
-        receivableAccount2 : AccountKey
-        receivableAccount3 : AccountKey
       controller provider
       do
         create Auction.Offer with ..
@@ -134,6 +131,14 @@ template Role
       controller provider
       do
         exerciseByKey @Subscription.Service (operator, provider, customer) Subscription.Terminate with actor = provider
+
+    nonconsuming choice OfferPEDistributionService : ContractId PEDistribution.Offer
+      with
+        customer : Party
+        settlementServiceCid : ContractId Settlement.Service
+      controller provider
+      do
+        create PEDistribution.Offer with ..
 
     nonconsuming choice OfferInvestmentService : ContractId Investment.Offer
       with

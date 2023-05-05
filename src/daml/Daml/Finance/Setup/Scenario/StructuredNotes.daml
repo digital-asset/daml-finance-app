@@ -176,10 +176,10 @@ run  = do
             subscriptionCids = [inv1SubscriptionCid, inv2SubscriptionCid, inv3SubscriptionCid]
       pure ()
 
-  -- (_, rcIssuerHoldingCid, rcRiskTakerHoldingCid) <- issuance $ qty 3_000_000.0 rc
-  -- subscription (qty 3_000_000.0 rc) (qty 1.0 usd) issuerCashCid1 rcIssuerHoldingCid rcRiskTakerHoldingCid inv1CashCid1 inv2CashCid1 inv3CashCid1
-  -- (_, brcIssuerHoldingCid, brcRiskTakerHoldingCid) <- issuance $ qty 3_000_000.0 brc
-  -- subscription (qty 3_000_000.0 brc) (qty 1.0 usd) issuerCashCid2 brcIssuerHoldingCid brcRiskTakerHoldingCid inv1CashCid2 inv2CashCid2 inv3CashCid2
+  (_, rcIssuerHoldingCid, rcRiskTakerHoldingCid) <- issuance $ qty 3_000_000.0 rc
+  subscription (qty 3_000_000.0 rc) (qty 1.0 usd) issuerCashCid1 rcIssuerHoldingCid rcRiskTakerHoldingCid inv1CashCid1 inv2CashCid1 inv3CashCid1
+  (_, brcIssuerHoldingCid, brcRiskTakerHoldingCid) <- issuance $ qty 3_000_000.0 brc
+  subscription (qty 3_000_000.0 brc) (qty 1.0 usd) issuerCashCid2 brcIssuerHoldingCid brcRiskTakerHoldingCid inv1CashCid2 inv2CashCid2 inv3CashCid2
   -- (_, bwn1IssuerHoldingCid, bwn1RiskTakerHoldingCid) <- issuance $ qty 50_000.0 bwn1
   -- subscription (qty 50_000.0 bwn1) (qty 95.00 usd) issuerCashCid2 bwn1IssuerHoldingCid bwn1RiskTakerHoldingCid inv1CashCid2 inv2CashCid2 inv3CashCid2
   -- (_, bwn2IssuerHoldingCid, bwn2RiskTakerHoldingCid) <- issuance $ qty 44_000.0 bwn2

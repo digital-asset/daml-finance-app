@@ -1,0 +1,101 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Distribution.PEBidding.Model where
+
+import DA.Set (singleton)
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
+import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
+import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..), I)
+import Daml.Finance.Interface.Settlement.Types qualified as T (Allocation(Pledge), Approval(TakeDelivery))
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentQuantity)
+
+data Details = Details with
+    quantity : InstrumentQuantity
+    price : InstrumentQuantity
+    time : Time
+  deriving (Eq, Show)
+
+instance Ord Details where
+  compare x y = (x.price.amount, x.quantity.amount, Down x.time) `compare` (y.price.amount, y.quantity.amount, Down y.time)
+
+data Allocation = Allocation with
+    bidCid : ContractId Bid
+    bid : Bid
+    amount : Decimal
+  deriving (Eq, Show)
+
+data SettleAllocation = SettleAllocation with
+    allocation : Allocation
+    price : Decimal
+    issuer : Party
+  deriving (Eq, Show)
+
+template CreateBidRequest
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    issuer : Party
+    auctionId : Text
+    quantity : InstrumentQuantity
+    price : InstrumentQuantity
+    collateralCid : ContractId Fungible.I
+    receivableAccount : AccountKey
+  where
+    signatory operator, provider, customer
+
+data Status
+    = Pending
+    | FullAllocation with
+        price : Decimal
+    | PartialAllocation with
+        price : Decimal
+        amount : Decimal
+    | NoAllocation
+    | Invalid
+  deriving (Eq, Show)
+
+template Bid
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    issuer : Party
+    details : Details
+    auctionId : Text
+    collateralCid : ContractId Fungible.I
+    receivableAccount : AccountKey
+    status : Status
+  where
+    signatory operator, provider, customer
+    observer issuer
+    ensure details.quantity.amount > 0.0
+
+    choice UpdateStatus : ContractId Bid
+      with
+        newStatus : Status
+      controller provider
+      do
+        create this with status = newStatus
+
+    nonconsuming choice ApproveInstruction : ContractId Instruction.I
+      with
+        instructionCid : ContractId Instruction.I
+        account : AccountKey
+      controller provider
+      do
+        exercise instructionCid Instruction.Approve with actors = singleton customer; approval = T.TakeDelivery account
+
+    nonconsuming choice AllocateInstruction : ContractId Instruction.I
+      with
+        instructionCid : ContractId Instruction.I
+        transferableCid : ContractId Transferable.I
+      controller provider
+      do
+        debug this
+        instruction <- fetch instructionCid 
+        debug (view instruction)
+        transferable <- fetch transferableCid
+        debug (view transferable)
+        fst <$> exercise instructionCid Instruction.Allocate with actors = singleton customer; allocation = T.Pledge $ toInterfaceContractId transferableCid

@@ -3,7 +3,7 @@
 
 {-# LANGUAGE MultiWayIf #-}
 
-module Daml.Finance.App.Distribution.Auction.Service where
+module Daml.Finance.App.Distribution.PEDistribution.Service where
 
 import DA.Action (foldlA)
 import DA.Either (partitionEithers)
@@ -11,10 +11,10 @@ import DA.Foldable (forA_)
 import DA.List (sortOn, mapAccumL)
 import DA.Optional (whenSome)
 import DA.Set (fromList, singleton)
-import Daml.Finance.App.Distribution.Auction.Model (Auction(..), CreateAuctionRequest(..), Status(..))
-import Daml.Finance.App.Distribution.Auction.Utils (dutchAuction, splitList, generateSettlementInstruction)
-import Daml.Finance.App.Distribution.Bidding.Model qualified as Bidding (Allocation(..), Bid, SettleAllocation(..), Status(..))
-import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (RejectBid(..), S)
+import Daml.Finance.App.Distribution.PEDistribution.Model (PEDistribution(..),Subscription(..) ,CreatePEDistributionRequest(..), Status(..))
+import Daml.Finance.App.Distribution.PEDistribution.Utils (dutchAuction, splitList, generateSettlementInstruction)
+import Daml.Finance.App.Distribution.PEBidding.Model qualified as Bidding (Allocation(..), Bid, SettleAllocation(..), Status(..))
+import Daml.Finance.App.Distribution.PEBidding.Service qualified as Bidding (RejectBid(..), S)
 import Daml.Finance.App.Settlement.Service qualified as Settlement (Service)
 import Daml.Finance.App.Util (fetchAndArchive)
 import Daml.Finance.Interface.Account.Account qualified as Account (R, exerciseInterfaceByKey)
@@ -39,7 +39,41 @@ template Service
     key (operator, provider, customer) : (Party, Party, Party)
     maintainer key._1
 
-    nonconsuming choice RequestCreateAuction : ContractId CreateAuctionRequest
+    -- nonconsuming choice CreatePEDistribution : ContractId PEDistribution
+    --   with
+    --     offeringId : Text
+    --     asset : InstrumentQuantity
+    --     price : InstrumentQuantity
+    --     customerHoldingCid : ContractId Fungible.I
+    --     customerAccount : AccountKey
+    --     observers : Parties
+    --   controller customer
+    --   do
+    --     -- Disclose holding
+    --     customerHolding <- fetch customerHoldingCid
+    --     customerHoldingCid : ContractId Fungible.I <- coerceContractId <$> exercise (coerceContractId customerHoldingCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (offeringId, singleton provider)
+    --     -- Disclose delivering securities account
+    --     let customerSendingAccount = getAccount customerHolding
+    --     (_, delRef) <- fetchByKey @Account.R customerSendingAccount
+    --     exercise (coerceContractId delRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (offeringId, singleton provider)
+    --     -- Disclose receiving cash account
+    --     (_, recRef) <- fetchByKey @Account.R customerAccount
+    --     exercise (coerceContractId recRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (offeringId, singleton provider)
+    --     -- Lock holding
+    --     customerHoldingCid <- coerceContractId <$> exercise (toInterfaceContractId customerHoldingCid : ContractId Holding.I) Holding.Acquire with newLockers = fromList [ provider ]; context = offeringId; lockType = Holding.Semaphore
+
+
+
+        -- create PEDistribution
+        --   with
+        --     operator; provider; asset; price; offeringId
+        --     issuer = customer
+        --     issuerHoldingCid = customerHoldingCid
+        --     issuerAccount = customerAccount
+        --     status = Open
+        --     observers
+
+    nonconsuming choice RequestCreatePEDistribution : ContractId CreatePEDistributionRequest
       with
         id : Text
         quantity : InstrumentQuantity
@@ -62,34 +96,28 @@ template Service
         (_, recRef) <- fetchByKey @Account.R receivableAccount
         exercise (coerceContractId recRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (id, singleton provider)
 
-        create CreateAuctionRequest with operator; provider; customer; id; quantity; currency; floor; collateralCid; receivableAccount; observers
+        create CreatePEDistributionRequest with operator; provider; customer; id; quantity; currency; floor; collateralCid; receivableAccount; observers
 
-    nonconsuming choice CancelAuctionRequest : ()
-      with
-        createAuctionRequestCid : ContractId CreateAuctionRequest
-      controller customer
-      do
-        archive createAuctionRequestCid
 
-    nonconsuming choice CreateAuction : ContractId Auction
+    nonconsuming choice CreatePEDistribution : ContractId PEDistribution
       with
-        createAuctionRequestCid : ContractId CreateAuctionRequest
+        createPEDistributionRequestCid : ContractId CreatePEDistributionRequest
       controller provider
       do
-        CreateAuctionRequest{id; quantity; currency; floor; collateralCid; receivableAccount; observers} <- fetchAndArchive createAuctionRequestCid
+        CreatePEDistributionRequest{id; quantity; currency; floor; collateralCid; receivableAccount; observers} <- fetchAndArchive createPEDistributionRequestCid
         collateralCid <- coerceContractId <$> exercise (toInterfaceContractId collateralCid : ContractId Holding.I) Holding.Acquire with newLockers = fromList [ provider ]; context = id; lockType = Holding.Semaphore
-        create Auction with operator; provider; customer; id; quantity; currency; floor; collateralCid; receivableAccount; status = Open; observers
+        create PEDistribution with operator; provider; customer; id; quantity; currency; floor; collateralCid; receivableAccount; status = Open; observers
 
-    nonconsuming choice RejectAuction : ()
+    nonconsuming choice RejectPEDistribution : ()
       with
-        createAuctionRequestCid : ContractId CreateAuctionRequest
+        createPEDistributionRequestCid : ContractId CreatePEDistributionRequest
       controller provider
       do
-        archive createAuctionRequestCid
+        archive createPEDistributionRequestCid
 
-    nonconsuming choice ProcessAuction : ContractId Auction
-      with
-        auctionCid : ContractId Auction
+    nonconsuming choice ProcessPEDistribution : ContractId PEDistribution
+       with
+        auctionCid : ContractId PEDistribution
         bidCids : [ContractId Bidding.Bid]
       controller provider
       do
@@ -142,6 +170,29 @@ template Service
         archive auctionCid
         create auction with status = newStatus
 
+    -- nonconsuming choice ProcessPEDistribution : ContractId PEDistribution
+    --   with
+    --     offeringCid : ContractId PEDistribution
+    --     subscriptionCids : [ContractId Subscription]
+    --   controller provider
+    --   do
+    --     -- Settle subscriptions
+    --     offering <- fetch offeringCid
+    --     subscriptions <- zip subscriptionCids <$> forA subscriptionCids fetch
+    --     (remainingIssuerQuantity, remainingIssuerHoldingCidOpt) <- foldlA (settleSubscription provider settlementServiceCid offering) (offering.asset.amount, Some offering.issuerHoldingCid) subscriptions
+
+
+    --     -- Archive offer and subscriptions
+    --     archive offeringCid
+    --     -- forA_ subscriptionCids archive
+
+    --     -- Unlock remaining issuer holding
+    --     whenSome remainingIssuerHoldingCidOpt \holdingCid -> do
+    --       exercise (toInterfaceContractId holdingCid : ContractId Holding.I) Holding.Release with context = offering.offeringId
+    --       pure ()
+
+    --     create offering with status = Closed
+
     choice Terminate : ()
       with
         actor : Party
@@ -163,7 +214,7 @@ template Offer
     choice Accept : ContractId Service
       controller customer
       do
-        create Service with operator; provider; customer; settlementServiceCid
+        create Service with ..
 
     choice Decline : ()
       controller customer
@@ -196,4 +247,4 @@ template Request
         settlementServiceCid : ContractId Settlement.Service
       controller operator, provider
       do
-        create Service with operator; provider; customer; settlementServiceCid
+        create Service with ..

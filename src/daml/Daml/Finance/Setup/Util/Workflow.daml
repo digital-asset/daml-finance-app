@@ -15,6 +15,8 @@ import Daml.Finance.App.Custody.Service qualified as Custody (Deposit(..), OpenA
 import Daml.Finance.App.Data.AccountDirectory (AccountDirectory(..))
 import Daml.Finance.App.Distribution.Auction.Model qualified as Auction (T)
 import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (CreateAuction(..), ProcessAuction(..), RequestCreateAuction(..), S)
+import Daml.Finance.App.Distribution.PEDistribution.Model qualified as PEDistribution (T)
+import Daml.Finance.App.Distribution.PEDistribution.Service qualified as PEDistribution (CreatePEDistribution(..), ProcessPEDistribution(..), RequestCreatePEDistribution(..), S)
 import Daml.Finance.App.Distribution.Bidding.Model qualified as Bidding (Bid)
 import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (CreateBid(..), RequestCreateBid(..), S)
 import Daml.Finance.App.Distribution.Fund.Model qualified as Fund (PooledInvestmentRequest, T)
@@ -295,6 +297,12 @@ processAuction operator provider customer public auctionCid bidCids = do
       with
         auctionCid
         bidCids
+
+createPEDistribution : Party -> Party -> Party -> Party -> Text -> InstrumentQuantity -> InstrumentKey -> Decimal -> ContractId Fungible.I -> AccountKey -> Script (ContractId PEDistribution.T)
+createPEDistribution operator provider customer public id quantity currency floor collateralCid receivableAccount = do
+  createPEDistributionRequestCid <- submit customer do exerciseByKeyCmd @PEDistribution.S (operator, provider, customer) PEDistribution.RequestCreatePEDistribution with id; quantity; currency; floor; collateralCid; receivableAccount; observers = singleton public
+  submit provider do exerciseByKeyCmd @PEDistribution.S (operator, provider, customer) PEDistribution.CreatePEDistribution with createPEDistributionRequestCid
+
 
 declareDividend : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> [InstrumentQuantity] -> Script (ContractId Effect.I)
 declareDividend operator provider issuer public equity effectiveTime perUnitDistribution = do

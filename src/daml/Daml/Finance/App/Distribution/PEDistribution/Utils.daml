@@ -1,11 +1,11 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module Daml.Finance.App.Distribution.Auction.Utils where
+module Daml.Finance.App.Distribution.PEDistribution.Utils where
 
 import DA.Set (singleton)
-import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding
-import Daml.Finance.App.Distribution.Bidding.Model qualified as Bidding (AllocateInstruction(..), Allocation(..), ApproveInstruction(..), Bid(..), SettleAllocation(..))
+import Daml.Finance.App.Distribution.PEBidding.Service qualified as Bidding
+import Daml.Finance.App.Distribution.PEBidding.Model qualified as Bidding (AllocateInstruction(..), Allocation(..), ApproveInstruction(..), Bid(..), SettleAllocation(..))
 import Daml.Finance.App.Settlement.Service qualified as Settlement (DiscoverAndInstruct(..), Service)
 import Daml.Finance.Interface.Holding.Fungible (Fungible, Split(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
