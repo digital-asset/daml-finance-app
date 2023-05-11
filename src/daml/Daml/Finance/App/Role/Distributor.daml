@@ -160,6 +160,13 @@ template Role
       do
         create PEDistribution.Offer with ..
 
+    nonconsuming choice OfferPEDistributionAutoService : ContractId PEDistributionAuto.Offer
+      with
+        customer : Party
+      controller provider
+      do
+        create PEDistributionAuto.Offer with ..
+
     nonconsuming choice OfferInvestmentService : ContractId Investment.Offer
       with
         customer : Party

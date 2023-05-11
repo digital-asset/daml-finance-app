@@ -190,6 +190,11 @@ createPEDistributionService operator provider customer securityPaths = do
         securityPaths
   submit customer do exerciseCmd offerCid PEDistribution.Accept
 
+createPEDistributionAutoService : Party -> Party -> Party -> Script (ContractId PEDistributionAuto.Service)
+createPEDistributionAutoService operator distributor customer = do
+  offerCid <- submit distributor do exerciseByKeyCmd @Distributor.Role (operator, distributor) Distributor.OfferPEDistributionAutoService with customer
+  submit customer do exerciseCmd offerCid PEDistributionAuto.Accept
+
 createLendingService : Party -> Party -> Party -> Script (ContractId Lending.Service)
 createLendingService operator lender borrower = do
   offerCid <- submit lender do exerciseByKeyCmd @Custodian.Role (operator, lender) Custodian.OfferLendingService with customer = borrower
