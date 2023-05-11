@@ -28,7 +28,7 @@ template Service
         currency : InstrumentKey
         floor : Decimal
         collateralCid : ContractId Fungible.I
-        receivableAccount : AccountKey
+        receivableAccount : [AccountKey]
         observers : Parties
       controller customer
       do

@@ -15,6 +15,7 @@ import Daml.Finance.App.Distribution.PEDistribution.Service qualified as PEDistr
 import Daml.Finance.App.Distribution.PEBidding.Service qualified as PEBidding (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Distribution.PEBidding.Auto.Service qualified as PEBiddingAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Settlement.Service qualified as Settlement (Service)
+import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy)
 
 template Role
   with
@@ -154,7 +155,7 @@ template Role
     nonconsuming choice OfferPEDistributionService : ContractId PEDistribution.Offer
       with
         customer : Party
-        settlementServiceCid : ContractId Settlement.Service
+        securityPaths : [(Text, Settlement.Hierarchy)]
       controller provider
       do
         create PEDistribution.Offer with ..

@@ -19,6 +19,8 @@ import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObserv
 import Daml.Finance.App.Distribution.PEDistribution.Model qualified as Auction (Fetch(..), T)
 import Daml.Finance.App.Distribution.PEBidding.Model (Bid(..), CreateBidRequest(..), Details(..), Status(..), UpdateStatus(..))
 
+import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
+
 type S = Service
 
 template Service
@@ -39,6 +41,7 @@ template Service
         price : Decimal
         collateralCid : ContractId Fungible.I
         receivableAccount : AccountKey
+        commitmentPath : (Text, Settlement.Hierarchy)
       controller customer
       do
         auction <- exercise auctionCid Auction.Fetch with actor = customer
@@ -47,14 +50,14 @@ template Service
         getAmount collateral === price * amount
         assertMsg "Bid amount can't be larger than available size" $ amount <= auction.quantity.amount
 
-        -- Disclose holding
+        -- Disclose holding of commitment tokens by investor
         investorHolding <- fetch collateralCid
         investorHoldingCid : ContractId Fungible.I <- coerceContractId <$> exercise (coerceContractId collateralCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (auction.id, singleton provider)
-        -- Disclose delivering securities account
+        -- Disclose delivering commitment tokens account
         let investorSendingAccount = getAccount investorHolding
         (_, delRef) <- fetchByKey @Account.R investorSendingAccount
         exercise (coerceContractId delRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (auction.id, singleton provider)
-        -- Disclose receiving cash account
+        -- Disclose receiving cash account for fund shares received by investor
         (_, recRef) <- fetchByKey @Account.R receivableAccount
         exercise (coerceContractId recRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (auction.id, singleton provider)
         -- Lock holding
@@ -63,17 +66,17 @@ template Service
         let
           quantity = Instrument.qty amount auction.quantity.unit
           priceQty = Instrument.qty price auction.currency
-        create CreateBidRequest with operator; provider; customer; issuer = auction.customer; auctionId = auction.id; quantity; price = priceQty; collateralCid; receivableAccount
+        create CreateBidRequest with operator; provider; customer; issuer = auction.customer; auctionId = auction.id; quantity; price = priceQty; collateralCid; receivableAccount; commitmentPath
 
     nonconsuming choice CreateBid : ContractId Bid
       with
         createBidRequestCid : ContractId CreateBidRequest
       controller provider
       do
-        CreateBidRequest{issuer; auctionId; collateralCid; receivableAccount; price; quantity} <- fetch createBidRequestCid
+        CreateBidRequest{issuer; auctionId; collateralCid; receivableAccount; commitmentPath; price; quantity} <- fetch createBidRequestCid
 
         time <- getTime
-        create Bid with operator; provider; customer; issuer; details = (Details with price; quantity; time); auctionId; collateralCid; receivableAccount; status = Pending
+        create Bid with operator; provider; customer; issuer; details = (Details with price; quantity; time); auctionId; collateralCid; receivableAccount; commitmentPath; status = Pending
 
     nonconsuming choice ProcessAllocation : (ContractId Bid, ContractId Fungible.I)
       with

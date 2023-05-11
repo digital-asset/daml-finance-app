@@ -10,6 +10,8 @@ import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (A
 import Daml.Finance.Interface.Settlement.Types qualified as T (Allocation(Pledge), Approval(TakeDelivery))
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentQuantity)
 
+import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
+
 data Details = Details with
     quantity : InstrumentQuantity
     price : InstrumentQuantity
@@ -42,6 +44,8 @@ template CreateBidRequest
     price : InstrumentQuantity
     collateralCid : ContractId Fungible.I
     receivableAccount : AccountKey
+    commitmentPath : (Text, Settlement.Hierarchy)
+    
   where
     signatory operator, provider, customer
 
@@ -66,6 +70,7 @@ template Bid
     auctionId : Text
     collateralCid : ContractId Fungible.I
     receivableAccount : AccountKey
+    commitmentPath : (Text, Settlement.Hierarchy)
     status : Status
   where
     signatory operator, provider, customer
@@ -93,9 +98,9 @@ template Bid
         transferableCid : ContractId Transferable.I
       controller provider
       do
-        debug this
+        --debug this
         instruction <- fetch instructionCid 
-        debug (view instruction)
+        --debug (view instruction)
         transferable <- fetch transferableCid
-        debug (view transferable)
+        --debug (view transferable)
         fst <$> exercise instructionCid Instruction.Allocate with actors = singleton customer; allocation = T.Pledge $ toInterfaceContractId transferableCid

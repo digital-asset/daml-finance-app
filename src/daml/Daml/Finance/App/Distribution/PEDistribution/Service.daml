@@ -11,19 +11,27 @@ import DA.Foldable (forA_)
 import DA.List (sortOn, mapAccumL)
 import DA.Optional (whenSome)
 import DA.Set (fromList, singleton)
-import Daml.Finance.App.Distribution.PEDistribution.Model (PEDistribution(..),Subscription(..) ,CreatePEDistributionRequest(..), Status(..))
+import DA.Map qualified as M (empty, fromList, lookup)
+import Daml.Finance.App.Data.AccountDirectory (AccountDirectory)
+import Daml.Finance.App.Distribution.PEDistribution.Model (PEDistribution(..), CreatePEDistributionRequest(..), Status(..))
 import Daml.Finance.App.Distribution.PEDistribution.Utils (dutchAuction, splitList, generateSettlementInstruction)
-import Daml.Finance.App.Distribution.PEBidding.Model qualified as Bidding (Allocation(..), Bid, SettleAllocation(..), Status(..))
-import Daml.Finance.App.Distribution.PEBidding.Service qualified as Bidding (RejectBid(..), S)
+import Daml.Finance.App.Distribution.PEBidding.Model qualified as PEBidding (Allocation(..), Bid, SettleAllocation(..), Status(..))
+import Daml.Finance.App.Distribution.PEBidding.Service qualified as PEBidding (RejectBid(..), S)
 import Daml.Finance.App.Settlement.Service qualified as Settlement (Service)
+import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy)
 import Daml.Finance.App.Util (fetchAndArchive)
 import Daml.Finance.Interface.Account.Account qualified as Account (R, exerciseInterfaceByKey)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
-import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..), SplitResult(..), Fungible)
 import Daml.Finance.Interface.Account.Util (getAccount)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I, RemoveObservers(..))
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentKey, InstrumentQuantity, Parties)
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
+
+import Daml.Finance.Settlement.Factory qualified as Settlement (Factory(..))
+import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy)
+import Daml.Finance.Settlement.RouteProvider.IntermediatedStatic qualified as RouteProvider (IntermediatedStatic(..))
+import Daml.Finance.App.Settlement.Service qualified as Settlement (Accept(..), Offer(..), Service)
 
 type S = Service
 
@@ -32,7 +40,7 @@ template Service
     operator : Party
     provider : Party
     customer : Party
-    settlementServiceCid : ContractId Settlement.Service
+    securityPaths : [(Text, Settlement.Hierarchy)]
   where
     signatory operator, provider, customer
 
@@ -80,7 +88,7 @@ template Service
         currency : InstrumentKey
         floor : Decimal
         collateralCid : ContractId Fungible.I
-        receivableAccount : AccountKey
+        receivableAccount : [AccountKey]
         observers : Parties
       controller customer
       do
@@ -93,8 +101,10 @@ template Service
         exercise (coerceContractId delRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (id, fromList [provider])
 
         -- Disclose receiving cash account
-        (_, recRef) <- fetchByKey @Account.R receivableAccount
-        exercise (coerceContractId recRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (id, singleton provider)
+        forA_ receivableAccount (\account -> do
+          (_, recRef) <- fetchByKey @Account.R account
+          exercise (coerceContractId recRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (id, singleton provider)
+          )
 
         create CreatePEDistributionRequest with operator; provider; customer; id; quantity; currency; floor; collateralCid; receivableAccount; observers
 
@@ -118,7 +128,7 @@ template Service
     nonconsuming choice ProcessPEDistribution : ContractId PEDistribution
        with
         auctionCid : ContractId PEDistribution
-        bidCids : [ContractId Bidding.Bid]
+        bidCids : [ContractId PEBidding.Bid]
       controller provider
       do
         auction <- fetch auctionCid
@@ -138,26 +148,58 @@ template Service
           (allocatedBids, unallocatedBids) = partitionEithers $ splitList (\allocation -> allocation.amount == 0.0) allocations
 
         -- Return assets of all invalid and unallocated bids. Also update their bid status accordingly
-        forA_ invalidBids (\(bidCid, bid) -> exerciseByKey @Bidding.S (bid.operator, bid.provider, bid.customer) Bidding.RejectBid with bidCid; newStatus = Bidding.Invalid)
-        forA_ unallocatedBids (\Bidding.Allocation{bidCid, bid} -> exerciseByKey @Bidding.S (bid.operator, bid.provider, bid.customer) Bidding.RejectBid with bidCid; newStatus = Bidding.NoAllocation)
+        forA_ invalidBids (\(bidCid, bid) -> exerciseByKey @PEBidding.S (bid.operator, bid.provider, bid.customer) PEBidding.RejectBid with bidCid; newStatus = PEBidding.Invalid)
+        forA_ unallocatedBids (\PEBidding.Allocation{bidCid, bid} -> exerciseByKey @PEBidding.S (bid.operator, bid.provider, bid.customer) PEBidding.RejectBid with bidCid; newStatus = PEBidding.NoAllocation)
 
         -- Unlock auction collateral
-        auctionCollateralClid <- coerceContractId <$> exercise (toInterfaceContractId auction.collateralCid : ContractId Holding.I) Holding.Release with context = auction.id
+        auctionCollateralClid : ContractId Fungible.Fungible <- coerceContractId <$> exercise (toInterfaceContractId auction.collateralCid : ContractId Holding.I) Holding.Release with context = auction.id
 
-        -- Generate Settlement instructions for allocated bids
-        let settleAllocations = (\allocation -> Bidding.SettleAllocation with allocation; price = finalPrice; issuer = customer) <$> allocatedBids
-        (remainingDepositCidOpt, batchCids) <- foldlA (generateSettlementInstruction settlementServiceCid provider auction.receivableAccount) (Some auctionCollateralClid, []) settleAllocations
 
-        -- Settle transfers
-        forA_ batchCids (`exercise` Batch.Settle with actors = singleton provider)
+        -- Split the issuer's holding of fund being sold to investors (auction collateral) so the right amount is transferred
+        Fungible.SplitResult{splitCids, rest} <- exercise auctionCollateralClid Fungible.Split with amounts = map (\a -> a.amount) allocatedBids
 
-        -- Undisclose unallocated deposit
-        whenSome remainingDepositCidOpt \depositCid -> do
-          exercise (coerceContractId depositCid : ContractId Disclosure.I) Disclosure.RemoveObservers with disclosers = singleton customer; observersToRemove = (auction.id, singleton provider)
-          pure ()
+        -- zip up the split fund holdings with the allocated bids
+        let allocatedBidsAndFundHoldings = zip allocatedBids splitCids
+            
+
+        forA_ allocatedBidsAndFundHoldings (\(allocated, fundHoldingCid) -> do
+          -- Get the receivable account for the issuer for this bid (ie the bidder is the custodian) into which commitment tokens will be received
+          -- (eg for inv1 bid the receivable account is issuer @ inv1)
+          (_, receivableAccountDirectory) <- fetchByKey @AccountDirectory allocated.bid.customer
+          let Some receivableAccount = M.lookup auction.currency.id receivableAccountDirectory.accounts
+
+          -- We have the security settlement paths as securityPaths : [(Text, Settlement.Hierarchy)]
+          -- For each bid we need the commitment token settlement paths
+          let paths  = M.fromList $ allocated.bid.commitmentPath :: securityPaths
+
+          -- Create routeProvider and settlement service
+          routeProviderCid      <- toInterfaceContractId <$> create RouteProvider.IntermediatedStatic  with provider; observers = singleton customer; paths
+          settlementFactoryCid  <- toInterfaceContractId <$> create Settlement.Factory                 with provider; observers = singleton customer
+          offerCid <- create Settlement.Offer with operator; provider; customer; routeProviderCid; settlementFactoryCid
+          settleService1 <- exercise offerCid Settlement.Accept
+
+          -- Generate Settlement instructions for the bid
+          let settleAllocation = PEBidding.SettleAllocation with allocation = allocated; price = finalPrice; issuer = customer
+          (remainingDepositCidOpt, batchCids) <- foldlA (generateSettlementInstruction settleService1 provider receivableAccount) (Some fundHoldingCid, []) [settleAllocation]
+
+          -- Settle transfers
+          forA_ batchCids (`exercise` Batch.Settle with actors = singleton provider)
+   
+          -- Undisclose unallocated deposit
+          whenSome remainingDepositCidOpt \depositCid -> do
+            exercise (coerceContractId depositCid : ContractId Disclosure.I) Disclosure.RemoveObservers with disclosers = singleton customer; observersToRemove = (auction.id, singleton provider)
+            pure ()
+
+          -- Archive so that these can be recreated in next iteration without duplicate keys
+          archive routeProviderCid
+          archive settlementFactoryCid
+          archive settleService1
+          )
 
         -- Undisclose accounts
-        Account.exerciseInterfaceByKey @Disclosure.I auction.receivableAccount provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (auction.id, singleton provider)
+        forA_ auction.receivableAccount (\account -> do
+          Account.exerciseInterfaceByKey @Disclosure.I account provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (auction.id, singleton provider)
+          )
         Account.exerciseInterfaceByKey @Disclosure.I collateralAccount provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (auction.id, singleton provider)
         forA_ receivableAccounts (\a -> Account.exerciseInterfaceByKey @Disclosure.I a provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (auction.id, singleton provider))
         forA_ collateralAccounts (\a -> Account.exerciseInterfaceByKey @Disclosure.I a provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (auction.id, singleton provider))
@@ -206,7 +248,7 @@ template Offer
     operator : Party
     provider : Party
     customer : Party
-    settlementServiceCid : ContractId Settlement.Service
+    securityPaths : [(Text, Settlement.Hierarchy)]
   where
     signatory operator, provider
     observer customer
@@ -244,7 +286,7 @@ template Request
     choice Approve : ContractId Service
       with
         operator : Party
-        settlementServiceCid : ContractId Settlement.Service
+        securityPaths : [(Text, Settlement.Hierarchy)]
       controller operator, provider
       do
         create Service with ..

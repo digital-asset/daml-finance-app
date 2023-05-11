@@ -9,6 +9,8 @@ import Daml.Finance.App.Distribution.PEDistribution.Model qualified as Auction (
 import Daml.Finance.App.Distribution.PEBidding.Model (Bid)
 import Daml.Finance.App.Distribution.PEBidding.Service qualified as Bidding (CreateBid(..), S, RequestCreateBid(..))
 
+import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
+
 type S = Service
 
 template Service
@@ -29,9 +31,10 @@ template Service
         price : Decimal
         collateralCid : ContractId Fungible.I
         receivableAccount : AccountKey
+        commitmentPath : (Text, Settlement.Hierarchy)
       controller customer
       do
-        createBidRequestCid <- exerciseByKey @Bidding.S (operator, provider, customer) Bidding.RequestCreateBid with auctionCid; amount; price; collateralCid; receivableAccount
+        createBidRequestCid <- exerciseByKey @Bidding.S (operator, provider, customer) Bidding.RequestCreateBid with auctionCid; amount; price; collateralCid; receivableAccount; commitmentPath
         exerciseByKey @Bidding.S (operator, provider, customer) Bidding.CreateBid with createBidRequestCid
 
     choice Terminate : ()

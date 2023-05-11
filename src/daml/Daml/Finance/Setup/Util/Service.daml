@@ -180,14 +180,14 @@ createSubscriptionService operator provider customer paths = do
         settlementServiceCid
   submit customer do exerciseCmd offerCid Subscription.Accept
 
-createPEDistributionService : Party -> Party -> Party -> SettlementPaths -> Script (ContractId PEDistribution.Service)
-createPEDistributionService operator provider customer paths = do
-  settlementServiceCid <- createSettlementService operator provider customer paths
+createPEDistributionService : Party -> Party -> Party -> [(Text, Settlement.Hierarchy)] -> Script (ContractId PEDistribution.Service)
+createPEDistributionService operator provider customer securityPaths = do
+  --secSettlementServiceCid <- createSettlementService operator provider customer securityPaths
   offerCid <- submit provider do
     exerciseByKeyCmd @Distributor.Role (operator, provider) Distributor.OfferPEDistributionService
       with
         customer
-        settlementServiceCid
+        securityPaths
   submit customer do exerciseCmd offerCid PEDistribution.Accept
 
 createLendingService : Party -> Party -> Party -> Script (ContractId Lending.Service)
@@ -205,7 +205,7 @@ createClearingService operator provider customer = do
   offerCid <- submit provider do exerciseByKeyCmd @Exchange.Role (operator, provider) Exchange.OfferClearingService with customer
   submit customer do exerciseCmd offerCid Clearing.Accept
 
-createSettlementService : Party -> Party -> Party -> SettlementPaths -> Script (ContractId Settlement.Service)
+createSettlementService : Party -> Party -> Party -> (Map Text Settlement.Hierarchy) -> Script (ContractId Settlement.Service)
 createSettlementService operator provider customer paths = do
   routeProviderCid      <- toInterfaceContractId <$> submit provider do createCmd RouteProvider.IntermediatedStatic  with provider; observers = singleton customer; paths
   settlementFactoryCid  <- toInterfaceContractId <$> submit provider do createCmd Settlement.Factory                 with provider; observers = singleton customer

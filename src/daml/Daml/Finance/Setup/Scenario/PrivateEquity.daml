@@ -23,11 +23,8 @@ import Daml.Finance.Interface.Types.Common.Types (Id(..))
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..))
 import qualified DA.List as List (delete)
 
-import Daml.Finance.App.Distribution.PEDistribution.Model qualified as PEDistribution
-import Daml.Finance.App.Distribution.PEDistribution.Service qualified as PEDistribution
-
 run: Script [PartyInfo]
-run = do 
+run = do
   let scenario = "Private Equity"
   parties <- allocateParties scenario ["Operator", "FundManager", "Admin", "TransferAgent", "WealthManager", "Investor1", "Investor2", "Investor3"] "Public"
   let 
@@ -42,25 +39,30 @@ run = do
   let 
     assetLabels = ["PE1", "PE2", "PE3"]
     settlementPaths = [[issuer], [inv1], [inv2], [inv3]]
+
     cashRoute = Settlement.Hierarchy 
       with 
         rootCustodian = ta
-        pathsToRootCustodian = List.delete [ta] settlementPaths
+        -- pathsToRootCustodian = List.delete [ta] settlementPaths
+        pathsToRootCustodian = settlementPaths
+    --cashPath = [("USD", cashRoute)]
+
     secRoute = Settlement.Hierarchy 
       with 
         rootCustodian = issuer 
         pathsToRootCustodian = List.delete [issuer] settlementPaths
+    secPath = map (\a -> (a, secRoute)) assetLabels
+
     commitments = map (<>"-COMMITMENT") assetLabels
-    
-    commitmentPaths = map (\(rootCustodian, i) -> (i, Settlement.Hierarchy with pathsToRootCustodian = List.delete [rootCustodian] settlementPaths; .. )) [
+  
+    -- Each investor has its own settlement route for commitment tokens, with just the issuer as a sub-custodian
+    commitmentPaths = map (\(rootCustodian, i) -> (i, Settlement.Hierarchy with pathsToRootCustodian = [[issuer]]; .. )) [
       (inv1, "PE1-COMMITMENT"),
       (inv2, "PE1-COMMITMENT"),
       (inv3, "PE1-COMMITMENT")]
 
     [commitmentPath1, commitmentPath2, commitmentPath3] = commitmentPaths
-
-    paths = fromList $ [("USD", cashRoute)] ++ commitmentPaths ++ map (\a -> (a, secRoute)) assetLabels
-
+    
   accountFactoryCid<- toInterfaceContractId 
     <$> submit operator do createCmd Account.Factory  with provider = operator; observers = pub 
   holdingFactoryCid <- toInterfaceContractId
@@ -80,9 +82,9 @@ run = do
     cashPath = [("USD", cashRoute)]
     secPath = map (\a -> (a, secRoute)) assetLabels
     custodyServices = [
-      (inv1, issuer, [commitmentPath1]++cashPath), 
-      (inv2, issuer, [commitmentPath2]++cashPath), 
-      (inv3, issuer, [commitmentPath3]++cashPath),
+      (inv1, issuer, commitmentPath1 :: cashPath), 
+      (inv2, issuer, commitmentPath2 :: cashPath), 
+      (inv3, issuer, commitmentPath3 :: cashPath),
       (inv1, inv1, [commitmentPath1]), 
       (inv2, inv2, [commitmentPath2]), 
       (inv3, inv3, [commitmentPath3]),
@@ -90,10 +92,10 @@ run = do
       (ta, inv1, cashPath),
       (ta, inv2, cashPath), 
       (ta, inv3, cashPath),
-      (admin, inv1, []),
-      (admin, inv2, []),
-      (admin, inv3, []),
-      (admin, issuer, []),
+      -- (admin, inv1, []),
+      -- (admin, inv2, []),
+      -- (admin, inv3, []),
+      (admin, issuer, []), -- dummy to make ui work, remove if possible
       (issuer, issuer, secPath),
       (issuer, inv1, secPath),
       (issuer, inv2, secPath),
@@ -130,17 +132,7 @@ run = do
   createStructuringService operator admin issuer 
   createStructuringAutoService operator admin issuer
 
- -- Hardcode three auction settlement accounts into the Auction Service
-  -- createAuctionService          operator issuer       issuer paths
-  -- createAuctionAutoService      operator issuer       issuer
-  -- createBiddingService          operator issuer       inv1
-  -- createBiddingAutoService      operator issuer       inv1
-  -- createBiddingService          operator issuer       inv2
-  -- createBiddingAutoService      operator issuer       inv2
-  -- createBiddingService          operator issuer       inv3
-  -- createBiddingAutoService      operator issuer       inv3
-
-  createPEDistributionService operator ta issuer paths
+  createPEDistributionService operator ta issuer secPath
 
   createPEBiddingService          operator ta       inv1
   createPEBiddingAutoService      operator ta       inv1
@@ -167,6 +159,7 @@ run = do
   usdCommit2 <- originateGeneric admin issuer pub epoch "PE2-COMMITMENT" "USD Commitment to PE2" $ capitalCommitment usd epoch
   usdCommit3 <- originateGeneric admin issuer pub epoch "PE3-COMMITMENT" "USD Commitment to PE3" $ capitalCommitment usd epoch
   let usdCommit = usdCommit1
+
   -- Accounts
   let 
     createAccount' provider customer name obs = createAccount operator provider customer public name obs
@@ -190,17 +183,17 @@ run = do
   inv3CashAccount           <- createAccount' ta inv3   "Investor3@TA|Cash" empty
 
   -- Security Accounts 
-  issuerSecAccount          <- createAccount' issuer issuer "FundManager@Admin|Securities" empty 
-  inv1SecAccount            <- createAccount' issuer inv1   "Investor1@Admin|Securities" empty 
-  inv2SecAccount            <- createAccount' issuer inv2   "Investor2@Admin|Securities" empty
-  inv3SecAccount            <- createAccount' issuer inv3   "Investor3@Admin|Securities" empty
+  issuerSecAccount          <- createAccount' issuer issuer "FundManager@FundManager|Securities" empty 
+  inv1SecAccount            <- createAccount' issuer inv1   "Investor1@FundManager|Securities" empty 
+  inv2SecAccount            <- createAccount' issuer inv2   "Investor2@FundManager|Securities" empty
+  inv3SecAccount            <- createAccount' issuer inv3   "Investor3@FundManager|Securities" empty
 
   -- Directories 
-  createAccountDirectory issuer [(usd, issuerCashAccount)]    $singleton public 
-  createAccountDirectory inv1 [(usd, inv1CashAccount)]        $singleton public
-  createAccountDirectory inv2 [(usd, inv2CashAccount)]        $singleton public
-  createAccountDirectory inv3 [(usd, inv3CashAccount)]        $singleton public
-
+  createAccountDirectory issuer [(usd, issuerCashAccount)]    $ singleton public 
+  createAccountDirectory inv1 [(usd, inv1CashAccount), (usdCommit1, issuerCommitAccount1)]        $singleton ta
+  createAccountDirectory inv2 [(usd, inv2CashAccount), (usdCommit1, issuerCommitAccount2)]        $singleton ta
+  createAccountDirectory inv3 [(usd, inv3CashAccount), (usdCommit1, issuerCommitAccount3)]        $singleton ta
+  
   -- -- Holdings 
   -- issuerCommit1Cid <- deposit operator inv1 issuer public (qty 25_000_000.00 usdCommit) issuerCommitAccount1
   -- issuerCommit2Cid <- deposit operator inv2 issuer public (qty 35_000_000.00 usdCommit) issuerCommitAccount2
@@ -217,7 +210,7 @@ run = do
   -- inv1Shares1Cid    <- deposit operator issuer inv1 public (qty 25_000_000.00 pe1) inv1SecAccount
   -- inv2Shares1Cid    <- deposit operator issuer inv2 public (qty 35_000_000.00 pe1) inv2SecAccount
   -- inv3Shares1Cid    <- deposit operator issuer inv3 public (qty 40_000_000.00 pe1) inv3SecAccount
-  issuerShares1Cid  <- deposit operator issuer issuer public (qty 1_000_00.00 pe1) issuerSecAccount
+  -- issuerShares1Cid  <- deposit operator issuer issuer public (qty 1_000_000.00 pe1) issuerSecAccount
 
   -- Issuances (Test)
   (_, ad1) <- issue operator issuer issuer public (qty 1_000_000.0 pe1)   issuerSecAccount
@@ -246,65 +239,18 @@ run = do
 
   -- PE Distribution (Test)
   let quantity = qty 1_000_000.0 pe1
-  -- Auction goes via Workflow.daml but Offering uses service directly
-  -- offeringCid <- submit issuer do
-  --   let
-  --     offeringId = "OFFERING-PE1"
-  --   exerciseByKeyCmd @PEDistribution.Service (operator, issuer, issuer) PEDistribution.CreatePEDistribution
-  --     with
-  --       offeringId
-  --       asset
-  --       price
-  --       customerHoldingCid = coerceContractId issuerAssetCid
-  --       customerAccount = issuerCashAccount
-  --       observers = singleton public
-  auctionCid        <- createPEDistribution operator ta issuer public "DISTRIBUTION1" quantity usdCommit 1.0 (coerceContractId ad1) issuerCashAccount
-  inv1CollateralCid <- coerceContractId <$> getHolding inv1 (qty 500_010.0 usdCommit)
-  inv2CollateralCid <- coerceContractId <$> getHolding inv2 (qty 392_000.0 usdCommit)
-  inv3CollateralCid <- coerceContractId <$> getHolding inv3 (qty 297_000.0 usdCommit)
-  inv1BidCid        <- createPEDistributionBid operator ta inv1 public auctionCid 500_010.0 1.0  inv1CollateralCid inv1SecAccount
-  inv2BidCid        <- createPEDistributionBid operator ta inv2 public auctionCid 392_000.0 1.0 inv2CollateralCid inv2SecAccount
-  inv3BidCid        <- createPEDistributionBid operator ta inv3 public auctionCid 297_000.0 1.0 inv3CollateralCid inv3SecAccount
-  --processPEDistribution operator ta issuer public auctionCid [inv1BidCid, inv2BidCid, inv3BidCid]
+
+  -- When creating the distribution, need to pass in all the issuer commitment accounts so that they can be disclosed to the Transfer Agent.
+  -- In implementation, investors could be invited to bid so that their accounts are identified.
+  distributionCid        <- createPEDistribution operator ta issuer public "DISTRIBUTION1" quantity usdCommit 1.0 (coerceContractId ad1) [issuerCommitAccount1, issuerCommitAccount2, issuerCommitAccount3]
+  inv1CollateralCid <- coerceContractId <$> getHolding inv1 (qty 500_000.0 usdCommit)
+  inv2CollateralCid <- coerceContractId <$> getHolding inv2 (qty 300_000.0 usdCommit)
+  inv3CollateralCid <- coerceContractId <$> getHolding inv3 (qty 200_000.0 usdCommit)
+ 
+  inv1BidCid        <- createPEDistributionBid operator ta inv1 public distributionCid 500_000.0 1.0 inv1CollateralCid inv1SecAccount commitmentPath1
+  inv2BidCid        <- createPEDistributionBid operator ta inv2 public distributionCid 300_000.0 1.0 inv2CollateralCid inv2SecAccount commitmentPath2
+  inv3BidCid        <- createPEDistributionBid operator ta inv3 public distributionCid 200_000.0 1.0 inv3CollateralCid inv3SecAccount commitmentPath3
+  processPEDistribution operator ta issuer public distributionCid [inv1BidCid, inv2BidCid, inv3BidCid]
 
   -- doAuction
   pure parties
-{-
-fst <$> exercise instructionCid Instruction.Allocate with actors = singleton customer; allocation = T.Pledge $ toInterfaceContractId transferableCid
-
-  Bid {
-    operator = 'Operator-Private Equity', 
-    provider = 'FundManager-Private Equity', 
-    customer = 'Investor1-Private Equity', 
-    issuer = 'FundManager-Private Equity', 
-    details = Details {
-      quantity = Quantity {
-        unit = InstrumentKey {
-          depository = 'Admin-Private Equity', 
-          issuer = 'FundManager-Private Equity', 
-          id = PE1, 
-          version = "0"
-        }, 
-        amount = 500010.0
-      }, 
-      price = Quantity {
-        unit = InstrumentKey {
-          depository = 'Admin-Private Equity', 
-          issuer = 'FundManager-Private Equity', 
-          id = PE1-COMMITMENT, 
-          version = "0"
-        }, 
-        amount = 1.0
-      }, 
-      time = 1970-01-01T00:00:00Z
-    }, 
-    auctionId = "AUCTION1", 
-    collateralCid = <contract-id>, 
-    receivableAccount = AccountKey {
-      custodian = 'FundManager-Private Equity', 
-      owner = 'Investor1-Private Equity', 
-      id = Investor1@Admin|Securities
-    }, 
-    status = FullAllocation {price = 1.0}
-  }
--}

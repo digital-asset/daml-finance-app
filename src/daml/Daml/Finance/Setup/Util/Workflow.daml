@@ -75,6 +75,7 @@ import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum, RollConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.Schedule (Frequency(..), PeriodicSchedule(..))
 import Daml.Finance.Settlement.Instruction qualified as Instruction (T)
+import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
 import Daml.Finance.Setup.Util.Common (getHolding)
 import Daml.Script
 import ContingentClaims.Core.Claim (one)
@@ -300,15 +301,14 @@ processAuction operator provider customer public auctionCid bidCids = do
         auctionCid
         bidCids
 
-createPEDistribution : Party -> Party -> Party -> Party -> Text -> InstrumentQuantity -> InstrumentKey -> Decimal -> ContractId Fungible.I -> AccountKey -> Script (ContractId PEDistribution.T)
+createPEDistribution : Party -> Party -> Party -> Party -> Text -> InstrumentQuantity -> InstrumentKey -> Decimal -> ContractId Fungible.I -> [AccountKey] -> Script (ContractId PEDistribution.T)
 createPEDistribution operator provider customer public id quantity currency floor collateralCid receivableAccount = do
   createPEDistributionRequestCid <- submit customer do exerciseByKeyCmd @PEDistribution.S (operator, provider, customer) PEDistribution.RequestCreatePEDistribution with id; quantity; currency; floor; collateralCid; receivableAccount; observers = singleton public
   submit provider do exerciseByKeyCmd @PEDistribution.S (operator, provider, customer) PEDistribution.CreatePEDistribution with createPEDistributionRequestCid
 
-createPEDistributionBid : Party -> Party -> Party -> Party -> ContractId PEDistribution.T -> Decimal -> Decimal -> ContractId Fungible.I -> AccountKey -> Script (ContractId PEBidding.Bid)
-createPEDistributionBid operator provider customer public auctionCid amount price collateralCid receivableAccount = do
-  debug "to here"
-  createBidRequestCid <- submitMulti [customer] [public] do exerciseByKeyCmd @PEBidding.S (operator, provider, customer) PEBidding.RequestCreateBid with auctionCid; amount; price; collateralCid; receivableAccount
+createPEDistributionBid : Party -> Party -> Party -> Party -> ContractId PEDistribution.T -> Decimal -> Decimal -> ContractId Fungible.I -> AccountKey -> (Text, Settlement.Hierarchy) -> Script (ContractId PEBidding.Bid)
+createPEDistributionBid operator provider customer public auctionCid amount price collateralCid receivableAccount commitmentPath = do
+  createBidRequestCid <- submitMulti [customer] [public] do exerciseByKeyCmd @PEBidding.S (operator, provider, customer) PEBidding.RequestCreateBid with auctionCid; amount; price; collateralCid; receivableAccount; commitmentPath
   submit provider do exerciseByKeyCmd @PEBidding.S (operator, provider, customer) PEBidding.CreateBid with createBidRequestCid
 
 processPEDistribution : Party -> Party -> Party -> Party -> ContractId PEDistribution.T -> [ContractId PEBidding.Bid] -> Script (ContractId PEDistribution.T)
@@ -389,9 +389,9 @@ claimEffect : Party -> Party -> Party -> Party -> ContractId Effect.I -> [Contra
 claimEffect operator custodian owner public effectCid holdingCids batchId = do
   
   Some (_, cs) <- queryContractKey @Custody.Service owner (operator, custodian, owner)
-  debug "EFFECT BELOW"
+
   Claim.ClaimResult{batchCid; instructionCids} <- submitMulti [owner] [public] do exerciseCmd cs.claimRuleCid Claim.ClaimEffect with claimer = owner; effectCid; holdingCids; batchId
-  debug "EFFECT ABOVE"
+
   pure (batchCid, instructionCids)
 
 allocateAndApprove : Party -> Party -> ContractId Instruction.I -> Settlement.Allocation -> Settlement.Approval -> Script (ContractId Instruction.I)
