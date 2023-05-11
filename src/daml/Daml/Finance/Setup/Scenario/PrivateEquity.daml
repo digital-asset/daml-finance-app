@@ -21,7 +21,6 @@ import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Interface.Types.Common.Types (Id(..))
 -- import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..))
-import qualified DA.List as List (delete)
 
 run: Script [PartyInfo]
 run = do 
@@ -42,21 +41,30 @@ run = do
     cashRoute = Settlement.Hierarchy 
       with 
         rootCustodian = ta
-        pathsToRootCustodian = List.delete [ta] settlementPaths
+        pathsToRootCustodian = settlementPaths
     secRoute = Settlement.Hierarchy 
       with 
         rootCustodian = issuer 
-        pathsToRootCustodian = List.delete [issuer] settlementPaths
+        pathsToRootCustodian = settlementPaths
     commitments = map (<>"-COMMITMENT") assetLabels
+    commitmentRoute1 = Settlement.Hierarchy 
+      with 
+        rootCustodian = inv1 
+        pathsToRootCustodian = settlementPaths
+    commitmentRoute2 = Settlement.Hierarchy 
+      with 
+        rootCustodian = inv2 
+        pathsToRootCustodian = settlementPaths
+    commitmentRoute3 = Settlement.Hierarchy 
+      with 
+        rootCustodian = inv3 
+        pathsToRootCustodian = settlementPaths
     
-    commitmentPaths = map (\(rootCustodian, i) -> (i, Settlement.Hierarchy with pathsToRootCustodian = List.delete [rootCustodian] settlementPaths; .. )) [
-      (inv1, "PE1-COMMITMENT"),
-      (inv2, "PE1-COMMITMENT"),
+    commitmentPaths = map (\(rootCustodian, i) -> (i, Settlement.Hierarchy with pathsToRootCustodian = settlementPaths; .. )) [
+      (inv1, "PE1-COMMITMENT"), 
+      (inv2, "PE1-COMMITMENT"), 
       (inv3, "PE1-COMMITMENT")]
 
-    [commitmentPath1, commitmentPath2, commitmentPath3] = commitmentPaths
-
- -- POSSIBLE BUG HERE AS KEY DUPLICATES IN COMMITMENT PATHS SO ONLY ROOT CUSTODIAN = INVESTOR3 INCLUDED 
     paths = fromList $ [("USD", cashRoute)] ++ commitmentPaths ++ map (\a -> (a, secRoute)) assetLabels
 
     paths1 = fromList $ commitmentPath1 :: [("USD", cashRoute)] <> map (\a -> (a, secRoute)) assetLabels
@@ -80,8 +88,6 @@ run = do
   -- Services 
   -- Custody Services
   let 
-    cashPath = [("USD", cashRoute)]
-    secPath = map (\a -> (a, secRoute)) assetLabels
     custodyServices = [
       (inv1, issuer, commitmentPath1 :: cashPath),
       (inv2, issuer, commitmentPath2 :: cashPath), 
@@ -99,8 +105,8 @@ run = do
       (issuer, inv2, secPath),
       (issuer, inv3, secPath)]
 
-  mapA_ (\(provider, customer, p) -> createCustodyService 
-    operator provider customer (fromList p) accountFactoryCid holdingFactoryCid) custodyServices
+  mapA_ (\(provider, customer) -> createCustodyService 
+    operator provider customer paths accountFactoryCid holdingFactoryCid) custodyServices
   
   --issuance services
   let 
@@ -187,12 +193,6 @@ run = do
   inv1SecAccount            <- createAccount' issuer inv1   "Investor1@Admin|Securities" empty 
   inv2SecAccount            <- createAccount' issuer inv2   "Investor2@Admin|Securities" empty
   inv3SecAccount            <- createAccount' issuer inv3   "Investor3@Admin|Securities" empty
-
-  -- Directories 
-  createAccountDirectory issuer [(usd, issuerCashAccount)]    $singleton public 
-  createAccountDirectory inv1 [(usd, inv1CashAccount)]        $singleton public
-  createAccountDirectory inv2 [(usd, inv2CashAccount)]        $singleton public
-  createAccountDirectory inv3 [(usd, inv3CashAccount)]        $singleton public
 
   -- Holdings 
   -- issuerCommit1Cid <- deposit operator inv1 issuer public (qty 25_000_000.00 usdCommit) issuerCommitAccount1

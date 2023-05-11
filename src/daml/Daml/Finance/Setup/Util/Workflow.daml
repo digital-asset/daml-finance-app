@@ -384,11 +384,8 @@ declareStockSplit operator provider issuer public equity effectiveTime adjustmen
 
 claimEffect : Party -> Party -> Party -> Party -> ContractId Effect.I -> [ContractId Holding.I] -> Id -> Script (ContractId Batch.I, [ContractId Instruction.I])
 claimEffect operator custodian owner public effectCid holdingCids batchId = do
-  
   Some (_, cs) <- queryContractKey @Custody.Service owner (operator, custodian, owner)
-  debug "EFFECT BELOW"
   Claim.ClaimResult{batchCid; instructionCids} <- submitMulti [owner] [public] do exerciseCmd cs.claimRuleCid Claim.ClaimEffect with claimer = owner; effectCid; holdingCids; batchId
-  debug "EFFECT ABOVE"
   pure (batchCid, instructionCids)
 
 allocateAndApprove : Party -> Party -> ContractId Instruction.I -> Settlement.Allocation -> Settlement.Approval -> Script (ContractId Instruction.I)
@@ -435,10 +432,7 @@ clear clearer public clearingRequestCid =
 
 claimCapitalCallEffect : Party -> Party -> Party -> Party -> ContractId Effect.I -> Decimal -> ContractId Fungible.I -> Id -> Script (Optional (ContractId Fungible.I), ContractId Batch.I, [ContractId Instruction.I])
 claimCapitalCallEffect operator inv issuer public effectId amount holdingId id = do 
-  
   (splitHoldingId, optRestHoldingId) <- split issuer amount holdingId 
   --disclosedHoldingId <- submit issuer $ coerceInterfaceContractId <$> exerciseCmd (toInterfaceContractId @Disclosure.I splitHoldingId) Disclosure.AddObservers with disclosers = singleton issuer; observersToAdd = ("Admin", singleton issuer)
-  debug "CC BELOW"
   (batchCid, instructionsCids) <- claimEffect operator inv issuer public effectId [coerceInterfaceContractId splitHoldingId] id 
-  debug "CC ABOVE"
   return (optRestHoldingId, batchCid, instructionsCids) 

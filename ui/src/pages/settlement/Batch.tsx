@@ -26,7 +26,7 @@ export const Batch : React.FC = () => {
   const { getName } = useParties();
 
   const { loading: l1, getAccount } = useAccounts();
-  const { loading: l2, getPreciseFungible } = useHoldings();
+  const { loading: l2, getFungible } = useHoldings();
   const { loading: l3, contracts: batches } = useStreamQueries(BatchI);
   const { loading: l4, contracts: instructions } = useStreamQueries(Instruction);
   const { contractId } = useParams<any>();
@@ -42,9 +42,7 @@ export const Batch : React.FC = () => {
       const allocation : Allocation = { tag: "CreditReceiver", value: {} };
       await ledger.exercise(Instruction.Allocate, c.contractId, { actors, allocation });
     } else {
-      console.log("We're here.")
-      const holdingCid = await getPreciseFungible(c.payload.routedStep.custodian, party, c.payload.routedStep.quantity.amount, c.payload.routedStep.quantity.unit);
-      console.log("Got the holding.")
+      const holdingCid = await getFungible(party, c.payload.routedStep.quantity.amount, c.payload.routedStep.quantity.unit);
       const allocation : Allocation = { tag: "Pledge", value: holdingCid as string as ContractId<Holding> };
       await ledger.exercise(Instruction.Allocate, c.contractId, { actors, allocation });
     };
