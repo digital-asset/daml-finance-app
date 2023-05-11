@@ -1,0 +1,292 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+{-# LANGUAGE MultiWayIf #-}
+
+module Daml.Finance.App.Distribution.PEDistribution.Service where
+
+import DA.Action (foldlA)
+import DA.Either (partitionEithers)
+import DA.Foldable (forA_)
+import DA.List (sortOn, mapAccumL)
+import DA.Optional (whenSome)
+import DA.Set (fromList, singleton)
+import DA.Map qualified as M (empty, fromList, lookup)
+import Daml.Finance.App.Data.AccountDirectory (AccountDirectory)
+import Daml.Finance.App.Distribution.PEDistribution.Model (PEDistribution(..), CreatePEDistributionRequest(..), Status(..))
+import Daml.Finance.App.Distribution.PEDistribution.Utils (dutchAuction, splitList, generateSettlementInstruction)
+import Daml.Finance.App.Distribution.PEBidding.Model qualified as PEBidding (Allocation(..), Bid, SettleAllocation(..), Status(..))
+import Daml.Finance.App.Distribution.PEBidding.Service qualified as PEBidding (RejectBid(..), S)
+import Daml.Finance.App.Settlement.Service qualified as Settlement (Service)
+import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy)
+import Daml.Finance.App.Util (fetchAndArchive)
+import Daml.Finance.Interface.Account.Account qualified as Account (R, exerciseInterfaceByKey)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..), SplitResult(..), Fungible)
+import Daml.Finance.Interface.Account.Util (getAccount)
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I, RemoveObservers(..))
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentKey, InstrumentQuantity, Parties)
+import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
+
+import Daml.Finance.Settlement.Factory qualified as Settlement (Factory(..))
+import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy)
+import Daml.Finance.Settlement.RouteProvider.IntermediatedStatic qualified as RouteProvider (IntermediatedStatic(..))
+import Daml.Finance.App.Settlement.Service qualified as Settlement (Accept(..), Offer(..), Service)
+
+type S = Service
+
+template Service
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    securityPaths : [(Text, Settlement.Hierarchy)]
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, customer) : (Party, Party, Party)
+    maintainer key._1
+
+    -- nonconsuming choice CreatePEDistribution : ContractId PEDistribution
+    --   with
+    --     offeringId : Text
+    --     asset : InstrumentQuantity
+    --     price : InstrumentQuantity
+    --     customerHoldingCid : ContractId Fungible.I
+    --     customerAccount : AccountKey
+    --     observers : Parties
+    --   controller customer
+    --   do
+    --     -- Disclose holding
+    --     customerHolding <- fetch customerHoldingCid
+    --     customerHoldingCid : ContractId Fungible.I <- coerceContractId <$> exercise (coerceContractId customerHoldingCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (offeringId, singleton provider)
+    --     -- Disclose delivering securities account
+    --     let customerSendingAccount = getAccount customerHolding
+    --     (_, delRef) <- fetchByKey @Account.R customerSendingAccount
+    --     exercise (coerceContractId delRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (offeringId, singleton provider)
+    --     -- Disclose receiving cash account
+    --     (_, recRef) <- fetchByKey @Account.R customerAccount
+    --     exercise (coerceContractId recRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (offeringId, singleton provider)
+    --     -- Lock holding
+    --     customerHoldingCid <- coerceContractId <$> exercise (toInterfaceContractId customerHoldingCid : ContractId Holding.I) Holding.Acquire with newLockers = fromList [ provider ]; context = offeringId; lockType = Holding.Semaphore
+
+
+
+        -- create PEDistribution
+        --   with
+        --     operator; provider; asset; price; offeringId
+        --     issuer = customer
+        --     issuerHoldingCid = customerHoldingCid
+        --     issuerAccount = customerAccount
+        --     status = Open
+        --     observers
+
+    nonconsuming choice RequestCreatePEDistribution : ContractId CreatePEDistributionRequest
+      with
+        id : Text
+        quantity : InstrumentQuantity
+        currency : InstrumentKey
+        floor : Decimal
+        collateralCid : ContractId Fungible.I
+        receivableAccount : [AccountKey]
+        observers : Parties
+      controller customer
+      do
+        -- Disclose holding
+        collateral <- fetch collateralCid
+        collateralCid <- coerceContractId <$> exercise (coerceContractId collateralCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (id, fromList [provider])
+
+        -- Disclose delivering securities account
+        (_, delRef) <- fetchByKey @Account.R $ getAccount collateral
+        exercise (coerceContractId delRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (id, fromList [provider])
+
+        -- Disclose receiving cash account
+        forA_ receivableAccount (\account -> do
+          (_, recRef) <- fetchByKey @Account.R account
+          exercise (coerceContractId recRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (id, singleton provider)
+          )
+
+        create CreatePEDistributionRequest with operator; provider; customer; id; quantity; currency; floor; collateralCid; receivableAccount; observers
+
+
+    nonconsuming choice CreatePEDistribution : ContractId PEDistribution
+      with
+        createPEDistributionRequestCid : ContractId CreatePEDistributionRequest
+      controller provider
+      do
+        CreatePEDistributionRequest{id; quantity; currency; floor; collateralCid; receivableAccount; observers} <- fetchAndArchive createPEDistributionRequestCid
+        collateralCid <- coerceContractId <$> exercise (toInterfaceContractId collateralCid : ContractId Holding.I) Holding.Acquire with newLockers = fromList [ provider ]; context = id; lockType = Holding.Semaphore
+        create PEDistribution with operator; provider; customer; id; quantity; currency; floor; collateralCid; receivableAccount; status = Open; observers
+
+    nonconsuming choice RejectPEDistribution : ()
+      with
+        createPEDistributionRequestCid : ContractId CreatePEDistributionRequest
+      controller provider
+      do
+        archive createPEDistributionRequestCid
+
+    nonconsuming choice ProcessPEDistribution : ContractId PEDistribution
+       with
+        auctionCid : ContractId PEDistribution
+        bidCids : [ContractId PEBidding.Bid]
+      controller provider
+      do
+        auction <- fetch auctionCid
+        collateral <- fetch auction.collateralCid
+        bids <- zip bidCids <$> forA bidCids fetch
+        collaterals <- mapA (fetch . (.collateralCid) . snd) bids
+        assertMsg "Auction already successfully processed" (auction.status `elem` [Open, NoValidBids])
+
+        -- Split bids on those above / below the floor price -> Sort valid bids descendingly -> Execute Auction -> Split auction result on allocated / unallocated (ie, zero allocation)
+        let
+          collateralAccount = getAccount collateral
+          collateralAccounts = map getAccount collaterals
+          receivableAccounts = map ((.receivableAccount) . snd) bids
+          (invalidBids, validBids) = partitionEithers $ splitList (\(_, bid) -> bid.details.price.amount >= auction.floor) bids
+          sortedBids = sortOn (\(_, bid) -> Down bid.details) validBids
+          ((remaining, finalPrice), allocations) = mapAccumL dutchAuction (auction.quantity.amount, 0.0) sortedBids
+          (allocatedBids, unallocatedBids) = partitionEithers $ splitList (\allocation -> allocation.amount == 0.0) allocations
+
+        -- Return assets of all invalid and unallocated bids. Also update their bid status accordingly
+        forA_ invalidBids (\(bidCid, bid) -> exerciseByKey @PEBidding.S (bid.operator, bid.provider, bid.customer) PEBidding.RejectBid with bidCid; newStatus = PEBidding.Invalid)
+        forA_ unallocatedBids (\PEBidding.Allocation{bidCid, bid} -> exerciseByKey @PEBidding.S (bid.operator, bid.provider, bid.customer) PEBidding.RejectBid with bidCid; newStatus = PEBidding.NoAllocation)
+
+        -- Unlock auction collateral
+        auctionCollateralClid : ContractId Fungible.Fungible <- coerceContractId <$> exercise (toInterfaceContractId auction.collateralCid : ContractId Holding.I) Holding.Release with context = auction.id
+
+
+        -- Split the issuer's holding of fund being sold to investors (auction collateral) so the right amount is transferred
+        Fungible.SplitResult{splitCids, rest} <- exercise auctionCollateralClid Fungible.Split with amounts = map (\a -> a.amount) allocatedBids
+
+        -- zip up the split fund holdings with the allocated bids
+        let allocatedBidsAndFundHoldings = zip allocatedBids splitCids
+            
+
+        forA_ allocatedBidsAndFundHoldings (\(allocated, fundHoldingCid) -> do
+          -- Get the receivable account for the issuer for this bid (ie the bidder is the custodian) into which commitment tokens will be received
+          -- (eg for inv1 bid the receivable account is issuer @ inv1)
+          (_, receivableAccountDirectory) <- fetchByKey @AccountDirectory allocated.bid.customer
+          let Some receivableAccount = M.lookup auction.currency.id receivableAccountDirectory.accounts
+
+          -- We have the security settlement paths as securityPaths : [(Text, Settlement.Hierarchy)]
+          -- For each bid we need the commitment token settlement paths
+          let paths  = M.fromList $ allocated.bid.commitmentPath :: securityPaths
+
+          -- Create routeProvider and settlement service
+          routeProviderCid      <- toInterfaceContractId <$> create RouteProvider.IntermediatedStatic  with provider; observers = singleton customer; paths
+          settlementFactoryCid  <- toInterfaceContractId <$> create Settlement.Factory                 with provider; observers = singleton customer
+          offerCid <- create Settlement.Offer with operator; provider; customer; routeProviderCid; settlementFactoryCid
+          settleService1 <- exercise offerCid Settlement.Accept
+
+          -- Generate Settlement instructions for the bid
+          let settleAllocation = PEBidding.SettleAllocation with allocation = allocated; price = finalPrice; issuer = customer
+          (remainingDepositCidOpt, batchCids) <- foldlA (generateSettlementInstruction settleService1 provider receivableAccount) (Some fundHoldingCid, []) [settleAllocation]
+
+          -- Settle transfers
+          forA_ batchCids (`exercise` Batch.Settle with actors = singleton provider)
+   
+          -- Undisclose unallocated deposit
+          whenSome remainingDepositCidOpt \depositCid -> do
+            exercise (coerceContractId depositCid : ContractId Disclosure.I) Disclosure.RemoveObservers with disclosers = singleton customer; observersToRemove = (auction.id, singleton provider)
+            pure ()
+
+          -- Archive so that these can be recreated in next iteration without duplicate keys
+          archive routeProviderCid
+          archive settlementFactoryCid
+          archive settleService1
+          )
+
+        -- Undisclose accounts
+        forA_ auction.receivableAccount (\account -> do
+          Account.exerciseInterfaceByKey @Disclosure.I account provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (auction.id, singleton provider)
+          )
+        Account.exerciseInterfaceByKey @Disclosure.I collateralAccount provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (auction.id, singleton provider)
+        forA_ receivableAccounts (\a -> Account.exerciseInterfaceByKey @Disclosure.I a provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (auction.id, singleton provider))
+        forA_ collateralAccounts (\a -> Account.exerciseInterfaceByKey @Disclosure.I a provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (auction.id, singleton provider))
+
+        -- Update Auction contract with the outcome of the auction processing
+        let newStatus = if
+              | remaining == auction.quantity.amount -> NoValidBids
+              | remaining > 0.0 -> PartiallyAllocated with finalPrice; remaining
+              | otherwise -> FullyAllocated with finalPrice
+        archive auctionCid
+        create auction with status = newStatus
+
+    -- nonconsuming choice ProcessPEDistribution : ContractId PEDistribution
+    --   with
+    --     offeringCid : ContractId PEDistribution
+    --     subscriptionCids : [ContractId Subscription]
+    --   controller provider
+    --   do
+    --     -- Settle subscriptions
+    --     offering <- fetch offeringCid
+    --     subscriptions <- zip subscriptionCids <$> forA subscriptionCids fetch
+    --     (remainingIssuerQuantity, remainingIssuerHoldingCidOpt) <- foldlA (settleSubscription provider settlementServiceCid offering) (offering.asset.amount, Some offering.issuerHoldingCid) subscriptions
+
+
+    --     -- Archive offer and subscriptions
+    --     archive offeringCid
+    --     -- forA_ subscriptionCids archive
+
+    --     -- Unlock remaining issuer holding
+    --     whenSome remainingIssuerHoldingCidOpt \holdingCid -> do
+    --       exercise (toInterfaceContractId holdingCid : ContractId Holding.I) Holding.Release with context = offering.offeringId
+    --       pure ()
+
+    --     create offering with status = Closed
+
+    choice Terminate : ()
+      with
+        actor : Party
+      controller actor
+      do
+        assert $ actor == operator || actor == provider || actor == customer
+        pure ()
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    securityPaths : [(Text, Settlement.Hierarchy)]
+  where
+    signatory operator, provider
+    observer customer
+
+    choice Accept : ContractId Service
+      controller customer
+      do
+        create Service with ..
+
+    choice Decline : ()
+      controller customer
+      do
+        return ()
+
+    choice Withdraw : ()
+      controller provider
+      do pure ()
+
+template Request
+  with
+    provider : Party
+    customer : Party
+  where
+    signatory customer
+    observer provider
+
+    choice Cancel : ()
+      controller customer
+      do pure ()
+
+    choice Reject : ()
+      controller provider
+      do pure ()
+
+    choice Approve : ContractId Service
+      with
+        operator : Party
+        securityPaths : [(Text, Settlement.Hierarchy)]
+      controller operator, provider
+      do
+        create Service with ..

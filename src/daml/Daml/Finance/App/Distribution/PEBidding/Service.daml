@@ -1,0 +1,169 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Distribution.PEBidding.Service where
+
+import DA.Assert ((===))
+import DA.List (head)
+import DA.Optional (fromSome)
+import DA.Set (singleton)
+import Daml.Finance.Interface.Account.Account qualified as Account (R)
+import Daml.Finance.Interface.Account.Util (getAccount)
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..), SplitResult(..))
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
+import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
+import Daml.Finance.Interface.Holding.Util (getAmount, getInstrument)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey)
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I, RemoveObservers(..))
+import Daml.Finance.App.Distribution.PEDistribution.Model qualified as Auction (Fetch(..), T)
+import Daml.Finance.App.Distribution.PEBidding.Model (Bid(..), CreateBidRequest(..), Details(..), Status(..), UpdateStatus(..))
+
+import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
+
+type S = Service
+
+template Service
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, customer) : (Party, Party, Party)
+    maintainer key._1
+
+    nonconsuming choice RequestCreateBid : ContractId CreateBidRequest
+      with
+        auctionCid : ContractId Auction.T
+        amount : Decimal
+        price : Decimal
+        collateralCid : ContractId Fungible.I
+        receivableAccount : AccountKey
+        commitmentPath : (Text, Settlement.Hierarchy)
+      controller customer
+      do
+        auction <- exercise auctionCid Auction.Fetch with actor = customer
+        collateral <- fetch collateralCid
+        getInstrument collateral === auction.currency
+        getAmount collateral === price * amount
+        assertMsg "Bid amount can't be larger than available size" $ amount <= auction.quantity.amount
+
+        -- Disclose holding of commitment tokens by investor
+        investorHolding <- fetch collateralCid
+        investorHoldingCid : ContractId Fungible.I <- coerceContractId <$> exercise (coerceContractId collateralCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (auction.id, singleton provider)
+        -- Disclose delivering commitment tokens account
+        let investorSendingAccount = getAccount investorHolding
+        (_, delRef) <- fetchByKey @Account.R investorSendingAccount
+        exercise (coerceContractId delRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (auction.id, singleton provider)
+        -- Disclose receiving cash account for fund shares received by investor
+        (_, recRef) <- fetchByKey @Account.R receivableAccount
+        exercise (coerceContractId recRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (auction.id, singleton provider)
+        -- Lock holding
+        collateralCid <- coerceContractId <$> exercise (coerceContractId investorHoldingCid : ContractId Holding.I) Holding.Acquire with newLockers = singleton provider; context = auction.id; lockType = Holding.Semaphore
+
+        let
+          quantity = Instrument.qty amount auction.quantity.unit
+          priceQty = Instrument.qty price auction.currency
+        create CreateBidRequest with operator; provider; customer; issuer = auction.customer; auctionId = auction.id; quantity; price = priceQty; collateralCid; receivableAccount; commitmentPath
+
+    nonconsuming choice CreateBid : ContractId Bid
+      with
+        createBidRequestCid : ContractId CreateBidRequest
+      controller provider
+      do
+        CreateBidRequest{issuer; auctionId; collateralCid; receivableAccount; commitmentPath; price; quantity} <- fetch createBidRequestCid
+
+        time <- getTime
+        create Bid with operator; provider; customer; issuer; details = (Details with price; quantity; time); auctionId; collateralCid; receivableAccount; commitmentPath; status = Pending
+
+    nonconsuming choice ProcessAllocation : (ContractId Bid, ContractId Fungible.I)
+      with
+        bidCid : ContractId Bid
+        amount : Decimal
+        price : Decimal
+      controller provider
+      do
+        -- Fetch Bid -> Extract their deposit -> Split and return unused allocation (if necessary) to the investor -> Update Bid Status
+        bid <- fetch bidCid
+        bidCollateralCid : ContractId Disclosure.I <- coerceContractId <$> exercise (coerceContractId bid.collateralCid : ContractId Holding.I) Holding.Release with context = bid.auctionId
+        bidCollateralCid <- coerceContractId . fromSome <$> exercise bidCollateralCid Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (bid.auctionId, singleton provider)
+        bidCollateral <- fetch bidCollateralCid
+        bidCollateralCid <-
+          if getAmount bidCollateral > amount * price
+          then do
+            Fungible.SplitResult{splitCids, rest} <- exercise bidCollateralCid Fungible.Split with amounts = [amount * price]
+            pure $ head splitCids
+          else do pure bidCollateralCid
+        let newStatus = if bid.details.quantity.amount == amount
+                          then FullAllocation with price
+                          else PartialAllocation with price; amount
+
+        newBidCid <- exercise bidCid UpdateStatus with newStatus
+        pure (newBidCid, bidCollateralCid)
+
+    nonconsuming choice RejectBid : (ContractId Bid, ContractId Transferable.I)
+      with
+        bidCid : ContractId Bid
+        newStatus : Status
+      controller provider
+      do
+        bid <- fetch bidCid
+        returnedCollateralCid <- exercise (coerceContractId bid.collateralCid : ContractId Holding.I) Holding.Release with context = bid.auctionId
+        newBidCid <- exercise bidCid UpdateStatus with newStatus
+        pure (newBidCid, coerceContractId returnedCollateralCid)
+
+    choice Terminate : ()
+      with
+        actor : Party
+      controller actor
+      do
+        assert $ actor == operator || actor == provider || actor == customer
+        pure ()
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider
+    observer customer
+
+    choice Accept : ContractId Service
+      controller customer
+      do
+        create Service with ..
+
+    choice Decline : ()
+      controller customer
+      do
+        return ()
+
+    choice Withdraw : ()
+      controller provider
+      do pure ()
+
+template Request
+  with
+    provider : Party
+    customer : Party
+  where
+    signatory customer
+    observer provider
+
+    choice Cancel : ()
+      controller customer
+      do pure ()
+
+    choice Reject : ()
+      controller provider
+      do pure ()
+
+    choice Approve : ContractId Service
+      with
+        operator : Party
+      controller operator, provider
+      do
+        create Service with ..

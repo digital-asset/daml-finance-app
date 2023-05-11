@@ -15,10 +15,12 @@ import Daml.Finance.App.Custody.Service qualified as Custody (Deposit(..), OpenA
 import Daml.Finance.App.Data.AccountDirectory (AccountDirectory(..))
 import Daml.Finance.App.Distribution.Auction.Model qualified as Auction (T)
 import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (CreateAuction(..), ProcessAuction(..), RequestCreateAuction(..), S)
-import Daml.Finance.App.Distribution.PrivateEquity.Model qualified as PrivateEquity (T)
-import Daml.Finance.App.Distribution.PrivateEquity.Service qualified as PrivateEquity (CreatePrivateEquity(..), ProcessPrivateEquity(..), RequestCreatePrivateEquity(..), S)
+import Daml.Finance.App.Distribution.PEDistribution.Model qualified as PEDistribution (T)
+import Daml.Finance.App.Distribution.PEDistribution.Service qualified as PEDistribution (CreatePEDistribution(..), ProcessPEDistribution(..), RequestCreatePEDistribution(..), S)
 import Daml.Finance.App.Distribution.Bidding.Model qualified as Bidding (Bid)
 import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (CreateBid(..), RequestCreateBid(..), S)
+import Daml.Finance.App.Distribution.PEBidding.Model qualified as PEBidding (Bid)
+import Daml.Finance.App.Distribution.PEBidding.Service qualified as PEBidding (CreateBid(..), RequestCreateBid(..), S)
 import Daml.Finance.App.Distribution.Fund.Model qualified as Fund (PooledInvestmentRequest, T)
 import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (FulfillPooledInvestmentRequest(..), PoolInvestmentRequests(..), S)
 import Daml.Finance.App.Distribution.Investment.Model qualified as Investment (InvestmentRequest)
@@ -73,6 +75,7 @@ import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum, RollConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.Schedule (Frequency(..), PeriodicSchedule(..))
 import Daml.Finance.Settlement.Instruction qualified as Instruction (T)
+import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
 import Daml.Finance.Setup.Util.Common (getHolding)
 import Daml.Script
 import ContingentClaims.Core.Claim (one)
@@ -298,22 +301,22 @@ processAuction operator provider customer public auctionCid bidCids = do
         auctionCid
         bidCids
 
-createPrivateEquity : Party -> Party -> Party -> Party -> Text -> InstrumentQuantity -> InstrumentKey -> Decimal -> ContractId Fungible.I -> AccountKey -> Script (ContractId PrivateEquity.T)
-createPrivateEquity operator provider customer public id quantity currency floor collateralCid receivableAccount = do
-  createPrivateEquityRequestCid <- submit customer do exerciseByKeyCmd @PrivateEquity.S (operator, provider, customer) PrivateEquity.RequestCreatePrivateEquity with id; quantity; currency; floor; collateralCid; receivableAccount; observers = singleton public
-  submit provider do exerciseByKeyCmd @PrivateEquity.S (operator, provider, customer) PrivateEquity.CreatePrivateEquity with createPrivateEquityRequestCid
+createPEDistribution : Party -> Party -> Party -> Party -> Text -> InstrumentQuantity -> InstrumentKey -> Decimal -> ContractId Fungible.I -> [AccountKey] -> Script (ContractId PEDistribution.T)
+createPEDistribution operator provider customer public id quantity currency floor collateralCid receivableAccount = do
+  createPEDistributionRequestCid <- submit customer do exerciseByKeyCmd @PEDistribution.S (operator, provider, customer) PEDistribution.RequestCreatePEDistribution with id; quantity; currency; floor; collateralCid; receivableAccount; observers = singleton public
+  submit provider do exerciseByKeyCmd @PEDistribution.S (operator, provider, customer) PEDistribution.CreatePEDistribution with createPEDistributionRequestCid
 
-createPrivateEquityBid : Party -> Party -> Party -> Party -> ContractId PrivateEquity.T -> Decimal -> Decimal -> ContractId Fungible.I -> AccountKey -> Script (ContractId Bidding.Bid)
-createPrivateEquityBid operator provider customer public privateEquityCid amount price collateralCid receivableAccount = do
-  createBidRequestCid <- submitMulti [customer] [public] do exerciseByKeyCmd @Bidding.S (operator, provider, customer) Bidding.RequestCreateBid with privateEquityCid; amount; price; collateralCid; receivableAccount
-  submit provider do exerciseByKeyCmd @Bidding.S (operator, provider, customer) Bidding.CreateBid with createBidRequestCid
+createPEDistributionBid : Party -> Party -> Party -> Party -> ContractId PEDistribution.T -> Decimal -> Decimal -> ContractId Fungible.I -> AccountKey -> (Text, Settlement.Hierarchy) -> Script (ContractId PEBidding.Bid)
+createPEDistributionBid operator provider customer public auctionCid amount price collateralCid receivableAccount commitmentPath = do
+  createBidRequestCid <- submitMulti [customer] [public] do exerciseByKeyCmd @PEBidding.S (operator, provider, customer) PEBidding.RequestCreateBid with auctionCid; amount; price; collateralCid; receivableAccount; commitmentPath
+  submit provider do exerciseByKeyCmd @PEBidding.S (operator, provider, customer) PEBidding.CreateBid with createBidRequestCid
 
-processPrivateEquity : Party -> Party -> Party -> Party -> ContractId PrivateEquity.T -> [ContractId Bidding.Bid] -> Script (ContractId PrivateEquity.T)
-processPrivateEquity operator provider customer public privateEquityCid bidCids = do
+processPEDistribution : Party -> Party -> Party -> Party -> ContractId PEDistribution.T -> [ContractId PEBidding.Bid] -> Script (ContractId PEDistribution.T)
+processPEDistribution operator provider customer public auctionCid bidCids = do
   submitMulti [provider] [public] do
-    exerciseByKeyCmd @PrivateEquity.S (operator, provider, customer) PrivateEquity.ProcessPrivateEquity
+    exerciseByKeyCmd @PEDistribution.S (operator, provider, customer) PEDistribution.ProcessPEDistribution
       with
-        privateEquityCid
+        auctionCid
         bidCids
 
 declareDividend : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> [InstrumentQuantity] -> Script (ContractId Effect.I)
@@ -385,7 +388,9 @@ declareStockSplit operator provider issuer public equity effectiveTime adjustmen
 claimEffect : Party -> Party -> Party -> Party -> ContractId Effect.I -> [ContractId Holding.I] -> Id -> Script (ContractId Batch.I, [ContractId Instruction.I])
 claimEffect operator custodian owner public effectCid holdingCids batchId = do
   Some (_, cs) <- queryContractKey @Custody.Service owner (operator, custodian, owner)
+
   Claim.ClaimResult{batchCid; instructionCids} <- submitMulti [owner] [public] do exerciseCmd cs.claimRuleCid Claim.ClaimEffect with claimer = owner; effectCid; holdingCids; batchId
+
   pure (batchCid, instructionCids)
 
 allocateAndApprove : Party -> Party -> ContractId Instruction.I -> Settlement.Allocation -> Settlement.Approval -> Script (ContractId Instruction.I)

@@ -12,7 +12,12 @@ import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Appro
 import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Distribution.PEDistribution.Auto.Service qualified as PEDistributionAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Distribution.PEDistribution.Service qualified as PEDistribution (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Distribution.PEBidding.Service qualified as PEBidding (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Distribution.PEBidding.Auto.Service qualified as PEBiddingAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Settlement.Service qualified as Settlement (Service)
+import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy)
 
 template Role
   with
@@ -142,6 +147,8 @@ template Role
       do
         create BiddingAuto.Offer with ..
 
+
+
     nonconsuming choice ApproveBiddingAutoServiceRequest : ContractId BiddingAuto.Service
       with
         biddingServiceRequestCid : ContractId BiddingAuto.Request
@@ -155,6 +162,20 @@ template Role
       controller provider
       do
         exerciseByKey @BiddingAuto.Service (operator, provider, customer) BiddingAuto.Terminate with actor = provider
+
+    nonconsuming choice OfferPEBiddingService : ContractId PEBidding.Offer
+      with
+        customer : Party
+      controller provider
+      do
+        create PEBidding.Offer with ..
+
+    nonconsuming choice OfferPEBiddingAutoService : ContractId PEBiddingAuto.Offer
+      with
+        customer : Party
+      controller provider
+      do
+        create PEBiddingAuto.Offer with ..
 
     nonconsuming choice OfferSubscriptionService : ContractId Subscription.Offer
       with
@@ -178,6 +199,21 @@ template Role
       controller provider
       do
         exerciseByKey @Subscription.Service (operator, provider, customer) Subscription.Terminate with actor = provider
+
+    nonconsuming choice OfferPEDistributionService : ContractId PEDistribution.Offer
+      with
+        customer : Party
+        securityPaths : [(Text, Settlement.Hierarchy)]
+      controller provider
+      do
+        create PEDistribution.Offer with ..
+
+    nonconsuming choice OfferPEDistributionAutoService : ContractId PEDistributionAuto.Offer
+      with
+        customer : Party
+      controller provider
+      do
+        create PEDistributionAuto.Offer with ..
 
     nonconsuming choice OfferInvestmentService : ContractId Investment.Offer
       with

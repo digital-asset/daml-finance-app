@@ -112,10 +112,10 @@ run  = do
   let securities = [tsla, fwd, opt, bnd, rc, brc, bwn1, bwn2]
 
   -- Distribution
-  -- issuerCashCid1  <- coerceContractId <$> deposit operator centralBank issuer public (qty 4_417_698.0 usd) issuerCashAccount
-  -- inv1CashCid1    <- coerceContractId <$> deposit operator centralBank inv1   public (qty 1_472_566.0 usd) inv1CashAccount
-  -- inv2CashCid1    <- coerceContractId <$> deposit operator centralBank inv2   public (qty 1_472_566.0 usd) inv2CashAccount
-  -- inv3CashCid1    <- coerceContractId <$> deposit operator centralBank inv3   public (qty 1_472_566.0 usd) inv3CashAccount
+  issuerCashCid1  <- coerceContractId <$> deposit operator centralBank issuer public (qty 4_417_698.0 usd) issuerCashAccount
+  inv1CashCid1    <- coerceContractId <$> deposit operator centralBank inv1   public (qty 1_472_566.0 usd) inv1CashAccount
+  inv2CashCid1    <- coerceContractId <$> deposit operator centralBank inv2   public (qty 1_472_566.0 usd) inv2CashAccount
+  inv3CashCid1    <- coerceContractId <$> deposit operator centralBank inv3   public (qty 1_472_566.0 usd) inv3CashAccount
 
   issuerCashCid2  <- coerceContractId <$> deposit operator centralBank issuer public (qty 5_000_000.0 usd) issuerCashAccount
   inv1CashCid2    <- coerceContractId <$> deposit operator centralBank inv1   public (qty 950_000.0 usd) inv1CashAccount
