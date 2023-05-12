@@ -25,9 +25,9 @@ import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(.
 run: Script [PartyInfo]
 run = do
   let scenario = "Private Equity"
-  parties <- allocateParties scenario ["Operator", "FundManager", "Admin", "TransferAgent", "WealthManager", "Investor1", "Investor2", "Investor3"] "Public"
+  parties <- allocateParties scenario ["Operator", "FundManager", "Admin", "TransferAgent", "WealthManager", "Investor1", "Investor2", "Investor3", "Lender", "CentralBank"] "Public"
   let 
-    all@[operator, issuer, admin, ta, wm, inv1, inv2, inv3, public] = map (.id) parties 
+    all@[operator, issuer, admin, ta, wm, inv1, inv2, inv3, lender, centralBank, public] = map (.id) parties 
     pub = fromList [("Public", singleton public)]
     investorNames = [
       ("Investor1", inv1),
@@ -197,9 +197,9 @@ run = do
   createAccountDirectory inv3 [(usd, inv3CashAccount), (usdCommit1, issuerCommitAccount3)]        $singleton ta
   
   -- -- Holdings 
-  -- issuerCommit1Cid <- deposit operator inv1 issuer public (qty 25_000_000.00 usdCommit) issuerCommitAccount1
-  -- issuerCommit2Cid <- deposit operator inv2 issuer public (qty 35_000_000.00 usdCommit) issuerCommitAccount2
-  -- issuerCommit3Cid <- deposit operator inv3 issuer public (qty 40_000_000.00 usdCommit) issuerCommitAccount3
+  issuerCommit1Cid <- deposit operator inv1 issuer public (qty 25_000_000.00 usdCommit) issuerCommitAccount1
+  issuerCommit2Cid <- deposit operator inv2 issuer public (qty 35_000_000.00 usdCommit) issuerCommitAccount2
+  issuerCommit3Cid <- deposit operator inv3 issuer public (qty 40_000_000.00 usdCommit) issuerCommitAccount3
 
   inv1CashCid      <- deposit operator ta inv1 public (qty 200_000_000.00 usd) inv1CashAccount
   inv2CashCid      <- deposit operator ta inv2 public (qty 200_000_000.00 usd) inv2CashAccount
@@ -227,35 +227,36 @@ run = do
   -- capitalCallEffectId <- declareCapitalCall operator inv1 issuer public usdCommit usd t 5_000_000.0
   -- claimCapitalCallEffect operator inv1 issuer public capitalCallEffectId 5_000_000.00 (coerceContractId issuerCommit1Cid: ContractId Fungible.I) $ Id "Round 1"
 
-  -- COMMENTED LEVE'S CODE BELOW
-  -- capitalCallEffectId <- declareCapitalCall operator inv1 issuer public usdCommit usd t 5_000_000.0
-  -- claimCapitalCallEffect operator inv1 issuer public capitalCallEffectId 5_000_000.00 (coerceContractId issuerCommit1Cid: ContractId Fungible.I) $ Id "Round 1"
+  --LEVE'S TEST CODE BELOW
+  capitalCallEffectId <- declareCapitalCall operator inv1 issuer public usdCommit usd t 5_000_000.0
+  claimCapitalCallEffect operator inv1 issuer public capitalCallEffectId 5_000_000.00 (coerceContractId issuerCommit1Cid: ContractId Fungible.I) $ Id "Round 1"
 
-  -- capitalCallEffectId <- declareCapitalCall operator inv2 issuer public usdCommit usd t 7_000_000.0
-  -- claimCapitalCallEffect operator inv2 issuer public capitalCallEffectId 7_000_000.00 (coerceContractId issuerCommit2Cid: ContractId Fungible.I) $ Id "Round 1"
+  capitalCallEffectId <- declareCapitalCall operator inv2 issuer public usdCommit usd t 7_000_000.0
+  claimCapitalCallEffect operator inv2 issuer public capitalCallEffectId 7_000_000.00 (coerceContractId issuerCommit2Cid: ContractId Fungible.I) $ Id "Round 1"
 
-  -- capitalCallEffectId <- declareCapitalCall operator inv3 issuer public usdCommit usd t 8_000_000.0
-  -- claimCapitalCallEffect operator inv3 issuer public capitalCallEffectId 8_000_000.00 (coerceContractId issuerCommit3Cid: ContractId Fungible.I) $ Id "Round 1"
-  -- END LEVE'S COMMENTED CODE
+  capitalCallEffectId <- declareCapitalCall operator inv3 issuer public usdCommit usd t 8_000_000.0
+  claimCapitalCallEffect operator inv3 issuer public capitalCallEffectId 8_000_000.00 (coerceContractId issuerCommit3Cid: ContractId Fungible.I) $ Id "Round 1"
+  -- END LEVE'S TEST CODE
 
 
   -- Need to do a split and expose first
   --(batchCid, instructionCids) <- claimEffect operator inv1 admin public capitalCallEffectId [issuerCommit1Cid] $ Id "Round 1"
+  let
+    doPEDistribution = do
+      -- PE Distribution (Test)
+      let quantity = qty 1_000_000.0 pe1
+      -- When creating the distribution, need to pass in all the issuer commitment accounts so that they can be disclosed to the Transfer Agent.
+      -- In implementation, investors could be invited to bid so that their accounts are identified.
+      distributionCid        <- createPEDistribution operator ta issuer public "DISTRIBUTION1" quantity usdCommit 1.0 (coerceContractId ad1) [issuerCommitAccount1, issuerCommitAccount2, issuerCommitAccount3]
+      inv1CollateralCid <- coerceContractId <$> getHolding inv1 (qty 500_000.0 usdCommit)
+      inv2CollateralCid <- coerceContractId <$> getHolding inv2 (qty 300_000.0 usdCommit)
+      inv3CollateralCid <- coerceContractId <$> getHolding inv3 (qty 200_000.0 usdCommit)
+    
+      inv1BidCid        <- createPEDistributionBid operator ta inv1 public distributionCid 500_000.0 1.0 inv1CollateralCid inv1SecAccount
+      inv2BidCid        <- createPEDistributionBid operator ta inv2 public distributionCid 300_000.0 1.0 inv2CollateralCid inv2SecAccount
+      inv3BidCid        <- createPEDistributionBid operator ta inv3 public distributionCid 200_000.0 1.0 inv3CollateralCid inv3SecAccount
+      processPEDistribution operator ta issuer public distributionCid [inv1BidCid, inv2BidCid, inv3BidCid]
 
-  -- PE Distribution (Test)
-  let quantity = qty 1_000_000.0 pe1
+  --doPEDistribution
 
-  -- When creating the distribution, need to pass in all the issuer commitment accounts so that they can be disclosed to the Transfer Agent.
-  -- In implementation, investors could be invited to bid so that their accounts are identified.
-  distributionCid        <- createPEDistribution operator ta issuer public "DISTRIBUTION1" quantity usdCommit 1.0 (coerceContractId ad1) [issuerCommitAccount1, issuerCommitAccount2, issuerCommitAccount3]
-  -- inv1CollateralCid <- coerceContractId <$> getHolding inv1 (qty 500_000.0 usdCommit)
-  -- inv2CollateralCid <- coerceContractId <$> getHolding inv2 (qty 300_000.0 usdCommit)
-  -- inv3CollateralCid <- coerceContractId <$> getHolding inv3 (qty 200_000.0 usdCommit)
- 
-  -- inv1BidCid        <- createPEDistributionBid operator ta inv1 public distributionCid 500_000.0 1.0 inv1CollateralCid inv1SecAccount commitmentPath1
-  -- inv2BidCid        <- createPEDistributionBid operator ta inv2 public distributionCid 300_000.0 1.0 inv2CollateralCid inv2SecAccount commitmentPath2
-  -- inv3BidCid        <- createPEDistributionBid operator ta inv3 public distributionCid 200_000.0 1.0 inv3CollateralCid inv3SecAccount commitmentPath3
-  -- processPEDistribution operator ta issuer public distributionCid [inv1BidCid, inv2BidCid, inv3BidCid]
-
-  -- doAuction
   pure parties

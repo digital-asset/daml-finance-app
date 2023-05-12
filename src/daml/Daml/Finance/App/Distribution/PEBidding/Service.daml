@@ -41,7 +41,6 @@ template Service
         price : Decimal
         collateralCid : ContractId Fungible.I
         receivableAccount : AccountKey
-        commitmentPath : (Text, Settlement.Hierarchy)
       controller customer
       do
         auction <- exercise auctionCid Auction.Fetch with actor = customer
@@ -66,17 +65,17 @@ template Service
         let
           quantity = Instrument.qty amount auction.quantity.unit
           priceQty = Instrument.qty price auction.currency
-        create CreateBidRequest with operator; provider; customer; issuer = auction.customer; auctionId = auction.id; quantity; price = priceQty; collateralCid; receivableAccount; commitmentPath
+        create CreateBidRequest with operator; provider; customer; issuer = auction.customer; auctionId = auction.id; quantity; price = priceQty; collateralCid; receivableAccount
 
     nonconsuming choice CreateBid : ContractId Bid
       with
         createBidRequestCid : ContractId CreateBidRequest
       controller provider
       do
-        CreateBidRequest{issuer; auctionId; collateralCid; receivableAccount; commitmentPath; price; quantity} <- fetch createBidRequestCid
+        CreateBidRequest{issuer; auctionId; collateralCid; receivableAccount; price; quantity} <- fetch createBidRequestCid
 
         time <- getTime
-        create Bid with operator; provider; customer; issuer; details = (Details with price; quantity; time); auctionId; collateralCid; receivableAccount; commitmentPath; status = Pending
+        create Bid with operator; provider; customer; issuer; details = (Details with price; quantity; time); auctionId; collateralCid; receivableAccount; status = Pending
 
     nonconsuming choice ProcessAllocation : (ContractId Bid, ContractId Fungible.I)
       with

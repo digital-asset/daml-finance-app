@@ -24,7 +24,7 @@ export const New : React.FC = () => {
   const navigate = useNavigate();
 
   const [ instrumentLabel, setInstrumentLabel ] = useState("");
-  // const [ currencyLabel, setCurrencyLabel ] = useState("");
+  const [ currencyLabel, setCurrencyLabel ] = useState("");
   const [ amount, setAmount ] = useState("");
   // const [ floor, setFloor ] = useState("");
   const floor = "1.0";
@@ -43,8 +43,6 @@ export const New : React.FC = () => {
   const myServices = peDistribution.filter(s => s.payload.customer === party);
   const myAutoServices = peDistributionAuto.filter(s => s.payload.customer === party);
   const instrument = latests.find(c => c.payload.id.unpack === instrumentLabel);
-  // TODO: SOMETHING BETTER THAN THIS HARDCODE
-  const currencyLabel = "PE1-COMMITMENT";
   const currency = latests.find(c => c.payload.id.unpack === currencyLabel);
   const myHoldings = holdings.filter(c => c.payload.account.owner === party);
   const myHoldingLabels = myHoldings.map(c => c.payload.instrument.id.unpack).filter((v, i, a) => a.indexOf(v) === i);
@@ -95,12 +93,12 @@ export const New : React.FC = () => {
                       {myHoldingLabels.filter(a => a !== currencyLabel).map((a, i) => (<MenuItem key={i} value={a}>{a}</MenuItem>))}
                     </Select>
                   </FormControl>
-                  {/* <FormControl className={classes.inputField} fullWidth>
+                  <FormControl className={classes.inputField} fullWidth>
                     <InputLabel className={classes.selectLabel}>Currency</InputLabel>
                     <Select fullWidth value={currencyLabel} onChange={e => setCurrencyLabel(e.target.value as string)} MenuProps={menuProps}>
-                      {tokens.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack} - {c.payload.description}</MenuItem>))}
+                      {latests.filter(c => c.payload.id.unpack.includes("COMMITMENT")).map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack} - {c.payload.description}</MenuItem>))}
                     </Select>
-                  </FormControl> */}
+                  </FormControl>
                   <TextField className={classes.inputField} fullWidth label="Quantity" type="number" value={amount} onChange={e => setAmount(e.target.value as string)} />
                   {/* <TextField className={classes.inputField} fullWidth label="Floor Price" type="number" value={floor} onChange={e => setFloor(e.target.value as string)} /> */}
                   <TextField className={classes.inputField} fullWidth label="Distribution Id" type="text" value={id} onChange={e => setId(e.target.value as string)} />

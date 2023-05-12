@@ -31,7 +31,7 @@ export const Bidding : React.FC = () => {
   const { getName } = useParties();
   const party = useParty();
   const ledger = useLedger();
-  const { loading: l1, bidding, biddingAuto } = useServices();
+  const { loading: l1, peBidding, peBiddingAuto } = useServices();
   const { loading: l2, latests } = useInstruments();
   const { loading: l3, getFungible } = useHoldings();
   const { loading: l4, contracts: auctions } = useStreamQueries(PEDistribution);
@@ -44,8 +44,8 @@ export const Bidding : React.FC = () => {
 
   if (l1 || l2 || l3 || l4 || l5 || l6) return <Spinner />;
 
-  const myServices = bidding.filter(c => c.payload.customer === party);
-  const myAutoServices = biddingAuto.filter(c => c.payload.customer === party);
+  const myServices = peBidding.filter(c => c.payload.customer === party);
+  const myAutoServices = peBiddingAuto.filter(c => c.payload.customer === party);
 
   if (myServices.length === 0) return <Message text="No bidding service found" />
   if (!auction) return <Message text="Auction not found" />

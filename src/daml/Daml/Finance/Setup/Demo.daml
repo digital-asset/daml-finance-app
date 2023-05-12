@@ -23,10 +23,10 @@ demo = do
   -- p2 <- CorporateActions.run
   -- p3 <- Default.run
   -- p4 <- NaturalGas.run
-  -- p5 <- SecuritiesLending.run
+  p5 <- SecuritiesLending.run
   -- p6 <- StructuredNotes.run
   -- p7 <- FundTokenization.run
   -- p8 <- DecentralizedFinance.run
   -- p9 <- OtcSwaps.run
   p10 <- PrivateEquity.run 
-  pure $ p10 -- <> p2 <> p3 <> p4 <> p5 <> p6 <> p7 <> p8 <> p9 <> p10
+  pure $ p10 <> p5 -- <> p2 <> p3 <> p4 <> p5 <> p6 <> p7 <> p8 <> p9 <> p10

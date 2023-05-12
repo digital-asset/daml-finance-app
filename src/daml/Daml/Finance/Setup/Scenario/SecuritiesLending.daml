@@ -72,14 +72,14 @@ run  = do
   -- Instruments
   usd   <- originateToken   centralBank centralBank pub todayTime "USD" "United States Dollar"
   tsla  <- originateEquity  registry    registry    pub todayTime "TSLA" "Tesla, Inc. Common Stock"
-  deal1 <- originateGeneric registry    lender      pub todayTime "DEAL1" "Loan of TSLA @ 0.2%" $ loan today (addDays today 28) tsla 0.002 usd [addDays today 7, addDays today 14, addDays today 21, addDays today 28]
+  --deal1 <- originateGeneric registry    lender      pub todayTime "DEAL1" "Loan of TSLA @ 0.2%" $ loan today (addDays today 28) tsla 0.002 usd [addDays today 7, addDays today 14, addDays today 21, addDays today 28]
 
   -- Data
   createAccountDirectory lender   [(usd, lenderCashAccount), (tsla, lenderSecAccount)] $ singleton public
-  createAccountDirectory borrower [(usd, borrowerCashAccount), (tsla, borrowerSecAccount), (deal1, borrowerLenderAccount)] $ singleton public
+  createAccountDirectory borrower [(usd, borrowerCashAccount), (tsla, borrowerSecAccount)] $ singleton public
 
   -- Distribution
-  deposit operator lender borrower public (Instrument.qty    10_000.0 deal1) borrowerLenderAccount
+  --deposit operator lender borrower public (Instrument.qty    10_000.0 deal1) borrowerLenderAccount
   borrowedCid   <- coerceContractId <$> deposit operator registry    lender   public (Instrument.qty     1_000.0 tsla) lenderSecAccount
   collateralCid <- coerceContractId <$> deposit operator centralBank borrower public (Instrument.qty 1_000_000.0 usd) borrowerCashAccount
   interestCid   <- coerceContractId <$> deposit operator centralBank borrower public (Instrument.qty     1_000.0 usd) borrowerCashAccount
@@ -96,7 +96,8 @@ run  = do
       borrowOfferCid <- submit lender do exerciseByKeyCmd @Lending.Service (operator, lender, borrower) Lending.CreateBorrowOffer with borrowOfferRequestCid; interest; collateral; borrowedCid; lenderBorrowedAccount = lenderSecAccount; lenderInterestAccount = lenderCashAccount
       (borrowedCid, borrowAgreementCid) <- submitMulti [borrower] [public] do exerciseByKeyCmd @Lending.Service (operator, lender, borrower) Lending.AcceptBorrowOffer with borrowOfferCid; collateralCid; account = borrowerSecAccount
       submitMulti [borrower] [public] do exerciseCmd borrowAgreementCid Lending.Repay with borrowedCid; interestCid
+      pure ()
 
-  -- doLoan
+  doLoan
 
   pure parties

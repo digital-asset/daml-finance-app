@@ -44,7 +44,7 @@ template CreateBidRequest
     price : InstrumentQuantity
     collateralCid : ContractId Fungible.I
     receivableAccount : AccountKey
-    commitmentPath : (Text, Settlement.Hierarchy)
+    --commitmentPath : (Text, Settlement.Hierarchy)
     
   where
     signatory operator, provider, customer
@@ -70,7 +70,7 @@ template Bid
     auctionId : Text
     collateralCid : ContractId Fungible.I
     receivableAccount : AccountKey
-    commitmentPath : (Text, Settlement.Hierarchy)
+    --commitmentPath : (Text, Settlement.Hierarchy)
     status : Status
   where
     signatory operator, provider, customer

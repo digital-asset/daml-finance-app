@@ -34,7 +34,7 @@ export const PEDistribution: React.FC = () => {
   const { contracts: bids, loading: l2 } = useStreamQueries(Bid);
   const { contracts: factories, loading: l3 } = useStreamQueries(Factory);
 
-  const services = svc.auction.filter(s => s.payload.customer === party || s.payload.provider === party);
+  const services = svc.peDistribution.filter(s => s.payload.customer === party || s.payload.provider === party);
   const auction = peDistributions.find(c => c.contractId === contractId);
 
   if (svc.loading || l1 || l2 || l3) return <Spinner />;
@@ -49,12 +49,12 @@ export const PEDistribution: React.FC = () => {
   const currentPrice = filteredBids.length === 0 ? 0.0 : filteredBids.reduce((a, b) => parseFloat(b.payload.details.price.amount) >= parseFloat(auction.payload.floor) && parseFloat(b.payload.details.price.amount) < a ? parseFloat(b.payload.details.price.amount) : a, Number.MAX_VALUE);
   const canClose = auction.payload.status.tag !== "Open" || filteredBids.length === 0 || party !== provider;
 
-  // const closeAuction = async () => {
-  //   if (factories.length === 0) return new Error("No settlement factory found");
-  //   const bidCids = filteredBids.map(c => c.contractId);
-  //   const [result, ] = await ledger.exercise(Service.ProcessPEDistribution, service.contractId, { auctionCid: auction.contractId, bidCids });
-  //   navigate("/app/distribution/auctions/" + result);
-  // };
+  const closeAuction = async () => {
+    if (factories.length === 0) return new Error("No settlement factory found");
+    const bidCids = filteredBids.map(c => c.contractId);
+    const [result, ] = await ledger.exercise(Service.ProcessPEDistribution, service.contractId, { auctionCid: auction.contractId, bidCids });
+    navigate("/app/distribution/pedistributions/" + result);
+  };
 
   const getFinalPrice = (auctionStatus: PEDistributionStatus): string => {
     switch (auctionStatus.tag) {
@@ -171,7 +171,7 @@ export const PEDistribution: React.FC = () => {
                       }
                     </TableBody>
                   </Table>
-                  {/* <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={canClose} onClick={closeAuction}>Close Auction</Button> */}
+                  <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={canClose} onClick={closeAuction}>Close Auction</Button>
                 </Paper>
               </Grid>
             </Grid>

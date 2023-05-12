@@ -31,10 +31,9 @@ template Service
         price : Decimal
         collateralCid : ContractId Fungible.I
         receivableAccount : AccountKey
-        commitmentPath : (Text, Settlement.Hierarchy)
       controller customer
       do
-        createBidRequestCid <- exerciseByKey @Bidding.S (operator, provider, customer) Bidding.RequestCreateBid with auctionCid; amount; price; collateralCid; receivableAccount; commitmentPath
+        createBidRequestCid <- exerciseByKey @Bidding.S (operator, provider, customer) Bidding.RequestCreateBid with auctionCid; amount; price; collateralCid; receivableAccount
         exerciseByKey @Bidding.S (operator, provider, customer) Bidding.CreateBid with createBidRequestCid
 
     choice Terminate : ()
