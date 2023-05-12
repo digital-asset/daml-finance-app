@@ -13,8 +13,8 @@ import { createSet } from "../../../util";
 import { useParties } from "../../../context/PartiesContext";
 import { useInstruments } from "../../../context/InstrumentContext";
 import { useServices } from "../../../context/ServiceContext";
-import { Service as Auction } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Service";
-import { Service as AuctionAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Auto/Service";
+import { Service as PEDistribution } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/PEDistribution/Service";
+import { Service as PEDistributionAuto } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/PEDistribution/Auto/Service";
 import { Message } from "../../../components/Message/Message";
 import { useHoldings } from "../../../context/HoldingContext";
 import { Aggregate } from "../../../components/Instrument/Aggregate";
@@ -33,15 +33,15 @@ export const New : React.FC = () => {
   const ledger = useLedger();
   const party = useParty();
   const { getParty } = useParties();
-  const { loading: l1, auction, auctionAuto } = useServices();
+  const { loading: l1, peDistribution, peDistributionAuto } = useServices();
   const { loading: l2, latests, tokens } = useInstruments();
   const { loading: l3, holdings, getFungible } = useHoldings();
   const { loading: l4, contracts: accounts } = useStreamQueries(Reference);
 
   if (l1 || l2 || l3 || l4) return <Spinner />;
 
-  const myServices = auction.filter(s => s.payload.customer === party);
-  const myAutoServices = auctionAuto.filter(s => s.payload.customer === party);
+  const myServices = peDistribution.filter(s => s.payload.customer === party);
+  const myAutoServices = peDistributionAuto.filter(s => s.payload.customer === party);
   const instrument = latests.find(c => c.payload.id.unpack === instrumentLabel);
   // TODO: SOMETHING BETTER THAN THIS HARDCODE
   const currencyLabel = "PE1-COMMITMENT";
@@ -55,8 +55,9 @@ export const New : React.FC = () => {
   const requestCreateAuction = async () => {
     if (!instrument || !currency) return;
     const collateralCid = await getFungible(party, amount, instrument.key);
-    const receivableAccount = accounts.find(c => c.payload.accountView.custodian === currency.payload.depository && c.payload.accountView.owner === party)?.key;
-    if (!receivableAccount) return;
+    // const receivableAccount = accounts.find(c => c.payload.accountView.custodian === currency.payload.depository && c.payload.accountView.owner === party)?.key;
+    const receivableAccount = accounts.filter(c => c.payload.accountView.custodian.includes("Inv") && c.payload.accountView.owner === party).map(a => a.key);
+    if (!receivableAccount.length) return;
     const arg = {
       id,
       quantity: { amount, unit: instrument.key },
@@ -67,10 +68,10 @@ export const New : React.FC = () => {
       observers: createSet([getParty("Public")])
     };
     if (myAutoServices.length > 0) {
-      await ledger.exercise(AuctionAuto.RequestAndCreateAuction, myAutoServices[0].contractId, arg);
-      navigate("/app/distribution/auctions");
+      await ledger.exercise(PEDistributionAuto.RequestAndCreatePEDistribution, myAutoServices[0].contractId, arg);
+      navigate("/app/distribution/pedistributions");
     } else {
-      await ledger.exercise(Auction.RequestCreateAuction, myServices[0].contractId, arg);
+      await ledger.exercise(PEDistribution.RequestCreatePEDistribution, myServices[0].contractId, arg);
       navigate("/app/distribution/requests");
     }
   }

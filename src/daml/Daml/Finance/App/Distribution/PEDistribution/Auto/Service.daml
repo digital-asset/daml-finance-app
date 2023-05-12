@@ -21,7 +21,7 @@ template Service
     key (operator, provider, customer) : (Party, Party, Party)
     maintainer key._1
 
-    nonconsuming choice RequestAndCreateAuction : ContractId PEDistribution
+    nonconsuming choice RequestAndCreatePEDistribution : ContractId PEDistribution
       with
         id : Text
         quantity : InstrumentQuantity

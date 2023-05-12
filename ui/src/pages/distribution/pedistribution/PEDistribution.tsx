@@ -8,9 +8,9 @@ import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Typography, Grid, Table, TableBody, TableCell, TableRow, Button, Paper } from "@mui/material";
 import { useParams } from "react-router-dom";
 import useStyles from "../../styles";
-import { Auction as AuctionContract, Status as AuctionStatus } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Model";
-import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Service";
-import { Bid } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Bidding/Model";
+import { PEDistribution as PEDistributionContract, Status as PEDistributionStatus } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/PEDistribution/Model";
+import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/PEDistribution/Service";
+import { Bid } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/PEBidding/Model";
 import { getBidAllocation } from "../Utils";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { fmt } from "../../../util";
@@ -30,12 +30,12 @@ export const PEDistribution: React.FC = () => {
   const ledger = useLedger();
   const svc = useServices();
 
-  const { contracts: auctions, loading: l1 } = useStreamQueries(AuctionContract);
+  const { contracts: peDistributions, loading: l1 } = useStreamQueries(PEDistributionContract);
   const { contracts: bids, loading: l2 } = useStreamQueries(Bid);
   const { contracts: factories, loading: l3 } = useStreamQueries(Factory);
 
   const services = svc.auction.filter(s => s.payload.customer === party || s.payload.provider === party);
-  const auction = auctions.find(c => c.contractId === contractId);
+  const auction = peDistributions.find(c => c.contractId === contractId);
 
   if (svc.loading || l1 || l2 || l3) return <Spinner />;
   if (!contractId) return <Message text="No contract id provided" />;
@@ -49,14 +49,14 @@ export const PEDistribution: React.FC = () => {
   const currentPrice = filteredBids.length === 0 ? 0.0 : filteredBids.reduce((a, b) => parseFloat(b.payload.details.price.amount) >= parseFloat(auction.payload.floor) && parseFloat(b.payload.details.price.amount) < a ? parseFloat(b.payload.details.price.amount) : a, Number.MAX_VALUE);
   const canClose = auction.payload.status.tag !== "Open" || filteredBids.length === 0 || party !== provider;
 
-  const closeAuction = async () => {
-    if (factories.length === 0) return new Error("No settlement factory found");
-    const bidCids = filteredBids.map(c => c.contractId);
-    const [result, ] = await ledger.exercise(Service.ProcessAuction, service.contractId, { auctionCid: auction.contractId, bidCids });
-    navigate("/app/distribution/auctions/" + result);
-  };
+  // const closeAuction = async () => {
+  //   if (factories.length === 0) return new Error("No settlement factory found");
+  //   const bidCids = filteredBids.map(c => c.contractId);
+  //   const [result, ] = await ledger.exercise(Service.ProcessPEDistribution, service.contractId, { auctionCid: auction.contractId, bidCids });
+  //   navigate("/app/distribution/auctions/" + result);
+  // };
 
-  const getFinalPrice = (auctionStatus: AuctionStatus): string => {
+  const getFinalPrice = (auctionStatus: PEDistributionStatus): string => {
     switch (auctionStatus.tag) {
       case 'PartiallyAllocated':
         return fmt(auctionStatus.value.finalPrice, 4);
@@ -67,7 +67,7 @@ export const PEDistribution: React.FC = () => {
     }
   };
 
-  const getParticallyAllocatedUnits = (auction: AuctionContract): number | undefined => {
+  const getParticallyAllocatedUnits = (auction: PEDistributionContract): number | undefined => {
     switch (auction.status.tag) {
       case 'PartiallyAllocated':
         return parseFloat(auction.quantity.amount) - parseFloat(auction.status.value.remaining)
@@ -171,7 +171,7 @@ export const PEDistribution: React.FC = () => {
                       }
                     </TableBody>
                   </Table>
-                  <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={canClose} onClick={closeAuction}>Close Auction</Button>
+                  {/* <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={canClose} onClick={closeAuction}>Close Auction</Button> */}
                 </Paper>
               </Grid>
             </Grid>

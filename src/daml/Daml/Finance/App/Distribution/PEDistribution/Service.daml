@@ -11,13 +11,13 @@ import DA.Foldable (forA_)
 import DA.List (sortOn, mapAccumL)
 import DA.Optional (whenSome)
 import DA.Set (fromList, singleton)
-import DA.Map qualified as M (empty, fromList, lookup)
+import DA.Map qualified as M (fromList, lookup)
 import Daml.Finance.App.Data.AccountDirectory (AccountDirectory)
 import Daml.Finance.App.Distribution.PEDistribution.Model (PEDistribution(..), CreatePEDistributionRequest(..), Status(..))
 import Daml.Finance.App.Distribution.PEDistribution.Utils (dutchAuction, splitList, generateSettlementInstruction)
 import Daml.Finance.App.Distribution.PEBidding.Model qualified as PEBidding (Allocation(..), Bid, SettleAllocation(..), Status(..))
 import Daml.Finance.App.Distribution.PEBidding.Service qualified as PEBidding (RejectBid(..), S)
-import Daml.Finance.App.Settlement.Service qualified as Settlement (Service)
+--import Daml.Finance.App.Settlement.Service qualified as Settlement (Service)
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy)
 import Daml.Finance.App.Util (fetchAndArchive)
 import Daml.Finance.Interface.Account.Account qualified as Account (R, exerciseInterfaceByKey)
@@ -29,9 +29,9 @@ import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentKey, Ins
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
 
 import Daml.Finance.Settlement.Factory qualified as Settlement (Factory(..))
-import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy)
+-- import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy)
 import Daml.Finance.Settlement.RouteProvider.IntermediatedStatic qualified as RouteProvider (IntermediatedStatic(..))
-import Daml.Finance.App.Settlement.Service qualified as Settlement (Accept(..), Offer(..), Service)
+import Daml.Finance.App.Settlement.Service qualified as Settlement (Accept(..), Offer(..))
 
 type S = Service
 
@@ -171,7 +171,6 @@ template Service
           -- We have the security settlement paths as securityPaths : [(Text, Settlement.Hierarchy)]
           -- For each bid we need the commitment token settlement paths
           let paths  = M.fromList $ allocated.bid.commitmentPath :: securityPaths
-
           -- Create routeProvider and settlement service
           routeProviderCid      <- toInterfaceContractId <$> create RouteProvider.IntermediatedStatic  with provider; observers = singleton customer; paths
           settlementFactoryCid  <- toInterfaceContractId <$> create Settlement.Factory                 with provider; observers = singleton customer

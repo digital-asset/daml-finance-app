@@ -3,7 +3,7 @@
 
 import React from "react";
 import { useParty, useStreamQueries } from "@daml/react";
-import { Auction } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Model";
+import { PEDistribution } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/PEDistribution/Model";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { fmt } from "../../../util";
 import { useParties } from "../../../context/PartiesContext";
@@ -14,10 +14,10 @@ import { DetailButton } from "../../../components/DetailButton/DetailButton";
 export const PEDistributions : React.FC = () => {
   const party = useParty();
   const { getName } = useParties();
-  const { loading: l1, contracts: auctions } = useStreamQueries(Auction);
+  const { loading: l1, contracts: peDistributions } = useStreamQueries(PEDistribution);
   if (l1) return <Spinner />;
 
-  const createRow = (c : CreateEvent<Auction>) : any[] => {
+  const createRow = (c : CreateEvent<PEDistribution>) : any[] => {
     const path = (party === c.payload.provider || party === c.payload.customer ? "/app/distribution/pedistributions/" : "/app/distribution/pedistribution/") + c.contractId;
     return [
       c.payload.id,
@@ -30,7 +30,7 @@ export const PEDistributions : React.FC = () => {
     ];
   };
   const headers = ["Id", "Agent", "Issuer", "Instrument", "Floor", "Status", "Details"]
-  const values : any[] = auctions.map(createRow);
+  const values : any[] = peDistributions.map(createRow);
   const alignment : Alignment[] = ["left", "left", "left", "right", "right", "left", "left"];
   return (
     <HorizontalTable title="PE Distributions" variant={"h3"} headers={headers} values={values} alignment={alignment} />

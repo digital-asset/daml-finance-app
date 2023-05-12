@@ -27,6 +27,10 @@ import { Service as StructuringService } from "@daml.js/daml-finance-app/lib/Dam
 import { Service as StructuringAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service"
 import { Service as TradingService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Trading/Service"
 import { Service as TradingAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Trading/Auto/Service"
+import { Service as PEDistributionService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/PEDistribution/Service"
+import { Service as PEDistributionAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/PEDistribution/Auto/Service"
+import { Service as PEBiddingService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/PEBidding/Service"
+import { Service as PEBiddingAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/PEBidding/Auto/Service"
 
 export type ServicesState = {
   loading               : boolean
@@ -53,6 +57,10 @@ export type ServicesState = {
   subscription          : readonly CreateEvent<SubscriptionService, SubscriptionService.Key>[]
   tradingAuto           : readonly CreateEvent<TradingAutoService, TradingAutoService.Key>[]
   trading               : readonly CreateEvent<TradingService, TradingService.Key>[]
+  peDistributionAuto    : readonly CreateEvent<PEDistributionAutoService, PEDistributionAutoService.Key>[]
+  peDistribution        : readonly CreateEvent<PEDistributionService, PEDistributionService.Key>[]
+  peBiddingAuto         : readonly CreateEvent<PEBiddingAutoService, PEBiddingAutoService.Key>[]
+  peBidding             : readonly CreateEvent<PEBiddingService, PEBiddingService.Key>[]
 };
 
 const empty = {
@@ -79,7 +87,11 @@ const empty = {
   structuring: [],
   subscription: [],
   tradingAuto: [],
-  trading: []
+  trading: [],
+  peDistributionAuto: [],
+  peDistribution: [],
+  peBiddingAuto: [],
+  peBidding: []
 };
 
 const ServicesContext = React.createContext<ServicesState>(empty);
@@ -95,8 +107,8 @@ export const ServicesProvider : React.FC = ({ children }) => {
   const { loading: l7,  contracts: biddingAuto }            = useStreamQueries(BiddingAutoService);
   const { loading: l8,  contracts: bidding }                = useStreamQueries(BiddingService);
   const { loading: l9,  contracts: fund }                   = useStreamQueries(FundService);
-  const { loading: l10,  contracts: investment }            = useStreamQueries(InvestmentService);
-  const { loading: l11,  contracts: issuanceAuto }          = useStreamQueries(IssuanceAutoService);
+  const { loading: l10, contracts: investment }            = useStreamQueries(InvestmentService);
+  const { loading: l11, contracts: issuanceAuto }          = useStreamQueries(IssuanceAutoService);
   const { loading: l12, contracts: issuance }               = useStreamQueries(IssuanceService);
   const { loading: l13, contracts: lending }                = useStreamQueries(LendingService);
   const { loading: l14, contracts: lifecycle }              = useStreamQueries(LifecycleService);
@@ -109,7 +121,11 @@ export const ServicesProvider : React.FC = ({ children }) => {
   const { loading: l21, contracts: subscription }           = useStreamQueries(SubscriptionService);
   const { loading: l22, contracts: tradingAuto }            = useStreamQueries(TradingAutoService);
   const { loading: l23, contracts: trading }                = useStreamQueries(TradingService);
-  const loading = l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8 || l9 || l10 || l11 || l12 || l13 || l14 || l15 || l16 || l17 || l18 || l19 || l20 || l21 || l22 || l23;
+  const { loading: l24, contracts: peDistributionAuto }     = useStreamQueries(PEDistributionAutoService);
+  const { loading: l25, contracts: peDistribution }         = useStreamQueries(PEDistributionService);
+  const { loading: l26, contracts: peBiddingAuto }          = useStreamQueries(PEBiddingAutoService);
+  const { loading: l27, contracts: peBidding }              = useStreamQueries(PEBiddingService);
+  const loading = l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8 || l9 || l10 || l11 || l12 || l13 || l14 || l15 || l16 || l17 || l18 || l19 || l20 || l21 || l22 || l23 || l24 || l25 || l26 || l27;
 
   const value = {
     loading,
@@ -136,6 +152,10 @@ export const ServicesProvider : React.FC = ({ children }) => {
     subscription,
     tradingAuto,
     trading,
+    peDistributionAuto,
+    peDistribution,
+    peBiddingAuto,
+    peBidding
   };
 
   return (

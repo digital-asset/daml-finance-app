@@ -49,7 +49,8 @@ run = do
     secRoute = Settlement.Hierarchy 
       with 
         rootCustodian = issuer 
-        pathsToRootCustodian = List.delete [issuer] settlementPaths
+        pathsToRootCustodian = settlementPaths
+        --pathsToRootCustodian = List.delete [issuer] settlementPaths
     secPath = map (\a -> (a, secRoute)) assetLabels
 
     commitments = map (<>"-COMMITMENT") assetLabels
@@ -77,7 +78,10 @@ run = do
 
   -- Services 
   -- Custody Services
+
   let 
+    cashPath = [("USD", cashRoute)]
+    secPath = map (\a -> (a, secRoute)) assetLabels
     custodyServices = [
       (inv1, issuer, commitmentPath1 :: cashPath), 
       (inv2, issuer, commitmentPath2 :: cashPath), 
@@ -98,8 +102,8 @@ run = do
       (issuer, inv2, secPath),
       (issuer, inv3, secPath)]
 
-  mapA_ (\(provider, customer) -> createCustodyService 
-    operator provider customer paths accountFactoryCid holdingFactoryCid) custodyServices
+  mapA_ (\(provider, customer, p) -> createCustodyService 
+    operator provider customer (fromList p) accountFactoryCid holdingFactoryCid) custodyServices
   
   --issuance services
   let 
@@ -130,6 +134,7 @@ run = do
   createStructuringAutoService operator admin issuer
 
   createPEDistributionService operator ta issuer secPath
+  createPEDistributionAutoService operator ta issuer
 
   createPEBiddingService          operator ta       inv1
   createPEBiddingAutoService      operator ta       inv1
@@ -243,14 +248,14 @@ run = do
   -- When creating the distribution, need to pass in all the issuer commitment accounts so that they can be disclosed to the Transfer Agent.
   -- In implementation, investors could be invited to bid so that their accounts are identified.
   distributionCid        <- createPEDistribution operator ta issuer public "DISTRIBUTION1" quantity usdCommit 1.0 (coerceContractId ad1) [issuerCommitAccount1, issuerCommitAccount2, issuerCommitAccount3]
-  inv1CollateralCid <- coerceContractId <$> getHolding inv1 (qty 500_000.0 usdCommit)
-  inv2CollateralCid <- coerceContractId <$> getHolding inv2 (qty 300_000.0 usdCommit)
-  inv3CollateralCid <- coerceContractId <$> getHolding inv3 (qty 200_000.0 usdCommit)
+  -- inv1CollateralCid <- coerceContractId <$> getHolding inv1 (qty 500_000.0 usdCommit)
+  -- inv2CollateralCid <- coerceContractId <$> getHolding inv2 (qty 300_000.0 usdCommit)
+  -- inv3CollateralCid <- coerceContractId <$> getHolding inv3 (qty 200_000.0 usdCommit)
  
-  inv1BidCid        <- createPEDistributionBid operator ta inv1 public distributionCid 500_000.0 1.0 inv1CollateralCid inv1SecAccount commitmentPath1
-  inv2BidCid        <- createPEDistributionBid operator ta inv2 public distributionCid 300_000.0 1.0 inv2CollateralCid inv2SecAccount commitmentPath2
-  inv3BidCid        <- createPEDistributionBid operator ta inv3 public distributionCid 200_000.0 1.0 inv3CollateralCid inv3SecAccount commitmentPath3
-  processPEDistribution operator ta issuer public distributionCid [inv1BidCid, inv2BidCid, inv3BidCid]
+  -- inv1BidCid        <- createPEDistributionBid operator ta inv1 public distributionCid 500_000.0 1.0 inv1CollateralCid inv1SecAccount commitmentPath1
+  -- inv2BidCid        <- createPEDistributionBid operator ta inv2 public distributionCid 300_000.0 1.0 inv2CollateralCid inv2SecAccount commitmentPath2
+  -- inv3BidCid        <- createPEDistributionBid operator ta inv3 public distributionCid 200_000.0 1.0 inv3CollateralCid inv3SecAccount commitmentPath3
+  -- processPEDistribution operator ta issuer public distributionCid [inv1BidCid, inv2BidCid, inv3BidCid]
 
   -- doAuction
   pure parties

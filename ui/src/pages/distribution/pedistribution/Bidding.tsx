@@ -4,13 +4,13 @@
 import React, { useState } from "react";
 import useStyles from "../../styles";
 import classnames from "classnames";
-import { Auction } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Auction/Model";
-import { Bid } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Bidding/Model";
+import { PEDistribution } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/PEDistribution/Model";
+import { Bid } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/PEBidding/Model";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import { Grid, Paper, Typography, Table, TableRow, TableCell, TableBody, TextField, Button } from "@mui/material";
 import { useParams } from "react-router-dom";
-import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Bidding/Service";
-import { Service as AutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/Bidding/Auto/Service";
+import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/PEBidding/Service";
+import { Service as AutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Distribution/PEBidding/Auto/Service";
 import { getBidAllocation } from "../Utils";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { fmt } from "../../../util";
@@ -34,7 +34,7 @@ export const Bidding : React.FC = () => {
   const { loading: l1, bidding, biddingAuto } = useServices();
   const { loading: l2, latests } = useInstruments();
   const { loading: l3, getFungible } = useHoldings();
-  const { loading: l4, contracts: auctions } = useStreamQueries(Auction);
+  const { loading: l4, contracts: auctions } = useStreamQueries(PEDistribution);
   const { loading: l5, contracts: bids } = useStreamQueries(Bid);
   const { loading: l6, contracts: accounts } = useStreamQueries(Reference);
 

@@ -5,8 +5,6 @@ module Daml.Finance.App.Role.Distributor where
 
 import Daml.Finance.App.Distribution.Auction.Auto.Service qualified as AuctionAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Distribution.Auction.Service qualified as Auction (Approve(..), Offer(..), Request, Service, Terminate(..))
-import Daml.Finance.App.Distribution.PrivateEquity.Auto.Service qualified as PrivateEquityAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
-import Daml.Finance.App.Distribution.PrivateEquity.Service qualified as PrivateEquity (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Distribution.Bidding.Auto.Service qualified as BiddingAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (Approve(..), Offer(..), Request, Service, Terminate(..))
@@ -72,50 +70,6 @@ template Role
       controller provider
       do
         exerciseByKey @AuctionAuto.Service (operator, provider, customer) AuctionAuto.Terminate with actor = provider
-
-    nonconsuming choice OfferPrivateEquityService : ContractId PrivateEquity.Offer
-      with
-        customer : Party
-        settlementServiceCid : ContractId Settlement.Service
-      controller provider
-      do
-        create PrivateEquity.Offer with ..
-
-    nonconsuming choice ApprovePrivateEquityServiceRequest : ContractId PrivateEquity.Service
-      with
-        privateEquityServiceRequestCid : ContractId PrivateEquity.Request
-        settlementServiceCid : ContractId Settlement.Service
-      controller provider
-      do
-        exercise privateEquityServiceRequestCid PrivateEquity.Approve with ..
-
-    nonconsuming choice TerminatePrivateEquityService : ()
-      with
-        customer : Party
-      controller provider
-      do
-        exerciseByKey @PrivateEquity.Service (operator, provider, customer) PrivateEquity.Terminate with actor = provider
-
-    nonconsuming choice OfferPrivateEquityAutoService : ContractId PrivateEquityAuto.Offer
-      with
-        customer : Party
-      controller provider
-      do
-        create PrivateEquityAuto.Offer with ..
-
-    nonconsuming choice ApprovePrivateEquityAutoServiceRequest : ContractId PrivateEquityAuto.Service
-      with
-        privateEquityServiceRequestCid : ContractId PrivateEquityAuto.Request
-      controller provider
-      do
-        exercise privateEquityServiceRequestCid PrivateEquityAuto.Approve with ..
-
-    nonconsuming choice TerminatePrivateEquityAutoService : ()
-      with
-        customer : Party
-      controller provider
-      do
-        exerciseByKey @PrivateEquityAuto.Service (operator, provider, customer) PrivateEquityAuto.Terminate with actor = provider
 
 
 
