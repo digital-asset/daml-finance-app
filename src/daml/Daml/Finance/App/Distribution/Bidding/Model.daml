@@ -93,9 +93,4 @@ template Bid
         transferableCid : ContractId Transferable.I
       controller provider
       do
-        debug this
-        instruction <- fetch instructionCid 
-        debug (view instruction)
-        transferable <- fetch transferableCid
-        debug (view transferable)
         fst <$> exercise instructionCid Instruction.Allocate with actors = singleton customer; allocation = T.Pledge $ toInterfaceContractId transferableCid

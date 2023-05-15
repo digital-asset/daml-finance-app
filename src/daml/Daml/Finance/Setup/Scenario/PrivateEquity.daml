@@ -17,17 +17,21 @@ import Daml.Finance.Setup.Payoff
 import DA.Foldable (mapA_)
 import DA.Date
 import DA.Time (time)
-import Daml.Finance.Interface.Util.Common (qty)
+import Daml.Finance.Interface.Util.Common (qty, fetchInterfaceByKey)
 import Daml.Finance.Interface.Types.Common.Types (Id(..))
 -- import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..))
+--import Daml.Finance.Interface.Account.Account qualified as Account
+
+import Daml.Finance.App.Lending.Model qualified as Lending (Repay(..))
+import Daml.Finance.App.Lending.Service qualified as Lending (AcceptBorrowOffer(..), CreateBorrowOffer(..), RequestBorrowOffer(..), Service)
 
 run: Script [PartyInfo]
 run = do
   let scenario = "Private Equity"
-  parties <- allocateParties scenario ["Operator", "FundManager", "Admin", "TransferAgent", "WealthManager", "Investor1", "Investor2", "Investor3", "Lender", "CentralBank"] "Public"
+  parties <- allocateParties scenario ["Operator", "FundManager", "Admin", "TransferAgent", "WealthManager", "Investor1", "Investor2", "Investor3", "Lender"] "Public"
   let 
-    all@[operator, issuer, admin, ta, wm, inv1, inv2, inv3, lender, centralBank, public] = map (.id) parties 
+    all@[operator, issuer, admin, ta, wm, inv1, inv2, inv3, lender, public] = map (.id) parties 
     pub = fromList [("Public", singleton public)]
     investorNames = [
       ("Investor1", inv1),
@@ -36,10 +40,10 @@ run = do
 
   -- Factories
   let 
-    assetLabels = ["PE1", "PE2", "PE3"]
-    settlementPaths = [[issuer], [inv1], [inv2], [inv3]]
+    assetLabels = ["PE1", "PE2", "PE3", "TSLA"]
+    settlementPaths = [[issuer], [inv1], [inv2], [inv3], [lender]]
 
-    cashRoute = Settlement.Hierarchy 
+    cashRoute = Settlement.Hierarchy -- In lending TSLA will share this route also
       with 
         rootCustodian = ta
         -- pathsToRootCustodian = List.delete [ta] settlementPaths
@@ -55,8 +59,8 @@ run = do
 
     commitments = map (<>"-COMMITMENT") assetLabels
   
-    -- Each investor has its own settlement route for commitment tokens, with just the issuer as a sub-custodian
-    commitmentPaths = map (\(rootCustodian, i) -> (i, Settlement.Hierarchy with pathsToRootCustodian = [[issuer]]; .. )) [
+    -- Each investor has its own settlement route for commitment tokens, with just the issuer (and lender) as a sub-custodian
+    commitmentPaths = map (\(rootCustodian, i) -> (i, Settlement.Hierarchy with pathsToRootCustodian = [[issuer], [lender]]; .. )) [
       (inv1, "PE1-COMMITMENT"),
       (inv2, "PE1-COMMITMENT"),
       (inv3, "PE1-COMMITMENT")]
@@ -72,13 +76,12 @@ run = do
   createOperatorRole operator
   createDistributorRole operator ta
   let 
-    custodianRoles = [inv1, inv2, inv3, ta, admin, issuer] 
+    custodianRoles = [inv1, inv2, inv3, ta, admin, issuer, lender] 
   mapA_ (createCustodianRole operator) custodianRoles
   -- createDistributorRole   operator admin 
 
   -- Services 
   -- Custody Services
-
   let 
     cashPath = [("USD", cashRoute)]
     secPath = map (\a -> (a, secRoute)) assetLabels
@@ -100,7 +103,13 @@ run = do
       (issuer, issuer, secPath),
       (issuer, inv1, secPath),
       (issuer, inv2, secPath),
-      (issuer, inv3, secPath)]
+      (issuer, inv3, secPath),
+      -- Lending below
+      (issuer, lender, cashPath), -- for lender cash and TSLA. To work with existing lending service the lender and borrower account for TSLA have to have the same custodian
+      (inv1, lender, [commitmentPath1]),
+      (inv2, lender, [commitmentPath2]),
+      (inv3, lender, [commitmentPath3])
+      ]
 
   mapA_ (\(provider, customer, p) -> createCustodyService 
     operator provider customer (fromList p) accountFactoryCid holdingFactoryCid) custodyServices
@@ -165,6 +174,7 @@ run = do
   -- Accounts
   let 
     createAccount' provider customer name obs = createAccount operator provider customer public name obs
+
     adminObs = fromList [("Admin", singleton admin), ("FundManager", singleton issuer)]
 
   -- Commit Accounts
@@ -197,9 +207,9 @@ run = do
   createAccountDirectory inv3 [(usd, inv3CashAccount), (usdCommit1, issuerCommitAccount3)]        $singleton ta
   
   -- -- Holdings 
-  issuerCommit1Cid <- deposit operator inv1 issuer public (qty 25_000_000.00 usdCommit) issuerCommitAccount1
-  issuerCommit2Cid <- deposit operator inv2 issuer public (qty 35_000_000.00 usdCommit) issuerCommitAccount2
-  issuerCommit3Cid <- deposit operator inv3 issuer public (qty 40_000_000.00 usdCommit) issuerCommitAccount3
+  -- issuerCommit1Cid <- deposit operator inv1 issuer public (qty 25_000_000.00 usdCommit) issuerCommitAccount1
+  -- issuerCommit2Cid <- deposit operator inv2 issuer public (qty 35_000_000.00 usdCommit) issuerCommitAccount2
+  -- issuerCommit3Cid <- deposit operator inv3 issuer public (qty 40_000_000.00 usdCommit) issuerCommitAccount3
 
   inv1CashCid      <- deposit operator ta inv1 public (qty 200_000_000.00 usd) inv1CashAccount
   inv2CashCid      <- deposit operator ta inv2 public (qty 200_000_000.00 usd) inv2CashAccount
@@ -227,16 +237,16 @@ run = do
   -- capitalCallEffectId <- declareCapitalCall operator inv1 issuer public usdCommit usd t 5_000_000.0
   -- claimCapitalCallEffect operator inv1 issuer public capitalCallEffectId 5_000_000.00 (coerceContractId issuerCommit1Cid: ContractId Fungible.I) $ Id "Round 1"
 
-  --LEVE'S TEST CODE BELOW
-  capitalCallEffectId <- declareCapitalCall operator inv1 issuer public usdCommit usd t 5_000_000.0
-  claimCapitalCallEffect operator inv1 issuer public capitalCallEffectId 5_000_000.00 (coerceContractId issuerCommit1Cid: ContractId Fungible.I) $ Id "Round 1"
+  -- COMMENTED LEVE'S CODE BELOW
+  -- capitalCallEffectId <- declareCapitalCall operator inv1 issuer public usdCommit usd t 5_000_000.0
+  -- claimCapitalCallEffect operator inv1 issuer public capitalCallEffectId 5_000_000.00 (coerceContractId issuerCommit1Cid: ContractId Fungible.I) $ Id "Round 1"
 
-  capitalCallEffectId <- declareCapitalCall operator inv2 issuer public usdCommit usd t 7_000_000.0
-  claimCapitalCallEffect operator inv2 issuer public capitalCallEffectId 7_000_000.00 (coerceContractId issuerCommit2Cid: ContractId Fungible.I) $ Id "Round 1"
+  -- capitalCallEffectId <- declareCapitalCall operator inv2 issuer public usdCommit usd t 7_000_000.0
+  -- claimCapitalCallEffect operator inv2 issuer public capitalCallEffectId 7_000_000.00 (coerceContractId issuerCommit2Cid: ContractId Fungible.I) $ Id "Round 1"
 
-  capitalCallEffectId <- declareCapitalCall operator inv3 issuer public usdCommit usd t 8_000_000.0
-  claimCapitalCallEffect operator inv3 issuer public capitalCallEffectId 8_000_000.00 (coerceContractId issuerCommit3Cid: ContractId Fungible.I) $ Id "Round 1"
-  -- END LEVE'S TEST CODE
+  -- capitalCallEffectId <- declareCapitalCall operator inv3 issuer public usdCommit usd t 8_000_000.0
+  -- claimCapitalCallEffect operator inv3 issuer public capitalCallEffectId 8_000_000.00 (coerceContractId issuerCommit3Cid: ContractId Fungible.I) $ Id "Round 1"
+  -- END LEVE'S COMMENTED CODE
 
 
   -- Need to do a split and expose first
@@ -257,6 +267,40 @@ run = do
       inv3BidCid        <- createPEDistributionBid operator ta inv3 public distributionCid 200_000.0 1.0 inv3CollateralCid inv3SecAccount
       processPEDistribution operator ta issuer public distributionCid [inv1BidCid, inv2BidCid, inv3BidCid]
 
-  --doPEDistribution
+  doPEDistribution
+
+
+  -- Now do securities lending
+  -- Investor1 will borrow 3,000 TSLA and provide 500,000 PE1-COMMITMENT as collateral
+
+  createLendingService operator lender issuer -- operator lender borrower
+
+  -- Lender account
+  lenderCashAndSharesAccount <- createAccount' issuer lender "Lender@FundManager|CashAndShares" empty
+  tsla        <- originateEquity issuer issuer pub epoch "TSLA" "Tesla Share"
+
+  -- Credit lender with TSLA shares
+  borrowedCid   <- coerceContractId <$> deposit operator issuer lender public (qty 1_000.0 tsla) lenderCashAndSharesAccount
+  -- Credit the borrower with cash to pay the interest
+  interestCid   <- coerceContractId <$> deposit operator ta issuer public (qty 1_000.0 usd) issuerCashAccount
+  -- Loan collateral is the PE1COMM held by the issuer at inv1
+
+  -- Do the loan
+  let
+    doLoan = do
+      let
+        borrowedQty   = qty     1_000.0 tsla
+        interestQty   = qty     1_000.0 usd
+        collateralQty = qty 400_000.0 usdCommit1
+
+      collateralCid <- coerceContractId <$> getHolding issuer collateralQty
+
+      borrowOfferRequestCid <- submit issuer do exerciseByKeyCmd @Lending.Service (operator, lender, issuer) Lending.RequestBorrowOffer with id = "BORROW"; borrowed = borrowedQty; maturity = date 2022 Sep 14
+      borrowOfferCid <- submit lender do exerciseByKeyCmd @Lending.Service (operator, lender, issuer) Lending.CreateBorrowOffer with borrowOfferRequestCid; interest = interestQty; collateral = collateralQty; borrowedCid; lenderBorrowedAccount = lenderCashAndSharesAccount; lenderInterestAccount = lenderCashAndSharesAccount
+      (borrowedCid, borrowAgreementCid) <- submitMulti [issuer] [public] do exerciseByKeyCmd @Lending.Service (operator, lender, issuer) Lending.AcceptBorrowOffer with borrowOfferCid; collateralCid; account = issuerSecAccount
+      submitMulti [issuer] [public] do exerciseCmd borrowAgreementCid Lending.Repay with borrowedCid; interestCid
+      pure ()
+
+  doLoan
 
   pure parties
