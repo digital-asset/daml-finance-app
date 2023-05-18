@@ -92,12 +92,12 @@ run  = do
         interest   = Instrument.qty     1_000.0 usd
         collateral = Instrument.qty 1_000_000.0 usd
 
-      borrowOfferRequestCid <- submit borrower do exerciseByKeyCmd @Lending.Service (operator, lender, borrower) Lending.RequestBorrowOffer with id = "BORROW"; borrowed; maturity = date 2022 Sep 14
+      borrowOfferRequestCid <- submit borrower do exerciseByKeyCmd @Lending.Service (operator, lender, borrower) Lending.RequestBorrowOffer with id = "BORROW"; borrowed; maturity = date 2023 Sep 14
       borrowOfferCid <- submit lender do exerciseByKeyCmd @Lending.Service (operator, lender, borrower) Lending.CreateBorrowOffer with borrowOfferRequestCid; interest; collateral; borrowedCid; lenderBorrowedAccount = lenderSecAccount; lenderInterestAccount = lenderCashAccount
       (borrowedCid, borrowAgreementCid) <- submitMulti [borrower] [public] do exerciseByKeyCmd @Lending.Service (operator, lender, borrower) Lending.AcceptBorrowOffer with borrowOfferCid; collateralCid; account = borrowerSecAccount
       submitMulti [borrower] [public] do exerciseCmd borrowAgreementCid Lending.Repay with borrowedCid; interestCid
       pure ()
 
-  doLoan
+  --doLoan
 
   pure parties

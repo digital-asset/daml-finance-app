@@ -21,6 +21,7 @@ import { ContractId } from "@daml/types";
 import { Transferable } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Transferable";
 import { SelectInput, toValues } from "../../components/Form/SelectInput";
 import { TextInput } from "../../components/Form/TextInput";
+import { useScenario } from "../../context/ScenarioContext";
 
 export const Request : React.FC = () => {
   const cls = useStyles();
@@ -30,12 +31,13 @@ export const Request : React.FC = () => {
   const [ interestAmount, setInterestAmount ] = useState("");
   const [ collateralInstrumentLabel, setCollateralInstrumentLabel ] = useState("");
   const [ collateralAmount, setCollateralAmount ] = useState("");
+  const scenario = useScenario();
 
   const { getName } = useParties();
   const party = useParty();
   const ledger = useLedger();
   const { loading: l1, lending } = useServices();
-  const { loading: l2, equities, tokens } = useInstruments();
+  const { loading: l2, equities, tokens, generics } = useInstruments();
   const { loading: l3, getFungible } = useHoldings();
   const { loading: l4, contracts: requests } = useStreamQueries(BorrowOfferRequest);
   const { loading: l5, contracts: accounts } = useStreamQueries(Reference);
@@ -44,7 +46,7 @@ export const Request : React.FC = () => {
   const request = requests.find(b => b.contractId === contractId);
   const borrowedInstrument = equities.find(c => c.payload.id.unpack === request?.payload.borrowed.unit.id.unpack);
   const interestInstrument = tokens.find(c => c.payload.id.unpack === interestInstrumentLabel);
-  const collateralInstrument = tokens.find(c => c.payload.id.unpack === collateralInstrumentLabel);
+  const collateralInstrument = generics.concat(tokens).find(c => c.payload.id.unpack === collateralInstrumentLabel);
 
   if (l1 || l2 || l3 || l4 || l5) return <Spinner />;
 
@@ -62,7 +64,11 @@ export const Request : React.FC = () => {
   const createBorrowOffer = async () => {
     if (!interestInstrument || !collateralInstrument) throw new Error("Interest or collateral instrument not found");
     const lenderBorrowedAccount = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === borrowedInstrument.payload.depository)?.key;
-    const lenderInterestAccount = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === interestInstrument.payload.depository)?.key;
+    var lenderInterestAccount = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === interestInstrument.payload.depository)?.key;
+    // To find the lender interest account in the Private Equity scenario we have to filter only on account owner
+    if (scenario.selected.label === "Private Equity")
+      lenderInterestAccount = accounts.find(c => c.payload.accountView.owner === party)?.key;
+    
     if (!lenderBorrowedAccount || !lenderInterestAccount) throw new Error("Borrowed or interest account not found");
     const borrowedCid = await getFungible(party, request.payload.borrowed.amount, request.payload.borrowed.unit);
     const arg = {
@@ -119,7 +125,7 @@ export const Request : React.FC = () => {
                     <Typography variant="h5" className={cls.heading}>Offer Details</Typography>
                     <SelectInput  label="Interest Instrument"     value={interestInstrumentLabel}   setValue={setInterestInstrumentLabel} values={toValues(tokens)} />
                     <TextInput    label="Interest Amount"         value={interestAmount}            setValue={setInterestAmount} />
-                    <SelectInput  label="Collateral Instrument"   value={collateralInstrumentLabel} setValue={setCollateralInstrumentLabel} values={toValues(tokens)} />
+                    <SelectInput  label="Collateral Instrument"   value={collateralInstrumentLabel} setValue={setCollateralInstrumentLabel} values={toValues(tokens.concat(generics))} />
                     <TextInput    label="Collateral Amount"       value={collateralAmount}          setValue={setCollateralAmount} />
                     <Button className={classnames(cls.fullWidth, cls.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={createBorrowOffer}>Create Offer</Button>
                   </Paper>

@@ -10,6 +10,7 @@ import { Transferable } from "@daml.js/daml-finance-interface-holding/lib/Daml/F
 import { Fungible } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Fungible";
 import { InstrumentKey } from "@daml.js/daml-finance-interface-types-common/lib/Daml/Finance/Interface/Types/Common/Types";
 import { ContractId } from "@daml/types";
+import { fi } from "date-fns/locale";
 
 type HoldingState = {
   loading : boolean
@@ -62,9 +63,17 @@ export const HoldingProvider : React.FC = ({ children }) => {
         const [ { splitCids, }, ] = await ledger.exercise(Fungible.Split, filtered[0].fungible.contractId, { amounts: [ qty.toString() ] });
         return splitCids[0];
       }
-      const [h, ...t] = filtered;
-      const [fungibleCid, ] = await ledger.exercise(Fungible.Merge, h.fungible!.contractId, { fungibleCids: t.map(c => c.fungible!.contractId) });
-      if (sum === qty) return fungibleCid;
+      // To deal with Private Equity Scenario, only attempt a merge if all holdings have the same custodian. Otherwise just use the first holding
+      const singleCustodian = filtered.every((v, i, a) => ( i === 0  || v.payload.account.custodian === a[i - 1].payload.account.custodian))
+
+      var fungibleCid = filtered[0].fungible.contractId
+
+      if (singleCustodian) // Holdings with a single custodian can be merged
+      {
+        const [h, ...t] = filtered;
+        [fungibleCid, ] = await ledger.exercise(Fungible.Merge, h.fungible!.contractId, { fungibleCids: t.map(c => c.fungible!.contractId) });
+        if (sum === qty) return fungibleCid;
+      }
 
       const [ { splitCids, }, ] = await ledger.exercise(Fungible.Split, fungibleCid, { amounts: [ qty.toString() ] });
       return splitCids[0];

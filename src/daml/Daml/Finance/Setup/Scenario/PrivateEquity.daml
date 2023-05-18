@@ -301,6 +301,6 @@ run = do
       submitMulti [issuer] [public] do exerciseCmd borrowAgreementCid Lending.Repay with borrowedCid; interestCid
       pure ()
 
-  doLoan
+  -- doLoan
 
   pure parties
