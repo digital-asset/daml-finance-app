@@ -94,7 +94,7 @@ export const New : React.FC = () => {
                     </Select>
                   </FormControl>
                   <FormControl className={classes.inputField} fullWidth>
-                    <InputLabel className={classes.selectLabel}>Currency</InputLabel>
+                    <InputLabel className={classes.selectLabel}>Payment Instrument</InputLabel>
                     <Select fullWidth value={currencyLabel} onChange={e => setCurrencyLabel(e.target.value as string)} MenuProps={menuProps}>
                       {latests.filter(c => c.payload.id.unpack.includes("COMMITMENT")).map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack} - {c.payload.description}</MenuItem>))}
                     </Select>
@@ -102,7 +102,7 @@ export const New : React.FC = () => {
                   <TextField className={classes.inputField} fullWidth label="Quantity" type="number" value={amount} onChange={e => setAmount(e.target.value as string)} />
                   {/* <TextField className={classes.inputField} fullWidth label="Floor Price" type="number" value={floor} onChange={e => setFloor(e.target.value as string)} /> */}
                   <TextField className={classes.inputField} fullWidth label="Distribution Id" type="text" value={id} onChange={e => setId(e.target.value as string)} />
-                  <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={requestCreateAuction}>Request Auction</Button>
+                  <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={requestCreateAuction}>Request Distribution</Button>
                 </Paper>
               </Grid>
             </Grid>

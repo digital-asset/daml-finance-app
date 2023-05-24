@@ -26,12 +26,31 @@ import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(.
 import Daml.Finance.App.Lending.Model qualified as Lending (Repay(..))
 import Daml.Finance.App.Lending.Service qualified as Lending (AcceptBorrowOffer(..), CreateBorrowOffer(..), RequestBorrowOffer(..), Service)
 
+{-
+Suggested flow for demo of distribution in the UI:
+1. Show holdings of fund manager and investors.
+2. Fund manager creates new PE Distribution for 1m of PE1, with payment instrument PE1-COMMITMENT.
+3. Investors1, 2, 3 bid for 0.5m, 0.2m, 0.3m respectively.
+4. Transfer agent closes the auction.
+5. Look at Custody to see that the holdings are correct.
+
+Suggested flow for demo of lending in the UI:
+1. Complete demo of distribution shown above.
+2. Fund manager creates a new borrow request for 0.4m USD, with any maturity date in the future.
+3. Bank goes to requests, sees the borrow request and creates an offer with interest instrument = USD, interest amount = 1000 USD, collateral instrument PE1-COMMITMENT, collateral amount 0.44m.
+4. Fund manager accepts the borrow offer.
+5. Look at Custody to see that the holdings are correct.
+6. Fund manager repays the loan.
+7. Look at Custody to see that the holdings are correct.
+-}
+
 run: Script [PartyInfo]
 run = do
   let scenario = "Private Equity"
-  parties <- allocateParties scenario ["Operator", "FundManager", "Admin", "TransferAgent", "WealthManager", "Investor1", "Investor2", "Investor3", "Lender"] "Public"
+  parties <- allocateParties scenario ["Operator", "FundManager", "Admin", "TransferAgent", "WealthManager", "Investor1", "Investor2", "Investor3", "Bank"] "Public"
+   -- bank is the lender for the loan part of the demo
   let 
-    all@[operator, issuer, admin, ta, wm, inv1, inv2, inv3, lender, public] = map (.id) parties 
+    all@[operator, issuer, admin, ta, wm, inv1, inv2, inv3, bank, public] = map (.id) parties 
     pub = fromList [("Public", singleton public)]
     investorNames = [
       ("Investor1", inv1),
@@ -41,7 +60,7 @@ run = do
   -- Factories
   let 
     assetLabels = ["PE1", "PE2", "PE3", "TSLA"]
-    settlementPaths = [[issuer], [inv1], [inv2], [inv3], [lender]]
+    settlementPaths = [[issuer], [inv1], [inv2], [inv3], [bank]]
 
     cashRoute = Settlement.Hierarchy -- In lending TSLA will share this route also
       with 
@@ -59,8 +78,8 @@ run = do
 
     commitments = map (<>"-COMMITMENT") assetLabels
   
-    -- Each investor has its own settlement route for commitment tokens, with just the issuer (and lender) as a sub-custodian
-    commitmentPaths = map (\(rootCustodian, i) -> (i, Settlement.Hierarchy with pathsToRootCustodian = [[issuer], [lender]]; .. )) [
+    -- Each investor has its own settlement route for commitment tokens, with just the issuer (and bank) as a sub-custodian
+    commitmentPaths = map (\(rootCustodian, i) -> (i, Settlement.Hierarchy with pathsToRootCustodian = [[issuer], [bank]]; .. )) [
       (inv1, "PE1-COMMITMENT"),
       (inv2, "PE1-COMMITMENT"),
       (inv3, "PE1-COMMITMENT")]
@@ -76,7 +95,7 @@ run = do
   createOperatorRole operator
   createDistributorRole operator ta
   let 
-    custodianRoles = [inv1, inv2, inv3, ta, admin, issuer, lender] 
+    custodianRoles = [inv1, inv2, inv3, ta, admin, issuer, bank] 
   mapA_ (createCustodianRole operator) custodianRoles
   -- createDistributorRole   operator admin 
 
@@ -105,10 +124,10 @@ run = do
       (issuer, inv2, secPath),
       (issuer, inv3, secPath),
       -- Lending below
-      (issuer, lender, cashPath), -- for lender cash and TSLA. To work with existing lending service the lender and borrower account for TSLA have to have the same custodian
-      (inv1, lender, [commitmentPath1]),
-      (inv2, lender, [commitmentPath2]),
-      (inv3, lender, [commitmentPath3])
+      (ta, bank, cashPath), -- for bank cash and TSLA. To work with existing lending service the bank and borrower account for TSLA have to have the same custodian
+      (inv1, bank, [commitmentPath1]),
+      (inv2, bank, [commitmentPath2]),
+      (inv3, bank, [commitmentPath3])
       ]
 
   mapA_ (\(provider, customer, p) -> createCustodyService 
@@ -251,6 +270,9 @@ run = do
 
   -- Need to do a split and expose first
   --(batchCid, instructionCids) <- claimEffect operator inv1 admin public capitalCallEffectId [issuerCommit1Cid] $ Id "Round 1"
+
+
+  -- PE DISTRIBUTION TEST
   let
     doPEDistribution = do
       -- PE Distribution (Test)
@@ -267,20 +289,19 @@ run = do
       inv3BidCid        <- createPEDistributionBid operator ta inv3 public distributionCid 200_000.0 1.0 inv3CollateralCid inv3SecAccount
       processPEDistribution operator ta issuer public distributionCid [inv1BidCid, inv2BidCid, inv3BidCid]
 
-  doPEDistribution
+  --doPEDistribution
 
 
-  -- Now do securities lending
-  -- Investor1 will borrow 3,000 TSLA and provide 500,000 PE1-COMMITMENT as collateral
+  -- SECURITIES LENDING TEST
+  -- Investor1 will borrow 0.4m USD and provide 440,000 PE1-COMMITMENT as collateral
 
-  createLendingService operator lender issuer -- operator lender borrower
+  createLendingService operator bank issuer -- operator lender borrower
 
-  -- Lender account
-  lenderCashAndSharesAccount <- createAccount' issuer lender "Lender@FundManager|CashAndShares" empty
-  tsla        <- originateEquity issuer issuer pub epoch "TSLA" "Tesla Share"
+  -- bank account
+  bankCashAccount <- createAccount' ta bank "Bank@TA|Cash" empty
 
-  -- Credit lender with TSLA shares
-  borrowedCid   <- coerceContractId <$> deposit operator issuer lender public (qty 1_000.0 tsla) lenderCashAndSharesAccount
+   -- Credit lender with USD
+  borrowedCid   <- coerceContractId <$> deposit operator ta bank public (qty 400_000.0 usd) bankCashAccount
   -- Credit the borrower with cash to pay the interest
   interestCid   <- coerceContractId <$> deposit operator ta issuer public (qty 1_000.0 usd) issuerCashAccount
   -- Loan collateral is the PE1COMM held by the issuer at inv1
@@ -289,15 +310,15 @@ run = do
   let
     doLoan = do
       let
-        borrowedQty   = qty     1_000.0 tsla
+        borrowedQty   = qty     400_000.0 usd
         interestQty   = qty     1_000.0 usd
-        collateralQty = qty 400_000.0 usdCommit1
+        collateralQty = qty 440_000.0 usdCommit1
 
       collateralCid <- coerceContractId <$> getHolding issuer collateralQty
 
-      borrowOfferRequestCid <- submit issuer do exerciseByKeyCmd @Lending.Service (operator, lender, issuer) Lending.RequestBorrowOffer with id = "BORROW"; borrowed = borrowedQty; maturity = date 2022 Sep 14
-      borrowOfferCid <- submit lender do exerciseByKeyCmd @Lending.Service (operator, lender, issuer) Lending.CreateBorrowOffer with borrowOfferRequestCid; interest = interestQty; collateral = collateralQty; borrowedCid; lenderBorrowedAccount = lenderCashAndSharesAccount; lenderInterestAccount = lenderCashAndSharesAccount
-      (borrowedCid, borrowAgreementCid) <- submitMulti [issuer] [public] do exerciseByKeyCmd @Lending.Service (operator, lender, issuer) Lending.AcceptBorrowOffer with borrowOfferCid; collateralCid; account = issuerSecAccount
+      borrowOfferRequestCid <- submit issuer do exerciseByKeyCmd @Lending.Service (operator, bank, issuer) Lending.RequestBorrowOffer with id = "BORROW"; borrowed = borrowedQty; maturity = date 2022 Sep 14
+      borrowOfferCid <- submit bank do exerciseByKeyCmd @Lending.Service (operator, bank, issuer) Lending.CreateBorrowOffer with borrowOfferRequestCid; interest = interestQty; collateral = collateralQty; borrowedCid; lenderBorrowedAccount = bankCashAccount; lenderInterestAccount = bankCashAccount
+      (borrowedCid, borrowAgreementCid) <- submitMulti [issuer] [public] do exerciseByKeyCmd @Lending.Service (operator, bank, issuer) Lending.AcceptBorrowOffer with borrowOfferCid; collateralCid; account = issuerCashAccount
       submitMulti [issuer] [public] do exerciseCmd borrowAgreementCid Lending.Repay with borrowedCid; interestCid
       pure ()
 

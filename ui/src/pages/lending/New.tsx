@@ -29,9 +29,9 @@ export const New : React.FC = () => {
 
   const ledger = useLedger();
   const { loading: l1, lending } = useServices();
-  const { loading: l2, equities } = useInstruments();
+  const { loading: l2, equities, tokens } = useInstruments();
 
-  const borrowed = equities.find(c => c.payload.id.unpack === borrowedLabel);
+  const borrowed = equities.concat(tokens).find(c => c.payload.id.unpack === borrowedLabel);
   const canRequest = !!borrowedLabel && !!amount && !!maturity && !!borrowed;
 
   if (l1 || l2) return <Spinner />;
@@ -49,7 +49,7 @@ export const New : React.FC = () => {
 
   return (
     <CenteredForm title= "New Borrow Request">
-      <SelectInput  label="Borrowed Instrument"     value={borrowedLabel}         setValue={setBorrowedLabel} values={toValues(equities)} />
+      <SelectInput  label="Borrowed Instrument"     value={borrowedLabel}         setValue={setBorrowedLabel} values={toValues(equities.concat(tokens) )} />
       <TextInput    label="Amount"                  value={amount}                setValue={setAmount} />
       <DateInput    label="Maturity Date"           value={maturity}              setValue={setMaturity} />
       <Button className={classnames(cls.fullWidth, cls.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={requestBorrowOffer}>Request Offer</Button>

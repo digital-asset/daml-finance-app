@@ -65,8 +65,8 @@ export const HoldingProvider : React.FC = ({ children }) => {
       }
       // To deal with Private Equity Scenario, only attempt a merge if all holdings have the same custodian. Otherwise just use the first holding
       const singleCustodian = filtered.every((v, i, a) => ( i === 0  || v.payload.account.custodian === a[i - 1].payload.account.custodian))
-
-      var fungibleCid = filtered[0].fungible.contractId
+      // To deal with Private Equity Scenario, sort by descending amounts to give the best chance of having a big enough holding with one investor
+      var fungibleCid = filtered.sort((a, b) => {return Number.parseFloat(b.payload.amount) - Number.parseFloat(a.payload.amount)})[0].fungible!.contractId
 
       if (singleCustodian) // Holdings with a single custodian can be merged
       {

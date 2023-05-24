@@ -21,7 +21,6 @@ import { ContractId } from "@daml/types";
 import { Transferable } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Transferable";
 import { SelectInput, toValues } from "../../components/Form/SelectInput";
 import { TextInput } from "../../components/Form/TextInput";
-import { useScenario } from "../../context/ScenarioContext";
 
 export const Request : React.FC = () => {
   const cls = useStyles();
@@ -31,7 +30,6 @@ export const Request : React.FC = () => {
   const [ interestAmount, setInterestAmount ] = useState("");
   const [ collateralInstrumentLabel, setCollateralInstrumentLabel ] = useState("");
   const [ collateralAmount, setCollateralAmount ] = useState("");
-  const scenario = useScenario();
 
   const { getName } = useParties();
   const party = useParty();
@@ -44,7 +42,7 @@ export const Request : React.FC = () => {
 
   const { contractId } = useParams<any>();
   const request = requests.find(b => b.contractId === contractId);
-  const borrowedInstrument = equities.find(c => c.payload.id.unpack === request?.payload.borrowed.unit.id.unpack);
+  const borrowedInstrument = equities.concat(tokens).find(c => c.payload.id.unpack === request?.payload.borrowed.unit.id.unpack);
   const interestInstrument = tokens.find(c => c.payload.id.unpack === interestInstrumentLabel);
   const collateralInstrument = generics.concat(tokens).find(c => c.payload.id.unpack === collateralInstrumentLabel);
 
@@ -64,11 +62,8 @@ export const Request : React.FC = () => {
   const createBorrowOffer = async () => {
     if (!interestInstrument || !collateralInstrument) throw new Error("Interest or collateral instrument not found");
     const lenderBorrowedAccount = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === borrowedInstrument.payload.depository)?.key;
-    var lenderInterestAccount = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === interestInstrument.payload.depository)?.key;
-    // To find the lender interest account in the Private Equity scenario we have to filter only on account owner
-    if (scenario.selected.label === "Private Equity")
-      lenderInterestAccount = accounts.find(c => c.payload.accountView.owner === party)?.key;
-    
+    const lenderInterestAccount = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === interestInstrument.payload.depository)?.key;
+
     if (!lenderBorrowedAccount || !lenderInterestAccount) throw new Error("Borrowed or interest account not found");
     const borrowedCid = await getFungible(party, request.payload.borrowed.amount, request.payload.borrowed.unit);
     const arg = {
