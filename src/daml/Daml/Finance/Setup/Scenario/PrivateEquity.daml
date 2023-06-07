@@ -62,7 +62,7 @@ run = do
     assetLabels = ["PE1", "PE2", "PE3", "TSLA"]
     settlementPaths = [[issuer], [inv1], [inv2], [inv3], [bank]]
 
-    cashRoute = Settlement.Hierarchy -- In lending TSLA will share this route also
+    cashRoute = Settlement.Hierarchy
       with 
         rootCustodian = ta
         -- pathsToRootCustodian = List.delete [ta] settlementPaths
