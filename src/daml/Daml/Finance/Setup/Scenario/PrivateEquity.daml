@@ -59,7 +59,7 @@ run = do
 
   -- Factories
   let 
-    assetLabels = ["PE1", "PE2", "PE3", "TSLA"]
+    assetLabels = ["PE1", "PE2", "PE3"]
     settlementPaths = [[issuer], [inv1], [inv2], [inv3], [bank]]
 
     cashRoute = Settlement.Hierarchy
@@ -124,7 +124,7 @@ run = do
       (issuer, inv2, secPath),
       (issuer, inv3, secPath),
       -- Lending below
-      (ta, bank, cashPath), -- for bank cash and TSLA. To work with existing lending service the bank and borrower account for TSLA have to have the same custodian
+      (ta, bank, cashPath), -- for bank cash.
       (inv1, bank, [commitmentPath1]),
       (inv2, bank, [commitmentPath2]),
       (inv3, bank, [commitmentPath3])
