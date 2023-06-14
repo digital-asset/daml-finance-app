@@ -31,8 +31,8 @@ run = do
 
   -- Factories
   let
-    bankBRoute = Settlement.Hierarchy with rootCustodian = bankA; pathsToRootCustodian = [[bankB], [bankA]]
-    bankARoute = Settlement.Hierarchy with rootCustodian = bankB; pathsToRootCustodian = [[bankA], [bankB]]
+    bankBRoute = Settlement.Hierarchy with rootCustodian = bankA; pathsToRootCustodian = [[bankB]]
+    bankARoute = Settlement.Hierarchy with rootCustodian = bankB; pathsToRootCustodian = [[bankA]]
     bankAPaths = fromList [("USD", bankARoute), ("EUR", bankARoute), ("GBP", bankARoute), ("CHF", bankARoute)]
     bankBPaths = fromList [("USD", bankBRoute), ("EUR", bankBRoute), ("GBP", bankBRoute), ("CHF", bankBRoute)]
   accountFactoryCid <- toInterfaceContractId <$> submit operator do createCmd Account.Factory  with provider = operator; observers = pub
