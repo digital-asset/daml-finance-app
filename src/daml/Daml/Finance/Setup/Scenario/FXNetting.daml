@@ -1,0 +1,108 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.Setup.Scenario.FXNetting where
+
+import DA.Date (Month(..), date, toDateUTC, toGregorian)
+import DA.Map (empty, fromList)
+import DA.Set (singleton)
+import DA.Time (time)
+import Daml.Finance.Account.Account qualified as Account (Factory(..))
+import Daml.Finance.Instrument.Generic.Lifecycle.Rule qualified as Lifecycle (Rule(..))
+import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
+import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Claim (ClaimEffect (..))
+import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (Evolve(..), I)
+import Daml.Finance.Interface.Types.Common.Types (Id(..))
+import Daml.Finance.Interface.Util.Common (qty)
+import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
+import Daml.Finance.Setup.Util.Common
+import Daml.Finance.Setup.Util.Role
+import Daml.Finance.Setup.Util.Service
+import Daml.Finance.Setup.Util.Workflow
+import Daml.Script
+
+run : Script [PartyInfo]
+run = do
+  let scenario = "FX Netting"
+  parties <- allocateParties scenario ["Operator", "BankA", "BankB"] "Public"
+  let
+    all@[operator, bankA, bankB, public] = map (.id) parties
+    pub = fromList [("Public", singleton public)]
+
+  -- Factories
+  let
+    bankBRoute = Settlement.Hierarchy with rootCustodian = bankA; pathsToRootCustodian = [[bankB], [bankA]]
+    bankARoute = Settlement.Hierarchy with rootCustodian = bankB; pathsToRootCustodian = [[bankA], [bankB]]
+    bankAPaths = fromList [("USD", bankARoute), ("EUR", bankARoute), ("GBP", bankARoute), ("CHF", bankARoute)]
+    bankBPaths = fromList [("USD", bankBRoute), ("EUR", bankBRoute), ("GBP", bankBRoute), ("CHF", bankBRoute)]
+  accountFactoryCid <- toInterfaceContractId <$> submit operator do createCmd Account.Factory  with provider = operator; observers = pub
+  holdingFactoryCid <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory with provider = operator; observers = pub
+
+  -- Roles
+  createOperatorRole operator
+  createCustodianRole operator bankA
+  createCustodianRole operator bankB
+
+  -- Services
+  bankBCustodyServiceCid <- createCustodyService          operator bankA bankB  bankBPaths accountFactoryCid holdingFactoryCid
+  bankACustodyServiceCid <- createCustodyService          operator bankB bankA  bankAPaths accountFactoryCid holdingFactoryCid
+  createLifecycleService        operator bankA bankB public
+  createLifecycleService        operator bankB bankA public
+
+  -- Accounts
+  bankACashAccount <- createAccount operator bankB bankA public "BankA@BankB|Cash" empty
+  bankBCashAccount <- createAccount operator bankA bankB public "BankB@BankA|Cash" empty
+  bankASecAccount  <- createAccount operator bankB bankA public "BankA@BankB|Sec" empty
+  bankBSecAccount  <- createAccount operator bankA bankB public "BankB@BankA|Sec" empty
+
+  -- Time
+  t <- getTime
+  let
+    today = toDateUTC t
+    todayTime = time today 0 0 0
+    tt d = time d 0 0 0
+    epoch = tt $ date 1970 Jan 1
+    (ty, tm, td) = toGregorian today
+    y year = date year tm td
+  (clockCid, eventCid) <- createClockAndEvent all today (singleton public)
+
+  -- Instruments
+  usd <- originateToken operator operator pub epoch "USD" "US Dollar"
+  eur <- originateToken operator operator pub epoch "EUR" "EURO"
+  gbp <- originateToken operator operator pub epoch "GBP" "British Pound"
+  chf <- originateToken operator operator pub epoch "CHF" "Swiss Frank"
+  pmt <- originatePayment bankB bankA pub "PMT1"  "Payment -45m USD from BankA to BankB" today (-45_000_000.0) usd
+  pvp1 <- originatePvP bankB bankA pub "PVP1" "PvP +100m USD vs -90m EUR" today 100_000_000.0 usd 90_000_000.0 eur
+  pvp2 <- originatePvP bankB bankA pub "PVP2" "PvP -50m USD vs +40m GBP" today 40_000_000.0 gbp 50_000_000.0 usd
+  pvp3 <- originatePvP bankB bankA pub "PVP3" "PvP -20m CHF vs +20m EUR" today 20_000_000.0 eur 20_000_000.0 chf
+  pvp4 <- originatePvP bankB bankA pub "PVP4" "PvP +12m GBP vs -13m EUR" today 12_000_000.0 gbp 13_000_000.0 eur
+  let ccys = [usd, eur, gbp, chf]
+
+  -- Distribution
+  pmtCid  <- deposit operator bankB bankA public (qty 1.0 pmt) bankASecAccount
+  pvp1Cid <- deposit operator bankB bankA public (qty 1.0 pvp1) bankASecAccount
+  pvp2Cid <- deposit operator bankB bankA public (qty 1.0 pvp2) bankASecAccount
+  pvp3Cid <- deposit operator bankB bankA public (qty 1.0 pvp3) bankASecAccount
+  pvp4Cid <- deposit operator bankB bankA public (qty 1.0 pvp4) bankASecAccount
+
+  -- Data
+  createAccountDirectory bankA (map (\ccy -> (ccy, bankACashAccount)) ccys) $ singleton public
+  createAccountDirectory bankB (map (\ccy -> (ccy, bankBCashAccount)) ccys) $ singleton public
+
+  -- Workflows
+  let
+    doLifecycle = do
+      lifecycleCid <- toInterfaceContractId @Lifecycle.I <$> submit bankB do createCmd Lifecycle.Rule with providers = singleton bankB; lifecycler = bankA; observers = pub; id = Id "LC-RULE"; description = "Generic instrument lifecycle rule"
+      (_, [effectCid1]) <- submitMulti [bankA] [public] do exerciseCmd lifecycleCid Lifecycle.Evolve with eventCid; instrument = pmt; observableCids = []
+      (_, [effectCid2]) <- submitMulti [bankA] [public] do exerciseCmd lifecycleCid Lifecycle.Evolve with eventCid; instrument = pvp1; observableCids = []
+      (_, [effectCid3]) <- submitMulti [bankA] [public] do exerciseCmd lifecycleCid Lifecycle.Evolve with eventCid; instrument = pvp2; observableCids = []
+      (_, [effectCid4]) <- submitMulti [bankA] [public] do exerciseCmd lifecycleCid Lifecycle.Evolve with eventCid; instrument = pvp3; observableCids = []
+      (_, [effectCid5]) <- submitMulti [bankA] [public] do exerciseCmd lifecycleCid Lifecycle.Evolve with eventCid; instrument = pvp4; observableCids = []
+
+      Some cs <- queryContractId bankA bankACustodyServiceCid
+      let claimRuleCid = cs.claimRuleCid
+      submitMulti [bankA] [public] do exerciseCmd claimRuleCid Claim.ClaimEffect with claimer = bankA; holdingCids = [pmtCid]; effectCid = effectCid1; batchId = Id "Batch1"
+      pure ()
+  doLifecycle
+
+  pure parties

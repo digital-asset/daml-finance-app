@@ -200,6 +200,19 @@ export const scenarios : Scenario[] = [
     useNetworkLogin: true
   },
   {
+    label: "FX Netting",
+    description: "FX STM Netting and Settlement",
+    apps: [ structuring, custody, servicing, settlement ],
+    image: scenarioSecuritiesLending,
+    positions: new Map([
+      [ "Operator", { x:    0, y:   0 } ],
+      [ "Public",   { x:    0, y:   0 } ],
+      [ "BankA",    { x:    0, y:   0 } ],
+      [ "BankB",    { x:  300, y:   0 } ],
+    ]),
+    useNetworkLogin: true
+  },
+  {
     label: "Decentralized Finance",
     description: "Experimental Decentralized Financial protocols",
     apps: [ custody, defi, network ],

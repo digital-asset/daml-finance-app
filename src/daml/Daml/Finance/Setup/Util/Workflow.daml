@@ -3,7 +3,7 @@
 
 module Daml.Finance.Setup.Util.Workflow where
 
-import DA.Date (DayOfWeek, toGregorian)
+import DA.Date (DayOfWeek, Month(Jan), date, toGregorian)
 import DA.List (head)
 import DA.Map qualified as M (Map, fromList)
 import DA.Set (fromList, singleton)
@@ -71,6 +71,7 @@ import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum, RollConvent
 import Daml.Finance.Interface.Types.Date.Schedule (Frequency(..), PeriodicSchedule(..))
 import Daml.Finance.Settlement.Instruction qualified as Instruction (T)
 import Daml.Finance.Setup.Util.Common (getHolding)
+import Daml.Finance.Setup.Payoff (futureDvp, futurePayment)
 import Daml.Script
 
 createAccount : Party -> Party -> Party -> Party -> Text -> PartiesMap -> Script AccountKey
@@ -154,6 +155,20 @@ originateGeneric depository issuer observers acquisitionTime id description clai
   cid <- coerceContractId <$> submitMulti [depository, issuer] [] do
     createCmd Generic.Instrument with depository; issuer; id = Id id; description; version = "0"; acquisitionTime; claims; observers; lastEventTimestamp = acquisitionTime
   createReference cid depository issuer observers
+
+originatePayment : Party -> Party -> PartiesMap -> Text -> Text -> Date -> Decimal -> InstrumentKey -> Script InstrumentKey
+originatePayment depository issuer observers id description paymentDate amount ccy =
+  let
+    claims = futurePayment ccy amount paymentDate
+    acquisitionTime = time (date 1970 Jan 1) 0 0 0
+  in originateGeneric depository issuer observers acquisitionTime id description claims
+
+originatePvP : Party -> Party -> PartiesMap -> Text -> Text -> Date -> Decimal -> InstrumentKey -> Decimal -> InstrumentKey -> Script InstrumentKey
+originatePvP depository issuer observers id description paymentDate recAmount recCcy payAmount payCcy =
+  let
+    claims = futureDvp payCcy payAmount recCcy recAmount paymentDate
+    acquisitionTime = time (date 1970 Jan 1) 0 0 0
+  in originateGeneric depository issuer observers acquisitionTime id description claims
 
 originateFixedRateBond : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Date -> [Text] -> Party -> Date-> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> InstrumentKey -> Script InstrumentKey
 originateFixedRateBond depository issuer id description observers lastEventTimestamp issueDate holidayCalendarIds calendarDataProvider firstCouponDate maturityDate dayCountConvention businessDayConvention couponRate couponPeriod couponPeriodMultiplier currency = do

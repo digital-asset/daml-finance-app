@@ -3,27 +3,30 @@
 
 module Daml.Finance.Setup.Demo where
 
-import Daml.Finance.Setup.Scenario.BondIssuance         qualified as BondIssuance
-import Daml.Finance.Setup.Scenario.CorporateActions     qualified as CorporateActions
-import Daml.Finance.Setup.Scenario.DecentralizedFinance qualified as DecentralizedFinance
-import Daml.Finance.Setup.Scenario.Default              qualified as Default
-import Daml.Finance.Setup.Scenario.FundTokenization     qualified as FundTokenization
-import Daml.Finance.Setup.Scenario.NaturalGas           qualified as NaturalGas
-import Daml.Finance.Setup.Scenario.OtcSwaps             qualified as OtcSwaps
-import Daml.Finance.Setup.Scenario.SecuritiesLending    qualified as SecuritiesLending
-import Daml.Finance.Setup.Scenario.StructuredNotes      qualified as StructuredNotes
+-- import Daml.Finance.Setup.Scenario.BondIssuance         qualified as BondIssuance
+-- import Daml.Finance.Setup.Scenario.CorporateActions     qualified as CorporateActions
+-- import Daml.Finance.Setup.Scenario.DecentralizedFinance qualified as DecentralizedFinance
+-- import Daml.Finance.Setup.Scenario.Default              qualified as Default
+-- import Daml.Finance.Setup.Scenario.FundTokenization     qualified as FundTokenization
+import Daml.Finance.Setup.Scenario.FXNetting            qualified as FXNetting
+-- import Daml.Finance.Setup.Scenario.NaturalGas           qualified as NaturalGas
+-- import Daml.Finance.Setup.Scenario.OtcSwaps             qualified as OtcSwaps
+-- import Daml.Finance.Setup.Scenario.SecuritiesLending    qualified as SecuritiesLending
+-- import Daml.Finance.Setup.Scenario.StructuredNotes      qualified as StructuredNotes
 import Daml.Finance.Setup.Util.Common (PartyInfo)
 import Daml.Script
 
 demo : Script [PartyInfo]
 demo = do
-  p1 <- BondIssuance.run
-  p2 <- CorporateActions.run
-  p3 <- Default.run
-  p4 <- NaturalGas.run
-  p5 <- SecuritiesLending.run
-  p6 <- StructuredNotes.run
-  p7 <- FundTokenization.run
-  p8 <- DecentralizedFinance.run
-  p9 <- OtcSwaps.run
-  pure $ p1 <> p2 <> p3 <> p4 <> p5 <> p6 <> p7 <> p8 <> p9
+  -- p1 <- BondIssuance.run
+  -- p2 <- CorporateActions.run
+  -- p3 <- Default.run
+  -- p4 <- NaturalGas.run
+  -- p5 <- SecuritiesLending.run
+  -- p6 <- StructuredNotes.run
+  -- p7 <- FundTokenization.run
+  -- p8 <- DecentralizedFinance.run
+  -- p9 <- OtcSwaps.run
+  p10 <- FXNetting.run
+  -- pure $ p1 <> p2 <> p3 <> p4 <> p5 <> p6 <> p7 <> p8 <> p9 <> p10
+  pure p10

@@ -30,11 +30,13 @@ export const Instruments : React.FC = () => {
   const myInstruments = latests.filter(a =>
     (a.payload.issuer === party) &&
     (!!a.claim || !!a.equity));
+  const svc = lifecycle.find(c => c.payload.customer === party);
 
   const lifecycleAll = async (cs : any[]) => {
+    if (!svc) return;
     const lifecycleOne = async (c : InstrumentAggregate) => {
       if (!c.claim) return;
-      const ruleCid = !!c.generic ? lifecycle[0].payload.genericRuleCid : lifecycle[0].payload.dynamicRuleCid;
+      const ruleCid = !!c.generic ? svc.payload.genericRuleCid : svc.payload.dynamicRuleCid;
       const arg = {
         ruleCid,
         // TODO: Assumes the only event we have is a DateClockUpdatedEvent
@@ -42,7 +44,7 @@ export const Instruments : React.FC = () => {
         instrument: c.key,
         observableCids: numericObservables.map(o => o.contractId),
       }
-      await ledger.exercise(Service.Lifecycle, lifecycle[0].contractId, arg);
+      await ledger.exercise(Service.Lifecycle, svc.contractId, arg);
     };
     await Promise.all(cs.map(c => lifecycleOne(c as InstrumentAggregate)));
     navigate("/app/servicing/effects")
