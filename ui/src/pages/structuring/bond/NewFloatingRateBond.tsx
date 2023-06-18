@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@mui/material";
 import classnames from "classnames";
-import { useLedger, useParty } from "@daml/react";
+import { useLedger } from "@daml/react";
 import useStyles from "../../styles";
 import { parseDate, singleton } from "../../../util";
 import { Spinner } from "../../../components/Spinner/Spinner";
@@ -31,6 +31,7 @@ export const NewFloatingRateBond : React.FC = () => {
   const navigate = useNavigate();
 
   const [ id, setId ] = useState("");
+  const [ description, setDescription ] = useState("");
   const [ referenceRateId, setReferenceRateId ] = useState("");
   const [ couponSpread, setCouponSpread ] = useState("");
   const [ issueDate, setIssueDate ] = useState<Date | null>(null);
@@ -45,7 +46,6 @@ export const NewFloatingRateBond : React.FC = () => {
   const canRequest = !!id && !!referenceRateId && !!couponSpread && !!issueDate && !!firstCouponDate && !!maturityDate && !!dayCountConvention && businessDayConvention && !!couponFrequency && !!currency;
 
   const ledger = useLedger();
-  const party = useParty();
   const { getParty } = useParties();
   const { loading: l1, structuring, structuringAuto } = useServices();
   const { loading: l2, tokens } = useInstruments();
@@ -58,16 +58,17 @@ export const NewFloatingRateBond : React.FC = () => {
     if (!ccy) throw new Error("Couldn't find currency " + currency);
     const couponPeriod = couponFrequency === "Annual" ? PeriodEnum.Y : PeriodEnum.M;
     const couponPeriodMultiplier = couponFrequency === "Annual" ? "1" : (couponFrequency === "Semi-annual" ? "6" : "3");
+    const calendarDataProvider = structuringAuto.length > 0 ? structuringAuto[0].payload.provider : structuring[0].payload.provider;
     const arg = {
       id,
-      description: id,
+      description,
       referenceRateId,
       couponSpread,
       issueDate: parseDate(issueDate),
       firstCouponDate: parseDate(firstCouponDate),
       maturityDate: parseDate(maturityDate),
       holidayCalendarIds: holidayCalendar === "" ? [] : [holidayCalendar],
-      calendarDataProvider: party,
+      calendarDataProvider,
       dayCountConvention: dayCountConvention as DayCountConventionEnum,
       businessDayConvention: businessDayConvention as BusinessDayConventionEnum,
       couponPeriod,
@@ -84,6 +85,7 @@ export const NewFloatingRateBond : React.FC = () => {
   return (
     <CenteredForm title= "New Floating Rate Bond">
       <TextInput    label="Id"                          value={id}                    setValue={setId} />
+      <TextInput    label="Description"                 value={description}           setValue={setDescription} />
       <SelectInput  label="Currency"                    value={currency}              setValue={setCurrency}              values={toValues(tokens)} />
       <SelectInput  label="Reference Rate"              value={referenceRateId}       setValue={setReferenceRateId}       values={referenceRates} />
       <TextInput    label="Coupon Spread (per period)"  value={couponSpread}          setValue={setCouponSpread} />

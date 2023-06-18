@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import classnames from "classnames";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
-import { Typography, Grid, Paper, Select, MenuItem, TextField, Button, MenuProps, FormControl, InputLabel } from "@mui/material";
+import { Typography, Grid, Paper, Button } from "@mui/material";
 import useStyles from "../../styles";
 import { Spinner } from "../../../components/Spinner/Spinner";
 import { Reference } from "@daml.js/daml-finance-interface-account/lib/Daml/Finance/Interface/Account/Account";
@@ -18,16 +18,18 @@ import { Service as AuctionAuto } from "@daml.js/daml-finance-app/lib/Daml/Finan
 import { Message } from "../../../components/Message/Message";
 import { useHoldings } from "../../../context/HoldingContext";
 import { Aggregate } from "../../../components/Instrument/Aggregate";
+import { TextInput } from "../../../components/Form/TextInput";
+import { SelectInput, toValues } from "../../../components/Form/SelectInput";
 
 export const New : React.FC = () => {
-  const classes = useStyles();
+  const cls = useStyles();
   const navigate = useNavigate();
 
-  const [ instrumentLabel, setInstrumentLabel ] = useState("");
-  const [ currencyLabel, setCurrencyLabel ] = useState("");
-  const [ amount, setAmount ] = useState("");
-  const [ floor, setFloor ] = useState("");
   const [ id, setId ] = useState("");
+  const [ instrumentLabel, setInstrumentLabel ] = useState("");
+  const [ amount, setAmount ] = useState("");
+  const [ currencyLabel, setCurrencyLabel ] = useState("");
+  const [ floor, setFloor ] = useState("");
 
   const ledger = useLedger();
   const party = useParty();
@@ -44,7 +46,7 @@ export const New : React.FC = () => {
   const instrument = latests.find(c => c.payload.id.unpack === instrumentLabel);
   const currency = tokens.find(c => c.payload.id.unpack === currencyLabel);
   const myHoldings = holdings.filter(c => c.payload.account.owner === party);
-  const myHoldingLabels = myHoldings.map(c => c.payload.instrument.id.unpack).filter((v, i, a) => a.indexOf(v) === i);
+  const myInstrumentValues = myHoldings.map(c => c.payload.instrument.id.unpack).filter((v, i, a) => a.indexOf(v) === i).map(c => ({ value: c, display: c }));
   const canRequest = !!instrumentLabel && !!instrument && !!currencyLabel && !!currency && !!id && !!amount && !!floor;
 
   if (myServices.length === 0) return <Message text={"No auction service found for customer: " + party} />;
@@ -72,38 +74,22 @@ export const New : React.FC = () => {
     }
   }
 
-  const menuProps : Partial<MenuProps> = { anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" } };
   return (
     <Grid container direction="column" spacing={2}>
       <Grid item xs={12}>
-        <Typography variant="h3" className={classes.heading}>New Auction</Typography>
+        <Typography variant="h2" className={classnames(cls.defaultHeading, cls.centered)}>New Auction</Typography>
       </Grid>
       <Grid item xs={12}>
-        <Grid container spacing={4}>
+        <Grid container direction="row" spacing={4}>
           <Grid item xs={4}>
-            <Grid container direction="column" spacing={2}>
-              <Grid item xs={12}>
-                <Paper className={classnames(classes.fullWidth, classes.paper)}>
-                  <Typography variant="h5" className={classes.heading}>Details</Typography>
-                  <FormControl className={classes.inputField} fullWidth>
-                    <InputLabel className={classes.selectLabel}>Auctioned Asset</InputLabel>
-                    <Select fullWidth value={instrumentLabel} onChange={e => setInstrumentLabel(e.target.value as string)} MenuProps={menuProps}>
-                      {myHoldingLabels.filter(a => a !== currencyLabel).map((a, i) => (<MenuItem key={i} value={a}>{a}</MenuItem>))}
-                    </Select>
-                  </FormControl>
-                  <FormControl className={classes.inputField} fullWidth>
-                    <InputLabel className={classes.selectLabel}>Currency</InputLabel>
-                    <Select fullWidth value={currencyLabel} onChange={e => setCurrencyLabel(e.target.value as string)} MenuProps={menuProps}>
-                      {tokens.map((c, i) => (<MenuItem key={i} value={c.payload.id.unpack}>{c.payload.id.unpack} - {c.payload.description}</MenuItem>))}
-                    </Select>
-                  </FormControl>
-                  <TextField className={classes.inputField} fullWidth label="Quantity" type="number" value={amount} onChange={e => setAmount(e.target.value as string)} />
-                  <TextField className={classes.inputField} fullWidth label="Floor Price" type="number" value={floor} onChange={e => setFloor(e.target.value as string)} />
-                  <TextField className={classes.inputField} fullWidth label="Auction Id" type="text" value={id} onChange={e => setId(e.target.value as string)} />
-                  <Button className={classnames(classes.fullWidth, classes.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={requestCreateAuction}>Request Auction</Button>
-                </Paper>
-              </Grid>
-            </Grid>
+            <Paper className={classnames(cls.fullWidth, cls.paper)}>
+              <TextInput    label="Id"                          value={id}                    setValue={setId} />
+              <SelectInput  label="Asset"                       value={instrumentLabel}       setValue={setInstrumentLabel}       values={myInstrumentValues} />
+              <TextInput    label="Notional"                    value={amount}                setValue={setAmount} />
+              <SelectInput  label="Currency"                    value={currencyLabel}         setValue={setCurrencyLabel}         values={toValues(tokens)} />
+              <TextInput    label="Floor Price"                 value={floor}                 setValue={setFloor} />
+              <Button className={classnames(cls.fullWidth, cls.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={requestCreateAuction}>Create Auction</Button>
+            </Paper>
           </Grid>
           <Grid item xs={8}>
             {!!instrument && <Aggregate instrument={instrument} />}
