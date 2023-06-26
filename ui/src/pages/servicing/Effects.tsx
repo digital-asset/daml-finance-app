@@ -3,7 +3,7 @@
 
 import React from "react";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
-import { dedup, keyEquals, shorten } from "../../util";
+import { dedup, fmt, keyEquals, shorten } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { CreateEvent } from "@daml/ledger";
 import { useParties } from "../../context/PartiesContext";
@@ -42,18 +42,22 @@ export const Effects : React.FC = () => {
     };
     await Promise.all(effects.map(e => claimEffect(e as CreateEvent<Effect>)));
   };
+
   const createRow = (c : CreateEvent<Effect>) : any[] => {
+    const filtered = holdings.filter(h => keyEquals(h.payload.instrument, c.payload.targetInstrument));
+    const isCustodian = filtered[0].payload.account.custodian === party;
+    const produced = c.payload.otherProduced[0];
+    const consumed = c.payload.otherConsumed[0];
     return [
       getNames(c.payload.providers),
       c.payload.id.unpack,
-      c.payload.description,
-      c.payload.targetInstrument.id.unpack + " (v" + shorten(c.payload.targetInstrument.version) + ")",
-      !!c.payload.producedInstrument ? c.payload.targetInstrument.id.unpack + " (v" + shorten(c.payload.producedInstrument.version) + ")" : "",
-      holdings.filter(h => keyEquals(c.payload.targetInstrument, h.payload.instrument)).length,
+      c.payload.targetInstrument.id.unpack,
+      isCustodian ? (!!produced ? fmt(produced.amount) + " " + produced.unit.id.unpack : "") : (!!consumed ? fmt(consumed.amount) + " " + consumed.unit.id.unpack : ""),
+      isCustodian ? (!!consumed ? fmt(consumed.amount) + " " + consumed.unit.id.unpack : "") : (!!produced ? fmt(produced.amount) + " " + produced.unit.id.unpack : ""),
       <DetailButton path={c.contractId} />
     ];
   }
-  const headers = ["Providers", "Id", "Description", "Target", "Produced", "Positions", "Details"];
+  const headers = ["Counterparties", "Id", "Source", "Pay", "Receive", "Details"];
   const values : any[] = effects.map(createRow);
   const callbackValues = effects.map(c => c as any);
   return (

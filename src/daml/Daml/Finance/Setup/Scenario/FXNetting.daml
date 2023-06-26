@@ -31,10 +31,11 @@ run = do
 
   -- Factories
   let
+    insts = ["USD", "EUR", "GBP", "CHF", "PMT1", "PVP1", "PVP2", "PVP3", "PVP4"]
     bankBRoute = Settlement.Hierarchy with rootCustodian = bankA; pathsToRootCustodian = [[bankB]]
     bankARoute = Settlement.Hierarchy with rootCustodian = bankB; pathsToRootCustodian = [[bankA]]
-    bankAPaths = fromList [("USD", bankARoute), ("EUR", bankARoute), ("GBP", bankARoute), ("CHF", bankARoute)]
-    bankBPaths = fromList [("USD", bankBRoute), ("EUR", bankBRoute), ("GBP", bankBRoute), ("CHF", bankBRoute)]
+    bankAPaths = fromList $ map (\i -> (i, bankARoute)) insts
+    bankBPaths = fromList $ map (\i -> (i, bankBRoute)) insts
   accountFactoryCid <- toInterfaceContractId <$> submit operator do createCmd Account.Factory  with provider = operator; observers = pub
   holdingFactoryCid <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory with provider = operator; observers = pub
 
@@ -44,10 +45,10 @@ run = do
   createCustodianRole operator bankB
 
   -- Services
-  bankBCustodyServiceCid <- createCustodyService          operator bankA bankB  bankBPaths accountFactoryCid holdingFactoryCid
-  bankACustodyServiceCid <- createCustodyService          operator bankB bankA  bankAPaths accountFactoryCid holdingFactoryCid
-  createLifecycleService        operator bankA bankB public
-  createLifecycleService        operator bankB bankA public
+  bankBCustodyServiceCid <- createCustodyService operator bankA bankB bankBPaths accountFactoryCid holdingFactoryCid
+  bankACustodyServiceCid <- createCustodyService operator bankB bankA bankAPaths accountFactoryCid holdingFactoryCid
+  createLifecycleService operator bankA bankB public
+  createLifecycleService operator bankB bankA public
 
   -- Accounts
   bankACashAccount <- createAccount operator bankB bankA public "BankA@BankB|Cash" empty
@@ -103,6 +104,6 @@ run = do
       let claimRuleCid = cs.claimRuleCid
       submitMulti [bankA] [public] do exerciseCmd claimRuleCid Claim.ClaimEffect with claimer = bankA; holdingCids = [pmtCid]; effectCid = effectCid1; batchId = Id "Batch1"
       pure ()
-  doLifecycle
+  -- doLifecycle
 
   pure parties

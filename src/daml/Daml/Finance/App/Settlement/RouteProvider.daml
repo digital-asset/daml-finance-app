@@ -1,0 +1,96 @@
+-- Copyright (c) 2023 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Settlement.RouteProvider where
+
+import DA.List (dedup, groupOn, head, isSuffixOf, stripInfix, stripSuffix, tails)
+import DA.Map qualified as M (Map, lookup)
+import DA.Optional (fromSomeNote, isSome)
+import Daml.Finance.Interface.Settlement.RouteProvider qualified as RouteProvider (Discover(..), I, View(..))
+import Daml.Finance.Interface.Settlement.Types (RoutedStep(..), Step(..))
+import Daml.Finance.Interface.Types.Common.Types (Parties)
+import Daml.Finance.Settlement.Hierarchy (Hierarchy(..))
+
+-- | Template which implements the `RouteProvider` interface.
+-- It is used to discover the settlement route for each settlement `Step`, i.e., `RoutedSteps`\s.
+-- For each instrument to settle as part of the batch, a hierarchy of intermediaries is specified
+-- in `paths`. This hierarchy is used to generate the `RoutedStep`\s.
+template Static
+  with
+    provider : Party
+      -- ^ Party providing the facility.
+    observers : Parties
+      -- ^ Observers.
+    paths : M.Map Text Hierarchy
+      -- ^ Hierarchical paths used to settle holding transfers. A path is specified for each
+      --   instrument label.
+  where
+    signatory provider
+    observer observers
+
+    interface instance RouteProvider.I for Static where
+      view = RouteProvider.View with provider; observers
+      discover RouteProvider.Discover{discoverors; contextId; steps} =
+        let
+          -- Group steps by instrument. For each group, lookup corresponding paths and expand steps
+          -- according to the corresponding settlement route.
+          routedSteps = mconcat $ fromSomeNote "Could not find path or route." $ mapA (\steps -> do
+            let k = show (head steps).quantity.unit.id
+            route <- M.lookup k paths
+            mconcat <$> mapA (unfoldStep route) steps
+            ) $ groupOn (.quantity.unit) steps
+        in
+          pure routedSteps
+
+-- Given a hierarchy, unfold a step from sender to receiver onto the corresponding route.
+-- Returns `None` if no route can be found.
+unfoldStep : Hierarchy -> Step -> Optional [RoutedStep]
+unfoldStep hierarchy step = do
+  senderPath <- locateParty step.sender hierarchy
+  receiverPath <- locateParty step.receiver hierarchy
+  map (\(sender, receiver, custodian) ->
+    RoutedStep with sender; receiver; custodian; quantity = step.quantity) <$>
+      getRoute senderPath receiverPath
+
+-- | HIDE
+-- Given a sender path to root custodian and a receiver path to root custodian, calculate the
+-- route to transfer a holding from sender to receiver. We assume that transfers can only be done
+-- between accounts at the same custodian. Returns `None` if no such route can be found.
+-- Otherwise, a list of (sender, receiver, custodian) triplets is returned.
+getRoute : (Eq a) => [a] -> [a] -> Optional [(a, a, a)]
+getRoute senderPath receiverPath | senderPath `isSuffixOf` receiverPath = do
+  -- sending down the chain : cut the receiver path at the sender and flip the chain
+  fullRoute <- reverse <$> stripSuffix (drop 1 senderPath) receiverPath
+  pure $ zip3 fullRoute (drop 1 fullRoute) fullRoute
+getRoute senderPath receiverPath | receiverPath `isSuffixOf` senderPath = do
+  -- sending up the chain : cut the sender path at the receiver
+  fullRoute <- stripSuffix (drop 1 receiverPath) senderPath
+  let receivers = drop 1 fullRoute
+  pure $ zip3 fullRoute receivers receivers
+getRoute senderPath receiverPath =
+  -- sending up and then down the chain
+  case filter (`isSuffixOf` receiverPath) $ tails senderPath of
+    [] -> None
+    h :: _ -> do
+      fromRoute <- stripSuffix h senderPath
+      toRoute <- stripSuffix h receiverPath
+      let
+        -- custodians on the path up the chain
+        fromCustodians = fmap snd $ zip fromRoute $ drop 1 senderPath
+        -- custodians on the path down the chain
+        toCustodians = reverse . fmap snd $ zip toRoute $ drop 1 receiverPath
+        fullRoute = fromRoute <> reverse toRoute
+        receivers = drop 1 fullRoute
+        custodians = fromCustodians <> drop 1 toCustodians
+      Some $ zip3 fullRoute receivers custodians
+
+-- | HIDE
+-- Locate a party within a hierarchy, returning the path to the root custodian.
+-- Returns `None` if no path could be found. Returns an error if multiple paths could be found.
+locateParty : Party -> Hierarchy -> Optional [Party]
+locateParty p h | p == h.rootCustodian = Some [p, p]
+locateParty p h =
+  case dedup . filter isSome $ map (fmap snd . stripInfix [p]) h.pathsToRootCustodian of
+    [Some path] -> Some $ [p] <> path <> [h.rootCustodian]
+    [] -> None
+    _ -> error $ "Multiple paths to root custodian found for party " <> show p
