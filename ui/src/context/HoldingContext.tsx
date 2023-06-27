@@ -14,7 +14,7 @@ import { ContractId } from "@daml/types";
 type HoldingState = {
   loading : boolean
   holdings : HoldingAggregate[]
-  getFungible : (owner : string, amount : number | string, instrument: InstrumentKey) => Promise<ContractId<Fungible>>
+  getFungible : (owner : string, amount : number | string, instrument: InstrumentKey, custodian?: string ) => Promise<ContractId<Fungible>>
 };
 
 export type HoldingAggregate = CreateEvent<Base> & {
@@ -25,7 +25,7 @@ export type HoldingAggregate = CreateEvent<Base> & {
 const empty = {
   loading: true,
   holdings: [],
-  getFungible: (owner : string, amount : number | string, instrument: InstrumentKey) => { throw new Error("Not implemented"); }
+  getFungible: (owner : string, amount : number | string, instrument: InstrumentKey, custodian?: string) => { throw new Error("Not implemented"); }
 };
 
 const HoldingContext = React.createContext<HoldingState>(empty);
@@ -50,9 +50,11 @@ export const HoldingProvider : React.FC = ({ children }) => {
     const fungiblesByCid : Map<string, CreateEvent<Fungible>> = new Map(fungibles.map(c => [c.contractId, c]));
     const aggregates : HoldingAggregate[] = holdings.map(c => ({ ...c, transferable: transferablesByCid.get(c.contractId), fungible: fungiblesByCid.get(c.contractId) }));
 
-    const getFungible = async (owner : string, amount : number | string, instrument: InstrumentKey) : Promise<ContractId<Fungible>> => {
+    const getFungible = async (owner : string, amount : number | string, instrument: InstrumentKey, custodian?: string) : Promise<ContractId<Fungible>> => {
       const qty = typeof amount === "string" ? parseFloat(amount) : amount;
-      const filtered = aggregates.filter(c => c.payload.account.owner === owner && keyEquals(c.payload.instrument, instrument) && !c.payload.lock);
+      const filtered = aggregates
+        .filter(c => c.payload.account.owner === owner && keyEquals(c.payload.instrument, instrument) && !c.payload.lock)
+        .filter(c => custodian === undefined || c.payload.account.custodian === custodian);
       if (filtered.length === 0) throw new Error("Could not find unencumbered holding on instrument [" + instrument.id.unpack + "]");
       if (!filtered[0].fungible) throw new Error("Holdings are not fungible, cannot right-size to correct amount.");
       const sum = filtered.reduce((a, b) => a + parseFloat(b.payload.amount), 0);

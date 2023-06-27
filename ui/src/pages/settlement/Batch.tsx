@@ -42,7 +42,7 @@ export const Batch : React.FC = () => {
       const allocation : Allocation = { tag: "CreditReceiver", value: {} };
       await ledger.exercise(Instruction.Allocate, c.contractId, { actors, allocation });
     } else {
-      const holdingCid = await getFungible(party, c.payload.routedStep.quantity.amount, c.payload.routedStep.quantity.unit);
+      const holdingCid = await getFungible(party, c.payload.routedStep.quantity.amount, c.payload.routedStep.quantity.unit, c.payload.routedStep.custodian);
       const allocation : Allocation = { tag: "Pledge", value: holdingCid as string as ContractId<Holding> };
       await ledger.exercise(Instruction.Allocate, c.contractId, { actors, allocation });
     };
