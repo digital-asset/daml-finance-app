@@ -61,12 +61,12 @@ template Service
       do
         create Custody.WithdrawalRequest with ..
 
-    nonconsuming choice Claim : ()
-      with
-        holdingEffects : (ContractId Holding.I, ContractId Effect.I)
-      controller customer
-      do
-        create Custody.WithdrawalRequest with ..
+    -- nonconsuming choice Claim : ()
+    --   with
+    --     holdingEffects : (ContractId Holding.I, ContractId Effect.I)
+    --   controller customer
+    --   do
+    --     create Custody.WithdrawalRequest with ..
 
     nonconsuming choice OpenAccount : AccountKey
       with

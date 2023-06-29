@@ -40,65 +40,65 @@ template Claim
     signatory providers
     observer claimers
 
-    nonconsuming choice ClaimEffects : Claim.ClaimResult
-      -- ^ Claim effects and generate corresponding netted settlement instructions.
-      with
-        claimer : Party
-          -- ^ The party claiming the effect.
-        holdingCids : [ContractId Holding.I]
-          -- ^ The holdings to process.
-        effectCids : [ContractId Effect.I]
-          -- ^ The effect to process.
-        batchId : Id
-          -- ^ Identifier used for the generated settlement batch.
-      controller claimer
-      do
-        assertMsg "Effect can only be claimed by authorized parties." $
-          claimer `member` this.claimers
-        -- effectView <- exercise effectCid Effect.GetView with viewer = claimer
-        -- holdings <- mapA fetch holdingCids
-        -- forA_ holdings \h ->
-        --   assertMsg "The provided holding does not reference the expected instrument." $
-        --     getInstrument h == effectView.targetInstrument
+    -- nonconsuming choice ClaimEffects : Claim.ClaimResult
+    --   -- ^ Claim effects and generate corresponding netted settlement instructions.
+    --   with
+    --     claimer : Party
+    --       -- ^ The party claiming the effect.
+    --     holdingCids : [ContractId Holding.I]
+    --       -- ^ The holdings to process.
+    --     effectCids : [ContractId Effect.I]
+    --       -- ^ The effect to process.
+    --     batchId : Id
+    --       -- ^ Identifier used for the generated settlement batch.
+    --   controller claimer
+    --   do
+    --     assertMsg "Effect can only be claimed by authorized parties." $
+    --       claimer `member` this.claimers
+    --     -- effectView <- exercise effectCid Effect.GetView with viewer = claimer
+    --     -- holdings <- mapA fetch holdingCids
+    --     -- forA_ holdings \h ->
+    --     --   assertMsg "The provided holding does not reference the expected instrument." $
+    --     --     getInstrument h == effectView.targetInstrument
 
-        -- Calculate settlement steps
-        let
-          createSteps consume quantities holding =
-            let
-              owner = getOwner holding
-              custodian = getCustodian holding
-              sender = if consume then owner else custodian
-              receiver = if consume then custodian else owner
-            in map (\quantity -> Step with sender; receiver; quantity) quantities
+    --     -- Calculate settlement steps
+    --     let
+    --       createSteps consume quantities holding =
+    --         let
+    --           owner = getOwner holding
+    --           custodian = getCustodian holding
+    --           sender = if consume then owner else custodian
+    --           receiver = if consume then custodian else owner
+    --         in map (\quantity -> Step with sender; receiver; quantity) quantities
 
-          calculateSteps effectCid holdingCid = do
-            holding <- fetch holdingCid
-            Effect.CalculationResult{consumed; produced} <-
-              exercise effectCid Effect.Calculate with actor = claimer; holdingCid
-            let
-              (consumedNetted, producedNetted) =
-                if netInstructions
-                then splitPending . net $ mergeConsumedAndProduced consumed produced
-                else (consumed, produced)
-              consumedSteps = createSteps True consumedNetted holding
-              producedSteps = createSteps False producedNetted holding
-            pure $ consumedSteps <> producedSteps
+    --       calculateSteps effectCid holdingCid = do
+    --         holding <- fetch holdingCid
+    --         Effect.CalculationResult{consumed; produced} <-
+    --           exercise effectCid Effect.Calculate with actor = claimer; holdingCid
+    --         let
+    --           (consumedNetted, producedNetted) =
+    --             if netInstructions
+    --             then splitPending . net $ mergeConsumedAndProduced consumed produced
+    --             else (consumed, produced)
+    --           consumedSteps = createSteps True consumedNetted holding
+    --           producedSteps = createSteps False producedNetted holding
+    --         pure $ consumedSteps <> producedSteps
 
-        -- Settlement steps
-        steps <- mconcat <$> sequence (zipWith calculateSteps effectCids holdingCids)
+    --     -- Settlement steps
+    --     steps <- mconcat <$> sequence (zipWith calculateSteps effectCids holdingCids)
 
-        -- Discover settlement routes
-        routedSteps <- exercise routeProviderCid RouteProvider.Discover with
-          discoverors = providers; contextId = None; steps
+    --     -- Discover settlement routes
+    --     routedSteps <- exercise routeProviderCid RouteProvider.Discover with
+    --       discoverors = providers; contextId = None; steps
 
-        -- Generate settlement instructions for other instruments
-        (batchCid, instructionCids) <- exercise settlementFactoryCid Settlement.Instruct with
-          instructors = providers
-          settlers
-          id = batchId
-          description = effectView.description
-          contextId = Some effectView.id
-          routedSteps
-          settlementTime = effectView.settlementTime
+    --     -- Generate settlement instructions for other instruments
+    --     (batchCid, instructionCids) <- exercise settlementFactoryCid Settlement.Instruct with
+    --       instructors = providers
+    --       settlers
+    --       id = batchId
+    --       description = effectView.description
+    --       contextId = Some effectView.id
+    --       routedSteps
+    --       settlementTime = effectView.settlementTime
 
-        pure Claim.ClaimResult with batchCid; instructionCids
+    --     pure Claim.ClaimResult with batchCid; instructionCids

@@ -170,7 +170,7 @@ export const ClaimsTreeBuilder : React.FC<ClaimsTreeBuilderProps> = ({ node, set
     const placehoder = d.tag === "Value";
     const text = (d.text || d.type);
     const textWidth = Math.max(25, text.length * 12);
-    const fill = placehoder ? theme.palette.background.paper : theme.palette.grey[600];
+    const fill = placehoder ? theme.palette.background.paper : theme.palette.grey[500];
     const stroke = theme.palette.grey[400];
     const textColor = placehoder ? theme.palette.text.primary : theme.palette.text.secondary;
     const onClick = readonly ? toggleNode : () => setShow(show === d.id ? "" : d.id || "");
