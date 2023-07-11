@@ -10,6 +10,39 @@ import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I,
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentQuantity)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, RemoveObservers(..))
 
+template RepoOfferRequest 
+  with 
+    operator: Party 
+    provider: Party
+    customer: Party 
+    id: Text 
+    collateral: InstrumentQuantity
+    maturity: Date 
+  where 
+    signatory operator, provider, customer 
+
+    key (operator, provider, id) : (Party, Party, Text)
+    maintainer key._1
+
+template RepoOffer 
+  with 
+    operator : Party
+    provider : Party
+    customer : Party
+    id : Text
+    borrowed : InstrumentQuantity -- Cash
+    maturity : Date
+    interest : InstrumentQuantity -- Cash
+    collateral : InstrumentQuantity -- Security
+    borrowedCid : ContractId Transferable.I -- Cash holding
+    lenderBorrowedAccount : AccountKey
+    lenderInterestAccount : AccountKey
+  where 
+    signatory operator, provider, customer
+
+    key (operator, provider, id) : (Party, Party, Text)
+    maintainer key._1
+
 template BorrowOfferRequest
   with
     operator : Party

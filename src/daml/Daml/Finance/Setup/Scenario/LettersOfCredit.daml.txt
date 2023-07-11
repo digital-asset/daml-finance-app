@@ -1,7 +1,7 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module Daml.Finance.Setup.Scenario.BondIssuance where
+module Daml.Finance.Setup.Scenario.LettersOfCredit where
 
 import DA.Date (Month(..), date, toDateUTC, toGregorian)
 import DA.Foldable (mapA_)
@@ -29,16 +29,16 @@ import Daml.Script
 
 run : Script [PartyInfo]
 run = do
-  let scenario = "Bond Issuance"
-  parties <- allocateParties scenario ["Operator", "CentralBank", "Registry", "Issuer", "Custodian", "Investor1", "Investor2", "Investor3"] "Public"
+  let scenario = "Letters of Credit"
+  parties <- allocateParties scenario ["Operator", "CentralBank", "Registry", "Issuer", "Beneficiary", "Buyer"] "Public"
   let
-    all@[operator, centralBank, registry, issuer, custodian, inv1, inv2, inv3, public] = map (.id) parties
+    all@[operator, centralBank, registry, issuer, seller, buyer, public] = map (.id) parties
     pub = fromList [("Public", singleton public)]
 
   -- Factories
   let
-    assets = ["BOND1", "BOND2", "BOND3", "BOND4"]
-    settlementPaths = [[issuer], [custodian], [inv1, custodian], [inv2, custodian], [inv3, custodian]]
+    assets = ["SBLC1", "SBLC2", "SBLC3", "SBLC4"]
+    settlementPaths = [[issuer], [seller], [buyer]]
     cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = settlementPaths
     secRoute = Settlement.Hierarchy with rootCustodian = registry; pathsToRootCustodian = settlementPaths
     paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
@@ -49,40 +49,31 @@ run = do
   createOperatorRole operator
   createCustodianRole operator centralBank
   createCustodianRole operator registry
-  createCustodianRole operator custodian
 
   -- Services
-  createCustodyService          operator centralBank  registry  paths accountFactoryCid holdingFactoryCid
-  createCustodyService          operator centralBank  issuer    paths accountFactoryCid holdingFactoryCid
-  createCustodyService          operator centralBank  custodian paths accountFactoryCid holdingFactoryCid
-  createCustodyService          operator registry     issuer    paths accountFactoryCid holdingFactoryCid
-  createCustodyService          operator registry     custodian paths accountFactoryCid holdingFactoryCid
-  createCustodyService          operator custodian    inv1      paths accountFactoryCid holdingFactoryCid
-  createCustodyService          operator custodian    inv2      paths accountFactoryCid holdingFactoryCid
-  createCustodyService          operator custodian    inv3      paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank  registry      paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank  issuer        paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank  seller        paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank  buyer         paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator registry     issuer        paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator registry     seller        paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator registry     buyer         paths accountFactoryCid holdingFactoryCid
   createIssuanceService         operator registry     issuer
   createIssuanceAutoService     operator registry     issuer
   createStructuringService      operator registry     issuer
   createStructuringAutoService  operator registry     issuer
-  createLifecycleService        operator registry     issuer    public
-  createSettlementService       operator custodian    inv1      paths
-  createSettlementService       operator custodian    inv2      paths
-  createSettlementService       operator custodian    inv3      paths
-  createSettlementService       operator registry     custodian paths
-  createSettlementService       operator registry     issuer    paths
+  createLifecycleService        operator registry     issuer      public
+  createSettlementService       operator registry     issuer      paths
+  createSettlementService       operator registry     seller      paths
 
   -- Accounts
   registryCashAccount   <- createAccount operator centralBank registry  public "Registry@CentralBank/Cash"       empty
   issuerCashAccount     <- createAccount operator centralBank issuer    public "Issuer@CentralBank/Cash"         empty
-  custodianCashAccount  <- createAccount operator centralBank custodian public "Custodian@CentralBank/Cash"      empty
-  inv1CashAccount       <- createAccount operator custodian   inv1      public "Investor1@Custodian/Cash"        empty
-  inv2CashAccount       <- createAccount operator custodian   inv2      public "Investor2@Custodian/Cash"        empty
-  inv3CashAccount       <- createAccount operator custodian   inv3      public "Investor3@Custodian/Cash"        empty
+  sellerCashAccount     <- createAccount operator centralBank seller    public "Seller@CentralBank/Cash"         empty
+  buyerCashAccount      <- createAccount operator centralBank buyer     public "Buyer@CentralBank/Cash"          empty
   issuerSecAccount      <- createAccount operator registry    issuer    public "Issuer@Registry/Securties"       empty
-  custodianSecAccount   <- createAccount operator registry    custodian public "Custodian@Registry/Securities"   empty
-  inv1SecAccount        <- createAccount operator custodian   inv1      public "Investor1@Custodian/Securities"  empty
-  inv2SecAccount        <- createAccount operator custodian   inv2      public "Investor2@Custodian/Securities"  empty
-  inv3SecAccount        <- createAccount operator custodian   inv3      public "Investor3@Custodian/Securities"  empty
+  sellerSecAccount      <- createAccount operator registry    seller    public "Seller@Registry/Securities"      empty
+  buyerSecAccount       <- createAccount operator registry    buyer     public "Buyer@Registry/Securities"       empty
 
   -- Time
   t <- getTime

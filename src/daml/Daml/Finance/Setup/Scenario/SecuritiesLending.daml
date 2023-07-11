@@ -8,7 +8,7 @@ import DA.Map (empty, fromList)
 import DA.Set (singleton)
 import DA.Time (time)
 import Daml.Finance.App.Lending.Model qualified as Lending (Repay(..))
-import Daml.Finance.App.Lending.Service qualified as Lending (AcceptBorrowOffer(..), CreateBorrowOffer(..), RequestBorrowOffer(..), Service)
+import Daml.Finance.App.Lending.Service qualified as Lending (AcceptRepoOffer(..), CreateRepoOffer(..), RequestRepoOffer(..), AcceptBorrowOffer(..), CreateBorrowOffer(..), RequestBorrowOffer(..), Service)
 import Daml.Finance.Account.Account qualified as Account (Factory(..))
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
@@ -19,6 +19,9 @@ import Daml.Finance.Setup.Util.Role
 import Daml.Finance.Setup.Util.Service
 import Daml.Finance.Setup.Util.Workflow
 import Daml.Script
+import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum(Act365Fixed))
+import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum(Following))
+import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum(M))
 
 run : Script [PartyInfo]
 run  = do
@@ -30,7 +33,7 @@ run  = do
 
   -- Factories
   let
-    assets = ["TSLA", "DEAL1"]
+    assets = ["BOND", "DEAL1"]
     settlementPaths = [[borrower], [lender]]
     cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = settlementPaths
     secRoute = Settlement.Hierarchy with rootCustodian = registry; pathsToRootCustodian = settlementPaths
@@ -67,36 +70,56 @@ run  = do
     today = toDateUTC t
     todayTime = time today 12 0 0
     (todayYear, todayMonth, todayDay) = toGregorian today
+    tt d = time d 0 0 0
+    epoch = tt $ date 1970 Jan 1
+    (ty, tm, td) = toGregorian today
   createClockAndEvent all today (singleton public)
 
   -- Instruments
   usd   <- originateToken   centralBank centralBank pub todayTime "USD" "United States Dollar"
-  tsla  <- originateEquity  registry    registry    pub todayTime "TSLA" "Tesla, Inc. Common Stock"
-  deal1 <- originateGeneric registry    lender      pub todayTime "DEAL1" "Loan of TSLA @ 0.2%" $ loan today (addDays today 28) tsla 0.002 usd [addDays today 7, addDays today 14, addDays today 21, addDays today 28]
+  tsla  <- originateEquity  registry    registry    pub todayTime "BOND" "Fixed Rate Bond "
+  --bond  <- originateFixedRateBond       registry    registry      "BOND2" "Fixed Rate Bond 5Y @ 1.1%"                   pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.011 M 12 usd 
+  deal1 <- originateGeneric registry    lender      pub todayTime "DEAL1" "Loan of BOND @ 0.2%" $ loan today (addDays today 28) tsla 0.002 usd [addDays today 7, addDays today 14, addDays today 21, addDays today 28]
 
   -- Data
   createAccountDirectory lender   [(usd, lenderCashAccount), (tsla, lenderSecAccount)] $ singleton public
   createAccountDirectory borrower [(usd, borrowerCashAccount), (tsla, borrowerSecAccount), (deal1, borrowerLenderAccount)] $ singleton public
 
   -- Distribution
-  deposit operator lender borrower public (Instrument.qty    10_000.0 deal1) borrowerLenderAccount
-  borrowedCid   <- coerceContractId <$> deposit operator registry    lender   public (Instrument.qty     1_000.0 tsla) lenderSecAccount
-  collateralCid <- coerceContractId <$> deposit operator centralBank borrower public (Instrument.qty 1_000_000.0 usd) borrowerCashAccount
-  interestCid   <- coerceContractId <$> deposit operator centralBank borrower public (Instrument.qty     1_000.0 usd) borrowerCashAccount
+  -- deposit operator lender borrower public (Instrument.qty    10_000.0 deal1) borrowerLenderAccount
+  -- borrowedCid   <- coerceContractId <$> deposit operator registry    lender   public (Instrument.qty     20_000_000.0 tsla) lenderSecAccount
+  -- collateralCid <- coerceContractId <$> deposit operator centralBank borrower public (Instrument.qty 100_000_000.0 usd) borrowerCashAccount
+  -- interestCid   <- coerceContractId <$> deposit operator centralBank borrower public (Instrument.qty     40_000_000.0 usd) borrowerCashAccount
+
+  borrowerCashCid <- coerceContractId <$> deposit operator centralBank borrower public (Instrument.qty 10_000_000.0 usd) borrowerCashAccount
+  lenderCashCid   <- coerceContractId <$> deposit operator centralBank lender public (Instrument.qty 100_000_000.0 usd) lenderCashAccount
+  collateralCid <- coerceContractId <$> deposit operator registry    borrower   public (Instrument.qty     20_000_000.0 tsla) borrowerSecAccount
 
   -- Workflows
-  let
-    doLoan = do
-      let
-        borrowed   = Instrument.qty     1_000.0 tsla
-        interest   = Instrument.qty     1_000.0 usd
-        collateral = Instrument.qty 1_000_000.0 usd
+  -- let
+  --   doLoan = do
+  --     let
+  --       borrowed   = Instrument.qty     10_000_000.0 tsla
+  --       interest   = Instrument.qty     10_000.0 usd
+  --       collateral = Instrument.qty     10_000_000.0 usd
 
-      borrowOfferRequestCid <- submit borrower do exerciseByKeyCmd @Lending.Service (operator, lender, borrower) Lending.RequestBorrowOffer with id = "BORROW"; borrowed; maturity = date 2022 Sep 14
-      borrowOfferCid <- submit lender do exerciseByKeyCmd @Lending.Service (operator, lender, borrower) Lending.CreateBorrowOffer with borrowOfferRequestCid; interest; collateral; borrowedCid; lenderBorrowedAccount = lenderSecAccount; lenderInterestAccount = lenderCashAccount
-      (borrowedCid, borrowAgreementCid) <- submitMulti [borrower] [public] do exerciseByKeyCmd @Lending.Service (operator, lender, borrower) Lending.AcceptBorrowOffer with borrowOfferCid; collateralCid; account = borrowerSecAccount
-      submitMulti [borrower] [public] do exerciseCmd borrowAgreementCid Lending.Repay with borrowedCid; interestCid
+  --     borrowOfferRequestCid <- submit borrower do exerciseByKeyCmd @Lending.Service (operator, lender, borrower) Lending.RequestBorrowOffer with id = "BORROW"; borrowed; maturity = date 2022 Sep 14
+  --     borrowOfferCid <- submit lender do exerciseByKeyCmd @Lending.Service (operator, lender, borrower) Lending.CreateBorrowOffer with borrowOfferRequestCid; interest; collateral; borrowedCid; lenderBorrowedAccount = lenderSecAccount; lenderInterestAccount = lenderCashAccount
+  --     (borrowedCid, borrowAgreementCid) <- submitMulti [borrower] [public] do exerciseByKeyCmd @Lending.Service (operator, lender, borrower) Lending.AcceptBorrowOffer with borrowOfferCid; collateralCid; account = borrowerSecAccount
+  --     submitMulti [borrower] [public] do exerciseCmd borrowAgreementCid Lending.Repay with borrowedCid; interestCid
 
-  -- doLoan
+  -- let 
+  --   doRepo = do 
+  --     let 
+  --       borrowed = Instrument.qty     10_000_000.00 usd 
+  --       interest = Instrument.qty     10_000.00 usd 
+  --       collateral = Instrument.qty   10_200_000.00 tsla 
+
+  --     repoOfferRequestCid <- submit borrower do exerciseByKeyCmd @Lending.Service (operator, lender, borrower) Lending.RequestRepoOffer with id = "REPO"; collateral; maturity = date 2022 Sep 14
+  --     repoOfferCid <- submit lender do exerciseByKeyCmd @Lending.Service (operator, lender, borrower) Lending.CreateRepoOffer with repoOfferRequestCid; interest; borrowed; borrowedCid; lenderBorrowedAccount = lenderSecAccount; lenderInterestAccount = lenderCashAccount
+  --     submitMulti [borrower] [public] do exerciseByKeyCmd @Lending.Service (operator, lender, borrower) Lending.AcceptRepoOffer with repoOfferCid; collateralCid; account = borrowerSecAccount
+  --     --submitMulti [borrower] [public] do exerciseCmd borrowAgreementCid Lending.Repay with borrowedCid; borrowedCid  
+
+  --doRepo
 
   pure parties
