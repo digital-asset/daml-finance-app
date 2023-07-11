@@ -4,14 +4,13 @@
 module Daml.Finance.Setup.Scenario.FXNetting where
 
 import DA.Date (Month(..), date, toDateUTC, toGregorian)
-import DA.Map (empty, fromList)
+import DA.Map (fromList)
 import DA.Set (singleton)
 import DA.Time (time)
 import Daml.Finance.Account.Account qualified as Account (Factory(..))
-import Daml.Finance.Instrument.Generic.Lifecycle.Rule qualified as Lifecycle (Rule(..))
+import Daml.Finance.App.Lifecycle.Rule qualified as Claim (ClaimEffects (..))
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
-import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Claim (ClaimEffect (..))
-import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (Evolve(..), I)
+import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (Evolve(..))
 import Daml.Finance.Interface.Types.Common.Types (Id(..))
 import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
@@ -27,15 +26,15 @@ run = do
   parties <- allocateParties scenario ["Operator", "BankA", "BankB"] "Public"
   let
     all@[operator, bankA, bankB, public] = map (.id) parties
-    pub = fromList [("Public", singleton public)]
+    pub = fromList [("Public", singleton public), ("Operator", singleton operator)]
 
   -- Factories
   let
-    insts = ["USD", "EUR", "GBP", "CHF", "PMT1", "PVP1", "PVP2", "PVP3", "PVP4"]
-    bankBRoute = Settlement.Hierarchy with rootCustodian = bankA; pathsToRootCustodian = [[bankB]]
-    bankARoute = Settlement.Hierarchy with rootCustodian = bankB; pathsToRootCustodian = [[bankA]]
-    bankAPaths = fromList $ map (\i -> (i, bankARoute)) insts
-    bankBPaths = fromList $ map (\i -> (i, bankBRoute)) insts
+    bankAInsts = ["USD", "GBP"]
+    bankBInsts = ["EUR", "CHF"]
+    bankARoute = Settlement.Hierarchy with rootCustodian = bankA; pathsToRootCustodian = [[bankB]]
+    bankBRoute = Settlement.Hierarchy with rootCustodian = bankB; pathsToRootCustodian = [[bankA]]
+    paths = fromList $ map (\i -> (i, bankARoute)) bankAInsts <> map (\i -> (i, bankBRoute)) bankBInsts
   accountFactoryCid <- toInterfaceContractId <$> submit operator do createCmd Account.Factory  with provider = operator; observers = pub
   holdingFactoryCid <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory with provider = operator; observers = pub
 
@@ -43,18 +42,20 @@ run = do
   createOperatorRole operator
   createCustodianRole operator bankA
   createCustodianRole operator bankB
+  createCustodianRole operator operator
 
   -- Services
-  bankBCustodyServiceCid <- createCustodyService operator bankA bankB bankBPaths accountFactoryCid holdingFactoryCid
-  bankACustodyServiceCid <- createCustodyService operator bankB bankA bankAPaths accountFactoryCid holdingFactoryCid
+  createCustodyService operator bankA bankB paths accountFactoryCid holdingFactoryCid
+  bankACustodyServiceCid <- createCustodyService operator bankB bankA paths accountFactoryCid holdingFactoryCid
+  createLifecycleService operator operator operator public
   createLifecycleService operator bankA bankB public
-  createLifecycleService operator bankB bankA public
+  bankALifecycleServiceCid <- createLifecycleService operator bankB bankA public
 
   -- Accounts
-  bankACashAccount <- createAccount operator bankB bankA public "BankA@BankB|Cash" empty
-  bankBCashAccount <- createAccount operator bankA bankB public "BankB@BankA|Cash" empty
-  bankASecAccount  <- createAccount operator bankB bankA public "BankA@BankB|Sec" empty
-  bankBSecAccount  <- createAccount operator bankA bankB public "BankB@BankA|Sec" empty
+  bankACashAccount <- createAccount operator bankB bankA public "BankA@BankB|Cash" pub
+  bankBCashAccount <- createAccount operator bankA bankB public "BankB@BankA|Cash" pub
+  bankASecAccount  <- createAccount operator bankB bankA public "BankA@BankB|Sec" pub
+  bankBSecAccount  <- createAccount operator bankA bankB public "BankB@BankA|Sec" pub
 
   -- Time
   t <- getTime
@@ -93,17 +94,20 @@ run = do
   -- Workflows
   let
     doLifecycle = do
-      lifecycleCid <- toInterfaceContractId @Lifecycle.I <$> submit bankB do createCmd Lifecycle.Rule with providers = singleton bankB; lifecycler = bankA; observers = pub; id = Id "LC-RULE"; description = "Generic instrument lifecycle rule"
-      (_, [effectCid1]) <- submitMulti [bankA] [public] do exerciseCmd lifecycleCid Lifecycle.Evolve with eventCid; instrument = pmt; observableCids = []
-      (_, [effectCid2]) <- submitMulti [bankA] [public] do exerciseCmd lifecycleCid Lifecycle.Evolve with eventCid; instrument = pvp1; observableCids = []
-      (_, [effectCid3]) <- submitMulti [bankA] [public] do exerciseCmd lifecycleCid Lifecycle.Evolve with eventCid; instrument = pvp2; observableCids = []
-      (_, [effectCid4]) <- submitMulti [bankA] [public] do exerciseCmd lifecycleCid Lifecycle.Evolve with eventCid; instrument = pvp3; observableCids = []
-      (_, [effectCid5]) <- submitMulti [bankA] [public] do exerciseCmd lifecycleCid Lifecycle.Evolve with eventCid; instrument = pvp4; observableCids = []
+      Some ls <- queryContractId operator bankALifecycleServiceCid
+      (_, [effectCid1]) <- submitMulti [operator] [public] do exerciseCmd ls.genericRuleCid Lifecycle.Evolve with eventCid; instrument = pmt; observableCids = []
+      (_, [effectCid2]) <- submitMulti [operator] [public] do exerciseCmd ls.genericRuleCid Lifecycle.Evolve with eventCid; instrument = pvp1; observableCids = []
+      (_, [effectCid3]) <- submitMulti [operator] [public] do exerciseCmd ls.genericRuleCid Lifecycle.Evolve with eventCid; instrument = pvp2; observableCids = []
+      (_, [effectCid4]) <- submitMulti [operator] [public] do exerciseCmd ls.genericRuleCid Lifecycle.Evolve with eventCid; instrument = pvp3; observableCids = []
+      (_, [effectCid5]) <- submitMulti [operator] [public] do exerciseCmd ls.genericRuleCid Lifecycle.Evolve with eventCid; instrument = pvp4; observableCids = []
 
-      Some cs <- queryContractId bankA bankACustodyServiceCid
-      let claimRuleCid = cs.claimRuleCid
-      submitMulti [bankA] [public] do exerciseCmd claimRuleCid Claim.ClaimEffect with claimer = bankA; holdingCids = [pmtCid]; effectCid = effectCid1; batchId = Id "Batch1"
+      Some cs <- queryContractId operator bankACustodyServiceCid
+      let
+        claimRuleCid = cs.claimRuleCid
+        holdingCids = [pmtCid, pvp1Cid, pvp2Cid, pvp3Cid, pvp4Cid]
+        effectCids = [effectCid1, effectCid2, effectCid3, effectCid4, effectCid5]
+      submitMulti [operator] [public] do exerciseCmd cs.claimRuleCid Claim.ClaimEffects with claimer = operator; holdingCids; effectCids; batchId = Id "Batch1"
       pure ()
-  -- doLifecycle
+  --doLifecycle
 
   pure parties

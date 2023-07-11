@@ -42,7 +42,6 @@ export const Observables : React.FC = () => {
   }, [l1, observables, getName, ledger, party]);
 
   if (l1) return <Spinner />;
-  console.log(observables);
 
   const headers = ["Provider", "Observable", "Value (Today)"]
   return (

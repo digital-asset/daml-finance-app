@@ -14,7 +14,7 @@ import { keyEquals } from "../../util";
 import { Effect as EffectI } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Effect";
 import { useParties } from "../../context/PartiesContext";
 import { Message } from "../../components/Message/Message";
-import { Claim } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Rule/Claim";
+import { Claim } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Rule";
 import { useServices } from "../../context/ServiceContext";
 import { HoldingAggregate, useHoldings } from "../../context/HoldingContext";
 import { Batch } from "@daml.js/daml-finance-interface-settlement/lib/Daml/Finance/Interface/Settlement/Batch";
@@ -48,10 +48,10 @@ export const Effect : React.FC = () => {
       const arg = {
         claimer: party,
         holdingCids: [holding.contractId],
-        effectCid: effect.contractId,
+        effectCids: [effect.contractId],
         batchId: { unpack: uuidv4() }
       }
-      await ledger.exercise(Claim.ClaimEffect, service.payload.claimRuleCid, arg);
+      await ledger.exercise(Claim.ClaimEffects, service.payload.claimRuleCid, arg);
     };
     await Promise.all(filteredHoldings.map(claimHolding));
   };

@@ -7,6 +7,7 @@ import DA.Map (Map, fromList)
 import DA.Set (singleton)
 import DA.Set qualified as S (fromList)
 import Daml.Finance.App.Clearing.Service qualified as Clearing (Accept(..), Service)
+import Daml.Finance.App.Custody.Auto.Service qualified as CustodyAuto (Accept(..))
 import Daml.Finance.App.Custody.Service qualified as Custody (Accept(..), Service)
 import Daml.Finance.App.Decentralized.Exchange.Model qualified as DecentralizedExchange (Pool(..))
 import Daml.Finance.App.Decentralized.Exchange.Service qualified as DecentralizedExchange (Service(..))
@@ -26,6 +27,7 @@ import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Accep
 import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (Accept(..), Service)
 import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (Accept(..), Service)
 import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Accept(..), Service)
+import Daml.Finance.App.Lifecycle.Generic qualified as Generic (Rule(..))
 import Daml.Finance.App.Quoting.Service qualified as Quoting (Accept(..), Service)
 import Daml.Finance.App.Role.Custodian qualified as Custodian
 import Daml.Finance.App.Role.Distributor qualified as Distributor
@@ -40,14 +42,13 @@ import Daml.Finance.Instrument.Bond.InflationLinked.Factory qualified as Inflati
 import Daml.Finance.Instrument.Bond.ZeroCoupon.Factory qualified as ZeroCouponBond (Factory(..))
 import Daml.Finance.Instrument.Equity.Factory qualified as Equity (Factory(..))
 import Daml.Finance.Instrument.Generic.Factory qualified as Generic (Factory(..))
-import Daml.Finance.Instrument.Generic.Lifecycle.Rule qualified as Generic (Rule(..))
 import Daml.Finance.Instrument.Token.Factory qualified as Token (Factory(..))
 import Daml.Finance.Interface.Account.Factory qualified as Account (F)
 import Daml.Finance.Interface.Holding.Factory qualified as Holding (F)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id(..), InstrumentQuantity)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, AddObservers(..))
-import Daml.Finance.Lifecycle.Rule.Claim qualified as Claim (Rule(..))
+import Daml.Finance.App.Lifecycle.Rule qualified as Lifecycle (Claim(..))
 import Daml.Finance.Lifecycle.Rule.Distribution qualified as Distribution (Rule(..))
 import Daml.Finance.Lifecycle.Rule.Replacement qualified as Replacement (Rule(..))
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy)
@@ -60,11 +61,13 @@ type SettlementPaths = Map Text Settlement.Hierarchy
 createCustodyService : Party -> Party -> Party -> SettlementPaths -> ContractId Account.F -> ContractId Holding.F -> Script (ContractId Custody.Service)
 createCustodyService operator provider customer paths accountFactoryCid holdingFactoryCid = do
   let
-    providers = S.fromList [provider, customer]
-    observers = singleton customer
-  routeProviderCid      <- toInterfaceContractId <$> submit provider do createCmd RouteProvider.Static  with provider; observers; paths
-  settlementFactoryCid  <- toInterfaceContractId <$> submit provider do createCmd Settlement.Factory                 with provider; observers
-  claimRuleCid          <- toInterfaceContractId <$> submitMulti [provider, customer] [] do createCmd Claim.Rule                         with providers; claimers = S.fromList [provider, customer]; settlers = providers; routeProviderCid; settlementFactoryCid; netInstructions = False
+    providers = S.fromList [operator, provider, customer]
+    observers = singleton customer <> singleton operator
+  routeProviderCid      <- toInterfaceContractId <$> submit provider do createCmd RouteProvider.Static with provider; observers; paths
+  settlementFactoryCid  <- toInterfaceContractId <$> submit provider do createCmd Settlement.Factory with provider; observers
+  claimRuleCid          <- submitMulti [operator, provider, customer] [] do createCmd Lifecycle.Claim with providers; claimers = S.fromList [operator, provider, customer]; settlers = singleton operator; routeProviderCid; settlementFactoryCid; netInstructions = False
+  offerCid <- submit provider do exerciseByKeyCmd @Custodian.Role (operator, provider) Custodian.OfferCustodyAutoService with customer
+  submit customer do exerciseCmd offerCid CustodyAuto.Accept
   offerCid <- submit provider do exerciseByKeyCmd @Custodian.Role (operator, provider) Custodian.OfferCustodyService with customer; claimRuleCid; accountFactoryCid; holdingFactoryCid
   submit customer do exerciseCmd offerCid Custody.Accept
 
@@ -106,11 +109,11 @@ createLifecycleService : Party -> Party -> Party -> Party -> Script (ContractId 
 createLifecycleService operator provider customer public = do
   let
     observers = fromList [("Public", singleton public)]
-    providers = singleton provider
-  distributionRuleCid <- toInterfaceContractId <$> submit provider do createCmd Distribution.Rule with providers; lifecycler = customer; id = Id "DistributionRule"; description = ""; observers = singleton public
-  replacementRuleCid  <- toInterfaceContractId <$> submit provider do createCmd Replacement.Rule  with providers; lifecycler = customer; id = Id "ReplacementRule"; description = ""; observers = singleton public
-  genericRuleCid      <- toInterfaceContractId <$> submit provider do createCmd Generic.Rule      with providers; lifecycler = customer; id = Id "GenericRule"; description = ""; observers
-  dynamicRuleCid      <- toInterfaceContractId <$> submit provider do createCmd Dynamic.Rule      with providers; lifecycler = customer; id = Id "DynamicRule"; description = ""; observers
+    providers = singleton provider <> singleton customer
+  distributionRuleCid <- toInterfaceContractId <$> submitMulti [provider, customer] [] do createCmd Distribution.Rule with providers; lifecycler = operator; id = Id "DistributionRule"; description = ""; observers = singleton public
+  replacementRuleCid  <- toInterfaceContractId <$> submitMulti [provider, customer] [] do createCmd Replacement.Rule  with providers; lifecycler = operator; id = Id "ReplacementRule"; description = ""; observers = singleton public
+  genericRuleCid      <- toInterfaceContractId <$> submitMulti [provider, customer] [] do createCmd Generic.Rule      with providers; lifecycler = operator; id = Id "GenericRule"; description = ""; observers
+  dynamicRuleCid      <- toInterfaceContractId <$> submitMulti [provider, customer] [] do createCmd Dynamic.Rule      with providers; lifecycler = operator; id = Id "DynamicRule"; description = ""; observers
   offerCid <- submit provider do exerciseByKeyCmd @Custodian.Role (operator, provider) Custodian.OfferLifecycleService with ..
   submit customer do exerciseCmd offerCid Lifecycle.Accept
 

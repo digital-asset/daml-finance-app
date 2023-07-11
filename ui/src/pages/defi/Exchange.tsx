@@ -95,8 +95,6 @@ export const Exchange : React.FC = () => {
   }
 
   const handlePercentageChange = (perc : number) => {
-    if (isBuy) console.log(perc / 100 * quotedAssetsTotal);
-    else console.log(perc / 100 * tradedAssetsTotal);
     if (isBuy) handleTotalChange(perc / 100 * quotedAssetsTotal);
     else handleQuantityChange(perc / 100 * tradedAssetsTotal);
   }

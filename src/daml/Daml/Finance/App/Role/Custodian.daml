@@ -4,6 +4,7 @@
 module Daml.Finance.App.Role.Custodian where
 
 import Daml.Finance.App.BackToBack.Service qualified as BackToBack (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Custody.Auto.Service qualified as CustodyAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Custody.Service qualified as Custody (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Issuance.Auto.Service qualified as IssuanceAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Issuance.Service qualified as Issuance (Approve(..), Offer(..), Request, Service, Terminate(..))
@@ -14,7 +15,7 @@ import Daml.Finance.App.Structuring.Auto.Service qualified as StructuringAuto (A
 import Daml.Finance.App.Structuring.Service qualified as Structuring (Approve(..), Factories, Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.Interface.Account.Factory qualified as Account (F)
 import Daml.Finance.Interface.Holding.Factory qualified as Holding (F)
-import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Lifecycle (Claim)
+import Daml.Finance.App.Lifecycle.Rule qualified as Lifecycle (Claim)
 import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (I)
 import Daml.Finance.Interface.Settlement.Factory qualified as Settlement (F)
 import Daml.Finance.Interface.Settlement.RouteProvider qualified as RouteProvider (I)
@@ -55,6 +56,27 @@ template Role
       controller provider
       do
         exerciseByKey @Custody.Service (operator, provider, customer) Custody.Terminate with actor = provider
+
+    nonconsuming choice OfferCustodyAutoService : ContractId CustodyAuto.Offer
+      with
+        customer : Party
+      controller provider
+      do
+        create CustodyAuto.Offer with operator; provider; customer
+
+    nonconsuming choice ApproveCustodyAutoRequest : ContractId CustodyAuto.Service
+      with
+        custodyRequestCid : ContractId CustodyAuto.Request
+      controller provider
+      do
+        exercise custodyRequestCid CustodyAuto.Approve with operator
+
+    nonconsuming choice TerminateCustodyAutoService : ()
+      with
+        customer : Party
+      controller provider
+      do
+        exerciseByKey @CustodyAuto.Service (operator, provider, customer) CustodyAuto.Terminate with actor = provider
 
     nonconsuming choice OfferIssuanceService : ContractId Issuance.Offer
       with

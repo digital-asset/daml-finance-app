@@ -33,7 +33,7 @@ export const Root : React.FC = () => {
             <Routes>
               <Route path="/" element={<Overview />} />
               <Route path="/clearing/*" element={<Clearing />} />
-              <Route path="/custody/*" element={<Custody />} />
+              <Route path="/registry/*" element={<Custody />} />
               <Route path="/defi/*" element={<DeFi />} />
               <Route path="/distribution/*" element={<Distribution />} />
               <Route path="/issuance/*" element={<Issuance />} />
@@ -41,10 +41,10 @@ export const Root : React.FC = () => {
               <Route path="/listing/*" element={<Listing />} />
               <Route path="/network/*" element={<Network />} />
               <Route path="/quoting/*" element={<Quoting />} />
-              <Route path="/servicing/*" element={<Servicing />} />
+              <Route path="/orchestration/*" element={<Servicing />} />
               <Route path="/settlement/*" element={<Settlement />} />
               <Route path="/simulation/*" element={<Simulation />} />
-              <Route path="/structuring/*" element={<Structuring />} />
+              <Route path="/sourcing/*" element={<Structuring />} />
               <Route path="/trading/*" element={<Trading />} />
             </Routes>
           </AccountProvider>

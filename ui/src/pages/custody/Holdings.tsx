@@ -8,6 +8,7 @@ import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
 import { useHoldings } from "../../context/HoldingContext";
 import { Alignment, HorizontalTable } from "../../components/Table/HorizontalTable";
+import { useInstruments } from "../../context/InstrumentContext";
 
 export type HoldingsProps = {
   showAssets : boolean
@@ -27,9 +28,11 @@ export const Holdings : React.FC<HoldingsProps> = ({ showAssets }) => {
   const party = useParty();
   const { getName } = useParties();
   const { loading: l1, holdings } = useHoldings();
-  if (l1) return <Spinner />;
+  const { loading: l2, tokens } = useInstruments();
+  if (l1 || l2) return <Spinner />;
 
-  const filtered = holdings.filter(c => showAssets ? c.payload.account.owner === party : c.payload.account.custodian === party);
+  const ccys = tokens.map(c => c.key.id.unpack);
+  const filtered = holdings.filter(c => (showAssets ? c.payload.account.owner === party : c.payload.account.custodian === party) && ccys.includes(c.payload.instrument.id.unpack));
 
   const entries : PositionEntry[] = [];
   for (let i = 0; i < filtered.length; i++) {

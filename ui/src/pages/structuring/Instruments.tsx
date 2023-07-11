@@ -9,7 +9,7 @@ import { HorizontalTable } from "../../components/Table/HorizontalTable";
 import { DetailButton } from "../../components/DetailButton/DetailButton";
 
 export const Instruments : React.FC = () => {
-  const { getName } = useParties();
+  const { getName, getParty } = useParties();
   const { loading: l1, groups } = useInstruments();
   if (l1) return <Spinner />;
 
@@ -24,9 +24,10 @@ export const Instruments : React.FC = () => {
       <DetailButton path={c.key} />
     ];
   }
+  const op = getParty("Operator");
   const headers = ["Depository", "Issuer", "Id", "Description", "Versions", "Latest", "Details"]
-  const values : any[] = groups.map(createRow);
+  const values : any[] = groups.filter(g => g.issuer !== op).map(createRow);
   return (
-    <HorizontalTable title="Instruments" variant={"h3"} headers={headers} values={values} />
+    <HorizontalTable title="Trade Input" variant={"h3"} headers={headers} values={values} />
   );
 };

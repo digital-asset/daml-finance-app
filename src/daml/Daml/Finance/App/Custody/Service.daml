@@ -3,13 +3,14 @@
 
 module Daml.Finance.App.Custody.Service where
 
+import DA.Set (singleton)
 import Daml.Finance.Interface.Account.Account qualified as Account (Controllers, Credit(..), Debit(..), R)
 import Daml.Finance.Interface.Account.Factory qualified as Account (F, Create(..), Remove(..))
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, AddObservers(..))
 import Daml.Finance.Interface.Holding.Factory qualified as Holding (F)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Account.Util (getAccount)
-import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Lifecycle (Claim)
-import Daml.Finance.Interface.Lifecycle.Effect qualified as Effect (I)
+import Daml.Finance.App.Lifecycle.Rule qualified as Lifecycle (Claim)
 import Daml.Finance.Interface.Types.Common.Types (AccountKey(..), Id, InstrumentKey, InstrumentQuantity, PartiesMap)
 import Daml.Finance.App.Custody.Model qualified as Custody
 import Daml.Finance.App.Util (fetchAndArchive)
@@ -93,7 +94,9 @@ template Service
       do
         Custody.DepositRequest{quantity; account} <- fetchAndArchive depositRequestCid
         (_, ref) <- fetchByKey @Account.R account
-        exercise ref.cid Account.Credit with quantity
+        holdingCid <- exercise ref.cid Account.Credit with quantity
+        coerceContractId <$> exercise (coerceContractId holdingCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton provider; observersToAdd = ("Operator", singleton operator)
+
 
     nonconsuming choice Withdrawal : ()
       with

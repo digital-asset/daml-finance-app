@@ -13,7 +13,6 @@ export const Exchanges : React.FC = () => {
   const { loading: l1, decentralizedExchange } = useServices();
   if (l1) return (<Spinner />);
 
-  console.log(decentralizedExchange);
   return (
     <Grid container direction="column" className={classes.bg}>
       <Grid item xs={12}>

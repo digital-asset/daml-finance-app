@@ -4,20 +4,20 @@
 import React from "react";
 import { Effects } from "../pages/servicing/Effects";
 import { Effect } from "../pages/servicing/Effect";
-import { Observables } from "../pages/servicing/Observables";
 import { App } from "./App";
 import { Instruments } from "../pages/servicing/Instruments";
 import { Instrument } from "../pages/servicing/Instrument";
+import { Batch } from "../pages/settlement/Batch";
 
 export const Servicing : React.FC = () => {
   const entries = [
-    { label: "Instruments", path: "instruments", element: <Instruments /> },
-    { label: "Effects", path: "effects", element: <Effects /> },
-    { label: "Observables", path: "observables", element: <Observables /> },
+    { label: "Trades", path: "trades", element: <Instruments /> },
+    { label: "Obligations", path: "obligations", element: <Effects /> },
+    { label: "Settlement", path: "settlement", element: <Batch /> },
   ];
   const paths = [
-    { path: "instruments/:contractId", element: <Instrument /> },
-    { path: "effects/:contractId", element: <Effect /> }
+    { path: "trades/:contractId", element: <Instrument /> },
+    { path: "obligations/:contractId", element: <Effect /> }
   ];
-  return <App app="Servicing" entries={entries} paths={paths} />;
+  return <App app="Settlement Orchestration" entries={entries} paths={paths} />;
 }

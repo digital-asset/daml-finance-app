@@ -27,10 +27,8 @@ export const Instruments : React.FC = () => {
 
   if (l1 || l2 || l3 || l4) return <Spinner />;
 
-  const myInstruments = latests.filter(a =>
-    (a.payload.issuer === party) &&
-    (!!a.claim || !!a.equity));
-  const svc = lifecycle.find(c => c.payload.customer === party);
+  const myInstruments = latests.filter(a => (!!a.claim || !!a.equity) && a.key.version === "0");
+  const svc = lifecycle.find(c => c.payload.customer !== party) || lifecycle[0];
 
   const lifecycleAll = async (cs : any[]) => {
     if (!svc) return;
@@ -47,7 +45,7 @@ export const Instruments : React.FC = () => {
       await ledger.exercise(Service.Lifecycle, svc.contractId, arg);
     };
     await Promise.all(cs.map(c => lifecycleOne(c as InstrumentAggregate)));
-    navigate("/app/servicing/effects")
+    navigate("/app/orchestration/obligations")
   };
 
   const createRow = (c : InstrumentAggregate) : any[] => {
@@ -56,14 +54,12 @@ export const Instruments : React.FC = () => {
       getName(c.payload.issuer),
       c.payload.id.unpack,
       c.payload.description,
-      c.payload.version,
-      c.payload.validAsOf,
       <DetailButton path={c.contractId} />
     ];
   }
-  const headers = ["Depository", "Issuer", "Id", "Description", "Version", "ValidAsOf", "Details"];
+  const headers = ["Party 1", "Party 2", "Id", "Description", "Details"];
   const values : any[] = myInstruments.map(createRow);
   return (
-    <SelectionTable title="Instruments" variant={"h3"} headers={headers} values={values} action="Lifecycle" onExecute={lifecycleAll} callbackValues={myInstruments} />
+    <SelectionTable title="Trades" variant={"h3"} headers={headers} values={values} action="Lifecycle" onExecute={lifecycleAll} callbackValues={myInstruments} />
   );
 };

@@ -3,49 +3,47 @@
 
 import React from "react";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
-import { dedup, fmt, keyEquals, shorten } from "../../util";
+import { dedup, fmt, keyEquals } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { CreateEvent } from "@daml/ledger";
 import { useParties } from "../../context/PartiesContext";
 import { Effect } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Effect";
-import { Claim } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Rule/Claim";
 import { Base } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Base";
 import { SelectionTable } from "../../components/Table/SelectionTable";
 import { DetailButton } from "../../components/DetailButton/DetailButton";
+import { HorizontalTable } from "../../components/Table/HorizontalTable";
+import { useNavigate } from "react-router-dom";
+import { Claim } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Rule";
+import { useServices } from "../../context/ServiceContext";
 
 export const Effects : React.FC = () => {
+  const navigate = useNavigate();
   const party = useParty();
   const ledger = useLedger();
-  const { getNames } = useParties();
-  const { loading: l1, contracts: effects } = useStreamQueries(Effect);
-  const { loading: l2, contracts: holdings } = useStreamQueries(Base);
-  const { loading: l3, contracts: claimRules } = useStreamQueries(Claim);
+  const { getNames, getParty } = useParties();
+  const { loading: l1, custody } = useServices();
+  const { loading: l2, contracts: effects } = useStreamQueries(Effect);
+  const { loading: l3, contracts: holdings } = useStreamQueries(Base);
 
-  if (l1 || l2 || l3) return <Spinner />;
+  const cs = custody.find(c => c.payload.customer === party) || custody[0];
+  if (l1 || l2 || l3 || !cs) return <Spinner />;
+  const isOp = getParty("Operator") === party;
 
   const claimEffects = async (effects : any[]) => {
-    const claimEffect = async (effect : CreateEvent<Effect>) => {
-      const filtered = holdings.filter(c => keyEquals(c.payload.instrument, effect.payload.targetInstrument));
-      const holdingCids = filtered.map(c => c.contractId);
-      const custodians = dedup(filtered.map(c => c.payload.account.custodian));
-      const owners = dedup(filtered.map(c => c.payload.account.owner));
-      if (custodians.length > 1 || owners.length > 1) throw new Error("Cannot claim holdings on multiple custodians or owners.");
-      const claimRule = claimRules.find(c => c.payload.providers.map.has(custodians[0]) && c.payload.claimers.map.has(owners[0]));
-      if (!claimRule) throw new Error("Couldn't find claim rule for custodian [" + custodians[0] + "] and owner [" + owners[0] + "].");
-      const arg = {
-        claimer: party,
-        holdingCids,
-        effectCid: effect.contractId,
-        batchId: { unpack: "SETTLE-"  + effect.payload.targetInstrument.id.unpack + "-" + effect.payload.id.unpack }
-      };
-      await ledger.exercise(Claim.ClaimEffect, claimRule.contractId, arg);
+    const holdingCids = effects.map(effect => holdings.find(c => keyEquals(c.payload.instrument, effect.payload.targetInstrument))!.contractId);
+    const arg = {
+      claimer: party,
+      holdingCids,
+      effectCids: effects.map(c => c.contractId),
+      batchId: { unpack: "SETTLE-"  + effects[0]?.payload.id.unpack}
     };
-    await Promise.all(effects.map(e => claimEffect(e as CreateEvent<Effect>)));
+    await ledger.exercise(Claim.ClaimEffects, cs.payload.claimRuleCid, arg);
+    navigate("/app/orchestration/settlement")
   };
 
   const createRow = (c : CreateEvent<Effect>) : any[] => {
     const filtered = holdings.filter(h => keyEquals(h.payload.instrument, c.payload.targetInstrument));
-    const isCustodian = filtered[0].payload.account.custodian === party;
+    const isCustodian = isOp ? false : filtered[0].payload.account.custodian === party;
     const produced = c.payload.otherProduced[0];
     const consumed = c.payload.otherConsumed[0];
     return [
@@ -57,10 +55,37 @@ export const Effects : React.FC = () => {
       <DetailButton path={c.contractId} />
     ];
   }
-  const headers = ["Counterparties", "Id", "Source", "Pay", "Receive", "Details"];
+
+  const currencies = dedup(effects.flatMap(c => c.payload.otherProduced.map(x => x.unit.id.unpack).concat(c.payload.otherConsumed.map(x => x.unit.id.unpack))));
+
+  const createRow2 = (ccy : string) : any[] => {
+    var pay = 0;
+    var rec = 0;
+    for (var i = 0; i < effects.length; i++) {
+      const c = effects[i];
+      const filtered = holdings.filter(h => keyEquals(h.payload.instrument, c.payload.targetInstrument));
+      const isCustodian = isOp ? false : filtered[0].payload.account.custodian === party;
+      const produced = (c.payload.otherProduced[0]?.unit.id.unpack === ccy && c.payload.otherProduced[0]?.amount) || "0";
+      const consumed = (c.payload.otherConsumed[0]?.unit.id.unpack === ccy && c.payload.otherConsumed[0]?.amount) || "0";
+      pay += isCustodian ? parseFloat(produced) : parseFloat(consumed);
+      rec += isCustodian ? parseFloat(consumed) : parseFloat(produced);
+    }
+    return [
+      ccy,
+      fmt(pay),
+      fmt(rec),
+    ];
+  }
+
+  const headers = ["Counterparties", "Date", "Source", isOp ? "Bank A pays" : "Pay", isOp ? "Bank B pays" : "Receive", "Details"];
   const values : any[] = effects.map(createRow);
+  const headers2 = ["Currency", isOp ? "Bank A pays" : "Pay", isOp ? "Bank B pays" : "Receive"];
+  const values2 : any[] = currencies.map(createRow2);
   const callbackValues = effects.map(c => c as any);
   return (
-    <SelectionTable title="Effects" variant={"h3"} headers={headers} values={values} action="Claim" onExecute={claimEffects} callbackValues={callbackValues} />
+    <>
+      <SelectionTable title="Obligations" variant={"h3"} headers={headers} values={values} action="Net & Instruct" onExecute={claimEffects} callbackValues={callbackValues} />
+      <HorizontalTable title="Summary" variant={"h3"} headers={headers2} values={values2} />
+    </>
   );
 };

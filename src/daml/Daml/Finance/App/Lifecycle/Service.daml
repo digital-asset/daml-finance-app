@@ -146,7 +146,7 @@ template Service
         instrument : InstrumentKey
         observableCids : [ContractId NumericObservable.I]
         ruleCid : ContractId Lifecycle.I
-      controller customer
+      controller operator
       do
         exercise ruleCid Lifecycle.Evolve with eventCid; observableCids; instrument
 

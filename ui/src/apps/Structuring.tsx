@@ -16,8 +16,8 @@ import { NewStock } from "../pages/structuring/equity/NewStock";
 
 export const Structuring : React.FC = () => {
   const entries = [
-    { label: "Instruments",     path: "instruments",  element: <Instruments /> },
-    { label: "New Instrument",  path: "new",          element: <New />, action: true }
+    { label: "Trades",     path: "trades",  element: <Instruments /> },
+    { label: "New Trade",  path: "new",          element: <New />, action: true }
   ];
   const paths = [
     { path: "new/equity/stock", element: <NewStock /> },
@@ -27,7 +27,7 @@ export const Structuring : React.FC = () => {
     { path: "new/bond/zerocoupon", element: <NewZeroCouponBond /> },
     { path: "new/other/token", element: <NewToken /> },
     { path: "new/other/generic", element: <NewGeneric /> },
-    { path: "instruments/:key", element: <Instrument /> }
+    { path: "trades/:key", element: <Instrument /> }
   ];
-  return <App app="Structuring" entries={entries} paths={paths} />;
+  return <App app="Trade Source" entries={entries} paths={paths} />;
 }

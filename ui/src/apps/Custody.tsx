@@ -7,12 +7,14 @@ import { App } from "./App";
 import { Assets } from "../pages/custody/Assets";
 import { Liabilities } from "../pages/custody/Liabilities";
 import { Balance } from "../pages/custody/Balance";
+import { NewFunding } from "../pages/custody/NewFunding";
 
 export const Custody : React.FC = () => {
   const entries =
-    [ { path: "assets"     , element: <Assets />     , label: "Assets"      }
-    , { path: "liabilities", element: <Liabilities />, label: "Liabilities" }
-    , { path: "balance"    , element: <Balance />    , label: "Balance"     }
-    , { path: "accounts"   , element: <Accounts />   , label: "Accounts"    } ]
-  return <App app="Custody" entries={entries} paths={[]} />;
+    [ { path: "nostro", element: <Assets />     , label: "Nostro"      }
+    , { path: "vostro", element: <Liabilities />, label: "Vostro" }
+    , { path: "balance", element: <Balance />    , label: "Balance"     }
+    , { path: "accounts", element: <Accounts />   , label: "Accounts"    }
+    , { path: "new/funding", element: <NewFunding />, label: "Fund Account", action: true } ];
+  return <App app="Cash Registry" entries={entries} paths={[]} />;
 }

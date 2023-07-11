@@ -60,7 +60,6 @@ import Daml.Finance.Interface.Lifecycle.Event qualified as Event (I)
 import Daml.Finance.Interface.Lifecycle.Effect qualified as Effect (I)
 import Daml.Finance.Interface.Lifecycle.Observable.NumericObservable qualified as NumericObservable (I)
 import Daml.Finance.Interface.Lifecycle.Observable.TimeObservable qualified as TimeObservable (I)
-import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Claim (ClaimEffect(..), ClaimResult(..))
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (I)
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (I, Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Types qualified as Settlement (Allocation, Approval)
@@ -338,12 +337,6 @@ declareStockSplit operator provider issuer public equity effectiveTime adjustmen
         description = id
         effectiveTime
         adjustmentFactor
-
-claimEffect : Party -> Party -> Party -> Party -> ContractId Effect.I -> [ContractId Holding.I] -> Id -> Script (ContractId Batch.I, [ContractId Instruction.I])
-claimEffect operator custodian owner public effectCid holdingCids batchId = do
-  Some (_, cs) <- queryContractKey @Custody.Service owner (operator, custodian, owner)
-  Claim.ClaimResult{batchCid; instructionCids} <- submitMulti [owner] [public] do exerciseCmd cs.claimRuleCid Claim.ClaimEffect with claimer = owner; effectCid; holdingCids; batchId
-  pure (batchCid, instructionCids)
 
 allocateAndApprove : Party -> Party -> ContractId Instruction.I -> Settlement.Allocation -> Settlement.Approval -> Script (ContractId Instruction.I)
 allocateAndApprove operator settler instructionCid allocation approval = do

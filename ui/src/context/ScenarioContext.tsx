@@ -48,14 +48,14 @@ type AppInfo = {
   elem : JSX.Element
 }
 
-const structuring   = { name: "Structuring",  path: "structuring",  elem: <App key={0}  label="Structuring"   description="Structure and design new assets"         image={appStructuring}  path="/app/structuring/instruments" /> };
+const structuring   = { name: "Trade Source",  path: "sourcing",  elem: <App key={0}  label="Trade Source"   description="View trades across all sources"           image={appStructuring}  path="/app/sourcing/trades" /> };
 const issuance      = { name: "Issuance",     path: "issuance",     elem: <App key={1}  label="Issuance"      description="Issue new assets"                        image={appIssuance}     path="/app/issuance/issuances" /> };
 const clearing      = { name: "Clearing",     path: "clearing",     elem: <App key={2}  label="Clearing"      description="Clear bilateral derivative trades"       image={appDistribution} path="/app/clearing/trades" /> };
-const custody       = { name: "Custody",      path: "custody",      elem: <App key={3}  label="Custody"       description="Manage assets in custody"                image={appCustody}      path="/app/custody/assets" /> };
+const custody       = { name: "Cash Registry",      path: "registry",      elem: <App key={3}  label="Cash Registry"       description="View and manage nostro/vostro accounts"                image={appCustody}      path="/app/registry/nostro" /> };
 const defi          = { name: "DeFi",         path: "defi",         elem: <App key={4}  label="DeFi"          description="Explore Decentralized Finance protocols" image={appDefi}         path="/app/defi/exchanges" /> };
 const distribution  = { name: "Distribution", path: "distribution", elem: <App key={5}  label="Distribution"  description="Distribute assets in the primary market" image={appDistribution} path="/app/distribution/auctions" /> };
 const lending       = { name: "Lending",      path: "lending",      elem: <App key={6}  label="Lending"       description="Borrow and lend securities"              image={appLending}      path="/app/lending/trades" /> };
-const servicing     = { name: "Servicing",    path: "servicing",    elem: <App key={7}  label="Servicing"     description="Service and lifecycle your assets"       image={appServicing}    path="/app/servicing/instruments" /> };
+const servicing     = { name: "Settlement Orchestration",    path: "orchestration",    elem: <App key={7}  label="Settlement Orchestration"     description="Orchestrate and execute atomic settlement"       image={appServicing}    path="/app/orchestration/trades" /> };
 const simulation    = { name: "Simulation",   path: "simulation",   elem: <App key={8}  label="Simulation"    description="Run market scenarios on your assets"     image={appSimulation}   path="/app/simulation/scenario" /> };
 const listing       = { name: "Listing",      path: "listing",      elem: <App key={9}  label="Listing"       description="List your assets on trading venues"      image={appListing}      path="/app/listing/listings" /> };
 const quoting       = { name: "Quoting",      path: "quoting",      elem: <App key={10} label="Quoting"       description="Request trade quotes from dealers"       image={appTrading}      path="/app/quoting/quotes" /> };
@@ -202,7 +202,7 @@ export const scenarios : Scenario[] = [
   {
     label: "FX Netting",
     description: "FX STM Netting and Settlement",
-    apps: [ structuring, custody, servicing, settlement ],
+    apps: [ structuring, servicing, custody ],
     image: scenarioSecuritiesLending,
     positions: new Map([
       [ "Operator", { x:    0, y:   0 } ],
