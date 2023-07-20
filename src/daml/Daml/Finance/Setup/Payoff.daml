@@ -389,5 +389,9 @@ sblc : Date -> Date -> InstrumentKey -> Decimal-> C
 sblc claimStart expiry ccy quantity = 
   when (at $ t claimStart) $ cond  (at $ t expiry) (zero) (scale (Const quantity) (one ccy))
 
+sblctoken : Date -> InstrumentKey -> C 
+sblctoken expiry ccy =
+  when (at $ t expiry) $ one ccy 
+
 rollDaily : Date -> Date -> [Date]
 rollDaily d end = if d > end then [] else d :: rollDaily (addDays d 1) end

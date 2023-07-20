@@ -22,6 +22,7 @@ import { AccountProvider } from "./context/AccountContext";
 import { DeFi } from "./apps/DeFi";
 import { Clearing } from "./apps/Clearing";
 import { Quoting } from "./apps/Quoting";
+import { LettersOfCredit } from "./apps/LettersOfCredit";
 
 export const Root : React.FC = () => {
 
@@ -39,6 +40,7 @@ export const Root : React.FC = () => {
               <Route path="/issuance/*" element={<Issuance />} />
               <Route path="/lending/*" element={<Lending />} />
               <Route path="/listing/*" element={<Listing />} />
+              <Route path="/loc/*" element={<LettersOfCredit />} />
               <Route path="/network/*" element={<Network />} />
               <Route path="/quoting/*" element={<Quoting />} />
               <Route path="/servicing/*" element={<Servicing />} />

@@ -118,8 +118,11 @@ run  = do
   bswp    <- originateGeneric  registry    issuer      pub yday "BSWAP1"  "Basis Swap LIBOR-6M vs 3M+0.15%" $ basisSwap libor3M libor6M 0.0015 usd $ unrollDates todayYear (todayYear + 2) [todayMonth] todayDay
   opt     <- originateGeneric  registry    issuer      pub yday "OPT1"    "Call on TSLA @ 500.0 (physical)" $ callOptionPhysical tsla 20.0 usd 10_000.0 (date (todayYear + 1) todayMonth todayDay)
   opt2    <- originateGeneric  registry    issuer      pub yday "OPT2"    "Call on TSLA @ 700.0 (cash)"     $ callOptionCash tslaObs usd 700.0 (date (todayYear + 1) todayMonth todayDay)
-  sblc    <- originateGeneric  registry    issuer      pub yday "SBLC"    "Standby letter of Credit"        $ sblc (today `addDays` (-10)) (today `addDays` 10) usd 100_000.00
-  let securities = [tsla, nflx, fwd, bnd, swp, bswp, opt, opt2, sblc ]
+  sblc1    <- originateGeneric  registry    issuer      pub yday "SBLC1"    "Standby letter of Credit"        $ sblc today (today `addDays` 10) usd 100_000.00
+  sblc2    <- originateGeneric  registry    issuer      pub yday "SBLC2"    "SBLC within claim period"        $ sblc (today `addDays` (-1)) (today `addDays` 9) usd 100_000.00
+  sblc3    <- originateGeneric  registry    issuer      pub yday "SBLC3"    "SBLC after claim period"        $ sblc (today `addDays` 1) (today `addDays` 11) usd 100_000.00
+  
+  let securities = [tsla, nflx, fwd, bnd, swp, bswp, opt, opt2, sblc1, sblc2, sblc3 ]
 
   -- Distribution
   inv1CashCid <- deposit operator centralBank inv1 public (Instrument.qty 1_000_000.0 usd) inv1CashAccount
@@ -131,7 +134,7 @@ run  = do
   (_, ad2) <- issue operator registry issuer public (Instrument.qty 1_000_000.0 bnd)   issuerSecAccount
   (_, ad3) <- issue operator registry issuer public (Instrument.qty 10_000_000.0 swp)  issuerSecAccount
   (_, ad4) <- issue operator registry issuer public (Instrument.qty 10_000_000.0 bswp) issuerSecAccount
-  (_, ad5) <- issue operator registry issuer public (Instrument.qty 1_000_000.0 sblc)  issuerSecAccount
+  (_, ad5) <- issue operator registry issuer public (Instrument.qty 1_000_000.0 sblc1)  issuerSecAccount
 
   -- Data
   createObservation issuer libor3M [(todayTime, 0.0018825)] pub

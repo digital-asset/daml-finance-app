@@ -27,6 +27,7 @@ import { Service as StructuringService } from "@daml.js/daml-finance-app/lib/Dam
 import { Service as StructuringAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Structuring/Auto/Service"
 import { Service as TradingService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Trading/Service"
 import { Service as TradingAutoService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Trading/Auto/Service"
+import { Service as LettersOfCreditService } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/LettersOfCredit/Service"
 
 export type ServicesState = {
   loading               : boolean
@@ -46,6 +47,7 @@ export type ServicesState = {
   lifecycle             : readonly CreateEvent<LifecycleService, LifecycleService.Key>[]
   listingAuto           : readonly CreateEvent<ListingAutoService, ListingAutoService.Key>[]
   listing               : readonly CreateEvent<ListingService, ListingService.Key>[]
+  loc                   : readonly CreateEvent<LettersOfCreditService, LettersOfCreditService.Key>[]
   quoting               : readonly CreateEvent<QuotingService, QuotingService.Key>[]
   settlement            : readonly CreateEvent<SettlementService, SettlementService.Key>[]
   structuringAuto       : readonly CreateEvent<StructuringAutoService, StructuringAutoService.Key>[]
@@ -73,6 +75,7 @@ const empty = {
   lifecycle: [],
   listingAuto: [],
   listing: [],
+  loc: [],
   quoting: [],
   settlement: [],
   structuringAuto: [],
@@ -102,6 +105,7 @@ export const ServicesProvider : React.FC = ({ children }) => {
   const { loading: l14, contracts: lifecycle }              = useStreamQueries(LifecycleService);
   const { loading: l15, contracts: listingAuto }            = useStreamQueries(ListingAutoService);
   const { loading: l16, contracts: listing }                = useStreamQueries(ListingService);
+  const { loading: l24, contracts: loc }                    = useStreamQueries(LettersOfCreditService);
   const { loading: l17, contracts: quoting }                = useStreamQueries(QuotingService);
   const { loading: l18, contracts: settlement }             = useStreamQueries(SettlementService);
   const { loading: l19, contracts: structuringAuto }        = useStreamQueries(StructuringAutoService);
@@ -109,7 +113,7 @@ export const ServicesProvider : React.FC = ({ children }) => {
   const { loading: l21, contracts: subscription }           = useStreamQueries(SubscriptionService);
   const { loading: l22, contracts: tradingAuto }            = useStreamQueries(TradingAutoService);
   const { loading: l23, contracts: trading }                = useStreamQueries(TradingService);
-  const loading = l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8 || l9 || l10 || l11 || l12 || l13 || l14 || l15 || l16 || l17 || l18 || l19 || l20 || l21 || l22 || l23;
+  const loading = l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8 || l9 || l10 || l11 || l12 || l13 || l14 || l15 || l16 || l17 || l18 || l19 || l20 || l21 || l22 || l23 || l24;
 
   const value = {
     loading,
@@ -129,6 +133,7 @@ export const ServicesProvider : React.FC = ({ children }) => {
     lifecycle,
     listingAuto,
     listing,
+    loc,
     quoting,
     settlement,
     structuringAuto,

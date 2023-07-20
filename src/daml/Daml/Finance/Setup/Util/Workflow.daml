@@ -23,6 +23,8 @@ import Daml.Finance.App.Distribution.Investment.Model qualified as Investment (I
 import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (RequestInvestment(..), S)
 import Daml.Finance.App.Issuance.Model qualified as Issuance (T)
 import Daml.Finance.App.Issuance.Service qualified as Issuance (CreateIssuance(..), RequestCreateIssuance(..), Service)
+import Daml.Finance.App.LettersOfCredit.Service qualified as LettersOfCredit (RequestLoC(..), OfferLoC(..), AcceptLoC(..), Service)
+import Daml.Finance.App.LettersOfCredit.Model qualified as LettersOfCredit (LoC)
 import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Service, DeclareDividend(..), DeclareStockSplit(..), DeclareReplacement(..))
 import Daml.Finance.App.Listing.Model qualified as Listing (T)
 import Daml.Finance.App.Listing.Service qualified as Listing (CreateListing(..), RequestCreateListing(..), Service)
@@ -371,3 +373,9 @@ approveClearing counterparty clearingRequestCid clearingAccount =
 clear : Party -> Party -> ContractId Clearing.ClearingRequest -> Script (ContractId Holding.I, ContractId Holding.I)
 clear clearer public clearingRequestCid =
   submitMulti [clearer] [public] do exerciseCmd clearingRequestCid Clearing.Clear
+
+issueLoC: Party -> Party -> Party -> Party -> Date -> Text -> InstrumentQuantity -> InstrumentQuantity -> Text -> Time -> Time -> PartiesMap -> AccountKey -> Script (ContractId LettersOfCredit.LoC) 
+issueLoC operator issuer buyer beneficiary maturity id requested granted terms acquisitionTime lastEventTimestamp observers account = do 
+  loCRequestCid <- submit buyer $ exerciseByKeyCmd @LettersOfCredit.Service (operator, issuer, buyer) LettersOfCredit.RequestLoC with ..
+  loCOfferCid <- submit issuer $ exerciseByKeyCmd @LettersOfCredit.Service (operator, issuer, buyer) LettersOfCredit.OfferLoC with .. 
+  submit buyer $ exerciseByKeyCmd @LettersOfCredit.Service (operator, issuer, buyer) LettersOfCredit.AcceptLoC with .. 

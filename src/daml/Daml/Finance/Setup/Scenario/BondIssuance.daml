@@ -30,14 +30,14 @@ import Daml.Script
 run : Script [PartyInfo]
 run = do
   let scenario = "Bond Issuance"
-  parties <- allocateParties scenario ["Operator", "CentralBank", "Registry", "Issuer", "Custodian", "Investor1", "Investor2", "Investor3"] "Public"
+  parties <- allocateParties scenario ["Operator", "CentralBank", "Registry", "Issuer", "Custodian", "Agent", "Investor1", "Investor2", "Investor3"] "Public"
   let
-    all@[operator, centralBank, registry, issuer, custodian, inv1, inv2, inv3, public] = map (.id) parties
+    all@[operator, centralBank, registry, issuer, custodian, agent, inv1, inv2, inv3, public] = map (.id) parties
     pub = fromList [("Public", singleton public)]
 
   -- Factories
   let
-    assets = ["BOND1", "BOND2", "BOND3", "BOND4"]
+    assets = ["BOND1", "BOND2", "BOND3", "BOND4", "BOND5", "BOND6"]
     settlementPaths = [[issuer], [custodian], [inv1, custodian], [inv2, custodian], [inv3, custodian]]
     cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = settlementPaths
     secRoute = Settlement.Hierarchy with rootCustodian = registry; pathsToRootCustodian = settlementPaths
@@ -50,6 +50,7 @@ run = do
   createCustodianRole operator centralBank
   createCustodianRole operator registry
   createCustodianRole operator custodian
+  createDistributorRole operator agent
 
   -- Services
   createCustodyService          operator centralBank  registry  paths accountFactoryCid holdingFactoryCid
@@ -60,6 +61,9 @@ run = do
   createCustodyService          operator custodian    inv1      paths accountFactoryCid holdingFactoryCid
   createCustodyService          operator custodian    inv2      paths accountFactoryCid holdingFactoryCid
   createCustodyService          operator custodian    inv3      paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator registry    inv1      paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator registry    inv2      paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator registry    inv3      paths accountFactoryCid holdingFactoryCid
   createIssuanceService         operator registry     issuer
   createIssuanceAutoService     operator registry     issuer
   createStructuringService      operator registry     issuer
@@ -70,6 +74,14 @@ run = do
   createSettlementService       operator custodian    inv3      paths
   createSettlementService       operator registry     custodian paths
   createSettlementService       operator registry     issuer    paths
+  createAuctionService          operator agent        issuer    paths
+  createAuctionAutoService      operator agent        issuer
+  createBiddingService          operator agent        inv1
+  createBiddingAutoService      operator agent        inv1
+  createBiddingService          operator agent        inv2
+  createBiddingAutoService      operator agent        inv2
+  createBiddingService          operator agent        inv3
+  createBiddingAutoService      operator agent        inv3
 
   -- Accounts
   registryCashAccount   <- createAccount operator centralBank registry  public "Registry@CentralBank/Cash"       empty
@@ -78,11 +90,14 @@ run = do
   inv1CashAccount       <- createAccount operator custodian   inv1      public "Investor1@Custodian/Cash"        empty
   inv2CashAccount       <- createAccount operator custodian   inv2      public "Investor2@Custodian/Cash"        empty
   inv3CashAccount       <- createAccount operator custodian   inv3      public "Investor3@Custodian/Cash"        empty
-  issuerSecAccount      <- createAccount operator registry    issuer    public "Issuer@Registry/Securties"       empty
+  issuerSecAccount      <- createAccount operator registry    issuer    public "Issuer@Registry/Securities"       empty
   custodianSecAccount   <- createAccount operator registry    custodian public "Custodian@Registry/Securities"   empty
   inv1SecAccount        <- createAccount operator custodian   inv1      public "Investor1@Custodian/Securities"  empty
   inv2SecAccount        <- createAccount operator custodian   inv2      public "Investor2@Custodian/Securities"  empty
   inv3SecAccount        <- createAccount operator custodian   inv3      public "Investor3@Custodian/Securities"  empty
+  inv1RegAccount        <- createAccount operator registry   inv1      public "Investor1@Registry/Securities"  empty
+  inv2RegAccount        <- createAccount operator registry   inv2      public "Investor2@Registry/Securities"  empty
+  inv3RegAccount        <- createAccount operator registry   inv3      public "Investor3@Registry/Securities"  empty
 
   -- Time
   t <- getTime
@@ -156,8 +171,8 @@ run = do
 
   deposit operator centralBank  registry  public (qty 120_000_000.0 usd) registryCashAccount
   deposit operator centralBank  custodian public (qty 120_000_000.0 usd) custodianCashAccount
-  deposit operator custodian    inv1      public (qty  50_000_000.0 usd) inv1CashAccount
-  deposit operator custodian    inv2      public (qty  40_000_000.0 usd) inv2CashAccount
-  deposit operator custodian    inv3      public (qty  30_000_000.0 usd) inv3CashAccount
+  deposit operator custodian    inv1      public (qty 500_000_000.0 usd) inv1CashAccount
+  deposit operator custodian    inv2      public (qty 400_000_000.0 usd) inv2CashAccount
+  deposit operator custodian    inv3      public (qty 300_000_000.0 usd) inv3CashAccount
 
   pure parties

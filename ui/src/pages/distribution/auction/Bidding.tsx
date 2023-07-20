@@ -54,11 +54,16 @@ export const Bidding : React.FC = () => {
   const bid = bids.find(b => b.payload.auctionId === auction.payload.id);
 
   const requestCreateBid = async () => {
+    console.log("We Got Here 1.")
     const volume = price * amount;
     // TODO: Implicit assumption that account is held with depository
     const receivableAccount = accounts.find(c => c.payload.accountView.owner === party && c.payload.accountView.custodian === instrument.payload.depository)?.key;
     const collateralCid = await getFungible(party, volume, auction.payload.currency);
-    if (!receivableAccount) return;
+    console.log("We Got Here 2.")
+    if (!receivableAccount) {
+      console.log("We Got Here 2.1.")
+      return;
+    }
     const arg = {
       auctionCid: auction.contractId,
       price: price.toString(),
@@ -67,11 +72,13 @@ export const Bidding : React.FC = () => {
       receivableAccount
     };
     if (myAutoServices.length > 0) {
+      console.log("We Got Here 3.")
       await ledger.exercise(AutoService.RequestAndCreateBid, myAutoServices[0].contractId, arg);
     } else {
+      console.log("We Got Here 4.")
       await ledger.exercise(Service.RequestCreateBid, myServices[0].contractId, arg);
     }
-
+    console.log("But not Here.")
   };
 
   return (

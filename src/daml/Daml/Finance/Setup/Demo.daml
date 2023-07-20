@@ -14,6 +14,7 @@ import Daml.Finance.Setup.Scenario.SecuritiesLending    qualified as SecuritiesL
 import Daml.Finance.Setup.Scenario.StructuredNotes      qualified as StructuredNotes
 import Daml.Finance.Setup.Util.Common (PartyInfo)
 import Daml.Script
+import Daml.Finance.Setup.Scenario.LettersOfCredit      qualified as LettersOfCredit
 
 demo : Script [PartyInfo]
 demo = do
@@ -26,4 +27,5 @@ demo = do
   p7 <- FundTokenization.run
   p8 <- DecentralizedFinance.run
   p9 <- OtcSwaps.run
-  pure $ p1 <> p2 <> p3 <> p4 <> p5 <> p6 <> p7 <> p8 <> p9
+  p10 <- LettersOfCredit.run
+  pure $ p1 <> p2 <> p3 <> p4 <> p5 <> p6 <> p7 <> p8 <> p9 <> p10

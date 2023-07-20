@@ -62,6 +62,7 @@ const quoting       = { name: "Quoting",      path: "quoting",      elem: <App k
 const trading       = { name: "Trading",      path: "trading",      elem: <App key={11} label="Trading"       description="Trade assets in the secondary market"    image={appTrading}      path="/app/trading/markets" /> };
 const network       = { name: "Network",      path: "network",      elem: <App key={12} label="Network"       description="Explore the distributed ledger network"  image={appNetwork}      path="/app/network/overview" /> };
 const settlement    = { name: "Settlement",   path: "settlement",   elem: <App key={13} label="Settlement"    description="Settle instructions in batches"          image={appSimulation}   path="/app/settlement/batches" /> };
+const loc           = { name: "LettersOfCredit",path: "loc",         elem: <App key={14} label="Letters of Credit"           description="Apply for Standby Letters of Credit"     image={appLending}      path="/app/loc/locs" /> };
 
 export const scenarios : Scenario[] = [
   {
@@ -97,7 +98,8 @@ export const scenarios : Scenario[] = [
       [ "Issuer",       { x:  800, y: 300 } ],
       [ "Investor1",    { x:    0, y: 600 } ],
       [ "Investor2",    { x:  400, y: 600 } ],
-      [ "Investor3",    { x:  800, y: 600 } ]
+      [ "Investor3",    { x:  800, y: 600 } ],
+      [ "Agent",        { x:    0, y: 300 } ]
     ]),
     useNetworkLogin: true
   },
@@ -215,7 +217,22 @@ export const scenarios : Scenario[] = [
       [ "Trader",     { x:  400, y: 300 } ],
     ]),
     useNetworkLogin: true
-  }
+  },
+  {
+    label: "Letters of Credit",
+    description: "SBLC Tutorial ",
+    apps: [ structuring, loc, custody, distribution, servicing, settlement, network ],
+    image: scenarioDecentralizedFinance,
+    positions: new Map([
+      [ "Operator",   { x:    0, y:   0 } ],
+      [ "Public",     { x:    0, y:   0 } ],
+      [ "CentralBank",        { x:    0, y:   0 } ],
+      [ "Issuer",        { x:  200, y:   0 } ],
+      [ "Beneficiary",        { x:  400, y:   0 } ],
+      [ "Buyer",        { x:  600, y:   0 } ],
+    ]),
+    useNetworkLogin: true
+  }, 
 ];
 
 const ScenarioContext = React.createContext<ScenarioState>({ selected: scenarios[0], select: _ => scenarios[0] });

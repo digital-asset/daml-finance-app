@@ -1,0 +1,123 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.Setup.Scenario.LettersOfCredit where
+
+import DA.Date (Month(..), date, toDateUTC, toGregorian)
+import DA.Foldable (mapA_)
+import DA.Map (empty, fromList)
+import DA.Set (singleton)
+import DA.Time (time)
+import Daml.Finance.Account.Account qualified as Account (Factory(..))
+import Daml.Finance.Claims.Lifecycle.Rule qualified as Lifecycle (Rule(..))
+import Daml.Finance.Data.Time.DateClock qualified as Data (DateClock)
+import Daml.Finance.Data.Time.DateClockUpdate qualified as Data (DateClockUpdateEvent)
+import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
+import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (Evolve(..), I)
+import Daml.Finance.Interface.Types.Common.Types (Id(..))
+import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum(..))
+import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum(..))
+import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum(..))
+import Daml.Finance.Interface.Util.Common (qty)
+import Daml.Finance.Lifecycle.Effect qualified as Lifecycle (Effect)
+import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
+import Daml.Finance.Setup.Util.Common
+import Daml.Finance.Setup.Util.Role
+import Daml.Finance.Setup.Util.Service
+import Daml.Finance.Setup.Util.Workflow
+import Daml.Script
+import Daml.Finance.Setup.Payoff
+
+run : Script [PartyInfo]
+run = do
+  let scenario = "Letters of Credit"
+  parties <- allocateParties scenario ["Operator", "CentralBank", "Issuer", "Seller", "Buyer"] "Public"
+  let
+    all@[operator, centralBank, issuer, seller, buyer, public] = map (.id) parties
+    pub = fromList [("Public", singleton public)]
+
+  -- Factories
+  let
+    assets = ["SBLC1"]
+    settlementPaths = [[issuer], [seller], [buyer]]
+    cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = settlementPaths
+    secRoute = Settlement.Hierarchy with rootCustodian = issuer; pathsToRootCustodian = settlementPaths
+    paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
+  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
+  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
+
+  -- Roles
+  createOperatorRole operator
+  createCustodianRole operator centralBank
+  createCustodianRole operator issuer
+
+  -- Services
+  createCustodyService          operator centralBank  issuer        paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank  seller        paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator centralBank  buyer         paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator issuer  issuer        paths accountFactoryCid holdingFactoryCid
+  createCustodyService          operator issuer  seller        paths accountFactoryCid holdingFactoryCid
+  buyerCustodyService <- createCustodyService          operator issuer  buyer         paths accountFactoryCid holdingFactoryCid
+  createIssuanceService         operator issuer     issuer
+  createIssuanceAutoService     operator issuer     issuer
+  createStructuringService      operator issuer     issuer
+  structuringServiceCid <- createStructuringAutoService  operator issuer     issuer
+  createLifecycleService        operator issuer     issuer      public
+  createSettlementService       operator issuer     issuer      paths
+  createSettlementService       operator issuer     seller      paths
+  createSettlementService       operator issuer     buyer      paths
+
+  locService <- createLettersOfCreditService  operator issuer buyer structuringServiceCid buyerCustodyService
+
+  -- Accounts
+  issuerCashAccount     <- createAccount operator centralBank issuer    public "Issuer@CentralBank/Cash"         empty
+  sellerCashAccount     <- createAccount operator centralBank seller    public "Seller@CentralBank/Cash"         empty
+  buyerCashAccount      <- createAccount operator centralBank buyer     public "Buyer@CentralBank/Cash"          empty
+  issuerSecAccount      <- createAccount operator issuer    issuer    public "Issuer@Registry/Securities"       empty
+  sellerSecAccount      <- createAccount operator issuer    seller    public "Seller@Registry/Securities"      empty
+  buyerSecAccount       <- createAccount operator issuer    buyer     public "Buyer@Registry/Securities"       empty
+
+  -- Time
+  t <- getTime
+  let
+    today = toDateUTC t
+    todayTime = time today 0 0 0
+    tt d = time d 0 0 0
+    epoch = tt $ date 1970 Jan 1
+    (ty, tm, td) = toGregorian today
+  (timeObservableCid, eventCid) <- createClockAndEvent all (date 2021 tm td) (singleton public)
+
+  -- Instruments
+  usd   <- originateToken               centralBank centralBank pub epoch "USD"   "United States Dollar"
+  token <- originateGeneric             issuer      issuer      pub epoch "SBLC1" "SBLC token, expires today" $ sblctoken today usd
+  let securities = [token]
+
+  -- Data
+  let
+    libor =
+      [ (tt $ date 2020 tm td,   0.0010)
+      , (tt $ date 2021 tm td,   0.0015)
+      , (tt $ date 2022 tm td,   0.0020)
+      , (tt $ date 2023 tm td,   0.0544) ]
+    cpi =
+      [ (tt $ date 2021 tm td, 102.2500)
+      , (tt $ date 2022 tm td, 104.5000)
+      , (tt $ date 2023 tm td, 106.3000) ]
+  obsCid1 <- createObservation issuer "USD-LIBOR-12M"  libor pub
+  obsCid2 <- createObservation issuer "CPI"            cpi   pub
+  createCalendar issuer "EMPTY" [] [] pub
+  createAccountDirectory issuer     ([(usd, issuerCashAccount)] <> map (\s -> (s, issuerSecAccount)) securities)        $ singleton public
+
+  -- Distribution
+  (_, tokenHoldingCid) <- issue operator issuer issuer public (qty 50_000_000.00 token) issuerSecAccount
+
+  --deposit operator issuer buyer public (qty 50_000_000.00 token) buyerSecAccount
+  deposit operator centralBank  buyer public (qty 60_000_000.00 usd) buyerCashAccount
+  deposit operator centralBank issuer public (qty 200_000_000.00 usd) issuerCashAccount
+
+  --issueLoC: Party -> Party -> Party -> Party -> Date -> Text -> InstrumentQuantity -> InstrumentQuantity -> Text -> Time -> Time -> PartiesMap -> AccountKey -> Script (ContractId LettersOfCredit.LoC) 
+  --issueLoC operator issuer buyer beneficiary maturity id requested granted terms acquisitionTime lastEventTimestamp observers account = do 
+
+  issueLoC operator issuer buyer seller today "SBLC2" (qty 30_000_000.00 usd) (qty 29_000_000.00 usd) "Terms!" epoch epoch pub buyerSecAccount
+
+  pure parties

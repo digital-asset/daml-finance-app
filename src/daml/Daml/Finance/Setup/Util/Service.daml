@@ -8,6 +8,7 @@ import DA.Set (singleton)
 import DA.Set qualified as S (fromList)
 import Daml.Finance.App.Clearing.Service qualified as Clearing (Accept(..), Service)
 import Daml.Finance.App.Custody.Service qualified as Custody (Accept(..), Service)
+import Daml.Finance.App.Custody.Auto.Service qualified as CustodyAuto (Service)
 import Daml.Finance.App.Decentralized.Exchange.Model qualified as DecentralizedExchange (Pool(..))
 import Daml.Finance.App.Decentralized.Exchange.Service qualified as DecentralizedExchange (Service(..))
 import Daml.Finance.App.Issuance.Auto.Service qualified as IssuanceAuto (Accept(..), Service)
@@ -27,6 +28,7 @@ import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (Accept(..),
 import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (Accept(..), Service)
 import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Accept(..), Service)
 import Daml.Finance.App.Quoting.Service qualified as Quoting (Accept(..), Service)
+import Daml.Finance.App.LettersOfCredit.Service qualified as LettersOfCredit (Service(..), Offer(..))
 import Daml.Finance.App.Role.Custodian qualified as Custodian
 import Daml.Finance.App.Role.Distributor qualified as Distributor
 import Daml.Finance.App.Role.Exchange qualified as Exchange
@@ -208,3 +210,6 @@ createDecentralizedExchangeService consortium public id shares quantity1 account
     p2 = DecentralizedExchange.Pool with quantity = quantity2; account = account2; fungibleCid = fungible2Cid
   submit consortium do createCmd DecentralizedExchange.Service with consortium; public; id = Id id; description = id; shares; p1; p2
 
+createLettersOfCreditService: Party -> Party -> Party -> ContractId StructuringAuto.Service -> ContractId Custody.Service -> Script (ContractId LettersOfCredit.Service)
+createLettersOfCreditService operator provider customer structuringAutoServiceCid custodyServiceCid = do 
+  submitMulti [operator, provider, customer] [] do createCmd LettersOfCredit.Service with ..

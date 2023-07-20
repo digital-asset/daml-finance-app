@@ -1,0 +1,53 @@
+module Daml.Finance.App.LettersOfCredit.Model where
+
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentQuantity)
+
+template LoCRequest 
+  with 
+    operator: Party 
+    provider: Party
+    customer: Party 
+    id: Text
+    beneficiary: Party 
+    maturity: Date 
+    requested: InstrumentQuantity 
+  where 
+    signatory operator, provider, customer 
+
+    key (operator, provider, id) : (Party, Party, Text)
+    maintainer key._1
+
+template LoCOffer
+  with 
+    operator: Party 
+    provider: Party
+    customer: Party 
+    id: Text
+    beneficiary: Party 
+    maturity: Date 
+    requested: InstrumentQuantity
+    granted: InstrumentQuantity
+    tokens: InstrumentQuantity
+    terms: Text
+  where 
+    signatory operator, provider, customer 
+
+    key (operator, provider, id) : (Party, Party, Text)
+    maintainer key._1
+
+template LoC 
+  with 
+    operator: Party 
+    provider: Party
+    customer: Party 
+    id: Text
+    beneficiary: Party 
+    maturity: Date 
+    requested: InstrumentQuantity
+    granted: InstrumentQuantity
+    terms: Text
+  where 
+    signatory operator, provider, customer 
+
+    key (operator, provider, id) : (Party, Party, Text)
+    maintainer key._1
