@@ -16,7 +16,7 @@ pkgs.mkShell {
             jdk = openjdk11_headless;
             version = damlYaml.sdk-version; })
     bash
-    binutils # cp, grep, etc.
+    binutils
     cacert
     circleci-cli
     curl
