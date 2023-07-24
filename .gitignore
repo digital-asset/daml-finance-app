@@ -24,3 +24,4 @@ daml.js/
 .dars/
 lib/*
 ui/src/parties.json
+navigator.log

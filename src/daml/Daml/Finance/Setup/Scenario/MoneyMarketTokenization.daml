@@ -38,7 +38,7 @@ run = do
 
   -- Factories
   let
-    assets = ["MMF1", "MMF2", "MMF3", "MMF4"]
+    assets = ["GILT1", "GILT2", "GILT3", "GILT4", "BOND1"]
     settlementPaths = [[registry], [ta], [am], [inv!!0, ta], [inv!!1, ta], [inv!!2, ta], [inv!!3, ta], [inv!!4, ta]]
     cashRoute = Settlement.Hierarchy with rootCustodian = cashProvider; pathsToRootCustodian = settlementPaths
     secRoute = Settlement.Hierarchy with rootCustodian = registry; pathsToRootCustodian = settlementPaths
@@ -93,9 +93,9 @@ run = do
 
   -- Instruments
   usd   <- originateToken                    cashProvider  cashProvider  pub epoch "USD"   "United States Dollar"
-  fund1 <- originateEquity                    registry     am            pub epoch "MMF1" "MMF1 Units"
-  fund2 <- originateEquity                    registry     am            pub epoch "MMF2" "MMF2 Units"
-  fund3 <- originateEquity                    registry     am            pub epoch "MMF3" "MMF3 Units"
+  fund1 <- originateEquity                    registry     am            pub epoch "GILT1" "GILT1 Units" -- Todo make these bonds
+  fund2 <- originateEquity                    registry     am            pub epoch "GILT2" "GILT2 Units"
+  fund3 <- originateEquity                    registry     am            pub epoch "GILT3" "GILT3 Units"
 
   -- Holdings
   taCashCid   <- deposit operator cashProvider ta    public (Instrument.qty  300_000_000.0 usd) taCashAccount
@@ -104,14 +104,14 @@ run = do
   inv2CashCid <- deposit operator ta           (inv!!2)  public (Instrument.qty  100_000_000.0 usd) $ invCashAccounts!!2
 
   -- -- Data
-  fund1Cid <- submitMulti [operator, registry, am] [] do createCmd Fund with operator; custodian = registry; manager = am; id = Id "MMF1"; description = "Money-Market Fund 1"; instrument = fund1; currency = usd; custodianCashAccount; managerFundAccount = amSecAccount; totalUnits =  10_100_000_000.0; observers = singleton public
-  fund2Cid <- submitMulti [operator, registry, am] [] do createCmd Fund with operator; custodian = registry; manager = am; id = Id "MMF2"; description = "Money-Market Fund 2"; instrument = fund2; currency = usd; custodianCashAccount; managerFundAccount = amSecAccount; totalUnits =  12_500_000_000.0; observers = singleton public
-  fund3Cid <- submitMulti [operator, registry, am] [] do createCmd Fund with operator; custodian = registry; manager = am; id = Id "MMF3"; description = "Money-Market Fund 3"; instrument = fund3; currency = usd; custodianCashAccount; managerFundAccount = amSecAccount; totalUnits =  25_500_000_000.0; observers = singleton public
+  fund1Cid <- submitMulti [operator, registry, am] [] do createCmd Fund with operator; custodian = registry; manager = am; id = Id "GILT1"; description = "GILT 1"; instrument = fund1; currency = usd; custodianCashAccount; managerFundAccount = amSecAccount; totalUnits =  10_100_000_000.0; observers = singleton public
+  fund2Cid <- submitMulti [operator, registry, am] [] do createCmd Fund with operator; custodian = registry; manager = am; id = Id "GILT2"; description = "GILT 2"; instrument = fund2; currency = usd; custodianCashAccount; managerFundAccount = amSecAccount; totalUnits =  12_500_000_000.0; observers = singleton public
+  fund3Cid <- submitMulti [operator, registry, am] [] do createCmd Fund with operator; custodian = registry; manager = am; id = Id "GILT3"; description = "GILT 3"; instrument = fund3; currency = usd; custodianCashAccount; managerFundAccount = amSecAccount; totalUnits =  25_500_000_000.0; observers = singleton public
   --fund4Cid <- submitMulti [operator, registry, am] [] do createCmd Fund with operator; custodian = registry; manager = am; id = Id "MMF4"; description = "Money-Market Fund 4"; instrument = fund4; currency = usd; custodianCashAccount; managerFundAccount = amSecAccount; totalUnits =  10_000_000_000.0; observers = singleton public
-  navFund1Cid <- createObservation am "NAV_MMF1_USD" [ (todayTime,   10_100_000_000.0) ] pub
-  navFund2Cid <- createObservation am "NAV_MMF2_USD" [ (todayTime,   12_500_000_000.0) ] pub
-  navFund3Cid <- createObservation am "NAV_MMF3_USD" [ (todayTime,   25_500_000_000.0) ] pub
-  navFund4Cid <- createObservation am "NAV_MMF4_USD" [ (todayTime,   10_000_000_000.0) ] pub
+  navFund1Cid <- createObservation am "NAV_GILT1_USD" [ (todayTime,   10_100_000_000.0) ] pub
+  navFund2Cid <- createObservation am "NAV_GILT2_USD" [ (todayTime,   12_500_000_000.0) ] pub
+  navFund3Cid <- createObservation am "NAV_GILT3_USD" [ (todayTime,   25_500_000_000.0) ] pub
+  navFund4Cid <- createObservation am "NAV_GILT4_USD" [ (todayTime,   10_000_000_000.0) ] pub
 
   createAccountDirectory registry  [(usd, custodianCashAccount)] $ singleton public
   createAccountDirectory ta         [(usd, taCashAccount), (fund1, taSecAccount), (fund2, taSecAccount), (fund3, taSecAccount)] $ singleton public
@@ -124,9 +124,9 @@ run = do
   -- CSAs 
   let 
     haircuts = fromList [(fund1, 0.98), (fund2, 0.98), (fund3, 0.98)]
-  csa20 <- signBilateralCsa operator cc (inv!!2) (inv!!0) "CSA PB HF1" (date 2017 Dec 1) usd 1_000_000.00 1_000.00 0.0 haircuts $ fromList [("TA", singleton ta)]
-  csa21 <- signBilateralCsa operator cc (inv!!2) (inv!!1) "CSA PB HF2" (date 2017 Dec 1) usd 1_000_000.00 1_000.00 0.0 haircuts $ fromList [("TA", singleton ta)]
-  csa23 <- signBilateralCsa operator cc (inv!!2) (inv!!3) "CSA PB SWP" (date 2017 Dec 1) usd 1_000_000.00 1_000.00 0.0 haircuts $ fromList [("TA", singleton ta)]
+  csa20 <- signBilateralCsa operator cc (inv!!2) (inv!!0) "MA PB HF1" (date 2017 Dec 1) usd 1_000_000.00 1_000.00 0.0 haircuts $ fromList [("TA", singleton ta)]
+  csa21 <- signBilateralCsa operator cc (inv!!2) (inv!!1) "MA PB HF2" (date 2017 Dec 1) usd 1_000_000.00 1_000.00 0.0 haircuts $ fromList [("TA", singleton ta)]
+  csa23 <- signBilateralCsa operator cc (inv!!2) (inv!!3) "MA PB SWP" (date 2017 Dec 1) usd 1_000_000.00 1_000.00 0.0 haircuts $ fromList [("TA", singleton ta)]
 
   -- -- -- Workflows
   -- let

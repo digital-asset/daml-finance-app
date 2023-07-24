@@ -41,7 +41,7 @@ data-dependencies:
   - .lib/daml-finance-lifecycle-1.0.0.dar
   - .lib/daml-finance-settlement-1.0.0.dar
   - .lib/daml-finance-util-1.0.0.dar
-start-navigator: yes
+start-navigator: no
 sandbox-options:
   - -c=canton.conf
 script-options:
