@@ -1,0 +1,116 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Oracle.Service where
+
+import Daml.Finance.App.Oracle.Model (PriceRequest(..), Revoke(..), UsageCounter(..), NonLicensed(..), Fulfill(..), RequestNonLicensed(..), RevokedUsage(..))
+
+import Daml.Finance.Interface.Types.Common.Types (InstrumentKey, Parties)
+import Daml.Finance.Interface.Lifecycle.Observable.NumericObservable qualified as NumericObservable (I)
+import DA.Set (singleton)
+import DA.Map qualified as M (Map, fromList)
+
+template Service
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    prefix: Text
+    customerContext: Text
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, customer) : (Party, Party, Party)
+    maintainer key._1
+
+    nonconsuming choice CreatePriceRequest: ContractId PriceRequest 
+      with 
+        instrument: InstrumentKey 
+      controller customer 
+      do 
+        requested <- getTime 
+        let oracleId = prefix <> show instrument.id
+        create PriceRequest with ..
+
+    nonconsuming choice FulfillPriceRequest: (ContractId UsageCounter, ContractId NumericObservable.I)
+      with 
+        requestCid: ContractId PriceRequest 
+        price: Decimal
+      controller provider 
+      do 
+        let 
+          observers = M.fromList [(customerContext, singleton customer)]
+        exercise requestCid Fulfill with ..
+
+    nonconsuming choice RejectNonLicensedPriceRequest: ContractId NonLicensed
+      with 
+        requestCid: ContractId PriceRequest 
+        reason: Text 
+      controller provider 
+      do 
+        exercise requestCid RequestNonLicensed with ..
+
+    choice Terminate : ()
+      with
+        actor : Party
+      controller actor
+      do
+        assert $ actor == operator || actor == provider || actor == customer
+        pure ()
+
+    nonconsuming choice RevokeUsage: ContractId RevokedUsage 
+      with 
+        usageCid: ContractId UsageCounter 
+        reason: Text 
+      controller provider 
+      do 
+        exercise usageCid Revoke with ..
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+    prefix: Text
+    customerContext: Text
+  where
+    signatory operator, provider
+    observer customer
+
+    choice Accept : ContractId Service
+      controller customer
+      do
+        create Service with ..
+
+    choice Decline : ()
+      controller customer
+      do pure ()
+
+    choice Withdraw : ()
+      controller provider
+      do pure ()
+
+template Request
+  with
+    customer : Party
+    provider : Party
+    customerContext: Text
+  where
+    signatory customer
+    observer provider
+
+    choice Cancel : ()
+      controller customer
+      do pure ()
+
+    choice Reject : ()
+      controller provider
+      do pure ()
+
+    choice Approve : ContractId Service
+      with
+        operator : Party
+        prefix: Text
+      controller operator, provider
+      do
+        create Service with ..

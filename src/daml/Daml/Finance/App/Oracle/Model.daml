@@ -1,0 +1,106 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Oracle.Model where
+
+import Daml.Finance.Interface.Types.Common.Types (InstrumentKey, Parties)
+import Daml.Finance.Interface.Lifecycle.Observable.NumericObservable qualified as NumericObservable (I)
+import Daml.Finance.Data.Numeric.Observation qualified as Data (Observation(..))
+import DA.Map qualified as M (Map, fromList)
+
+template PriceRequest 
+  with
+    operator : Party
+    provider : Party
+    customer : Party 
+    instrument: InstrumentKey
+    oracleId: Text 
+    requested: Time 
+  where 
+    signatory operator, provider, customer
+
+    choice Fulfill: (ContractId UsageCounter, ContractId NumericObservable.I)
+      with 
+        price: Decimal
+        observers: M.Map Text Parties
+      controller provider 
+      do 
+        fulfilled <- getTime
+        observationCid <- toInterfaceContractId <$> create Data.Observation 
+          with 
+            provider
+            id = instrument.id
+            observations = M.fromList [(fulfilled, price)]
+            observers
+        usage <- create UsageCounter 
+          with 
+            count = 0
+            ..
+        return (usage, observationCid)
+
+    choice RequestNonLicensed: ContractId NonLicensed
+      with 
+        reason: Text 
+      controller provider 
+      do 
+        rejected <- getTime 
+        create NonLicensed with ..
+
+template UsageCounter 
+  with 
+    operator: Party 
+    provider: Party 
+    customer: Party 
+    instrument: InstrumentKey
+    oracleId: Text
+    requested: Time 
+    fulfilled: Time
+    count: Int 
+    observationCid: ContractId NumericObservable.I
+  where 
+    signatory operator, provider, customer 
+
+    choice Increment: ContractId UsageCounter 
+      with 
+        increase: Int 
+      controller customer 
+      do 
+        assertMsg"Usage must always increase." $ increase >= 0
+        create this with count = count + increase
+
+    choice Revoke: ContractId RevokedUsage 
+      with 
+        reason: Text 
+      controller provider 
+      do 
+        revoked <- getTime
+        archive observationCid
+        create RevokedUsage with ..
+
+template RevokedUsage 
+  with 
+    operator: Party 
+    provider: Party 
+    customer: Party 
+    instrument: InstrumentKey
+    oracleId: Text
+    requested: Time 
+    fulfilled: Time
+    count: Int
+    revoked: Time 
+    reason: Text
+  where 
+    signatory operator, provider, customer 
+
+template NonLicensed 
+  with 
+    operator: Party 
+    provider: Party 
+    customer: Party 
+    instrument: InstrumentKey
+    oracleId: Text
+    requested: Time 
+    rejected: Time 
+    reason: Text 
+  where 
+    signatory operator, provider, customer

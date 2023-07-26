@@ -79,7 +79,8 @@ export const scenarios : Scenario[] = [
       [ "Issuer",       { x: 1200, y: 300 } ],
       [ "Investor1",    { x:    0, y: 300 } ],
       [ "Investor2",    { x:  400, y: 300 } ],
-      [ "Investor3",    { x:  800, y: 300 } ]
+      [ "Investor3",    { x:  800, y: 300 } ], 
+      [ "Oracle",       { x: 1400, y: 0 } ]
     ]),
     useNetworkLogin: true
   },

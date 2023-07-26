@@ -26,6 +26,8 @@ import Daml.Finance.App.Issuance.Service qualified as Issuance (CreateIssuance(.
 import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Service, DeclareDividend(..), DeclareStockSplit(..), DeclareReplacement(..))
 import Daml.Finance.App.Listing.Model qualified as Listing (T)
 import Daml.Finance.App.Listing.Service qualified as Listing (CreateListing(..), RequestCreateListing(..), Service)
+import Daml.Finance.App.Oracle.Service qualified as Oracle (CreatePriceRequest(..), FulfillPriceRequest(..), Service)
+import Daml.Finance.App.Oracle.Model qualified as Oracle (UsageCounter)
 import Daml.Finance.App.Quoting.Model qualified as Quoting (Side, Quote, QuoteRequest)
 import Daml.Finance.App.Quoting.Service qualified as Quoting (AcceptQuote(..), CreateQuote(..), RequestQuote(..), Service)
 import Daml.Finance.App.Settlement.Service qualified as Settlement (Service)
@@ -371,3 +373,8 @@ approveClearing counterparty clearingRequestCid clearingAccount =
 clear : Party -> Party -> ContractId Clearing.ClearingRequest -> Script (ContractId Holding.I, ContractId Holding.I)
 clear clearer public clearingRequestCid =
   submitMulti [clearer] [public] do exerciseCmd clearingRequestCid Clearing.Clear
+
+createOracleData : Party -> Party -> Party -> InstrumentKey -> Decimal -> Script (ContractId Oracle.UsageCounter, ContractId NumericObservable.I)
+createOracleData operator provider customer instrument price = do 
+  requestCid <- submit customer $ exerciseByKeyCmd @Oracle.Service (operator, provider, customer) Oracle.CreatePriceRequest with ..
+  submit provider $ exerciseByKeyCmd @Oracle.Service (operator, provider, customer) Oracle.FulfillPriceRequest with ..

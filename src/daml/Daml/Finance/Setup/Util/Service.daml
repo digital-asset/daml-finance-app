@@ -26,6 +26,7 @@ import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Accep
 import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (Accept(..), Service)
 import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (Accept(..), Service)
 import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Accept(..), Service)
+import Daml.Finance.App.Oracle.Service qualified as Oracle (Accept(..), Offer(..), Service)
 import Daml.Finance.App.Quoting.Service qualified as Quoting (Accept(..), Service)
 import Daml.Finance.App.Role.Custodian qualified as Custodian
 import Daml.Finance.App.Role.Distributor qualified as Distributor
@@ -56,6 +57,11 @@ import Daml.Finance.Settlement.Factory qualified as Settlement (Factory(..))
 import Daml.Script
 
 type SettlementPaths = Map Text Settlement.Hierarchy
+
+createOracleService : Party -> Party -> Party -> Text -> Text -> Script (ContractId Oracle.Service)
+createOracleService operator provider customer customerContext prefix = do 
+  offerCid <- submitMulti [operator, provider] [] do createCmd Oracle.Offer with ..
+  submit customer do exerciseCmd offerCid Oracle.Accept
 
 createCustodyService : Party -> Party -> Party -> SettlementPaths -> ContractId Account.F -> ContractId Holding.F -> Script (ContractId Custody.Service)
 createCustodyService operator provider customer paths accountFactoryCid holdingFactoryCid = do

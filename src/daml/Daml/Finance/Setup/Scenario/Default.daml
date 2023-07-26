@@ -23,14 +23,14 @@ import Daml.Script
 run : Script [PartyInfo]
 run  = do
   let scenario = "Default"
-  parties <- allocateParties scenario ["Operator", "CentralBank", "Registry", "Exchange", "Agent", "Issuer", "Investor1", "Investor2", "Investor3"] "Public"
+  parties <- allocateParties scenario ["Operator", "CentralBank", "Registry", "Exchange", "Agent", "Issuer", "Investor1", "Investor2", "Investor3", "Oracle"] "Public"
   let
-    all@[operator, centralBank, registry, exchange, agent, issuer, inv1, inv2, inv3, public] = map (.id) parties
+    all@[operator, centralBank, registry, exchange, agent, issuer, inv1, inv2, inv3, oracle, public] = map (.id) parties
     pub = fromList [("Public", singleton public)]
 
   -- Factories
   let
-    assets = ["TSLA", "NFLX", "FWD1", "BOND1", "SWAP1", "BSWAP1", "OPT1", "OPT2"]
+    assets = ["TSLA", "NFLX", "FWD1", "BOND1", "SWAP1", "BSWAP1", "OPT1", "OPT2", "TSLA_STRANGLE"]
     cashSettlementPaths = [[issuer], [registry], [inv1], [inv2], [inv3]]
     securitiesSettlementPaths = [[issuer], [inv1], [inv2], [inv3]]
     cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = cashSettlementPaths
@@ -79,6 +79,12 @@ run  = do
   createBiddingAutoService      operator agent       inv2
   createBiddingService          operator agent       inv3
   createBiddingAutoService      operator agent       inv3
+  let prefix = "Mapped:"
+  createOracleService           operator oracle      issuer "Issuer" prefix 
+  createOracleService           operator oracle      inv1 "Investor1" prefix
+  createOracleService           operator oracle      inv2 "Investor2" prefix
+  createOracleService           operator oracle      inv3 "Investor3" prefix
+
 
   -- Accounts
   issuerCashAccount   <- createAccount operator centralBank  issuer   public "Issuer@CentralBank"    empty
@@ -162,7 +168,11 @@ run  = do
       -- createAskOrder operator exchange issuer public "2" (Instrument.qty 250_000.0 swp) (Instrument.qty 0.90 usd) $ singleton public
       -- createBidOrder operator exchange inv1  public "3" (Instrument.qty 500_000.0 swp) (Instrument.qty 0.90 usd) $ singleton public
 
+    doOracle = do 
+      createOracleData operator oracle issuer tsla 300.040
+
   --doAuction
   --doTrade
+  --doOracle
 
   pure parties

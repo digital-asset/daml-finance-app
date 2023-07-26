@@ -41,6 +41,7 @@ export const useNetwork = () : Network => {
     svc.issuance,
     svc.lending,
     svc.lifecycle,
+    svc.oracle,
     svc.quoting,
     svc.settlement,
     svc.structuring,
