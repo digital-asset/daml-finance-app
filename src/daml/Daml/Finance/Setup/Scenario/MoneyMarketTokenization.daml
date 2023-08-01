@@ -29,7 +29,7 @@ run : Script [PartyInfo]
 run = do
   let 
     scenario = "Money Market Tokenization"
-    investorNames = ["HedgeFund1", "HedgeFund2", "PrimeBroker", "SwapsDealer", "InsuranceCo"]
+    investorNames = ["HedgeFund1", "HedgeFund2", "Lloyds", "SwapsDealer", "InsuranceCo"]
   parties <- allocateParties scenario (["Operator", "CashRail", "TransferAgent", "AssetManager", "Registry", "CollateralClearer"] ++ investorNames) "Public"
   let
     all@[operator, cashProvider, ta, am, registry, cc, inv0, inv1, inv2, inv3, inv4, public] = map (.id) parties
@@ -42,7 +42,7 @@ run = do
     settlementPaths = [[registry], [ta], [am], [inv!!0, ta], [inv!!1, ta], [inv!!2, ta], [inv!!3, ta], [inv!!4, ta]]
     cashRoute = Settlement.Hierarchy with rootCustodian = cashProvider; pathsToRootCustodian = settlementPaths
     secRoute = Settlement.Hierarchy with rootCustodian = registry; pathsToRootCustodian = settlementPaths
-    paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
+    paths = fromList $ ("GBP", cashRoute) :: map (\a -> (a, secRoute)) assets
   accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
   holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
 
@@ -92,7 +92,7 @@ run = do
     epoch = tt $ date 1970 Jan 1
 
   -- Instruments
-  usd   <- originateToken                    cashProvider  cashProvider  pub epoch "USD"   "United States Dollar"
+  usd   <- originateToken                    cashProvider  cashProvider  pub epoch "GBP"   "Great Britain Pound"
   fund1 <- originateEquity                    registry     am            pub epoch "GILT1" "GILT1 Units" -- Todo make these bonds
   fund2 <- originateEquity                    registry     am            pub epoch "GILT2" "GILT2 Units"
   fund3 <- originateEquity                    registry     am            pub epoch "GILT3" "GILT3 Units"
