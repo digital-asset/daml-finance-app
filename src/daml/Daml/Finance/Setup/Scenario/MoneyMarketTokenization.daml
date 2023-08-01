@@ -29,7 +29,7 @@ run : Script [PartyInfo]
 run = do
   let 
     scenario = "Money Market Tokenization"
-    investorNames = ["HedgeFund1", "HedgeFund2", "Lloyds", "SwapsDealer", "InsuranceCo"]
+    investorNames = ["HedgeFund1", "HedgeFund2", "PrimeBroker", "SwapsDealer", "InsuranceCo"]
   parties <- allocateParties scenario (["Operator", "CashRail", "TransferAgent", "AssetManager", "Registry", "CollateralClearer"] ++ investorNames) "Public"
   let
     all@[operator, cashProvider, ta, am, registry, cc, inv0, inv1, inv2, inv3, inv4, public] = map (.id) parties
