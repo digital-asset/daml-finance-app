@@ -227,9 +227,9 @@ export const scenarios : Scenario[] = [
       [ "Operator",   { x:    0, y:   0 } ],
       [ "Public",     { x:    0, y:   0 } ],
       [ "CentralBank",        { x:    0, y:   0 } ],
-      [ "Issuer",        { x:  200, y:   0 } ],
-      [ "Beneficiary",        { x:  400, y:   0 } ],
-      [ "Buyer",        { x:  600, y:   0 } ],
+      [ "Issuer",        { x:  500, y:   100 } ],
+      [ "Seller",        { x:  100, y:   300 } ],
+      [ "Buyer",        { x:  400, y:   300 } ],
     ]),
     useNetworkLogin: true
   }, 
