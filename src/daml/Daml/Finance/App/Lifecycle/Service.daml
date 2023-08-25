@@ -31,8 +31,10 @@ template Service
     replacementRuleCid : ContractId Lifecycle.I
     genericRuleCid : ContractId Lifecycle.I
     dynamicRuleCid : ContractId Lifecycle.I
+    observers : [Party]
   where
     signatory operator, provider, customer
+    observer observers
 
     key (operator, provider, customer) : (Party, Party, Party)
     maintainer key._1
@@ -196,7 +198,11 @@ template Service
       do
         let formula = Pricing.valueClaim ccy claims
         pure (formula, Pricing.print formula)
-
+    choice AddObserver : ContractId Service
+      with
+        newObserver : Party
+      controller provider
+      do create this with observers = newObserver::observers
     choice Terminate : ()
       with
         actor : Party
@@ -221,7 +227,7 @@ template Offer
     choice Accept : ContractId Service
       controller customer
       do
-        create Service with ..
+        create Service with observers =[];..
 
     choice Decline : ()
       controller customer
@@ -256,4 +262,4 @@ template Request
         dynamicRuleCid : ContractId Lifecycle.I
       controller operator, provider
       do
-        create Service with ..
+        create Service with observers = [];..

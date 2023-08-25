@@ -29,6 +29,7 @@ import Daml.Finance.App.Distribution.Investment.Service qualified as Investment 
 import Daml.Finance.App.Distribution.Subscription.Service qualified as Subscription (Accept(..), Service)
 import Daml.Finance.App.Quoting.Service qualified as Quoting (Accept(..), Service)
 import Daml.Finance.App.LettersOfCredit.Service qualified as LettersOfCredit (Service(..), Offer(..))
+import Daml.Finance.App.MutualTrade.Service qualified as MutualTrade (Service(..), Offer(..))
 import Daml.Finance.App.Role.Custodian qualified as Custodian
 import Daml.Finance.App.Role.Distributor qualified as Distributor
 import Daml.Finance.App.Role.Exchange qualified as Exchange
@@ -213,3 +214,8 @@ createDecentralizedExchangeService consortium public id shares quantity1 account
 createLettersOfCreditService: Party -> Party -> Party -> ContractId StructuringAuto.Service -> ContractId Custody.Service -> Script (ContractId LettersOfCredit.Service)
 createLettersOfCreditService operator provider customer structuringAutoServiceCid custodyServiceCid = do 
   submitMulti [operator, provider, customer] [] do createCmd LettersOfCredit.Service with ..
+
+
+createMutualTradeService : Party -> Party -> Party -> Script (ContractId MutualTrade.Service)
+createMutualTradeService operator provider customer = do
+  submitMulti [operator, provider, customer] [] do createCmd MutualTrade.Service with ..

@@ -6,10 +6,13 @@ module Daml.Finance.Setup.Scenario.LettersOfCredit where
 import DA.Date (Month(..), date, toDateUTC, toGregorian)
 import DA.Foldable (mapA_)
 import DA.Map (empty, fromList)
+-- import DA.Set (singleton)
 import DA.Set (singleton)
+import DA.Set qualified as Sett (fromList)
 import DA.Time (time)
 import Daml.Finance.Account.Account qualified as Account (Factory(..))
 import Daml.Finance.Claims.Lifecycle.Rule qualified as Lifecycle (Rule(..))
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
 import Daml.Finance.Data.Time.DateClock qualified as Data (DateClock)
 import Daml.Finance.Data.Time.DateClockUpdate qualified as Data (DateClockUpdateEvent)
 import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
@@ -27,6 +30,15 @@ import Daml.Finance.Setup.Util.Service
 import Daml.Finance.Setup.Util.Workflow
 import Daml.Script
 import Daml.Finance.Setup.Payoff
+import Daml.Finance.App.MutualTrade.Service qualified as MutualTrade (CreateInvoice(..), PayOrDispute(..), Service)
+import Daml.Finance.App.MutualTrade.Model qualified as MutualTrade (Invoice,Dispute, Claim(..)) 
+import Daml.Finance.App.LettersOfCredit.Model qualified as LetterOfCredit (LifecycleLoc(..))
+import DA.Either (eitherToMaybe, fromRight,eitherToOptional)
+import DA.Optional (fromSome)
+import Daml.Finance.Holding.Fungible qualified as Fungible (T)
+import DA.List.Total (head)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I, RemoveObservers(..))
 
 run : Script [PartyInfo]
 run = do
@@ -38,7 +50,7 @@ run = do
 
   -- Factories
   let
-    assets = ["SBLC1"]
+    assets = ["SBLC1","SBLC2","SBLC3","SBLC4","SBLC5"]
     settlementPaths = [[issuer], [seller], [buyer]]
     cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = settlementPaths
     secRoute = Settlement.Hierarchy with rootCustodian = issuer; pathsToRootCustodian = settlementPaths
@@ -56,7 +68,7 @@ run = do
   createCustodyService          operator centralBank  seller        paths accountFactoryCid holdingFactoryCid
   createCustodyService          operator centralBank  buyer         paths accountFactoryCid holdingFactoryCid
   createCustodyService          operator issuer  issuer        paths accountFactoryCid holdingFactoryCid
-  createCustodyService          operator issuer  seller        paths accountFactoryCid holdingFactoryCid
+  sellerSvcCustody <-createCustodyService          operator issuer  seller        paths accountFactoryCid holdingFactoryCid
   buyerCustodyService <- createCustodyService          operator issuer  buyer         paths accountFactoryCid holdingFactoryCid
   createIssuanceService         operator issuer     issuer
   createIssuanceAutoService     operator issuer     issuer
@@ -68,7 +80,7 @@ run = do
   createSettlementService       operator issuer     buyer      paths
 
   locService <- createLettersOfCreditService  operator issuer buyer structuringServiceCid buyerCustodyService
-
+  mutualTradeService <- createMutualTradeService operator buyer seller
   -- Accounts
   issuerCashAccount     <- createAccount operator centralBank issuer    public "Issuer@CentralBank/Cash"         empty
   sellerCashAccount     <- createAccount operator centralBank seller    public "Seller@CentralBank/Cash"         empty
@@ -85,7 +97,8 @@ run = do
     tt d = time d 0 0 0
     epoch = tt $ date 1970 Jan 1
     (ty, tm, td) = toGregorian today
-  (timeObservableCid, eventCid) <- createClockAndEvent all (date 2021 tm td) (singleton public)
+  -- (timeObservableCid, eventCid) <- createClockAndEvent all (date 2021 tm td) (singleton public)
+  (timeObservableCid, eventCid) <- createClockAndEvent all today (singleton public)
 
   -- Instruments
   usd   <- originateToken               centralBank centralBank pub epoch "USD"   "United States Dollar"
@@ -107,7 +120,8 @@ run = do
   obsCid2 <- createObservation issuer "CPI"            cpi   pub
   createCalendar issuer "EMPTY" [] [] pub
   createAccountDirectory issuer     ([(usd, issuerCashAccount)] <> map (\s -> (s, issuerSecAccount)) securities)        $ singleton public
-
+  createAccountDirectory buyer   ([(usd, buyerCashAccount)] <> map (\s -> (s, buyerSecAccount)) securities)      $ singleton public
+  createAccountDirectory seller   ([(usd, sellerCashAccount)] <> map (\s -> (s, sellerSecAccount)) securities)      $ singleton public
   -- Distribution
   (_, tokenHoldingCid) <- issue operator issuer issuer public (qty 50_000_000.00 token) issuerSecAccount
 
@@ -118,6 +132,76 @@ run = do
   --issueLoC: Party -> Party -> Party -> Party -> Date -> Text -> InstrumentQuantity -> InstrumentQuantity -> Text -> Time -> Time -> PartiesMap -> AccountKey -> Script (ContractId LettersOfCredit.LoC) 
   --issueLoC operator issuer buyer beneficiary maturity id requested granted terms acquisitionTime lastEventTimestamp observers account = do 
 
-  issueLoC operator issuer buyer seller today "SBLC2" (qty 30_000_000.00 usd) (qty 29_000_000.00 usd) "Terms!" epoch epoch pub buyerSecAccount
+  (locCid, holdingCid,cashHoldingIssuer)<- issueLoC operator issuer buyer seller today "SBLC2" (qty 30_000_000.00 usd) (qty 29_000_000.00 usd) "Terms!" epoch epoch pub buyerSecAccount issuerSecAccount issuerCashAccount
+  
+  -- cashHoldingCid <- getHolding buyer (Instrument.qty 91_000.0 usd)
+
+
+  paymentRequestCid<- submit seller do 
+    exerciseCmd mutualTradeService MutualTrade.CreateInvoice with
+      id = "1234" 
+      paymentFor = " Trade Ice"
+      dueDate = date 2024 Jan 18
+      requested = qty 29_000_000.00 usd
+      cashAccountKey = sellerCashAccount
+      secAccountKey = sellerSecAccount
+
+  disputeOrReceipt <-  submitMulti [buyer] [public] do 
+    exerciseCmd mutualTradeService MutualTrade.PayOrDispute with
+      paymentRequestCid = paymentRequestCid
+      holdingCid = holdingCid
+  let dispute:(ContractId MutualTrade.Dispute) = fromSome $ eitherToOptional disputeOrReceipt
+
+
+  -- cashHoldingIssuer <- getHolding issuer (qty 29_000_000.00 usd)
+
+  
+  -- cashHoldingIssuerDisclosed :ContractId Holding.I <- coerceContractId  <$>  submit issuer do exerciseCmd (coerceContractId cashHoldingIssuer : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton issuer; observersToAdd = ("Test", Sett.fromList [seller])
+ 
+  -- get the sblc2 holdingcid owned by issuer
+  x <-  head <$> queryFilter @Fungible.T seller (\h -> h.instrument.id == Id "SBLC2")
+  let (holdingCid2, holding2) = fromSome x
+  let holdcid :ContractId Holding.I = coerceContractId holdingCid2
+
+  -- Do Claim on Dispute ()
+  submitMulti [seller] [public] do
+    exerciseCmd dispute MutualTrade.Claim with 
+      custodySvcCid = sellerSvcCustody
+      holdingCids = [holdcid] 
+      cashCid = coerceContractId cashHoldingIssuer
+      cashRecAccount = sellerCashAccount
+      secRecAccount = issuerSecAccount
+      ..
+
+-- Another SBLC
+  -- paymentRequestCid<- submit seller do 
+  --   exerciseCmd mutualTradeService MutualTrade.CreateInvoice with
+  --     id = "1235" 
+  --     paymentFor = " Trade Ice"
+  --     dueDate = date 2024 Jan 18
+  --     requested = qty 500_000.00 usd
+  --     cashAccountKey = sellerCashAccount
+  --     secAccountKey = sellerSecAccount
+ 
+  -- (locCid, holdingCid,cashHoldingIssuer)<- issueLoC operator issuer buyer seller today "SBLC3" (qty 500_000.00 usd) (qty 500_000.00 usd) "Terms!" epoch epoch pub buyerSecAccount issuerSecAccount issuerCashAccount
+
+  -- disputeOrReceipt <-  submitMulti [buyer] [public] do 
+  --   exerciseCmd mutualTradeService MutualTrade.PayOrDispute with
+  --     paymentRequestCid = paymentRequestCid
+  --     holdingCid = holdingCid
+  -- let dispute:(ContractId MutualTrade.Dispute) = fromSome $ eitherToOptional disputeOrReceipt
+
+  -- x <-  head <$> queryFilter @Fungible.T seller (\h -> h.instrument.id == Id "SBLC3")
+  -- let (holdingCid2, holding2) = fromSome x
+  -- let holdcid :ContractId Holding.I = coerceContractId holdingCid2
+
+  -- submitMulti [seller] [public] do
+  --   exerciseCmd dispute MutualTrade.Claim with 
+  --     custodySvcCid = sellerSvcCustody
+  --     holdingCids = [holdcid] 
+  --     cashCid = coerceContractId cashHoldingIssuer
+  --     cashRecAccount = sellerCashAccount
+  --     secRecAccount = issuerSecAccount
+  --     ..
 
   pure parties

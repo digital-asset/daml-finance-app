@@ -33,12 +33,13 @@ export const LoCs : React.FC = () => {
     return [
       getName(c.payload.customer),
       getName(c.payload.provider),
+      getName (c.payload.beneficiary),
       c.payload.id,
       fmt(c.payload.granted.amount, 0) + " " + c.payload.granted.unit.id.unpack,
       c.payload.maturity
     ];
   }
-  const headers = ["Buyer", "Issuer", "Id", "Quantity", "Maturity"]
+  const headers = ["Buyer", "Issuer", "Beneficiary", "Id", "Quantity", "Maturity"]
   const values : any[] = locs.map(createRow);
   return (
     <HorizontalTable title="Live Trades" variant={"h3"} headers={headers} values={values} />

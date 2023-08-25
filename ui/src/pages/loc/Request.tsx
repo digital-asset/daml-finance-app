@@ -21,6 +21,7 @@ import { Transferable } from "@daml.js/daml-finance-interface-holding/lib/Daml/F
 import { SelectInput, toValues } from "../../components/Form/SelectInput";
 import { TextInput } from "../../components/Form/TextInput";
 import { LoCRequest } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/LettersOfCredit/Model";
+import { useAccounts } from "../../context/AccountContext";
 
 export const Request : React.FC = () => {
   const cls = useStyles();
@@ -37,8 +38,10 @@ export const Request : React.FC = () => {
   const { loading: l2, tokens } = useInstruments(); 
   const { loading: l3, getFungible } = useHoldings();
   const { loading: l4, contracts: requests } = useStreamQueries(LoCRequest);
-  const { loading: l5, contracts: accounts } = useStreamQueries(Reference);
-
+  // const { loading: l5, contracts: accounts } = useStreamQueries(Reference);
+  const { loading: l5, accounts } = useAccounts();
+  const bankAccount = accounts.find(c=> c.custodian == getParty("CentralBank"));
+  const secAccount = accounts.find(c=> c.custodian == getParty("Issuer"));
   const { contractId } = useParams<any>();
   const request = requests.find(b => b.contractId === contractId);
   const currency = tokens.find(c => c.payload.id.unpack === request?.payload.requested.unit.id.unpack);
@@ -50,7 +53,7 @@ export const Request : React.FC = () => {
   const isProvider = providerServices.length > 0;
   const isCustomer = customerServices.length > 0;
 
-
+  
   if (!isProvider && !isCustomer) return <Message text="No lending service found" />
   if (!request) return <Message text="Borrow request not found" />
   if (!currency) return <Message text="Borrowed instrument not found" />
@@ -59,13 +62,20 @@ export const Request : React.FC = () => {
   const createBorrowOffer = async () => {
     const epoch = new Date(1970, 1, 1).toISOString();
     const observers = emptyMap<string, any>().set("Public", singleton(getParty("Public")));
+    if(!bankAccount) return;
+    if (!secAccount)return;
+    const cashCid = await getFungible(party, grantedAmount, currency!.key);
     const arg = {
       loCRequestCid: request.contractId, 
       granted: { amount: grantedAmount, unit: currency!.key }, 
       observers: observers,
       lastEventTimestamp: epoch, 
       acquisitionTime: epoch, 
-      terms: terms
+      terms: terms,
+      cashAccountKey : bankAccount,
+      secAccountKey : secAccount,
+      cashCid : cashCid
+
     };
     await ledger.exercise(LettersOfCredit.OfferLoC, providerServices[0].contractId, arg);
     navigate("/app/loc/offers");

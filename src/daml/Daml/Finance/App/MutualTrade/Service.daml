@@ -1,0 +1,131 @@
+module Daml.Finance.App.MutualTrade.Service where
+
+import Daml.Finance.App.MutualTrade.Model (Invoice(..), Dispute(..),Receipt(..))
+-- import Daml.Finance.App.Structuring.Auto.Service qualified as StructuringAuto (Service, RequestAndCreateGeneric(..))
+-- import Daml.Finance.App.Custody.Service qualified as Custody (Service, RequestDeposit(..), Deposit(..))
+import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I)
+
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentQuantity, Id(..), InstrumentKey(..), PartiesMap)
+import Daml.Finance.App.Util (fetchAndArchive)
+import ContingentClaims.Core.Claim (Claim, and, anytime, at, cond, give, one, or, scale, until, when, zero, (<=))
+import DA.Time (time)
+import Daml.Finance.Interface.Util.Common (qty)
+import Daml.Finance.Interface.Instrument.Base.Instrument (getKey)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I, Transfer(..))
+import DA.Set (fromList, singleton)
+import Daml.Finance.Interface.Account.Account qualified as Account (R)
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
+
+t : Date -> Time
+t d = time d 0 0 0
+
+template Service 
+  with 
+    operator: Party
+    provider: Party 
+    customer: Party 
+ 
+  where 
+    signatory operator, provider, customer
+
+    key (operator, provider, customer) : (Party, Party, Party)
+    maintainer key._1
+
+    nonconsuming choice CreateInvoice: ContractId Invoice 
+      with 
+        id : Text
+        paymentFor : Text
+        dueDate : Date
+        requested : InstrumentQuantity
+        cashAccountKey : AccountKey
+        secAccountKey : AccountKey
+        
+        
+      controller customer 
+      do 
+        (_, secAccRef) <- fetchByKey @Account.R secAccountKey
+        (_, cashAccRef) <- fetchByKey @Account.R cashAccountKey
+        
+        exercise (coerceContractId secAccRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (id, singleton provider)
+        exercise (coerceContractId cashAccRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (id, singleton provider)
+
+
+        create Invoice with ..
+
+    nonconsuming choice PayOrDispute: Either (ContractId Receipt) (ContractId Dispute) 
+      with 
+        paymentRequestCid: ContractId Invoice
+        -- paymentDate : Date  
+        holdingCid : ContractId Holding.I
+      controller provider 
+      do 
+        Invoice{operator; provider; customer; id; paymentFor; requested; secAccountKey, cashAccountKey} <- fetchAndArchive paymentRequestCid 
+
+        holding <- view <$> fetch holdingCid
+        debug $ holding.instrument == requested.unit
+        createdOn <- getTime
+
+        if (holding.instrument /= requested.unit) 
+        -- holding.instrument === consumedQuantity.unit
+          then
+            do
+              newFungibleCid <- exercise (coerceContractId holdingCid : ContractId Transferable.I) Transferable.Transfer with actors = fromList [provider, customer]; newOwnerAccount = secAccountKey
+              dispute <- create Dispute with 
+                send = qty (requested.amount) (holding.instrument) ; ..
+              return $ Right dispute
+
+          else
+            do
+              newFungibleCid <- exercise (coerceContractId holdingCid : ContractId Transferable.I) Transferable.Transfer with actors = fromList [provider, customer]; newOwnerAccount = cashAccountKey
+              receipt <- create Receipt with paid = requested; ..
+              return $ Left receipt
+
+
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+
+  where
+    signatory operator, provider
+    observer customer
+
+    choice Accept : ContractId Service
+      controller customer
+      do
+        create Service with operator; provider; customer
+
+    choice Decline : ()
+      controller customer
+      do
+        return ()
+
+    choice Withdraw : ()
+      controller provider
+      do pure ()
+
+template Request
+  with
+    customer : Party
+    provider : Party
+  where
+    signatory customer
+
+    choice Cancel : ()
+      controller customer
+      do pure ()
+
+    choice Reject : ()
+      controller provider
+      do pure ()
+
+    choice Approve : ContractId Service
+      with
+        operator : Party
+
+      controller operator, provider
+      do
+        create Service with operator; provider; customer

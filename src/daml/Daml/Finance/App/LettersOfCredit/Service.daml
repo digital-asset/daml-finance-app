@@ -4,13 +4,18 @@ import Daml.Finance.App.LettersOfCredit.Model (LoCRequest(..), LoCOffer(..), LoC
 import Daml.Finance.App.Structuring.Auto.Service qualified as StructuringAuto (Service, RequestAndCreateGeneric(..))
 import Daml.Finance.App.Custody.Service qualified as Custody (Service, RequestDeposit(..), Deposit(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I)
-
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentQuantity, Id(..), InstrumentKey(..), PartiesMap)
 import Daml.Finance.App.Util (fetchAndArchive)
 import ContingentClaims.Core.Claim (Claim, and, anytime, at, cond, give, one, or, scale, until, when, zero, (<=))
 import DA.Time (time)
 import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Interface.Instrument.Base.Instrument (getKey)
+import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Service, AddObserver(..))
+import Daml.Finance.Interface.Account.Account qualified as Account (R)
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
+import DA.Set (fromList, singleton)
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..), SplitResult(..))
 
 t : Date -> Time
 t d = time d 0 0 0
@@ -38,17 +43,23 @@ template Service
       do 
         create LoCRequest with ..
 
-    nonconsuming choice OfferLoC: ContractId LoCOffer 
+    nonconsuming choice OfferLoC: (ContractId LoCOffer ,ContractId Fungible.I)
       with 
         loCRequestCid: ContractId LoCRequest
         granted: InstrumentQuantity 
         acquisitionTime: Time
         lastEventTimestamp : Time
         observers : PartiesMap
-        terms: Text 
+        terms: Text
+        cashCid : ContractId Fungible.I
+        secAccountKey : AccountKey --AR
+        cashAccountKey : AccountKey --AR
       controller provider 
       do 
         LoCRequest{operator; provider; customer; maturity; id; beneficiary; requested} <- fetchAndArchive loCRequestCid 
+        cashCidVisibleToBeneficiary : ContractId Fungible.I <- coerceContractId <$> exercise (coerceContractId cashCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton provider; observersToAdd = (id, singleton beneficiary)
+        exerciseByKey @Lifecycle.Service (operator, provider, provider) Lifecycle.AddObserver with
+          newObserver = beneficiary 
         instrumentCid <- exercise structuringAutoServiceCid StructuringAuto.RequestAndCreateGeneric 
           with 
             description = "SBLC "<>id<>" "<> show maturity
@@ -58,12 +69,22 @@ template Service
             observers
             ..
         instrument <- fetch instrumentCid
-        create LoCOffer 
+                
+        -- Disclose delivering cash account
+        
+        (_, secAccRef) <- fetchByKey @Account.R secAccountKey
+        (_, cashAccRef) <- fetchByKey @Account.R cashAccountKey
+        
+        exercise (coerceContractId secAccRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton provider; observersToAdd = (id, singleton beneficiary)
+        exercise (coerceContractId cashAccRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton provider; observersToAdd = (id, singleton beneficiary)
+
+        locOffer <- create LoCOffer 
           with
             tokens = qty (granted.amount) (getKey instrument)
             ..
+        return(locOffer,cashCidVisibleToBeneficiary)
 
-    nonconsuming choice AcceptLoC: ContractId LoC 
+    nonconsuming choice AcceptLoC: (ContractId LoC, ContractId Holding.I )
       with 
         loCOfferCid: ContractId LoCOffer 
         account: AccountKey
@@ -74,8 +95,9 @@ template Service
           with 
             quantity = tokens 
             account 
-        exercise custodyServiceCid Custody.Deposit with ..
-        create LoC with ..
+        holdingCid <- exercise custodyServiceCid Custody.Deposit with ..
+        locCid <- create LoC with sblc = tokens.unit;..
+        return (locCid, holdingCid)
 
 template Offer
   with

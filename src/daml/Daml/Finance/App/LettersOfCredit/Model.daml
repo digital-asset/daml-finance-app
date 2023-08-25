@@ -1,7 +1,23 @@
 module Daml.Finance.App.LettersOfCredit.Model where
 
-import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentQuantity)
-
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentQuantity,InstrumentKey(..),Id(..))
+import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Service, Lifecycle(..))
+import Daml.Finance.Interface.Lifecycle.Event qualified as Event (I)
+import Daml.Finance.Interface.Lifecycle.Observable.NumericObservable qualified as NumericObservable (I)
+import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (I)
+import Daml.Finance.Interface.Lifecycle.Effect qualified as Effect (I)
+-- import Daml.Finance.Interface.Types.Common.Types (Id, InstrumentKey(..), InstrumentQuantity)
+import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Claim (ClaimEffect(..), ClaimResult(..))
+import DA.Optional (fromSome)
+import DA.List.Total ((!!), head)
+import Daml.Finance.App.Custody.Service qualified as Custody ( Service)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (I, Allocate(..), Approve(..))
+import DA.Set (singleton)
+import DA.List qualified as List (singleton)
+import Daml.Finance.Interface.Settlement.Types (Allocation(Pledge), Approval(TakeDelivery), Step(..))
+import DA.Foldable (forA_)
+import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
 template LoCRequest 
   with 
     operator: Party 
@@ -45,9 +61,63 @@ template LoC
     maturity: Date 
     requested: InstrumentQuantity
     granted: InstrumentQuantity
+    sblc : InstrumentKey
     terms: Text
   where 
-    signatory operator, provider, customer 
+    signatory operator, provider, customer
+    observer beneficiary 
 
     key (operator, provider, id) : (Party, Party, Text)
     maintainer key._1
+
+    nonconsuming choice LifecycleLoc : [ContractId Effect.I]
+      with
+        eventCid : ContractId Event.I
+       
+        custodySvcCid : ContractId Custody.Service
+        holdingCids : [ContractId Holding.I]
+        cashCid : ContractId Holding.I
+        cashRecAccount : AccountKey
+        secRecAccount : AccountKey
+      controller beneficiary
+      do
+        (_,svc) <- fetchByKey @Lifecycle.Service (operator, provider, provider)
+        (_,effects) <- exerciseByKey @Lifecycle.Service (operator, provider, provider) Lifecycle.Lifecycle with 
+          instrument = sblc
+          ruleCid = svc.genericRuleCid 
+          observableCids = []
+          ..
+
+        cs <- fetch custodySvcCid
+        let effect = fromSome $ head effects
+
+        Claim.ClaimResult{batchCid; instructionCids} <- exercise cs.claimRuleCid Claim.ClaimEffect with claimer = beneficiary; effectCid =  effect; holdingCids; batchId = Id id
+        
+        
+
+
+
+     
+        let 
+          doAllocation (iCid : ContractId Instruction.I)  = do
+            i <- view <$> fetch iCid
+            let 
+              sender = i.routedStep.sender
+              receiver = i.routedStep.receiver
+              holdingCid = fromSome $ head holdingCids
+            (iCidNew,_) <- if sender == provider then
+              exercise  iCid Instruction.Allocate with actors =  singleton sender;  allocation = Pledge $ toInterfaceContractId cashCid
+              else
+                exercise  iCid Instruction.Allocate with actors =  singleton sender;  allocation = Pledge $ toInterfaceContractId holdingCid
+            if receiver == provider then
+              exercise iCidNew Instruction.Approve with actors = singleton receiver; approval =  TakeDelivery secRecAccount
+              else
+                exercise iCidNew Instruction.Approve with actors = singleton receiver; approval = TakeDelivery cashRecAccount
+            pure()
+            
+      
+        forA_ instructionCids (\instructionCid -> doAllocation instructionCid)
+        exercise  batchCid Batch.Settle with actors = singleton provider
+        return effects
+
+        -- return()

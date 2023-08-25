@@ -1,0 +1,92 @@
+module Daml.Finance.App.MutualTrade.Model where
+
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentQuantity, Id(..))
+import Daml.Finance.App.LettersOfCredit.Model qualified as LetterOfCredit (LoC, LifecycleLoc(..))
+import Daml.Finance.Interface.Lifecycle.Event qualified as Event (I) 
+import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Claim (ClaimEffect(..), ClaimResult(..))
+import Daml.Finance.App.Custody.Service qualified as Custody ( Service)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import DA.List.Total (head)
+import DA.Optional (fromSome)
+template Invoice 
+  with 
+    operator: Party 
+    provider: Party
+    customer: Party 
+    id: Text
+    paymentFor: Text
+    dueDate : Date  
+    requested: InstrumentQuantity
+    cashAccountKey : AccountKey
+    secAccountKey : AccountKey
+  where 
+    signatory operator, provider, customer 
+
+    key (operator, provider, id) : (Party, Party, Text)
+    maintainer key._1
+
+template Dispute 
+  with 
+    operator: Party 
+    provider: Party
+    customer: Party 
+    id: Text
+    paymentFor: Text
+    createdOn : Time  
+    send: InstrumentQuantity
+  where 
+    signatory operator, provider, customer 
+
+    key (operator, provider, id) : (Party, Party, Text)
+    maintainer key._1
+
+    choice Claim : ()
+      with
+        locCid : ContractId LetterOfCredit.LoC
+        eventCid : ContractId Event.I
+        custodySvcCid : ContractId Custody.Service
+        holdingCids : [ContractId Holding.I]
+        cashCid : ContractId Holding.I
+        cashRecAccount : AccountKey
+        secRecAccount : AccountKey
+      controller customer
+      do 
+        exercise locCid LetterOfCredit.LifecycleLoc with ..
+
+        create ClaimedDispute with claimStatus = "claimed"; ..
+
+        return()
+template ClaimedDispute
+  with 
+    operator: Party 
+    provider: Party
+    customer: Party 
+    id: Text
+    paymentFor: Text
+    createdOn : Time  
+    send: InstrumentQuantity
+    claimStatus : Text
+  where 
+    signatory operator, provider, customer 
+
+    key (operator, provider, id) : (Party, Party, Text)
+    maintainer key._1
+
+    
+
+
+
+template Receipt 
+  with 
+    operator: Party 
+    provider: Party
+    customer: Party 
+    id: Text
+    paymentFor: Text
+    createdOn : Time  
+    paid: InstrumentQuantity
+  where 
+    signatory operator, provider, customer 
+
+    key (operator, provider, id) : (Party, Party, Text)
+    maintainer key._1

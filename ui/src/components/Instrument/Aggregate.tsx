@@ -16,7 +16,7 @@ import { Spinner } from "../Spinner/Spinner";
 import { useServices } from "../../context/ServiceContext";
 import { NumericObservable } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Observable/NumericObservable";
 import { VerticalTable } from "../Table/VerticalTable";
-
+import { LoC } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/LettersOfCredit/Model";
 type AggregateProps = {
   instrument : InstrumentAggregate
 };
@@ -28,6 +28,7 @@ export const Aggregate : React.FC<AggregateProps> = ({ instrument }) => {
   const ledger = useLedger();
   const { loading: l1, lifecycle } = useServices();
   const { loading: l2, contracts: observables } = useStreamQueries(NumericObservable);
+  const {loading : l3, contracts: locs} = useStreamQueries(LoC);
 
   useEffect(() => {
     const setClaims = async () => {
@@ -41,16 +42,20 @@ export const Aggregate : React.FC<AggregateProps> = ({ instrument }) => {
   }, [lifecycle, instrument, observables, l1, l2, ledger]);
 
   if (l1 || l2) return <Spinner />
-
-  const headers = ["Depository", "Issuer", "Id", "Description", "Version", "ValidAsOf"].concat(!!instrument.lifecycle ? ["Lifecycler"] : []);
-  const values : any[] = [
+  
+  const loc = locs.filter(c => c.payload.id === instrument.payload.id.unpack)
+  const headers = (["Depository", "Issuer", "Id", "Description", "Version", "ValidAsOf"].concat(!!instrument.lifecycle ? ["Lifecycler"] : [])).concat(!!locs.length ? ["Beneficiary"]:[]);
+  
+  // const headers = ["Depository", "Issuer", "Id", "Description", "Version", "ValidAsOf"].concat(!!instrument.lifecycle ? ["Lifecycler"] : []);
+  const values : any[] = ([
     getName(instrument.payload.depository),
     getName(instrument.payload.issuer),
     instrument.payload.id.unpack,
     instrument.payload.description,
     shorten(instrument.payload.version),
     instrument.payload.validAsOf
-  ].concat(!!instrument.lifecycle ? [getName(instrument.lifecycle.payload.lifecycler)] : []);
+  ].concat(!!instrument.lifecycle ? [getName(instrument.lifecycle.payload.lifecycler)] : [])
+  ).concat(!!loc.length ? [getName(loc[0].payload.beneficiary)]:[]);
 
   return (
     <Grid container direction="column" spacing={2}>
