@@ -135,7 +135,7 @@ run = do
 
   (locCid, holdingCid,cashHoldingIssuer)<- issueLoC operator issuer buyer seller today "SBLC2" (qty 30_000_000.00 usd) (qty 29_000_000.00 usd) "Terms!" epoch epoch pub buyerSecAccount issuerSecAccount issuerCashAccount
 
-  (locCid2, holdingCid2,cashHoldingIssuer2)<- issueLoC operator issuer buyer seller today "SBLC3" (qty 20_000_000.00 usd) (qty 19_000_000.00 usd) "Terms3!" epoch epoch pub buyerSecAccount issuerSecAccount issuerCashAccount
+  (locCid2, holdingCid3,cashHoldingIssuer2)<- issueLoC operator issuer buyer seller today "SBLC3" (qty 2_000_000.00 usd) (qty 1_000_000.00 usd) "Terms3!" epoch epoch pub buyerSecAccount issuerSecAccount issuerCashAccount
   
 
 
@@ -148,7 +148,7 @@ run = do
     exerciseCmd mutualTradeService MutualTrade.CreateInvoice with
       id = "INV95467" 
       paymentFor = " Trade Ice"
-      dueDate = date 2024 Jan 18
+      dueDate = today
       requested = qty 29_000_000.00 usd
       cashAccountKey = sellerCashAccount
       secAccountKey = sellerSecAccount
@@ -181,8 +181,8 @@ run = do
   -- -- ****Seller makes Claim on Dispute***
   -- -- get the sblc2 holdingcid owned by seller
   -- x <-  head <$> queryFilter @Fungible.T seller (\h -> h.instrument.id == Id "SBLC2")
-  -- let (holdingCid2, holding2) = fromSome x
-  -- let holdcid :ContractId Holding.I = coerceContractId holdingCid2
+  -- let (sblcholdingCid, sblcholding) = fromSome x
+  -- let holdcid :ContractId Holding.I = coerceContractId sblcholdingCid
   -- submitMulti [seller] [public] do
   --   exerciseCmd dispute MutualTrade.Claim with 
   --     custodySvcCid = sellerSvcCustody
@@ -192,38 +192,17 @@ run = do
   --     secRecAccount = issuerSecAccount
   --     ..
 
+  -- Second Set
+  -- *****create the invoice*****
+  paymentRequestCid<- submit seller do 
+    exerciseCmd mutualTradeService MutualTrade.CreateInvoice with
+      id = "INV95468" 
+      paymentFor = " Ship less Ice"
+      dueDate = today
+      requested = qty 1_000_000.00 usd
+      cashAccountKey = sellerCashAccount
+      secAccountKey = sellerSecAccount
 
 
-
--- Another SBLC
-  -- paymentRequestCid<- submit seller do 
-  --   exerciseCmd mutualTradeService MutualTrade.CreateInvoice with
-  --     id = "1235" 
-  --     paymentFor = " Trade Ice"
-  --     dueDate = date 2024 Jan 18
-  --     requested = qty 500_000.00 usd
-  --     cashAccountKey = sellerCashAccount
-  --     secAccountKey = sellerSecAccount
- 
-  -- (locCid, holdingCid,cashHoldingIssuer)<- issueLoC operator issuer buyer seller today "SBLC3" (qty 500_000.00 usd) (qty 500_000.00 usd) "Terms!" epoch epoch pub buyerSecAccount issuerSecAccount issuerCashAccount
-
-  -- disputeOrReceipt <-  submitMulti [buyer] [public] do 
-  --   exerciseCmd mutualTradeService MutualTrade.PayOrDispute with
-  --     paymentRequestCid = paymentRequestCid
-  --     holdingCid = holdingCid
-  -- let dispute:(ContractId MutualTrade.Dispute) = fromSome $ eitherToOptional disputeOrReceipt
-
-  -- x <-  head <$> queryFilter @Fungible.T seller (\h -> h.instrument.id == Id "SBLC3")
-  -- let (holdingCid2, holding2) = fromSome x
-  -- let holdcid :ContractId Holding.I = coerceContractId holdingCid2
-
-  -- submitMulti [seller] [public] do
-  --   exerciseCmd dispute MutualTrade.Claim with 
-  --     custodySvcCid = sellerSvcCustody
-  --     holdingCids = [holdcid] 
-  --     cashCid = coerceContractId cashHoldingIssuer
-  --     cashRecAccount = sellerCashAccount
-  --     secRecAccount = issuerSecAccount
-  --     ..
 
   pure parties

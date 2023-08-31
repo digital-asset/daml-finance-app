@@ -59,7 +59,7 @@ template Service
       do 
         LoCRequest{operator; provider; customer; maturity; id; beneficiary; requested} <- fetchAndArchive loCRequestCid 
         cashFungibleVisibleToBeneficiary : ContractId Fungible.I <- coerceContractId <$> exercise (coerceContractId cashCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton provider; observersToAdd = (id, singleton beneficiary)
-        cashCidVisibleToBeneficiary <- coerceContractId <$> exercise (coerceContractId cashFungibleVisibleToBeneficiary : ContractId Holding.I) Holding.Acquire with newLockers = singleton provider; context = id; lockType = Holding.Semaphore
+        cashCidVisibleToBeneficiary <- coerceContractId <$> exercise (coerceContractId cashFungibleVisibleToBeneficiary : ContractId Holding.I) Holding.Acquire with newLockers = singleton customer; context = id; lockType = Holding.Semaphore
         
         exerciseByKey @Lifecycle.Service (operator, provider, provider) Lifecycle.AddObserver with
           newObserver = beneficiary 
