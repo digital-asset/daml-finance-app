@@ -11,13 +11,18 @@ import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Claim (ClaimEffe
 import DA.Optional (fromSome)
 import DA.List.Total ((!!), head)
 import Daml.Finance.App.Custody.Service qualified as Custody ( Service)
-import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+-- import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (I, Allocate(..), Approve(..))
 import DA.Set (singleton)
 import DA.List qualified as List (singleton)
 import Daml.Finance.Interface.Settlement.Types (Allocation(Pledge), Approval(TakeDelivery), Step(..))
 import DA.Foldable (forA_)
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..), SplitResult(..))
+import Daml.Finance.Interface.Holding.Util (getAmount)
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, AddObservers(..), RemoveObservers(..))
+
 template LoCRequest 
   with 
     operator: Party 
@@ -45,6 +50,7 @@ template LoCOffer
     granted: InstrumentQuantity
     tokens: InstrumentQuantity
     terms: Text
+    -- cashCidVisibleToBeneficiary : ContractId Fungible.I
   where 
     signatory operator, provider, customer 
 
@@ -63,6 +69,7 @@ template LoC
     granted: InstrumentQuantity
     sblc : InstrumentKey
     terms: Text
+    -- cashCidVisibleToBeneficiary : ContractId Fungible.I
   where 
     signatory operator, provider, customer
     observer beneficiary 
@@ -93,20 +100,37 @@ template LoC
 
         Claim.ClaimResult{batchCid; instructionCids} <- exercise cs.claimRuleCid Claim.ClaimEffect with claimer = beneficiary; effectCid =  effect; holdingCids; batchId = Id id
         
+        cashHolding <-  fetch cashCid
+        secHolding <- fetch $ fromSome $ head holdingCids
+
+        let secFungiblCid: ContractId Fungible.I = coerceContractId $ fromSome $ head holdingCids
+        let totalSecQuantity = getAmount secHolding
         
+        let cashAmount = getAmount cashHolding
 
+        cashHoldingUnlockedCid <- coerceContractId <$> exercise cashCid Holding.Release with context = id
+        let cashFungibleCid : ContractId Fungible.I = coerceContractId cashHoldingUnlockedCid
 
-
+        
+        cashCidFungiblePayable  <- 
+          if cashAmount > totalSecQuantity
+          then do
+            Fungible.SplitResult{splitCids, rest} <- exercise cashFungibleCid Fungible.Split with amounts = [ totalSecQuantity ]
+            exercise (toInterfaceContractId @Disclosure.I (fromSome rest)) Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (show id, singleton beneficiary)
+            pure $  (head splitCids)
+          else pure $ Some $ cashFungibleCid
+      
+        let cashCidPayable:ContractId Holding.I = coerceContractId $ fromSome cashCidFungiblePayable
      
         let 
-          doAllocation (iCid : ContractId Instruction.I)  = do
+          doAllocationApproval (iCid : ContractId Instruction.I)  = do
             i <- view <$> fetch iCid
             let 
               sender = i.routedStep.sender
               receiver = i.routedStep.receiver
               holdingCid = fromSome $ head holdingCids
             (iCidNew,_) <- if sender == provider then
-              exercise  iCid Instruction.Allocate with actors =  singleton sender;  allocation = Pledge $ toInterfaceContractId cashCid
+              exercise  iCid Instruction.Allocate with actors =  singleton sender;  allocation = Pledge $ toInterfaceContractId $ cashCidPayable
               else
                 exercise  iCid Instruction.Allocate with actors =  singleton sender;  allocation = Pledge $ toInterfaceContractId holdingCid
             if receiver == provider then
@@ -116,7 +140,7 @@ template LoC
             pure()
             
       
-        forA_ instructionCids (\instructionCid -> doAllocation instructionCid)
+        forA_ instructionCids (\instructionCid -> doAllocationApproval instructionCid)
         exercise  batchCid Batch.Settle with actors = singleton provider
         return effects
 

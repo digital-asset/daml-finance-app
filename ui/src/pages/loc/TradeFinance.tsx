@@ -3,7 +3,7 @@
 
 import React, {useState} from "react";
 import classnames from "classnames";
-import { Button, Accordion, AccordionSummary, AccordionDetails,Typography, Grid  } from "@mui/material";
+import { Button, Accordion, AccordionSummary, AccordionDetails,Typography, Grid, Link  } from "@mui/material";
 import { ExpandMore } from "@mui/icons-material";
 import { useLedger, useParty, useStreamQueries } from "@daml/react";
 import useStyles from "../styles";
@@ -87,7 +87,11 @@ export const TradeFinance : React.FC = () => {
     console.log("3")
     const holdingsFiltered = holdings.filter(h => h.payload.instrument.id.unpack == c.payload.send.unit.id.unpack)
     const holdingCids = holdingsFiltered.map(h=> h.contractId)
-    const cashHoldingsIssuer = holdings.find(h=> h.payload.account.owner == locCurrent.payload.provider && h.payload.amount >= locCurrent.payload.granted.amount && h.payload.instrument.id.unpack == locCurrent.payload.requested.unit.id.unpack)
+    const cashHoldingsIssuer = holdings.find(h=> h.payload.account.owner == locCurrent.payload.provider && 
+                                                  Number(h.payload.amount) >= Number(locCurrent.payload.granted.amount) 
+                                                  && h.payload.instrument.id.unpack == locCurrent.payload.requested.unit.id.unpack
+                                                  && h.payload.lock?.context!== undefined
+                                                  && h.payload.lock.context.map.has(locCurrent.payload.sblc.id.unpack) )
     console.log(holdingCids.length)
     if (!cashHoldingsIssuer) return;
     console.log(holdings.length)

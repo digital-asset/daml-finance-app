@@ -4,7 +4,8 @@ import Daml.Finance.App.LettersOfCredit.Model (LoCRequest(..), LoCOffer(..), LoC
 import Daml.Finance.App.Structuring.Auto.Service qualified as StructuringAuto (Service, RequestAndCreateGeneric(..))
 import Daml.Finance.App.Custody.Service qualified as Custody (Service, RequestDeposit(..), Deposit(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I)
-import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+-- import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I, Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentQuantity, Id(..), InstrumentKey(..), PartiesMap)
 import Daml.Finance.App.Util (fetchAndArchive)
 import ContingentClaims.Core.Claim (Claim, and, anytime, at, cond, give, one, or, scale, until, when, zero, (<=))
@@ -57,7 +58,9 @@ template Service
       controller provider 
       do 
         LoCRequest{operator; provider; customer; maturity; id; beneficiary; requested} <- fetchAndArchive loCRequestCid 
-        cashCidVisibleToBeneficiary : ContractId Fungible.I <- coerceContractId <$> exercise (coerceContractId cashCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton provider; observersToAdd = (id, singleton beneficiary)
+        cashFungibleVisibleToBeneficiary : ContractId Fungible.I <- coerceContractId <$> exercise (coerceContractId cashCid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton provider; observersToAdd = (id, singleton beneficiary)
+        cashCidVisibleToBeneficiary <- coerceContractId <$> exercise (coerceContractId cashFungibleVisibleToBeneficiary : ContractId Holding.I) Holding.Acquire with newLockers = singleton provider; context = id; lockType = Holding.Semaphore
+        
         exerciseByKey @Lifecycle.Service (operator, provider, provider) Lifecycle.AddObserver with
           newObserver = beneficiary 
         instrumentCid <- exercise structuringAutoServiceCid StructuringAuto.RequestAndCreateGeneric 

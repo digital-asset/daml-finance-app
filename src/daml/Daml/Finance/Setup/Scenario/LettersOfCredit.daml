@@ -39,6 +39,7 @@ import Daml.Finance.Holding.Fungible qualified as Fungible (T)
 import DA.List.Total (head)
 import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I, RemoveObservers(..))
+import Daml.Finance.Interface.Holding.Util (getAmount, getInstrument)
 
 run : Script [PartyInfo]
 run = do
@@ -50,7 +51,7 @@ run = do
 
   -- Factories
   let
-    assets = ["SBLC1","SBLC2","SBLC3","SBLC4","SBLC5"]
+    assets = ["SBLC1","SBLC2","SBLC3","SBLC4","SBLC5","SBLC6","SBLC7"]
     settlementPaths = [[issuer], [seller], [buyer]]
     cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = settlementPaths
     secRoute = Settlement.Hierarchy with rootCustodian = issuer; pathsToRootCustodian = settlementPaths
@@ -133,19 +134,41 @@ run = do
   --issueLoC operator issuer buyer beneficiary maturity id requested granted terms acquisitionTime lastEventTimestamp observers account = do 
 
   (locCid, holdingCid,cashHoldingIssuer)<- issueLoC operator issuer buyer seller today "SBLC2" (qty 30_000_000.00 usd) (qty 29_000_000.00 usd) "Terms!" epoch epoch pub buyerSecAccount issuerSecAccount issuerCashAccount
+
+  (locCid2, holdingCid2,cashHoldingIssuer2)<- issueLoC operator issuer buyer seller today "SBLC3" (qty 20_000_000.00 usd) (qty 19_000_000.00 usd) "Terms3!" epoch epoch pub buyerSecAccount issuerSecAccount issuerCashAccount
   
-  -- cashHoldingCid <- getHolding buyer (Instrument.qty 91_000.0 usd)
 
 
+
+
+
+
+  -- *****create the invoice*****
   paymentRequestCid<- submit seller do 
     exerciseCmd mutualTradeService MutualTrade.CreateInvoice with
-      id = "1234" 
+      id = "INV95467" 
       paymentFor = " Trade Ice"
       dueDate = date 2024 Jan 18
       requested = qty 29_000_000.00 usd
       cashAccountKey = sellerCashAccount
       secAccountKey = sellerSecAccount
 
+  -- -- ******Pay by cash******
+  -- cashHoldingCid <- getHolding buyer (Instrument.qty 29_000_000.00 usd)
+  -- disputeOrReceipt <-  submitMulti [buyer] [public] do 
+  --   exerciseCmd mutualTradeService MutualTrade.PayOrDispute with
+  --     paymentRequestCid = paymentRequestCid
+  --     holdingCid = cashHoldingCid
+
+
+
+  -- -- Do the following to check Edge case, Invoice cost lower than SBLC Issued 
+  -- -- This means, the buyer should split his SBLC holding and then transfered
+  -- locForTest <- queryContractId issuer locCid
+  -- let locForTest2 = fromSome locForTest
+  -- holdingLessSec <- getHolding buyer (qty 28_000_000.00 locForTest2.sblc)
+
+  -- ******Create the Dispute & Transfer of SBLC*****
   disputeOrReceipt <-  submitMulti [buyer] [public] do 
     exerciseCmd mutualTradeService MutualTrade.PayOrDispute with
       paymentRequestCid = paymentRequestCid
@@ -153,25 +176,24 @@ run = do
   let dispute:(ContractId MutualTrade.Dispute) = fromSome $ eitherToOptional disputeOrReceipt
 
 
-  -- cashHoldingIssuer <- getHolding issuer (qty 29_000_000.00 usd)
 
-  
-  -- cashHoldingIssuerDisclosed :ContractId Holding.I <- coerceContractId  <$>  submit issuer do exerciseCmd (coerceContractId cashHoldingIssuer : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton issuer; observersToAdd = ("Test", Sett.fromList [seller])
- 
-  -- get the sblc2 holdingcid owned by issuer
-  x <-  head <$> queryFilter @Fungible.T seller (\h -> h.instrument.id == Id "SBLC2")
-  let (holdingCid2, holding2) = fromSome x
-  let holdcid :ContractId Holding.I = coerceContractId holdingCid2
 
-  -- Do Claim on Dispute ()
-  submitMulti [seller] [public] do
-    exerciseCmd dispute MutualTrade.Claim with 
-      custodySvcCid = sellerSvcCustody
-      holdingCids = [holdcid] 
-      cashCid = coerceContractId cashHoldingIssuer
-      cashRecAccount = sellerCashAccount
-      secRecAccount = issuerSecAccount
-      ..
+  -- -- ****Seller makes Claim on Dispute***
+  -- -- get the sblc2 holdingcid owned by seller
+  -- x <-  head <$> queryFilter @Fungible.T seller (\h -> h.instrument.id == Id "SBLC2")
+  -- let (holdingCid2, holding2) = fromSome x
+  -- let holdcid :ContractId Holding.I = coerceContractId holdingCid2
+  -- submitMulti [seller] [public] do
+  --   exerciseCmd dispute MutualTrade.Claim with 
+  --     custodySvcCid = sellerSvcCustody
+  --     holdingCids = [holdcid] 
+  --     cashCid = coerceContractId cashHoldingIssuer
+  --     cashRecAccount = sellerCashAccount
+  --     secRecAccount = issuerSecAccount
+  --     ..
+
+
+
 
 -- Another SBLC
   -- paymentRequestCid<- submit seller do 
