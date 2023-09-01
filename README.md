@@ -3,11 +3,11 @@
 
 Copyright © 2023 Digital Asset (Switzerland) GmbH and/or its affiliates. All Rights Reserved. SPDX-License-Identifier: Apache-2.0
 
-# Daml Finance Reference App
+# Daml Finance Demo App
 
-This Daml Finance Reference App showcases how the [Daml Finance](https://www.digitalasset.com/daml-finance) library can be integrated into a fully-fledged Daml application.
+This Daml Finance Demo App showcases how the [Daml Finance](https://www.digitalasset.com/daml-finance) library can be integrated into a fully-fledged Daml application.
 
-<img alt="Daml Finance Reference App homepage" src="./homepage.png" width="800">
+<img alt="Daml Finance Demo App homepage" src="./homepage.png" width="800">
 
 ## Documentation
 
