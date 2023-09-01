@@ -15,7 +15,7 @@ import ErrorComponent from "./pages/error/Error";
 import { httpBaseUrl, wsBaseUrl } from "./config";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import { CssBaseline } from "@mui/material";
-
+import { UploadedFilesProvider } from "./pages/loc/UploadedFilesContext";
 export const Main : React.FC = () => {
   const user = useUserState();
   const branding = useBranding();
@@ -23,6 +23,7 @@ export const Main : React.FC = () => {
 
   return (
     <ThemeProvider theme={theme}>
+      <UploadedFilesProvider>
       <LocalizationProvider dateAdapter={AdapterDateFns}>
         <CssBaseline />
         <DamlLedger party={user.party} token={user.token} httpBaseUrl={httpBaseUrl} wsBaseUrl={wsBaseUrl}>
@@ -37,6 +38,7 @@ export const Main : React.FC = () => {
           </HashRouter>
         </DamlLedger>
       </LocalizationProvider>
+      </UploadedFilesProvider>
     </ThemeProvider>
   );
 

@@ -22,7 +22,7 @@ import { SelectInput, toValues } from "../../components/Form/SelectInput";
 import { TextInput } from "../../components/Form/TextInput";
 import { LoCRequest } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/LettersOfCredit/Model";
 import { useAccounts } from "../../context/AccountContext";
-
+import FileUploadComponent from './FileUploadComponent';
 export const Request : React.FC = () => {
   const cls = useStyles();
   const navigate = useNavigate();
@@ -52,7 +52,11 @@ export const Request : React.FC = () => {
   const customerServices = loc.filter(c => c.payload.customer === party);
   const isProvider = providerServices.length > 0;
   const isCustomer = customerServices.length > 0;
-
+  const handleFileUploaded = (fileId: string) => {
+    // Handle the uploaded file name as needed in this component
+    // console.log(`File uploaded: ${fileId}`);
+    setTerms(fileId)
+  };
   
   if (!isProvider && !isCustomer) return <Message text="No lending service found" />
   if (!request) return <Message text="Borrow request not found" />
@@ -122,7 +126,8 @@ export const Request : React.FC = () => {
                   <Paper className={classnames(cls.fullWidth, cls.paper)}>
                     <Typography variant="h5" className={cls.heading}>Offer Details</Typography>
                     <TextInput    label="Granted Amount"          value={grantedAmount}            setValue={setGrantedAmount} />
-                    <TextInput    label="Terms"                   value={terms}          setValue={setTerms} />
+                    {/* <TextInput    label="Terms"                   value={terms}          setValue={setTerms} /> */}
+                    <FileUploadComponent label="Terms"                   onFileUploaded={handleFileUploaded}/>
                     <Button className={classnames(cls.fullWidth, cls.buttonMargin)} size="large" variant="contained" color="primary" disabled={!canRequest} onClick={createBorrowOffer}>Create Offer</Button>
                   </Paper>
                 }

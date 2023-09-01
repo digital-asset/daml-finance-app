@@ -79,12 +79,12 @@ export const TradeFinance : React.FC = () => {
 
   const doMakeClaim = async (c : CreateEvent<Dispute>) => {
     const locCurrent = locs.find(loc => loc.payload.sblc.id.unpack == c.payload.send.unit.id.unpack)
-    console.log(c.payload.send.unit.id.unpack)
+    // console.log(c.payload.send.unit.id.unpack)
     if (!locCurrent) return;
-    console.log("2")
+    // console.log("2")
     const custodySvc = custody.find(svc=> svc.payload.provider == locCurrent?.payload.provider)
     if (!custodySvc) return;
-    console.log("3")
+    // console.log("3")
     const holdingsFiltered = holdings.filter(h => h.payload.instrument.id.unpack == c.payload.send.unit.id.unpack)
     const holdingCids = holdingsFiltered.map(h=> h.contractId)
     const cashHoldingsIssuer = holdings.find(h=> h.payload.account.owner == locCurrent.payload.provider && 
@@ -92,13 +92,13 @@ export const TradeFinance : React.FC = () => {
                                                   && h.payload.instrument.id.unpack == locCurrent.payload.requested.unit.id.unpack
                                                   && h.payload.lock?.context!== undefined
                                                   && h.payload.lock.context.map.has(locCurrent.payload.sblc.id.unpack) )
-    console.log(holdingCids.length)
+    // console.log(holdingCids.length)
     if (!cashHoldingsIssuer) return;
-    console.log(holdings.length)
+    // console.log(holdings.length)
     if (!cashRecAccount) return;
-    console.log("5")
+    // console.log("5")
     if (!secRecAccount) return;
-    console.log("6")
+    // console.log("6")
     const arg = {
       locCid : locCurrent.contractId,//ContractId LetterOfCredit.LoC
       eventCid : events[0].contractId,//ContractId Event.I
