@@ -130,6 +130,18 @@ reverseConvertible assetObs asset ccy notional strike interest maturity =
     principalPayout = scale (Const (notional * (1.0 + interest))) (one ccy)
   in when (at $ t maturity) $ cond conversioncondition conversionPayout principalPayout
 
+fxrc : InstrumentKey -> InstrumentKey -> Decimal -> Decimal -> Date -> C
+fxrc localCcy foreignCcy couponRate strike maturity =
+ let
+    fxObservable = show localCcy.id <> "/" <> show foreignCcy.id
+    dcf = 182.0 / 360.0
+    redemptionLocal = 1.0 + couponRate * dcf
+    redemptionForeign = redemptionLocal * strike
+    notExercised = scale (Const redemptionLocal) $ one localCcy
+    exercised = scale (Const redemptionForeign) $ one foreignCcy
+    autoExerciseCondition = Const strike <= observe fxObservable
+  in when (at $ t maturity) $ cond autoExerciseCondition exercised notExercised
+
 rc : Text -> InstrumentKey -> Decimal -> Decimal -> [Date] -> C
 rc asset ccy coupon strike dates =
   let

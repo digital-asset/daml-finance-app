@@ -30,12 +30,12 @@ run  = do
 
   -- Factories
   let
-    assets = ["TSLA", "NFLX", "FWD1", "BOND1", "SWAP1", "BSWAP1", "OPT1", "OPT2"]
+    assets = ["TSLA", "NFLX", "FWD1", "BOND1", "SWAP1", "BSWAP1", "OPT1", "OPT2", "FXRC1"]
     cashSettlementPaths = [[issuer], [registry], [inv1], [inv2], [inv3]]
     securitiesSettlementPaths = [[issuer], [inv1], [inv2], [inv3]]
     cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = cashSettlementPaths
     secRoute = Settlement.Hierarchy with rootCustodian = registry; pathsToRootCustodian = securitiesSettlementPaths
-    paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
+    paths = fromList $ ("USD", cashRoute) :: ("EUR", cashRoute) :: map (\a -> (a, secRoute)) assets
   accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
   holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
 
@@ -104,12 +104,14 @@ run  = do
   let
     libor3M = "USD/LIBOR/3M"
     libor6M = "USD/LIBOR/6M"
+    eurusd = "EUR/USD"
     amd = "AMD"
     qc = "QUALCOMM"
     tslaObs = "TSLA"
 
   -- Instruments
   usd     <- originateToken    centralBank centralBank pub yday "USD"     "United States Dollar"
+  eur     <- originateToken    centralBank centralBank pub yday "EUR"     "Euro"
   tsla    <- originateEquity   registry    issuer      pub yday "TSLA"    "Tesla, Inc. Common Stock"
   nflx    <- originateEquity   registry    issuer      pub yday "NFLX"    "Netflix, Inc. Common Stock"
   fwd     <- originateGeneric  registry    issuer      pub yday "FWD1"    "Forward on TSLA"                 $ futureDvp tsla 20.0 usd 10_000.0 today
@@ -118,7 +120,8 @@ run  = do
   bswp    <- originateGeneric  registry    issuer      pub yday "BSWAP1"  "Basis Swap LIBOR-6M vs 3M+0.15%" $ basisSwap libor3M libor6M 0.0015 usd $ unrollDates todayYear (todayYear + 2) [todayMonth] todayDay
   opt     <- originateGeneric  registry    issuer      pub yday "OPT1"    "Call on TSLA @ 500.0 (physical)" $ callOptionPhysical tsla 20.0 usd 10_000.0 (date (todayYear + 1) todayMonth todayDay)
   opt2    <- originateGeneric  registry    issuer      pub yday "OPT2"    "Call on TSLA @ 700.0 (cash)"     $ callOptionCash tslaObs usd 700.0 (date (todayYear + 1) todayMonth todayDay)
-  let securities = [tsla, nflx, fwd, bnd, swp, bswp, opt, opt2 ]
+  fxrc    <- originateGeneric  registry    issuer      pub yday "FXRC1"   "FX Reverse Convertible on EUR/USD @ 1.1777" $ fxrc eur usd 0.0555 1.1777 today
+  let securities = [tsla, nflx, fwd, bnd, swp, bswp, opt, opt2, fxrc ]
 
   -- Distribution
   inv1CashCid <- deposit operator centralBank inv1 public (Instrument.qty 1_000_000.0 usd) inv1CashAccount
@@ -131,9 +134,14 @@ run  = do
   (_, ad3) <- issue operator registry issuer public (Instrument.qty 10_000_000.0 swp)  issuerSecAccount
   (_, ad4) <- issue operator registry issuer public (Instrument.qty 10_000_000.0 bswp) issuerSecAccount
 
+  deposit operator registry inv1 public (Instrument.qty 1_000_000.0 fxrc) inv1SecAccount
+  deposit operator registry inv2 public (Instrument.qty 2_000_000.0 fxrc) inv2SecAccount
+  deposit operator registry inv3 public (Instrument.qty 3_000_000.0 fxrc) inv3SecAccount
+
   -- Data
   createObservation issuer libor3M [(todayTime, 0.0018825)] pub
   createObservation issuer libor6M [(todayTime, 0.0022363)] pub
+  createObservation issuer eurusd [(todayTime, 1.2)] pub
   createCalendar issuer "FED" [Saturday, Sunday] [] pub
   createAccountDirectory issuer ([(usd, issuerCashAccount)] <> map (\s -> (s, issuerSecAccount)) securities)  $ singleton public
   createAccountDirectory inv1   ([(usd, inv1CashAccount)] <> map (\s -> (s, inv1SecAccount)) securities)      $ singleton public
