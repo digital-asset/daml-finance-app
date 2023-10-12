@@ -18,6 +18,7 @@ import { ContractId } from "@daml/types";
 import { Allocation, Approval } from "@daml.js/daml-finance-interface-settlement/lib/Daml/Finance/Interface/Settlement/Types";
 import { useAccounts } from "../../context/AccountContext";
 import { Base as Holding } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Base";
+import { Fungible } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Fungible";
 
 export const Batch : React.FC = () => {
   const classes = useStyles();
@@ -26,9 +27,10 @@ export const Batch : React.FC = () => {
   const { getName } = useParties();
 
   const { loading: l1, getAccount } = useAccounts();
-  const { loading: l2, getFungible } = useHoldings();
+  const { loading: l2, getFungible,holdings } = useHoldings();
   const { loading: l3, contracts: batches } = useStreamQueries(BatchI);
   const { loading: l4, contracts: instructions } = useStreamQueries(Instruction);
+  // const { contracts: fungibles, loading: l5 } = useStreamQueries(Fungible);
   const { contractId } = useParams<any>();
   const batch = batches.find(c => c.contractId === contractId);
 
@@ -42,7 +44,15 @@ export const Batch : React.FC = () => {
       const allocation : Allocation = { tag: "CreditReceiver", value: {} };
       await ledger.exercise(Instruction.Allocate, c.contractId, { actors, allocation });
     } else {
-      const holdingCid = await getFungible(party, c.payload.routedStep.quantity.amount, c.payload.routedStep.quantity.unit);
+      // const holdingCid = await getFungible(party, c.payload.routedStep.quantity.amount, c.payload.routedStep.quantity.unit);
+      const holding = holdings.find(f => c.payload.routedStep.custodian === f.payload.account.custodian && c.payload.routedStep.quantity.amount === f.payload.amount) 
+      if (!holding) 
+      {
+        console.log("Cant find the splitholding")      
+      }
+    
+      const holdingCid = !holding ? await getFungible(party, c.payload.routedStep.quantity.amount, c.payload.routedStep.quantity.unit) : holding.contractId
+     
       const allocation : Allocation = { tag: "Pledge", value: holdingCid as string as ContractId<Holding> };
       await ledger.exercise(Instruction.Allocate, c.contractId, { actors, allocation });
     };

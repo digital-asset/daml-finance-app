@@ -3,6 +3,7 @@
 
 module Daml.Finance.App.Lifecycle.Service where
 
+import DA.List (head)
 import ContingentClaims.Core.Claim (Claim, one)
 import ContingentClaims.Core.Observation (Observation(..))
 import ContingentClaims.Lifecycle.Lifecycle qualified as Lifecycle
@@ -25,7 +26,8 @@ import Daml.Finance.Interface.Instrument.Generic.Election qualified as Election 
 import Daml.Finance.App.Lifecycle.Pricing qualified as Pricing
 import Daml.Finance.App.Structuring.Auto.Service qualified as Structuring
 import Daml.Finance.Claims.Util.Lifecycle (electionEvent)
-
+import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..), SplitResult(..))
+import Daml.Finance.Interface.Holding.Base qualified as Holding (I, Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as BaseInstrument (R, createReference, getKey)
 import Daml.Finance.Instrument.Generic.Instrument (Instrument(..))
 import Daml.Finance.Lifecycle.ElectionEffect (ElectionEffect(..))
@@ -240,7 +242,21 @@ template Service
           --pure (producedInstrument, [effectCid])
           pure [effectCid]
         
+    nonconsuming choice GetEffectAmount: (Decimal, ContractId Holding.I)
+      with
+        effectICid : ContractId Effect.I
+        holdingCid : ContractId Holding.I
+      controller customer
+      do
+        let cid = fromInterfaceContractId @ElectionEffect effectICid
+        electionEffect <- fetch cid
+        let fungibleCid : ContractId Fungible.I = coerceInterfaceContractId  holdingCid
+        splitresult <- exercise fungibleCid Fungible.Split with amounts = [electionEffect.amount]
+        let fungibleSplitCid = head splitresult.splitCids
+        let holdingSplitCid : ContractId Holding.I = coerceInterfaceContractId fungibleSplitCid
 
+        pure (electionEffect.amount,holdingSplitCid )
+         
     -- nonconsuming choice DeclareAntiDividend : [ContractId Effect.I]
     --   with
     --     privateEquity : InstrumentKey

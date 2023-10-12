@@ -20,6 +20,7 @@
     "@daml.js/daml-finance-interface-types-common": "file:daml.js/361a5742b581d2d0dc1378f905a7f0ff692d3eb0d79b9fde51e34390813cf7d4",
     "@daml.js/daml-finance-interface-types-date": "file:daml.js/039aa24eacce8fc1108f77fe814d9336ab2dcf2e35c41932cc66c5f86fc99548",
     "@daml.js/daml-finance-interface-util": "file:daml.js/9e0b0b245207257617d2a345f960be47a5a046ff26f4227bbd237f5019ea1b2e",
+
     "@daml/ledger": "2.6.0-snapshot.20221218.11169.0.9d007b31",
     "@daml/react": "2.6.0-snapshot.20221218.11169.0.9d007b31",
     "@daml/types": "2.6.0-snapshot.20221218.11169.0.9d007b31",

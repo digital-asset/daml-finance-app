@@ -2,6 +2,7 @@ module Daml.Finance.Setup.Scenario.PrivateEquity where
 
 import DA.Map (empty, fromList)
 import DA.Set (singleton)
+import DA.List (head)
 
 import Daml.Script 
 
@@ -19,12 +20,14 @@ import DA.Date
 import DA.Time (time)
 import Daml.Finance.Interface.Util.Common (qty, fetchInterfaceByKey)
 import Daml.Finance.Interface.Types.Common.Types (Id(..))
--- import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
+import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..))
---import Daml.Finance.Interface.Account.Account qualified as Account
+import Daml.Finance.Interface.Account.Account qualified as Account
 
 import Daml.Finance.App.Lending.Model qualified as Lending (Repay(..))
 import Daml.Finance.App.Lending.Service qualified as Lending (AcceptBorrowOffer(..), CreateBorrowOffer(..), RequestBorrowOffer(..), Service)
+
+import Daml.Finance.Holding.Fungible qualified as Fungible (T)
 
 {-
 Suggested flow for demo of distribution in the UI:
@@ -153,7 +156,8 @@ run = do
       (inv3, admin),
       (inv1, issuer), 
       (inv2, issuer), 
-      (inv3, issuer)]
+      (inv3, issuer),
+      (admin,issuer)]
 
   mapA_ (\(provider, customer) -> createLifecycleService operator provider customer public) lifecycleServices
   
@@ -289,7 +293,7 @@ run = do
       inv3BidCid        <- createPEDistributionBid operator ta inv3 public distributionCid 200_000.0 1.0 inv3CollateralCid inv3SecAccount
       processPEDistribution operator ta issuer public distributionCid [inv1BidCid, inv2BidCid, inv3BidCid]
 
-  --doPEDistribution
+  doPEDistribution
 
 
   -- SECURITIES LENDING TEST
@@ -323,5 +327,14 @@ run = do
       pure ()
 
   -- doLoan
+
+  -- Capital Call (Test)
+
+-- Test Capital Call
+  -- (holdingCid, holding) <- head <$> queryFilter @Fungible.T issuer (\h -> h.instrument == usdCommit)
+  -- pure $ toInterfaceContractId holdingCid
+  -- capitalCallEffectId <- declareCapitalCall operator inv1 issuer public usdCommit usd t 99_000.0
+  -- (optRestHoldingId, batchCid, instructionsCids) <- claimCapitalCallEffect operator inv1 issuer public capitalCallEffectId 99_000.00 (toInterfaceContractId @Fungible.I holdingCid) $ Id "Round 1"
+  -- (batchCid, instructionCids) <- claimEffect operator inv1 admin public capitalCallEffectId [issuerCommit1Cid] $ Id "Round 1"
 
   pure parties
