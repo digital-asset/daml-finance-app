@@ -42,8 +42,8 @@ import Daml.Finance.Instrument.Equity.Factory qualified as Equity (Factory(..))
 import Daml.Finance.Instrument.Generic.Factory qualified as Generic (Factory(..))
 import Daml.Finance.Instrument.Generic.Lifecycle.Rule qualified as Generic (Rule(..))
 import Daml.Finance.Instrument.Token.Factory qualified as Token (Factory(..))
-import Daml.Finance.Interface.Account.Factory qualified as Account (F)
-import Daml.Finance.Interface.Holding.Factory qualified as Holding (F)
+import Daml.Finance.Interface.Account.Factory qualified as AccountFactory (I)
+import Daml.Finance.Interface.Holding.Factory qualified as HoldingFactory (I)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id(..), InstrumentQuantity)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, AddObservers(..))
@@ -57,14 +57,14 @@ import Daml.Script
 
 type SettlementPaths = Map Text Settlement.Hierarchy
 
-createCustodyService : Party -> Party -> Party -> SettlementPaths -> ContractId Account.F -> ContractId Holding.F -> Script (ContractId Custody.Service)
+createCustodyService : Party -> Party -> Party -> SettlementPaths -> ContractId AccountFactory.I -> ContractId HoldingFactory.I -> Script (ContractId Custody.Service)
 createCustodyService operator provider customer paths accountFactoryCid holdingFactoryCid = do
   let
     providers = S.fromList [provider, customer]
     observers = singleton customer
   routeProviderCid      <- toInterfaceContractId <$> submit provider do createCmd RouteProvider.IntermediatedStatic  with provider; observers; paths
   settlementFactoryCid  <- toInterfaceContractId <$> submit provider do createCmd Settlement.Factory                 with provider; observers
-  claimRuleCid          <- toInterfaceContractId <$> submitMulti [provider, customer] [] do createCmd Claim.Rule                         with providers; claimers = S.fromList [provider, customer]; settlers = providers; routeProviderCid; settlementFactoryCid; netInstructions = False
+  claimRuleCid          <- toInterfaceContractId <$> submitMulti [provider, customer] [] do createCmd Claim.Rule     with provider; claimers = S.fromList [provider, customer]; settlers = providers; routeProviderCid; settlementFactoryCid; netInstructions = False
   offerCid <- submit provider do exerciseByKeyCmd @Custodian.Role (operator, provider) Custodian.OfferCustodyService with customer; claimRuleCid; accountFactoryCid; holdingFactoryCid
   submit customer do exerciseCmd offerCid Custody.Accept
 

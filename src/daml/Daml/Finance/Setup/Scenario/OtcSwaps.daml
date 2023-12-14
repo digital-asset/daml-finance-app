@@ -9,13 +9,16 @@ import DA.Set (singleton)
 import DA.Time (time)
 import Daml.Finance.Account.Account qualified as Account (Factory(..))
 import Daml.Finance.App.Quoting.Model qualified as Quoting (Side(..))
-import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
+import Daml.Finance.Holding.Factory qualified as Holding (Factory(..))
+import Daml.Finance.Interface.Holding.Factory qualified as HoldingFactory (Reference(..), View(..))
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
 import Daml.Finance.Interface.Settlement.Types (Allocation(..), Approval(..))
 import Daml.Finance.Interface.Types.Common.Types (Id(..))
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum(..))
+import Daml.Finance.Interface.Types.Date.DateOffset (DateOffset(..))
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum(..))
+import Daml.Finance.Interface.Instrument.Types.FloatingRate (DateRelativeToEnum(..), FloatingRate(..), ReferenceRateTypeEnum(..))
 import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
 import Daml.Finance.Setup.Util.Common
@@ -39,8 +42,9 @@ run = do
     cashRoute = Settlement.Hierarchy with rootCustodian = cashProvider; pathsToRootCustodian = cashSettlementPaths
     secRoute = Settlement.Hierarchy with rootCustodian = seller; pathsToRootCustodian = securitySettlementPaths
     paths = fromList [("HKD", cashRoute), ("IRS1", secRoute), ("IRS2", secRoute), ("IRS3", secRoute), ("IRS4", secRoute), ("CDS1", secRoute)]
-  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory                   with provider = operator; observers = pub
-  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory                  with provider = operator; observers = pub
+  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory with provider = operator; observers = pub
+  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Holding.Factory with id = Id "HoldingFactory"; provider = operator; observers = pub
+  submit operator do createCmd HoldingFactory.Reference with factoryView = (HoldingFactory.View with provider = operator; id = Id "HoldingFactory"); cid = holdingFactoryCid; observers = pub
 
   -- Roles
   createOperatorRole operator
@@ -93,12 +97,15 @@ run = do
     hibor12M = "HKD-HIBOR-12M"
     dpTencent = "DP-TENCENT"
     rrTencent = "RR-TENCENT"
+    fixingDates = DateOffset with period = D; periodMultiplier = 0; dayType = None; businessDayConvention = NoAdjustment; businessCenters = []
+    hibor6MRate = FloatingRate with referenceRateId = hibor6M; referenceRateType = SingleFixing CalculationPeriodStartDate; fixingDates
+    hibor12MRate = FloatingRate with referenceRateId = hibor12M; referenceRateType = SingleFixing CalculationPeriodStartDate; fixingDates
   hkd  <- originateToken               cashProvider cashProvider pub epoch "HKD"   "Hong Kong Dollar"
-  irs1 <- originateInterestRateSwap    clearer      clearer                "IRS1"  "Interest Rate Swap 3Y 1.5%/HIBOR-6M"     pub (tt $ y 2022) (y 2022) ["EMPTY"] clearer (y 2023) (y 2025) Act365Fixed Following 0.025  M 6  hkd hibor6M  True
-  irs2 <- originateInterestRateSwap    clearer      clearer                "IRS2"  "Interest Rate Swap 5Y 1.75%/HIBOR-6M"    pub (tt $ y 2022) (y 2022) ["EMPTY"] clearer (y 2023) (y 2027) Act365Fixed Following 0.025  M 6  hkd hibor6M  True
-  irs3 <- originateInterestRateSwap    clearer      clearer                "IRS3"  "Interest Rate Swap 5Y 2.0%/HIBOR-12M"    pub (tt $ y 2022) (y 2022) ["EMPTY"] clearer (y 2023) (y 2027) Act365Fixed Following 0.025  M 12 hkd hibor12M True
-  irs4 <- originateInterestRateSwap    clearer      clearer                "IRS4"  "Interest Rate Swap 10Y 2.25%/HIBOR-12M"  pub (tt $ y 2022) (y 2022) ["EMPTY"] clearer (y 2023) (y 2032) Act365Fixed Following 0.025  M 12 hkd hibor12M True
-  cds1 <- originateCreditDefaultSwap   clearer      clearer                "CDS1"  "Credit Default Swap 10Y 4.25% TENCENT"   pub (tt $ y 2022) (y 2022) ["EMPTY"] clearer (y 2023) (y 2032) Act365Fixed Following 0.0425 M 12 hkd dpTencent rrTencent True
+  irs1 <- originateInterestRateSwap    clearer      clearer                "IRS1"  "Interest Rate Swap 3Y 1.5%/HIBOR-6M"     pub (tt $ y 2022) (y 2022) ["EMPTY"] clearer (y 2023) (y 2025) Act365Fixed Following 0.025  hibor6MRate M 6 hkd True
+  irs2 <- originateInterestRateSwap    clearer      clearer                "IRS2"  "Interest Rate Swap 5Y 1.75%/HIBOR-6M"    pub (tt $ y 2022) (y 2022) ["EMPTY"] clearer (y 2023) (y 2027) Act365Fixed Following 0.025  hibor6MRate M 6  hkd True
+  irs3 <- originateInterestRateSwap    clearer      clearer                "IRS3"  "Interest Rate Swap 5Y 2.0%/HIBOR-12M"    pub (tt $ y 2022) (y 2022) ["EMPTY"] clearer (y 2023) (y 2027) Act365Fixed Following 0.025  hibor12MRate M 12 hkd True
+  irs4 <- originateInterestRateSwap    clearer      clearer                "IRS4"  "Interest Rate Swap 10Y 2.25%/HIBOR-12M"  pub (tt $ y 2022) (y 2022) ["EMPTY"] clearer (y 2023) (y 2032) Act365Fixed Following 0.025  hibor12MRate M 12 hkd True
+  cds1 <- originateCreditDefaultSwap   clearer      clearer                "CDS1"  "Credit Default Swap 10Y 4.25% TENCENT"   pub (tt $ y 2022) 1.0 (y 2022) ["EMPTY"] clearer (y 2023) (y 2032) Act365Fixed Following 0.0425 M 12 hkd dpTencent rrTencent True
   let secs = [irs1, irs2, irs3, irs4, cds1]
 
   -- Distribution

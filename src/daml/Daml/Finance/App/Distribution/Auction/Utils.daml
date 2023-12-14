@@ -86,7 +86,7 @@ generateSettlementInstruction settlementServiceCid settler issuerAccount (Some i
 
   deliveryCid <- fst <$> exercise deliveryCid Allocate with actors = singleton issuer; allocation = Pledge $ toInterfaceContractId allocatedDepositCid
   exercise bidCid Bidding.ApproveInstruction with instructionCid = deliveryCid; account = bid.receivableAccount
-  paymentCid <- exercise bidCid Bidding.AllocateInstruction with instructionCid = paymentCid; transferableCid = toInterfaceContractId bidDepositCid
+  paymentCid <- exercise bidCid Bidding.AllocateInstruction with instructionCid = paymentCid; transferableCid = coerceContractId bidDepositCid
   exercise paymentCid Approve with actors = singleton issuer; approval = TakeDelivery issuerAccount
 
   pure (splitResult.rest, batchCid :: batchCids)

@@ -5,7 +5,7 @@ module Daml.Finance.App.Clearing.Service where
 
 import DA.Set (singleton)
 import Daml.Finance.App.Clearing.Model (ClearingRequest(..))
-import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Holding.Holding qualified as Holding (I)
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, AddObservers(..))
 

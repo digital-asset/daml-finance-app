@@ -149,21 +149,21 @@ call ccy underlying strike =
   let
     payoff = (observe underlying) - (Const strike)
     payout = scale payoff (one ccy)
-  in payout `or` zero
+  in ("exercise", payout) `or` ("expire", zero)
 
 put : InstrumentKey -> Text -> Decimal -> C
 put ccy underlying strike =
   let
     payoff = Const strike - observe underlying
     payout = scale payoff (one ccy)
-  in payout `or` zero
+  in ("exercise", payout) `or` ("expire", zero)
 
 turboCall : InstrumentKey -> Text -> Decimal -> Decimal -> Date -> C
 turboCall ccy underlying strike barrier startDate =
   let
     option = call ccy underlying strike
     barriercondition = observe underlying <= Const barrier
-  in until barriercondition $ anytime (at $ t startDate) option
+  in until barriercondition $ anytime (at $ t startDate) "exercise" option
 
 inverseConvertibleExplicit : Text -> InstrumentKey -> InstrumentKey -> Decimal -> Decimal -> Decimal -> Date -> C
 inverseConvertibleExplicit assetObs asset ccy notional strike interest maturity =
@@ -184,15 +184,15 @@ inverseConvertible assetObs asset ccy notional strike interest maturity =
 
 binaryCallOption : Text -> InstrumentKey -> Decimal -> Date -> C
 binaryCallOption underlying ccy strike expiry =
-  when (at $ t expiry) $ cond (Const strike <= observe underlying) (one ccy) zero `or` zero
+  when (at $ t expiry) $ ("exercise", cond (Const strike <= observe underlying) (one ccy) zero) `or` ("expire", zero)
 
 koPutWarrant : Decimal -> Decimal -> Text -> InstrumentKey -> C
 koPutWarrant barrier strike underlying ccy  =
-  cond (observe underlying <= Const barrier) (scale (Const strike + (observe underlying)) (one ccy) `or` zero) zero
+  cond (observe underlying <= Const barrier) (("exercise", scale (Const strike + (observe underlying)) (one ccy)) `or` ("expire", zero)) zero
 
 convertibleShare : InstrumentKey -> InstrumentKey -> Date -> C
 convertibleShare from to conversionDate =
-  when (at $ t conversionDate) $ (give (one from) `and` (one to)) `or` (one from)
+  when (at $ t conversionDate) $ ("convert", give (one from) `and` (one to)) `or` ("keep", one from)
 
 interestRateSwap : Text -> Decimal -> InstrumentKey -> [Date] -> C
 interestRateSwap floatingRateId fixedRate ccyId fixingDates =
@@ -291,15 +291,14 @@ buyWriteNote issueDate endDate maturityDate und ccy couponRatePerAnnum denominat
         weekend = [Saturday,Sunday]
         holidays = []
     frequency = Frequency with
-        period = M
-        periodMultiplier = 1
+        period = Period with period = M; periodMultiplier = 1
         rollConvention = EOM
     paymentSchedule = PeriodicSchedule with
       effectiveDate = issueDate
       terminationDate = maturityDate
       firstRegularPeriodStartDate
       lastRegularPeriodEndDate
-      frequency = frequency
+      frequency = Periodic frequency
       businessDayAdjustment = BusinessDayAdjustment with
         calendarIds = ["dummy"]
         convention = dayAdjustment
@@ -349,7 +348,7 @@ ngLocationPricingOption startDate endDate quantity location1 price1 location2 pr
     dates = rollDaily startDate endDate
     c1 = scale (Const quantity) $ and (one location1) $ give $ scale (observe price1) (one ccy)
     c2 = scale (Const quantity) $ and (one location2) $ give $ scale (observe price2) (one ccy)
-    claim = mconcat $ map (\date -> when (at $ t date) $ c1 `or` c2 ) dates
+    claim = mconcat $ map (\date -> when (at $ t date) $ ("location1", c1) `or` ("location2", c2)) dates
   in claim
 
 -- | Capped price

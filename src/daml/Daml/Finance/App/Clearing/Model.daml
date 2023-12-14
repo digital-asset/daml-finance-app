@@ -5,7 +5,7 @@ module Daml.Finance.App.Clearing.Model where
 
 import DA.Optional (isNone, fromSome)
 import Daml.Finance.Interface.Account.Account qualified as Account (Credit(..), Debit(..), I, exerciseInterfaceByKey)
-import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Holding.Holding qualified as Holding (I)
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id)
 import Daml.Finance.Interface.Util.Common (qty)
 

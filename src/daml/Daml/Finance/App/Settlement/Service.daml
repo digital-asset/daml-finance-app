@@ -3,9 +3,9 @@
 
 module Daml.Finance.App.Settlement.Service where
 
-import DA.Set (singleton)
+import DA.Set qualified as S (empty, singleton)
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (I)
-import Daml.Finance.Interface.Settlement.Factory qualified as Settlement (F, Instruct(..))
+import Daml.Finance.Interface.Settlement.Factory qualified as SettlementFactory (I, Instruct(..))
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (I, Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.RouteProvider qualified as RouteProvider (Discover(..), I)
 import Daml.Finance.Interface.Settlement.Types qualified as Settlement (Allocation, Approval, Step)
@@ -17,7 +17,7 @@ template Service
     provider : Party
     customer : Party
     routeProviderCid : ContractId RouteProvider.I
-    settlementFactoryCid : ContractId Settlement.F
+    settlementFactoryCid : ContractId SettlementFactory.I
   where
     signatory operator, provider, customer
 
@@ -32,7 +32,7 @@ template Service
       controller actor
       do
         assertMsg "Actor must be provider or customer" $ actor == customer || actor == provider
-        fst <$> exercise instructionCid Instruction.Allocate with actors = singleton actor; allocation
+        fst <$> exercise instructionCid Instruction.Allocate with actors = S.singleton actor; allocation
 
     nonconsuming choice ApproveInstruction : ContractId Instruction.I
       with
@@ -42,7 +42,7 @@ template Service
       controller actor
       do
         assertMsg "Actor must be provider or customer" $ actor == customer || actor == provider
-        exercise instructionCid Instruction.Approve with actors = singleton actor; approval
+        exercise instructionCid Instruction.Approve with actors = S.singleton actor; approval
 
     nonconsuming choice DiscoverAndInstruct : (ContractId Batch.I, [ContractId Instruction.I])
       with
@@ -55,8 +55,8 @@ template Service
         steps : [Settlement.Step]
       controller actor
       do
-        routedSteps <- exercise routeProviderCid RouteProvider.Discover with discoverors = singleton actor; contextId = None; steps
-        exercise settlementFactoryCid Settlement.Instruct with instructors = singleton actor; settlers; id; description; contextId; settlementTime; routedSteps
+        routedSteps <- exercise routeProviderCid RouteProvider.Discover with discoverors = S.singleton actor; contextId = None; steps
+        exercise settlementFactoryCid SettlementFactory.Instruct with instructor = actor; consenters = S.empty; settlers; id; description; contextId; settlementTime; routedSteps
 
     choice Terminate : ()
       with
@@ -72,7 +72,7 @@ template Offer
     provider : Party
     customer : Party
     routeProviderCid : ContractId RouteProvider.I
-    settlementFactoryCid : ContractId Settlement.F
+    settlementFactoryCid : ContractId SettlementFactory.I
   where
     signatory operator, provider
     observer customer
@@ -110,7 +110,7 @@ template Request
       with
         operator : Party
         routeProviderCid : ContractId RouteProvider.I
-        settlementFactoryCid : ContractId Settlement.F
+        settlementFactoryCid : ContractId SettlementFactory.I
       controller operator, provider
       do
         create Service with operator; provider; customer; routeProviderCid; settlementFactoryCid

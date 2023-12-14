@@ -9,8 +9,10 @@ import DA.Set (singleton)
 import DA.Time (time)
 import Daml.Finance.Account.Account qualified as Account (Factory(..))
 import Daml.Finance.App.Decentralized.Exchange.Service as Dex (Swap(..))
-import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
+import Daml.Finance.Holding.Factory qualified as Holding (Factory(..))
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
+import Daml.Finance.Interface.Holding.Factory qualified as HoldingFactory (Reference(..), View(..))
+import Daml.Finance.Interface.Types.Common.Types (Id(..))
 import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Setup.Util.Common
 import Daml.Finance.Setup.Util.Role
@@ -33,7 +35,8 @@ run  = do
     hierarchies = map (\rootCustodian -> Settlement.Hierarchy with rootCustodian; pathsToRootCustodian) [fed, ecb, snb, boe]
     paths = fromList $ zip assets hierarchies
   accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory                   with provider = operator; observers = pub
-  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory                  with provider = operator; observers = pub
+  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Holding.Factory with id = Id "HoldingFactory"; provider = operator; observers = pub
+  submit operator do createCmd HoldingFactory.Reference with factoryView = (HoldingFactory.View with provider = operator; id = Id "HoldingFactory"); cid = holdingFactoryCid; observers = pub
 
   -- Roles
   createOperatorRole    operator

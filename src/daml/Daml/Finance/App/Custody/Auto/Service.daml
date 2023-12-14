@@ -4,7 +4,7 @@
 module Daml.Finance.App.Custody.Auto.Service where
 
 import Daml.Finance.Interface.Account.Account qualified as Account (Controllers)
-import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Holding.Holding qualified as Holding (I)
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentKey, InstrumentQuantity, PartiesMap)
 import Daml.Finance.App.Custody.Service qualified as S
 

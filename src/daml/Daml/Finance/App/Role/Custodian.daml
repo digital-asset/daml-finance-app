@@ -12,11 +12,11 @@ import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Approve(..), O
 import Daml.Finance.App.Settlement.Service qualified as Settlement (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Structuring.Auto.Service qualified as StructuringAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Structuring.Service qualified as Structuring (Approve(..), Factories, Offer(..), Request, Service, Terminate(..))
-import Daml.Finance.Interface.Account.Factory qualified as Account (F)
-import Daml.Finance.Interface.Holding.Factory qualified as Holding (F)
+import Daml.Finance.Interface.Account.Factory qualified as AccountFactory (I)
+import Daml.Finance.Interface.Holding.Factory qualified as HoldingFactory (I)
 import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Lifecycle (Claim)
 import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (I)
-import Daml.Finance.Interface.Settlement.Factory qualified as Settlement (F)
+import Daml.Finance.Interface.Settlement.Factory qualified as SettlementFactory (I)
 import Daml.Finance.Interface.Settlement.RouteProvider qualified as RouteProvider (I)
 
 template Role
@@ -33,8 +33,8 @@ template Role
       with
         customer : Party
         claimRuleCid : ContractId Lifecycle.Claim
-        accountFactoryCid : ContractId Account.F
-        holdingFactoryCid : ContractId Holding.F
+        accountFactoryCid : ContractId AccountFactory.I
+        holdingFactoryCid : ContractId HoldingFactory.I
       controller provider
       do
         create Custody.Offer with operator; provider; customer; claimRuleCid; accountFactoryCid; holdingFactoryCid
@@ -43,8 +43,8 @@ template Role
       with
         custodyRequestCid : ContractId Custody.Request
         claimRuleCid : ContractId Lifecycle.Claim
-        accountFactoryCid : ContractId Account.F
-        holdingFactoryCid : ContractId Holding.F
+        accountFactoryCid : ContractId AccountFactory.I
+        holdingFactoryCid : ContractId HoldingFactory.I
       controller provider
       do
         exercise custodyRequestCid Custody.Approve with operator; claimRuleCid; accountFactoryCid; holdingFactoryCid
@@ -125,7 +125,7 @@ template Role
       with
         customer : Party
         routeProviderCid : ContractId RouteProvider.I
-        settlementFactoryCid : ContractId Settlement.F
+        settlementFactoryCid : ContractId SettlementFactory.I
       controller provider
       do
         create Settlement.Offer with ..
@@ -134,7 +134,7 @@ template Role
       with
         settlementServiceRequestCid : ContractId Settlement.Request
         routeProviderCid : ContractId RouteProvider.I
-        settlementFactoryCid : ContractId Settlement.F
+        settlementFactoryCid : ContractId SettlementFactory.I
       controller provider
       do
         exercise settlementServiceRequestCid Settlement.Approve with ..

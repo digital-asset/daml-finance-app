@@ -4,7 +4,7 @@
 module Daml.Finance.App.Custody.Model where
 
 import Daml.Finance.Interface.Account.Account qualified as Account (Controllers)
-import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Holding.Holding qualified as Holding (I)
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity, PartiesMap)
 
 template OpenAccountRequest

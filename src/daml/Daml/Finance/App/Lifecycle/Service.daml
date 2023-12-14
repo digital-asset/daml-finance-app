@@ -10,7 +10,7 @@ import ContingentClaims.Lifecycle.Util (expiry, fixings, payoffs)
 import ContingentClaims.Valuation.Stochastic (Expr)
 import Daml.Finance.Claims.Util.Lifecycle qualified as Claim (lifecycle, lifecycleClaims, timeEvent)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (I, R)
-import Daml.Finance.Interface.Instrument.Equity.Instrument qualified as Equity (I, DeclareDividend(..), DeclareReplacement(..), DeclareStockSplit(..))
+import Daml.Finance.Interface.Instrument.Equity.Instrument qualified as Equity (I, DeclareDistribution(..), DeclareReplacement(..), DeclareStockSplit(..))
 import Daml.Finance.Interface.Claims.Claim qualified as Claim (Claim, getClaims, GetClaims(..))
 import Daml.Finance.Interface.Claims.Types (C, Pending, TaggedClaim)
 import Daml.Finance.Interface.Lifecycle.Effect qualified as Effect (I)
@@ -18,7 +18,7 @@ import Daml.Finance.Interface.Lifecycle.Event qualified as Event (I)
 import Daml.Finance.Interface.Lifecycle.Observable.NumericObservable qualified as NumericObservable (I)
 import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (I, Evolve(..))
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I)
-import Daml.Finance.Interface.Types.Common.Types (Id, InstrumentKey(..), InstrumentQuantity)
+import Daml.Finance.Interface.Types.Common.Types (HoldingStandard(..), Id, InstrumentKey(..), InstrumentQuantity)
 import Daml.Finance.App.Lifecycle.Pricing qualified as Pricing
 import Daml.Finance.App.Structuring.Auto.Service qualified as Structuring
 
@@ -37,7 +37,7 @@ template Service
     key (operator, provider, customer) : (Party, Party, Party)
     maintainer key._1
 
-    nonconsuming choice DeclareDividend : [ContractId Effect.I]
+    nonconsuming choice DeclareDistribution : [ContractId Effect.I]
       with
         equity : InstrumentKey
         newVersion : Text
@@ -54,9 +54,9 @@ template Service
           disclosure = toInterface @Disclosure.I equityInstrument
           v = view equityInstrument
           dv = view disclosure
-          newInstrument = InstrumentKey with depository = provider; issuer = customer; id = equity.id; version = newVersion
+          newInstrument = InstrumentKey with depository = provider; issuer = customer; id = equity.id; version = newVersion; holdingStandard = TransferableFungible
         exerciseByKey @Structuring.Service (operator, provider, customer) Structuring.RequestAndCreateEquity with id = equity.id; description = v.description; version = newVersion; validAsOf = now; observers = dv.observers
-        eventCid <- exercise (coerceContractId equityRef.cid : ContractId Equity.I) Equity.DeclareDividend with id; description; effectiveTime; newInstrument; perUnitDistribution
+        eventCid <- exercise (coerceContractId equityRef.cid : ContractId Equity.I) Equity.DeclareDistribution with id; description; effectiveTime; newInstrument; perUnitDistribution
         snd <$> exercise distributionRuleCid Lifecycle.Evolve with
           eventCid
           instrument = equity
@@ -95,7 +95,7 @@ template Service
           disclosure = toInterface @Disclosure.I equityInstrument
           v = view equityInstrument
           dv = view disclosure
-          newInstrument = InstrumentKey with depository = provider; issuer = customer; id = v.id; version = newVersion
+          newInstrument = InstrumentKey with depository = provider; issuer = customer; id = v.id; version = newVersion; holdingStandard = TransferableFungible
         exerciseByKey @Structuring.Service (operator, provider, customer) Structuring.RequestAndCreateEquity with id = v.id; description = v.description; version = newVersion; validAsOf = now; observers = dv.observers
         eventCid <- exercise (coerceContractId equityRef.cid : ContractId Equity.I) Equity.DeclareStockSplit with id; description; effectiveTime; newInstrument; adjustmentFactor
         snd <$> exercise replacementRuleCid Lifecycle.Evolve with

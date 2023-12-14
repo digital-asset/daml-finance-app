@@ -20,11 +20,12 @@ import Daml.Finance.Interface.Instrument.Equity.Factory qualified as Equity (Fac
 import Daml.Finance.Interface.Instrument.Generic.Factory qualified as Generic (Factory, Create(..))
 import Daml.Finance.Interface.Instrument.Token.Factory qualified as Token (Factory, Create(..))
 import Daml.Finance.Interface.Instrument.Token.Types (Token(..))
+import Daml.Finance.Interface.Instrument.Types.FloatingRate qualified as FloatingRateTypes (FloatingRate(..), ReferenceRateTypeEnum, FixingDates)
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayAdjustment(..), BusinessDayConventionEnum)
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
-import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum, RollConventionEnum(..))
-import Daml.Finance.Interface.Types.Date.Schedule (Frequency(..), PeriodicSchedule(..))
-import Daml.Finance.Interface.Types.Common.Types (Id(..), InstrumentKey(..), PartiesMap)
+import Daml.Finance.Interface.Types.Date.RollConvention (Period(..), PeriodEnum, RollConventionEnum(..))
+import Daml.Finance.Interface.Types.Date.Schedule (Frequency(..), ScheduleFrequency(..), PeriodicSchedule(..))
+import Daml.Finance.Interface.Types.Common.Types (HoldingStandard(..), Id(..), InstrumentKey(..), PartiesMap)
 
 data Factories = Factories
   with
@@ -86,6 +87,7 @@ template Service
       with
         id : Text
         description : Text
+        notional : Decimal
         couponRate : Decimal
         issueDate : Date
         firstCouponDate : Date
@@ -107,7 +109,10 @@ template Service
       with
         id : Text
         description : Text
+        notional : Decimal
         referenceRateId : Text
+        referenceRateType : FloatingRateTypes.ReferenceRateTypeEnum
+        fixingDates : FloatingRateTypes.FixingDates
         couponSpread : Decimal
         issueDate : Date
         firstCouponDate : Date
@@ -129,6 +134,7 @@ template Service
       with
         id : Text
         description : Text
+        notional : Decimal
         inflationIndexId : Text
         inflationIndexBaseValue : Decimal
         couponRate : Decimal
@@ -152,6 +158,7 @@ template Service
       with
         id : Text
         description : Text
+        notional : Decimal
         issueDate : Date
         maturityDate : Date
         currency : InstrumentKey
@@ -168,9 +175,9 @@ template Service
       do
         CreateTokenRequest{..} <- fetchAndArchive createTokenRequestCid
         let
-          instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"
+          instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"; holdingStandard = TransferableFungible
           token = Token with ..
-        exercise factories.token Token.Create with token; observers
+        toInterfaceContractId <$> exercise factories.token Token.Create with token; observers
 
     nonconsuming choice CreateEquity : ContractId Instrument.I
       with
@@ -179,8 +186,8 @@ template Service
       do
         CreateEquityRequest{..} <- fetchAndArchive createEquityRequestCid
         let
-          instrument = InstrumentKey with depository = provider; issuer = customer; id; version
-        exercise factories.equity Equity.Create with ..
+          instrument = InstrumentKey with depository = provider; issuer = customer; id; version; holdingStandard = TransferableFungible
+        toInterfaceContractId <$> exercise factories.equity Equity.Create with ..
 
     nonconsuming choice CreateGeneric : ContractId Instrument.I
       with
@@ -189,8 +196,8 @@ template Service
       do
         CreateGenericRequest{..} <- fetchAndArchive createGenericRequestCid
         let
-          instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"
-        exercise factories.generic Generic.Create with ..
+          instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"; holdingStandard = TransferableFungible
+        toInterfaceContractId <$> exercise factories.generic Generic.Create with ..
 
     nonconsuming choice CreateFixedRateBond : ContractId Instrument.I
       with
@@ -199,10 +206,10 @@ template Service
       do
         CreateFixedRateBondRequest{..} <- fetchAndArchive createFixedRateBondRequestCid
         let
-          instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"
+          instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"; holdingStandard = TransferableFungible
           periodicSchedule = createCouponPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
           fixedRate = FixedRate with ..
-        exercise factories.fixedRateBond FixedRateBond.Create with fixedRate; observers
+        toInterfaceContractId <$> exercise factories.fixedRateBond FixedRateBond.Create with fixedRate; observers
 
     nonconsuming choice CreateFloatingRateBond : ContractId Instrument.I
       with
@@ -211,10 +218,10 @@ template Service
       do
         CreateFloatingRateBondRequest{..} <- fetchAndArchive createFloatingRateBondRequestCid
         let
-          instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"
+          instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"; holdingStandard = TransferableFungible
           periodicSchedule = createCouponPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
-          floatingRate = FloatingRate with ..
-        exercise factories.floatingRateBond FloatingRateBond.Create with floatingRate; observers
+          floatingRate = FloatingRateTypes.FloatingRate with referenceRateId; referenceRateType; fixingDates
+        toInterfaceContractId <$> exercise factories.floatingRateBond FloatingRateBond.Create with floatingRate = (FloatingRate with ..); observers
 
     nonconsuming choice CreateInflationLinkedBond : ContractId Instrument.I
       with
@@ -223,10 +230,10 @@ template Service
       do
         CreateInflationLinkedBondRequest{..} <- fetchAndArchive createInflationLinkedBondRequestCid
         let
-          instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"
+          instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"; holdingStandard = TransferableFungible
           periodicSchedule = createCouponPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
           inflationLinked = InflationLinked with ..
-        exercise factories.inflationLinkedBond InflationLinkedBond.Create with inflationLinked; observers
+        toInterfaceContractId <$> exercise factories.inflationLinkedBond InflationLinkedBond.Create with inflationLinked; observers
 
     nonconsuming choice CreateZeroCouponBond : ContractId Instrument.I
       with
@@ -235,9 +242,9 @@ template Service
       do
         CreateZeroCouponBondRequest{..} <- fetchAndArchive createZeroCouponBondRequestCid
         let
-          instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"
+          instrument = InstrumentKey with depository = provider; issuer = customer; id = Id id; version = "0"; holdingStandard = TransferableFungible
           zeroCoupon = ZeroCoupon with ..
-        exercise factories.zeroCouponBond ZeroCouponBond.Create with zeroCoupon; observers
+        toInterfaceContractId <$> exercise factories.zeroCouponBond ZeroCouponBond.Create with zeroCoupon; observers
 
     choice Terminate : ()
       with
@@ -307,10 +314,9 @@ createCouponPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConve
       effectiveDateBusinessDayAdjustment = None
       terminationDateBusinessDayAdjustment = None
       frequency =
-        Frequency with
+        Periodic $ Frequency with
           rollConvention = DOM d
-          period = couponPeriod
-          periodMultiplier = couponPeriodMultiplier
+          period = Period with period = couponPeriod; periodMultiplier = couponPeriodMultiplier
       effectiveDate = issueDate
       firstRegularPeriodStartDate = Some firstCouponDate
       lastRegularPeriodEndDate = Some maturityDate

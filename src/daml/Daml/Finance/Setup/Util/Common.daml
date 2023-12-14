@@ -10,7 +10,7 @@ import DA.Optional (fromOptional)
 import DA.Text (asciiToLower, replace)
 import Daml.Finance.Holding.Fungible qualified as Fungible (T)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..), SplitResult(..))
-import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Holding.Holding qualified as Holding (I)
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (GetCid(..), R)
 import Daml.Finance.Interface.Types.Common.Types (InstrumentKey, InstrumentQuantity)
 import Daml.Script

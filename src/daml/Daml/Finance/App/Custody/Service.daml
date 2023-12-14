@@ -4,9 +4,9 @@
 module Daml.Finance.App.Custody.Service where
 
 import Daml.Finance.Interface.Account.Account qualified as Account (Controllers, Credit(..), Debit(..), R)
-import Daml.Finance.Interface.Account.Factory qualified as Account (F, Create(..), Remove(..))
-import Daml.Finance.Interface.Holding.Factory qualified as Holding (F)
-import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Account.Factory qualified as AccountFactory (I, Create(..))
+import Daml.Finance.Interface.Holding.Factory qualified as HoldingFactory (I, holdingFactoryKey)
+import Daml.Finance.Interface.Holding.Holding qualified as Holding (I)
 import Daml.Finance.Interface.Account.Util (getAccount)
 import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Lifecycle (Claim)
 import Daml.Finance.Interface.Types.Common.Types (AccountKey(..), Id, InstrumentKey, InstrumentQuantity, PartiesMap)
@@ -19,8 +19,8 @@ template Service
     provider : Party
     customer : Party
     claimRuleCid : ContractId Lifecycle.Claim
-    accountFactoryCid : ContractId Account.F
-    holdingFactoryCid : ContractId Holding.F
+    accountFactoryCid : ContractId AccountFactory.I
+    holdingFactoryCid : ContractId HoldingFactory.I
   where
     signatory operator, provider, customer
 
@@ -66,8 +66,9 @@ template Service
       controller provider
       do
         Custody.OpenAccountRequest{id; description; controllers; observers} <- fetchAndArchive openAccountRequestCid
+        holdingFactory <- HoldingFactory.holdingFactoryKey <$> fetch holdingFactoryCid
         let account = AccountKey with custodian = provider; owner = customer; id
-        exercise accountFactoryCid Account.Create with account; description; controllers; holdingFactoryCid; observers
+        exercise accountFactoryCid AccountFactory.Create with account; description; controllers; holdingFactory; observers
         pure account
 
     nonconsuming choice CloseAccount : ()
@@ -76,7 +77,8 @@ template Service
       controller provider
       do
         Custody.CloseAccountRequest{account} <- fetchAndArchive closeAccountRequestCid
-        exercise accountFactoryCid Account.Remove with account
+        (_, ref) <- fetchByKey @Account.R account
+        archive ref.cid
 
     nonconsuming choice Deposit : ContractId Holding.I
       with
@@ -112,8 +114,8 @@ template Offer
     provider : Party
     customer : Party
     claimRuleCid : ContractId Lifecycle.Claim
-    accountFactoryCid : ContractId Account.F
-    holdingFactoryCid : ContractId Holding.F
+    accountFactoryCid : ContractId AccountFactory.I
+    holdingFactoryCid : ContractId HoldingFactory.I
   where
     signatory operator, provider
     observer customer
@@ -151,8 +153,8 @@ template Request
       with
         operator : Party
         claimRuleCid : ContractId Lifecycle.Claim
-        accountFactoryCid : ContractId Account.F
-        holdingFactoryCid : ContractId Holding.F
+        accountFactoryCid : ContractId AccountFactory.I
+        holdingFactoryCid : ContractId HoldingFactory.I
       controller operator, provider
       do
         create Service with operator; provider; customer; claimRuleCid; accountFactoryCid; holdingFactoryCid

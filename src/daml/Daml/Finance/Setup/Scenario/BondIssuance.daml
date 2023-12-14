@@ -12,10 +12,13 @@ import Daml.Finance.Account.Account qualified as Account (Factory(..))
 import Daml.Finance.Claims.Lifecycle.Rule qualified as Lifecycle (Rule(..))
 import Daml.Finance.Data.Time.DateClock qualified as Data (DateClock)
 import Daml.Finance.Data.Time.DateClockUpdate qualified as Data (DateClockUpdateEvent)
-import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
+import Daml.Finance.Holding.Factory qualified as Holding (Factory(..))
+import Daml.Finance.Interface.Holding.Factory qualified as HoldingFactory (Reference(..), View(..))
+import Daml.Finance.Interface.Instrument.Types.FloatingRate (DateRelativeToEnum(..), FloatingRate(..), ReferenceRateTypeEnum(..))
 import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (Evolve(..), I)
 import Daml.Finance.Interface.Types.Common.Types (Id(..))
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum(..))
+import Daml.Finance.Interface.Types.Date.DateOffset (DateOffset(..))
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum(..))
 import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum(..))
 import Daml.Finance.Interface.Util.Common (qty)
@@ -42,8 +45,9 @@ run = do
     cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = settlementPaths
     secRoute = Settlement.Hierarchy with rootCustodian = registry; pathsToRootCustodian = settlementPaths
     paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
-  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
-  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
+  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory with provider = operator; observers = pub
+  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Holding.Factory with id = Id "HoldingFactory"; provider = operator; observers = pub
+  submit operator do createCmd HoldingFactory.Reference with factoryView = (HoldingFactory.View with provider = operator; id = Id "HoldingFactory"); cid = holdingFactoryCid; observers = pub
 
   -- Roles
   createOperatorRole operator
@@ -95,11 +99,14 @@ run = do
   (timeObservableCid, eventCid) <- createClockAndEvent all (date 2021 tm td) (singleton public)
 
   -- Instruments
+  let
+    fixingDates = DateOffset with period = D; periodMultiplier = 0; dayType = None; businessDayConvention = NoAdjustment; businessCenters = []
+    usdLibor12MRate = FloatingRate with referenceRateId = "USD-LIBOR-12M"; referenceRateType = SingleFixing CalculationPeriodStartDate; fixingDates
   usd   <- originateToken               centralBank centralBank pub epoch "USD"   "United States Dollar"
-  bond1 <- originateZeroCouponBond      registry    issuer                "BOND1" "Zero Coupon Bond 5Y"                         pub (tt $ date 2022 tm td) (date 2022 tm td) (date 2027 tm td) usd
-  bond2 <- originateFixedRateBond       registry    issuer                "BOND2" "Fixed Rate Bond 5Y @ 1.1%"                   pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.011 M 12 usd
-  bond3 <- originateFloatingRateBond    registry    issuer                "BOND3" "Floating Rate Bond 5Y @ LIBOR-12M + 0.5%"    pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.005 M 12 usd "USD-LIBOR-12M"
-  bond4 <- originateInflationLinkedBond registry    issuer                "BOND4" "Inflation Linked Bond 5Y @ 0.5% * (1 + CPI)" pub (tt $ date 2020 tm td) (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.005 M 12 usd "CPI" 100.0
+  bond1 <- originateZeroCouponBond      registry    issuer                "BOND1" "Zero Coupon Bond 5Y"                         pub (tt $ date 2022 tm td) 1.0 (date 2022 tm td) (date 2027 tm td) usd
+  bond2 <- originateFixedRateBond       registry    issuer                "BOND2" "Fixed Rate Bond 5Y @ 1.1%"                   pub (tt $ date 2020 tm td) 1.0 (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.011 M 12 usd
+  bond3 <- originateFloatingRateBond    registry    issuer                "BOND3" "Floating Rate Bond 5Y @ LIBOR-12M + 0.5%"    pub (tt $ date 2020 tm td) 1.0 (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.005 M 12 usd usdLibor12MRate
+  bond4 <- originateInflationLinkedBond registry    issuer                "BOND4" "Inflation Linked Bond 5Y @ 0.5% * (1 + CPI)" pub (tt $ date 2020 tm td) 1.0 (date 2020 tm td) ["EMPTY"] registry (date 2021 tm td) (date 2025 tm td) Act365Fixed Following 0.005 M 12 usd "CPI" 100.0
   let securities = [bond1, bond2, bond3, bond4]
 
   -- Data

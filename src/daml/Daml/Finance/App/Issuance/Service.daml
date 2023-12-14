@@ -5,7 +5,7 @@ module Daml.Finance.App.Issuance.Service where
 
 import Daml.Finance.Interface.Account.Account qualified as Account (Credit(..), Debit(..), R)
 import Daml.Finance.Interface.Account.Util (getAccount)
-import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Holding.Holding qualified as Holding (I)
 import Daml.Finance.Interface.Holding.Util (getAmount)
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity)
 import Daml.Finance.App.Issuance.Model (CreateIssuanceRequest(..), ReduceIssuanceRequest(..), Issuance(..))

@@ -18,12 +18,12 @@ import Daml.Finance.App.Distribution.Bidding.Service qualified as Bidding (Rejec
 import Daml.Finance.App.Settlement.Service qualified as Settlement (Service)
 import Daml.Finance.App.Util (fetchAndArchive)
 import Daml.Finance.Interface.Account.Account qualified as Account (R, exerciseInterfaceByKey)
-import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
 import Daml.Finance.Interface.Account.Util (getAccount)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I, RemoveObservers(..))
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentKey, InstrumentQuantity, Parties)
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
+import Daml.Finance.Interface.Util.Lockable qualified as Lockable (Acquire(..), I, LockType(..), Release(..))
 
 type S = Service
 
@@ -77,7 +77,7 @@ template Service
       controller provider
       do
         CreateAuctionRequest{id; quantity; currency; floor; collateralCid; receivableAccount; observers} <- fetchAndArchive createAuctionRequestCid
-        collateralCid <- coerceContractId <$> exercise (toInterfaceContractId collateralCid : ContractId Holding.I) Holding.Acquire with newLockers = fromList [ provider ]; context = id; lockType = Holding.Semaphore
+        collateralCid <- coerceContractId <$> exercise (toInterfaceContractId collateralCid : ContractId Lockable.I) Lockable.Acquire with newLockers = fromList [ provider ]; context = id; lockType = Lockable.Semaphore
         create Auction with operator; provider; customer; id; quantity; currency; floor; collateralCid; receivableAccount; status = Open; observers
 
     nonconsuming choice RejectAuction : ()
@@ -114,7 +114,7 @@ template Service
         forA_ unallocatedBids (\Bidding.Allocation{bidCid, bid} -> exerciseByKey @Bidding.S (bid.operator, bid.provider, bid.customer) Bidding.RejectBid with bidCid; newStatus = Bidding.NoAllocation)
 
         -- Unlock auction collateral
-        auctionCollateralClid <- coerceContractId <$> exercise (toInterfaceContractId auction.collateralCid : ContractId Holding.I) Holding.Release with context = auction.id
+        auctionCollateralClid <- coerceContractId <$> exercise (toInterfaceContractId auction.collateralCid : ContractId Lockable.I) Lockable.Release with context = auction.id
 
         -- Generate Settlement instructions for allocated bids
         let settleAllocations = (\allocation -> Bidding.SettleAllocation with allocation; price = finalPrice; issuer = customer) <$> allocatedBids
