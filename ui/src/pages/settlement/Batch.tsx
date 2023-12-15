@@ -17,7 +17,7 @@ import { useHoldings } from "../../context/HoldingContext";
 import { ContractId } from "@daml/types";
 import { Allocation, Approval } from "@daml.js/daml-finance-interface-settlement/lib/Daml/Finance/Interface/Settlement/Types";
 import { useAccounts } from "../../context/AccountContext";
-import { Base as Holding } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Base";
+import { Holding } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Holding";
 
 export const Batch : React.FC = () => {
   const classes = useStyles();

@@ -84,7 +84,7 @@ export const Market : React.FC = () => {
   const asks = limits.filter(c => c.payload.side === Side.Sell).sort((a, b) => parseFloat(b.payload.price.amount) - parseFloat(a.payload.price.amount));
   const myOrders = limits.filter(c => c.payload.customer === party);
 
-  const available = holdings.filter(c => !c.payload.lock);
+  const available = holdings.filter(c => !c.lockable || !c.lockable.payload.lock);
   const tradedHoldings = available.filter(c => keyEquals(c.payload.instrument, listing.payload.tradedInstrument));
   const quotedHoldings = available.filter(c => keyEquals(c.payload.instrument, listing.payload.quotedInstrument));
   const tradedHoldingsTotal = tradedHoldings.reduce((acc, c) => acc + parseFloat(c.payload.amount), 0);

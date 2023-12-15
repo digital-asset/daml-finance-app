@@ -47,8 +47,6 @@ data-dependencies:
   - ./.lib/daml-finance-settlement-2.99.0.20231127.1.dar
   - ./.lib/daml-finance-util-3.0.99.20231127.1.dar
 start-navigator: no
-sandbox-options:
-  - -c=canton.conf
 script-options:
   - --output-file=ui/src/parties.json
 json-api-options:
@@ -57,5 +55,3 @@ codegen:
   js:
     output-directory: ui/daml.js
     npm-scope: daml.js
-build-options:
-  - --target=1.15

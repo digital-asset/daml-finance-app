@@ -60,6 +60,7 @@ export const NewFixedRateBond : React.FC = () => {
     const arg = {
       id,
       description: id,
+      notional: "1.0",
       couponRate,
       issueDate: parseDate(issueDate),
       firstCouponDate: parseDate(firstCouponDate),

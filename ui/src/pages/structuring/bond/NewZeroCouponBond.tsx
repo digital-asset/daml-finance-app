@@ -46,6 +46,7 @@ export const NewZeroCouponBond : React.FC = () => {
     const arg = {
       id,
       description: id,
+      notional: "1.0",
       issueDate: parseDate(issueDate),
       maturityDate: parseDate(maturityDate),
       currency: ccy.key,

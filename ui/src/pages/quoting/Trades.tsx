@@ -27,7 +27,7 @@ export const Trades : React.FC = () => {
       fmt(c.payload.amount),
       swap.currency.id.unpack,
       fmt(parseFloat(swap.fixRate) * 100, 2) + "%",
-      swap.referenceRateId,
+      swap.floatingRate.referenceRateId,
       <DetailButton path={c.contractId} />
     ];
   };

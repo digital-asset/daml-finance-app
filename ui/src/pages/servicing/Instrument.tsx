@@ -111,7 +111,7 @@ export const Instrument : React.FC = () => {
       effectiveTime: parseDateAsTime(effectiveDate),
       perUnitDistribution: [ { amount, unit: ccy.key } ]
     };
-    await ledger.exercise(Lifecycle.DeclareDividend, svc.contractId, arg);
+    await ledger.exercise(Lifecycle.DeclareDistribution, svc.contractId, arg);
     navigate("/app/servicing/effects");
   };
 

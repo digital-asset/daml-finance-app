@@ -56,7 +56,7 @@ export const dedup = (array : string[]) : string[] => {
 };
 
 export const key = (c : CreateEvent<Instrument>) : InstrumentKey => {
-  return { depository: c.payload.depository, issuer: c.payload.issuer, id: c.payload.id, version: c.payload.version };
+  return { depository: c.payload.depository, issuer: c.payload.issuer, id: c.payload.id, version: c.payload.version, holdingStandard: c.payload.holdingStandard };
 };
 
 export const shorten = (s : string) : string => {

@@ -28,5 +28,3 @@ data-dependencies:
   - ../../../../.lib/daml-finance-interface-types-common-1.99.0.20231127.1.dar
   - ../../../../.lib/daml-finance-interface-types-date-2.0.99.20231127.1.dar
   - ../../../../.lib/daml-finance-interface-util-2.0.99.20231127.1.dar
-build-options:
-  - --target=1.15

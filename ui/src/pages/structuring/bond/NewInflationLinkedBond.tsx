@@ -62,6 +62,7 @@ export const NewInflationLinkedBond : React.FC = () => {
     const arg = {
       id,
       description: id,
+      notional: "1.0",
       inflationIndexId,
       inflationIndexBaseValue,
       couponRate,

@@ -25,6 +25,7 @@ import { DateInput } from "../../../components/Form/DateInput";
 import { ToggleInput } from "../../../components/Form/ToggleInput";
 import { businessDayConventions, couponFrequencies, dayCountConventions, holidayCalendars, referenceRates } from "./util";
 import { CenteredForm } from "../../../components/CenteredForm/CenteredForm";
+import { DateRelativeToEnum, ReferenceRateTypeEnum } from "@daml.js/5a3d02e7c82441197ae395691bce9cc655b6c80a2d3277a36962c61f98e19220/lib/Daml/Finance/Interface/Instrument/Types/FloatingRate";
 
 export const NewFloatingRateBond : React.FC = () => {
   const cls = useStyles();
@@ -58,10 +59,14 @@ export const NewFloatingRateBond : React.FC = () => {
     if (!ccy) throw new Error("Couldn't find currency " + currency);
     const couponPeriod = couponFrequency === "Annual" ? PeriodEnum.Y : PeriodEnum.M;
     const couponPeriodMultiplier = couponFrequency === "Annual" ? "1" : (couponFrequency === "Semi-annual" ? "6" : "3");
+    const fixingDates = { period: "D" as const, periodMultiplier: "1", dayType: null, businessDayConvention: "NoAdjustment" as const, businessCenters: [] };
     const arg = {
       id,
       description: id,
+      notional: "1.0",
       referenceRateId,
+      referenceRateType: { tag: "SingleFixing" as const, value: "CalculationPeriodStartDate" as DateRelativeToEnum },
+      fixingDates,
       couponSpread,
       issueDate: parseDate(issueDate),
       firstCouponDate: parseDate(firstCouponDate),

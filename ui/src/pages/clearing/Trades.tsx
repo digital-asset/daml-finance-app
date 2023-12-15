@@ -57,7 +57,7 @@ export const Trades : React.FC = () => {
       fmt(c.payload.amount),
       swap.currency.id.unpack,
       fmt(parseFloat(swap.fixRate) * 100, 2) + "%",
-      swap.referenceRateId,
+      swap.floatingRate.referenceRateId,
       canRequest ? <Button color="primary" size="small" className={cls.choiceButton} variant="contained" onClick={() => requestClearing(c)}>Request Clearing</Button> : <></>,
       <DetailButton path={c.contractId} />
     ];

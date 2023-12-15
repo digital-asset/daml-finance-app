@@ -36,7 +36,7 @@ export const Holdings : React.FC<HoldingsProps> = ({ showAssets }) => {
     const a = filtered[i];
     const entry = entries.find(e => e.custodian === a.payload.account.custodian && e.owner === a.payload.account.owner && e.instrument === a.payload.instrument.id.unpack && e.version === a.payload.instrument.version);
     const qty = parseFloat(a.payload.amount);
-    const isLocked = !!a.payload.lock;
+    const isLocked = !!a.lockable && !!a.lockable.payload.lock;
     if (!!entry) {
       entry.position += qty;
       entry.locked += isLocked ? qty : 0;

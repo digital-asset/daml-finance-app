@@ -41,13 +41,9 @@ data-dependencies:
   - ../../../../.lib/daml-finance-util-3.0.99.20231127.1.dar
   - ../Daml.Finance.App/.daml/dist/daml-finance-app-1.0.0.dar
 start-navigator: no
-sandbox-options:
-  - -c=canton.conf
 script-options:
   - --output-file=../../../../ui/src/parties.json
 codegen:
   js:
     output-directory: ../../../../ui/daml.js
     npm-scope: daml.js
-build-options:
-  - --target=1.15
