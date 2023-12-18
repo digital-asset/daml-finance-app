@@ -83,7 +83,7 @@ export const Batch : React.FC = () => {
                     <TableCell key={0} className={classes.tableCell}>{c.payload.id.unpack}</TableCell>
                     <TableCell key={1} className={classes.tableCell}>{getName(c.payload.routedStep.sender)}</TableCell>
                     <TableCell key={2} className={classes.tableCell}>{getName(c.payload.routedStep.receiver)}</TableCell>
-                    <TableCell key={3} className={classes.tableCell} align="right">{fmt(c.payload.routedStep.quantity.amount)}</TableCell>
+                    <TableCell key={3} className={classes.tableCell} align="right">{fmt(c.payload.routedStep.quantity.amount, 2)}</TableCell>
                     <TableCell key={4} className={classes.tableCell}>{c.payload.routedStep.quantity.unit.id.unpack} (v{shorten(c.payload.routedStep.quantity.unit.version)})</TableCell>
                     <TableCell key={5} className={classes.tableCell}>
                       {c.payload.routedStep.sender === party && c.payload.allocation.tag === "Unallocated" && <Button color="primary" size="small" className={classes.choiceButton} variant="contained" disabled={c.payload.routedStep.sender !== party || c.payload.allocation.tag !== "Unallocated"} onClick={() => allocate(c)}>Allocate</Button>}

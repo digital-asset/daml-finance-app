@@ -1,0 +1,240 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.Setup.Scenario.EquityTotalReturnSwaps where
+
+import DA.Date (DayOfWeek(Saturday, Sunday), Month(..), date, toGregorian)
+import DA.Map (empty, fromList)
+import DA.Set (singleton)
+import DA.Time (time)
+import Daml.Finance.Account.Account qualified as Account (Factory(..))
+-- import Daml.Finance.App.Confirmation.Model qualified as Confirmation (Book(..))
+import Daml.Finance.App.Confirmation.Service qualified as Confirmation (CreateTrade(..))
+-- import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Lifecycle(..))
+import Daml.Finance.Holding.Factory qualified as Holding (Factory(..))
+import Daml.Finance.Interface.Instrument.Swap.Asset.Types (Underlying(..))
+-- import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as ClaimRule (ClaimEffect(..))
+import Daml.Finance.Interface.Holding.Factory qualified as HoldingFactory (Reference(..), View(..))
+import Daml.Finance.Interface.Types.Common.Types (Id(..))
+import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum(..))
+import Daml.Finance.Interface.Types.Date.DateOffset (DateOffset(..))
+import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum(..))
+import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum(..))
+import Daml.Finance.Interface.Instrument.Types.FloatingRate (DateRelativeToEnum(..), FloatingRate(..), ReferenceRateTypeEnum(..))
+import Daml.Finance.Interface.Util.Common (qty)
+import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
+import Daml.Finance.Setup.Util.Common
+import Daml.Finance.Setup.Util.Role
+import Daml.Finance.Setup.Util.Service
+import Daml.Finance.Setup.Util.Workflow
+import Daml.Script
+
+run : Script [PartyInfo]
+run = do
+  let scenario = "Equity Total Return Swaps"
+  parties <- allocateParties scenario ["Operator", "CashProvider", "Seller", "Buyer"] "Public"
+  let
+    all@[operator, cashProvider, seller, buyer, public] = map (.id) parties
+    pub = fromList [("Public", singleton public)]
+
+  -- Factories
+  let
+    cashSettlementPaths = [[buyer], [seller]]
+    securitySettlementPaths = [[buyer]]
+    cashRoute = Settlement.Hierarchy with rootCustodian = cashProvider; pathsToRootCustodian = cashSettlementPaths
+    secRoute = Settlement.Hierarchy with rootCustodian = seller; pathsToRootCustodian = securitySettlementPaths
+    paths = fromList [("GBP", cashRoute), ("TRS1", secRoute)]
+  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory with provider = operator; observers = pub
+  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Holding.Factory with id = Id "HoldingFactory"; provider = operator; observers = pub
+  submit operator do createCmd HoldingFactory.Reference with factoryView = (HoldingFactory.View with provider = operator; id = Id "HoldingFactory"); cid = holdingFactoryCid; observers = pub
+
+  -- Roles
+  createOperatorRole operator
+  createCustodianRole operator operator
+  createCustodianRole operator cashProvider
+  createCustodianRole operator seller
+  createCustodianRole operator buyer
+  createExchangeRole operator seller
+
+  -- Services
+  createCustodyService operator cashProvider seller paths accountFactoryCid holdingFactoryCid
+  createCustodyService operator cashProvider buyer paths accountFactoryCid holdingFactoryCid
+  custodyServiceCid <- createCustodyService operator seller buyer paths accountFactoryCid holdingFactoryCid
+  createStructuringService operator operator operator
+  createStructuringAutoService operator operator operator
+  lifecycleServiceCid <- createLifecycleService operator operator operator public
+  createLifecycleService operator buyer buyer public
+  createLifecycleService operator seller seller public
+  confirmationServiceCid <- createConfirmationService     operator seller       buyer
+
+  -- Accounts
+  sellerCashAccount <- createAccount operator cashProvider seller  public "Seller@CashProvider|Cash" empty
+  buyerCashAccount  <- createAccount operator cashProvider buyer   public "Buyer@CashProvider|Cash"  empty
+  buyerSecAccount   <- createAccount operator seller       buyer   public "Buyer@Seller|OTC"         $ fromList [("Operator", singleton operator)]
+
+  -- Time
+  -- t <- getTime
+  let
+    today = date 2023 Nov 3
+    todayTime = time today 0 0 0
+    tt d = time d 0 0 0
+    epoch = tt $ date 1970 Jan 1
+    (ty, tm, td) = toGregorian today
+    y year = date year tm td
+  (clockCid, eventCid) <- createClockAndEvent [operator] today (singleton public)
+
+  -- Instruments
+  let
+    bpObs = "BP/ LN"
+    genlObs = "GENL LN"
+    gkpObs  = "GKP LN"
+    hbrObs  = "HBR LN"
+    htgObs  = "HTG LN"
+    sqzObs  = "SQZ LN"
+    wgObs   = "WG/ LN"
+    tgaObs  = "TGA LN"
+    decObs  = "DEC LN"
+    txpObs  = "TXP LN"
+    enogObs = "ENOG LN"
+    shelObs = "SHEL LN"
+    kistObs = "KIST LN"
+    nwfObs  = "NWF LN"
+    jogObs  = "JOG LN"
+    trinObs = "TRIN LN"
+    uruObs  = "URU LN"
+    wdsObs  = "WDS LN"
+    menObs  = "MEN LN"
+    cneObs  = "CNE LN"
+  gbp  <- originateToken cashProvider cashProvider pub epoch "GBP" "British Pound"
+  bp   <- originateEquity operator operator pub epoch bpObs "BP PLC"
+  genl <- originateEquity operator operator pub epoch genlObs "Genel Energy PLC"
+  gkp  <- originateEquity operator operator pub epoch gkpObs "Gulf Keystone Petroleum Ltd"
+  hbr  <- originateEquity operator operator pub epoch hbrObs "Harbour Energy PLC"
+  htg  <- originateEquity operator operator pub epoch htgObs "Hunting PLC"
+  sqz  <- originateEquity operator operator pub epoch sqzObs "Serica Energy PLC"
+  wg   <- originateEquity operator operator pub epoch wgObs "John Wood Group PLC"
+  tga  <- originateEquity operator operator pub epoch tgaObs "Thungela Resources Ltd"
+  dec  <- originateEquity operator operator pub epoch decObs "Diversified Energy Company PLC"
+  txp  <- originateEquity operator operator pub epoch txpObs "Touchstone Exploration Inc"
+  enog <- originateEquity operator operator pub epoch enogObs "Energean PLC"
+  shel <- originateEquity operator operator pub epoch shelObs "Shell PLC"
+  kist <- originateEquity operator operator pub epoch kistObs "Kistos Holdings Plc"
+  nwf  <- originateEquity operator operator pub epoch nwfObs "NWF Group PLC"
+  jog  <- originateEquity operator operator pub epoch jogObs "Jersey Oil and Gas PLC"
+  trin <- originateEquity operator operator pub epoch trinObs "Trinity Exploration and Production PLC"
+  uru  <- originateEquity operator operator pub epoch uruObs "URU Metals Ltd"
+  wds  <- originateEquity operator operator pub epoch wdsObs "Woodside Energy Group Ltd"
+  men  <- originateEquity operator operator pub epoch menObs "Molecular Energies PLC"
+  cne  <- originateEquity operator operator pub epoch cneObs "Capricorn Energy PLC"
+
+  let
+    soniaObs = "SONIA-ON"
+    fixingDates = DateOffset with period = D; periodMultiplier = 0; dayType = None; businessDayConvention = NoAdjustment; businessCenters = []
+    soniaONRate = FloatingRate with referenceRateId = soniaObs; referenceRateType = SingleFixing CalculationPeriodStartDate; fixingDates
+    underlyings1 = [ Underlying with referenceAsset = bp; referenceAssetId = bpObs; weight = 1.0; initialPrice = 4.95 ]
+    underlyings2 =
+      [ Underlying with referenceAsset = bp;    referenceAssetId = bpObs;   weight = 0.0565921251; initialPrice =  4.950
+      , Underlying with referenceAsset = genl;  referenceAssetId = genlObs; weight = 0.0093748571; initialPrice =  0.820
+      , Underlying with referenceAsset = gkp;   referenceAssetId = gkpObs;  weight = 0.0138907943; initialPrice =  1.215
+      , Underlying with referenceAsset = hbr;   referenceAssetId = hbrObs;  weight = 0.0289591622; initialPrice =  2.533
+      , Underlying with referenceAsset = htg;   referenceAssetId = htgObs;  weight = 0.0337266200; initialPrice =  2.950
+      , Underlying with referenceAsset = sqz;   referenceAssetId = sqzObs;  weight = 0.0273242786; initialPrice =  2.390
+      , Underlying with referenceAsset = wg;    referenceAssetId = wgObs;   weight = 0.0165317602; initialPrice =  1.446
+      , Underlying with referenceAsset = tga;   referenceAssetId = tgaObs;  weight = 0.0854026616; initialPrice =  7.470
+      , Underlying with referenceAsset = dec;   referenceAssetId = decObs;  weight = 0.0077056752; initialPrice =  0.674
+      , Underlying with referenceAsset = txp;   referenceAssetId = txpObs;  weight = 0.0061736864; initialPrice =  0.540
+      , Underlying with referenceAsset = enog;  referenceAssetId = enogObs; weight = 0.0974070517; initialPrice =  8.520
+      , Underlying with referenceAsset = shel;  referenceAssetId = shelObs; weight = 0.3023963049; initialPrice = 26.450
+      , Underlying with referenceAsset = kist;  referenceAssetId = kistObs; weight = 0.0214935748; initialPrice =  1.880
+      , Underlying with referenceAsset = nwf;   referenceAssetId = nwfObs;  weight = 0.0222938675; initialPrice =  1.950
+      , Underlying with referenceAsset = jog;   referenceAssetId = jogObs;  weight = 0.0230369964; initialPrice =  2.015
+      , Underlying with referenceAsset = trin;  referenceAssetId = trinObs; weight = 0.0081172543; initialPrice =  0.710
+      , Underlying with referenceAsset = uru;   referenceAssetId = uruObs;  weight = 0.0085745644; initialPrice =  0.750
+      , Underlying with referenceAsset = wds;   referenceAssetId = wdsObs;  weight = 0.2030456853; initialPrice = 17.760
+      , Underlying with referenceAsset = men;   referenceAssetId = menObs;  weight = 0.0098321672; initialPrice =  0.860
+      , Underlying with referenceAsset = cne;   referenceAssetId = cneObs;  weight = 0.0181209128; initialPrice =  1.585 ]
+  trs1 <- originateAssetSwap operator operator "TRS1" "TRS BP vs SONIA+12bps 2024-03-04" pub epoch False underlyings1 (date 2023 Oct 3) ["EMPTY"] operator (date 2023 Nov 3) (date 2024 Mar 3) Act365Fixed ModifiedFollowing 0.0012 (Some soniaONRate) M 1 gbp
+  trs2 <- originateAssetSwap operator operator "TRS2" "TRS Basket vs SONIA+12bps 2024-03-04" pub epoch False underlyings2 (date 2023 Oct 3) ["EMPTY"] operator (date 2023 Nov 3) (date 2024 Mar 3) Act365Fixed ModifiedFollowing 0.0012 (Some soniaONRate) M 1 gbp
+  let secs = [trs1]
+
+  -- Distribution
+  sellerCashCid <- deposit operator cashProvider seller public (qty 100_000.0 gbp) sellerCashAccount
+  buyerCashCid <- deposit operator cashProvider buyer public (qty 100_000.0 gbp) buyerCashAccount
+
+  -- Data
+  createCalendar operator "EMPTY" [Saturday, Sunday] [] pub
+  createObservation operator soniaObs [(tt $ date 2023 Oct 3,  0.0519), (todayTime,  0.0519)] pub
+  createObservation operator bpObs    [(tt $ date 2023 Oct 3,  5.1580), (todayTime,  4.8985)] pub
+  createObservation operator genlObs  [(tt $ date 2023 Oct 3,  0.8120), (todayTime,  0.8020)] pub
+  createObservation operator gkpObs   [(tt $ date 2023 Oct 3,  1.1310), (todayTime,  1.2300)] pub
+  createObservation operator hbrObs   [(tt $ date 2023 Oct 3,  2.4870), (todayTime,  2.4790)] pub
+  createObservation operator htgObs   [(tt $ date 2023 Oct 3,  2.8100), (todayTime,  2.9700)] pub
+  createObservation operator sqzObs   [(tt $ date 2023 Oct 3,  2.2940), (todayTime,  2.3880)] pub
+  createObservation operator wgObs    [(tt $ date 2023 Oct 3,  1.4710), (todayTime,  1.5460)] pub
+  createObservation operator tgaObs   [(tt $ date 2023 Oct 3,  7.1500), (todayTime,  7.2980)] pub
+  createObservation operator decObs   [(tt $ date 2023 Oct 3,  0.6819), (todayTime,  0.6786)] pub
+  createObservation operator txpObs   [(tt $ date 2023 Oct 3,  0.5950), (todayTime,  0.5800)] pub
+  createObservation operator enogObs  [(tt $ date 2023 Oct 3, 10.6500), (todayTime,  8.9700)] pub
+  createObservation operator shelObs  [(tt $ date 2023 Oct 3, 25.7750), (todayTime, 26.5250)] pub
+  createObservation operator kistObs  [(tt $ date 2023 Oct 3,  1.9520), (todayTime,  1.9600)] pub
+  createObservation operator nwfObs   [(tt $ date 2023 Oct 3,  2.1750), (todayTime,  1.9250)] pub
+  createObservation operator jogObs   [(tt $ date 2023 Oct 3,  2.1200), (todayTime,  1.9650)] pub
+  createObservation operator trinObs  [(tt $ date 2023 Oct 3,  0.8500), (todayTime,  0.6950)] pub
+  createObservation operator uruObs   [(tt $ date 2023 Oct 3,  0.8500), (todayTime,  0.7500)] pub
+  createObservation operator wdsObs   [(tt $ date 2023 Oct 3, 18.1800), (todayTime, 17.8400)] pub
+  createObservation operator menObs   [(tt $ date 2023 Oct 3,  0.9600), (todayTime,  0.8600)] pub
+  createObservation operator cneObs   [(tt $ date 2023 Oct 3,  2.6880), (todayTime,  1.7350)] pub
+  createAccountDirectory buyer ([(gbp, buyerCashAccount)] <> map (\s -> (s, buyerSecAccount)) secs) $ singleton public
+  createAccountDirectory seller [(gbp, sellerCashAccount)] $ singleton public
+
+  -- Workflows
+  let
+    doConfirmation = do
+      trade1Cid <- submit operator do
+        exerciseCmd confirmationServiceCid Confirmation.CreateTrade with
+          ctrl = operator
+          seller
+          buyer
+          id = "Trade1"
+          account = buyerSecAccount
+          instrument = trs1
+          amount = 495_000.0
+      trade2Cid <- submit operator do
+        exerciseCmd confirmationServiceCid Confirmation.CreateTrade with
+          ctrl = operator
+          seller
+          buyer
+          id = "Trade2"
+          account = buyerSecAccount
+          instrument = trs2
+          amount = 874_680.0
+      -- tradeCid <- submit seller do
+      --   exerciseCmd confirmationServiceCid Confirmation.ConfirmTrade with
+      --     ctrl = seller
+      --     tradeCid
+      -- tradeCid <- submit buyer do
+      --   exerciseCmd confirmationServiceCid Confirmation.ConfirmTrade with
+      --     ctrl = buyer
+      --     tradeCid
+      -- holdingCid <- submit operator do exerciseCmd tradeCid Confirmation.Book with holdingFactoryCid
+
+      -- Some lifecycleService <- queryContractId operator lifecycleServiceCid
+      -- (Some trs1a, [effectCid]) <- submitMulti [operator] [public] do
+      --   exerciseCmd lifecycleServiceCid Lifecycle.Lifecycle with
+      --     eventCid
+      --     instrument = trs1
+      --     observableCids = [obs1Cid, obs2Cid]
+      --     ruleCid = lifecycleService.dynamicRuleCid
+
+      -- Some custodyService <- queryContractId buyer custodyServiceCid
+      -- submitMulti [operator] [public] do
+      --   exerciseCmd custodyService.claimRuleCid ClaimRule.ClaimEffect with
+      --     claimer = operator
+      --     holdingCids = [holdingCid]
+      --     effectCid
+      --     batchId = Id "LifecycleBatch"
+      pure ()
+
+  doConfirmation
+
+  pure parties

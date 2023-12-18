@@ -87,6 +87,8 @@ export const observationToNode = (obs : O) : ClaimTreeNode => {
       return { id: uuidv4(), tag: obs.tag, type: "Observation", children: [ createDecimal(obs.value.value) ] };
     case "Observe":
       return { id: uuidv4(), tag: obs.tag, type: "Observation", children: [ createObservable(obs.value.key) ] };
+    case "ObserveAt":
+      return { id: uuidv4(), tag: obs.tag, type: "Observation", children: [ createObservable(obs.value.key), createDate(obs.value.t) ] };
     case "Add":
       if (obs.value._2.tag === "Neg")
         return { id: uuidv4(), tag: obs.tag, type: "Observation", children: [ observationToNode(obs.value._1), observationToNode(obs.value._2).children[0] ], text: "-" };
@@ -98,8 +100,6 @@ export const observationToNode = (obs : O) : ClaimTreeNode => {
       return { id: uuidv4(), tag: obs.tag, type: "Observation", children: [ observationToNode(obs.value._1), observationToNode(obs.value._2) ], text: "*"  };
     case "Div":
       return { id: uuidv4(), tag: obs.tag, type: "Observation", children: [ observationToNode(obs.value._1), observationToNode(obs.value._2) ], text: "/" };
-    default:
-      throw new Error("Unknown observation tag " + obs.tag);
   }
 };
 
@@ -146,6 +146,10 @@ export const nodeToObservation = (data : ClaimTreeNode) : Observation<Time, Deci
     case "Observe":
       const key = nodeToValue(data.children[0]);
       return { tag: data.tag, value: { key } };
+    case "ObserveAt":
+      const obs = nodeToValue(data.children[0]);
+      const t = nodeToValue(data.children[0]);
+      return { tag: data.tag, value: { key: obs, t } };
     case "Add":
     case "Mul":
     case "Div":
@@ -155,7 +159,7 @@ export const nodeToObservation = (data : ClaimTreeNode) : Observation<Time, Deci
     case "Neg":
       return { tag: data.tag, value: nodeToObservation(data.children[0]) };
     default: throw new Error("Unknown observation tag");
-    }
+  }
 };
 
 export const nodeToInequality = (data : ClaimTreeNode) : I => {

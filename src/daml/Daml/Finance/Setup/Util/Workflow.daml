@@ -311,12 +311,12 @@ processAuction operator provider customer public auctionCid bidCids = do
         auctionCid
         bidCids
 
-declareDividend : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> [InstrumentQuantity] -> Script (ContractId Effect.I)
+declareDividend : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> [InstrumentQuantity] -> Script (ContractId Event.I)
 declareDividend operator provider issuer public equity effectiveTime perUnitDistribution = do
   let
     id = "Dividend-" <> show equity.id <> "-" <> equity.version
     Some version = parseInt equity.version
-  head <$> submitMulti [issuer] [public] do
+  submitMulti [issuer] [public] do
     exerciseByKeyCmd @Lifecycle.Service (operator, provider, issuer) Lifecycle.DeclareDistribution
       with
         equity
@@ -326,24 +326,27 @@ declareDividend operator provider issuer public equity effectiveTime perUnitDist
         effectiveTime
         perUnitDistribution
 
-declareReplacement : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> [InstrumentQuantity] -> Script (ContractId Effect.I)
+declareReplacement : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> [InstrumentQuantity] -> Script (ContractId Event.I)
 declareReplacement operator provider issuer public equity effectiveTime perUnitReplacement = do
-  let id = "Replacement-" <> show equity.id <> "-" <> equity.version
-  head <$> submitMulti [issuer] [public] do
+  let
+    id = "Replacement-" <> show equity.id <> "-" <> equity.version
+    Some version = parseInt equity.version
+  submitMulti [issuer] [public] do
     exerciseByKeyCmd @Lifecycle.Service (operator, provider, issuer) Lifecycle.DeclareReplacement
       with
         equity
+        newVersion = show (version + 1)
         id = Id id
         description = id
         effectiveTime
         perUnitReplacement
 
-declareStockSplit : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> Decimal -> Script (ContractId Effect.I)
+declareStockSplit : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> Decimal -> Script (ContractId Event.I)
 declareStockSplit operator provider issuer public equity effectiveTime adjustmentFactor = do
   let
     id = "StockSplit-" <> show equity.id <> "-" <> equity.version
     Some version = parseInt equity.version
-  head <$> submitMulti [issuer] [public] do
+  submitMulti [issuer] [public] do
     exerciseByKeyCmd @Lifecycle.Service (operator, provider, issuer) Lifecycle.DeclareStockSplit
       with
         equity

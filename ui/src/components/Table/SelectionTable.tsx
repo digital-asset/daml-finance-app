@@ -9,8 +9,8 @@ import { Variant } from "@mui/material/styles/createTypography";
 export type Alignment = "inherit" | "left" | "center" | "right" | "justify";
 
 type SelectionTableProps = {
-  title : string
-  variant : Variant
+  title? : string
+  variant? : Variant
   headers : string[]
   values : any[][]
   alignment? : Alignment[]
@@ -49,7 +49,7 @@ export const SelectionTable : React.FC<SelectionTableProps> = ({ title, variant,
   return (
     <Grid container direction="column">
       <Grid item xs={12}>
-        <Typography variant={variant} className={classes.tableHeader}>{title}</Typography>
+        {!!title && <Typography variant={variant || "h1"} className={classes.tableHeader}>{title}</Typography>}
         <Box component="span" className={classes.actionBox}>
           <Typography variant="body1" display="inline">{selected.length} selected</Typography>
           <Button className={classes.actionButton} color="primary" variant="contained" disabled={selected.length === 0} onClick={() => onExecuteAll()}>{action}</Button>

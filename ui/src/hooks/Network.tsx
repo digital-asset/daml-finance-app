@@ -34,6 +34,7 @@ export const useNetwork = () : Network => {
   const services : CreateEvent<any>[] = Array.prototype.concat.apply([], [
     svc.auction,
     svc.backToBack,
+    svc.confirmation,
     svc.custody,
     svc.bidding,
     svc.fund,
