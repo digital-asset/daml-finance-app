@@ -23,6 +23,7 @@ data-dependencies:
   - ../../../../.lib/daml-finance-interface-instrument-generic-3.0.0.dar
   - ../../../../.lib/daml-finance-interface-instrument-swap-0.4.0.dar
   - ../../../../.lib/daml-finance-interface-instrument-token-3.0.0.dar
+  - ../../../../.lib/daml-finance-interface-instrument-types-1.0.0.dar
   - ../../../../.lib/daml-finance-interface-lifecycle-3.0.0.dar
   - ../../../../.lib/daml-finance-interface-settlement-3.0.0.dar
   - ../../../../.lib/daml-finance-interface-types-common-2.0.0.dar
