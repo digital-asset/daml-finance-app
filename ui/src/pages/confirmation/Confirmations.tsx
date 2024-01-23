@@ -53,11 +53,9 @@ export const Confirmations : React.FC = () => {
         ? <Button color="primary" size="small" className={cls.choiceButton} variant="contained" onClick={() => bookTrade(c)}>Book</Button>
         : <></>);
     return [
-      getName(c.payload.operator),
       getName(c.payload.seller),
       getName(c.payload.buyer),
       c.payload.id,
-      c.payload.account.id.unpack,
       c.payload.instrument.id.unpack,
       fmt(c.payload.amount),
       c.payload.confirmed.map(getName).join(", "),
@@ -67,7 +65,7 @@ export const Confirmations : React.FC = () => {
     ];
   };
 
-  const headers = ["Operator", "Seller", "Buyer", "Id", "Account", "Instrument", "Amount", "Confirmed", "Status", "Action", "Details"]
+  const headers = ["Seller", "Buyer", "Id", "Instrument", "Amount", "Confirmations", "Status", "Action", "Details"]
   const values : any[] = trades.map(a => a).sort((a, b) => a.payload.id.localeCompare(b.payload.id)).map(createRow);
   return (
     <HorizontalTable title="Confirmations" variant={"h3"} headers={headers} values={values} />

@@ -43,15 +43,16 @@ template Trade
         let newConfirmed = ctrl :: confirmed
         create this with confirmed = newConfirmed; status = if elem buyer newConfirmed && elem seller newConfirmed then Confirmed else PartiallyConfirmed
 
-    choice Book : ContractId Holding.I
+    choice Book : (ContractId Trade, ContractId Holding.I)
       with
         holdingFactoryCid : ContractId HoldingFactory.I
       controller operator
       do
         assertMsg "Trade has to be Confirmed to book" $ status == Confirmed
-        create this with status = Booked
-        exercise holdingFactoryCid HoldingFactory.Create with
+        trdCid <- create this with status = Booked
+        holdingCid <- exercise holdingFactoryCid HoldingFactory.Create with
           instrument
           amount
           account
           observers = M.fromList [("Operator", S.singleton operator)]
+        pure (trdCid, holdingCid)

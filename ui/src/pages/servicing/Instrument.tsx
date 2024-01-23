@@ -112,7 +112,7 @@ export const Instrument : React.FC = () => {
       perUnitDistribution: [ { amount, unit: ccy.key } ]
     };
     await ledger.exercise(Lifecycle.DeclareDistribution, svc.contractId, arg);
-    navigate("/app/servicing/effects");
+    navigate("/app/servicing/lifecycle");
   };
 
   const declareStockSplit = async () => {
@@ -126,7 +126,7 @@ export const Instrument : React.FC = () => {
       adjustmentFactor: amount
     };
     await ledger.exercise(Lifecycle.DeclareStockSplit, svc.contractId, arg);
-    navigate("/app/servicing/effects");
+    navigate("/app/servicing/lifecycle");
   };
 
   const declareReplacement = async () => {
@@ -141,7 +141,7 @@ export const Instrument : React.FC = () => {
       perUnitReplacement: [ { amount, unit: ccy.key } ]
     };
     await ledger.exercise(Lifecycle.DeclareReplacement, svc.contractId, arg);
-    navigate("/app/servicing/effects");
+    navigate("/app/servicing/lifecycle");
   };
 
   return (
