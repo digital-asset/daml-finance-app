@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+// Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 import React, { useEffect, useState } from "react";
@@ -111,8 +111,8 @@ export const Instrument : React.FC = () => {
       effectiveTime: parseDateAsTime(effectiveDate),
       perUnitDistribution: [ { amount, unit: ccy.key } ]
     };
-    await ledger.exercise(Lifecycle.DeclareDividend, svc.contractId, arg);
-    navigate("/app/servicing/effects");
+    await ledger.exercise(Lifecycle.DeclareDistribution, svc.contractId, arg);
+    navigate("/app/servicing/lifecycle");
   };
 
   const declareStockSplit = async () => {
@@ -126,7 +126,7 @@ export const Instrument : React.FC = () => {
       adjustmentFactor: amount
     };
     await ledger.exercise(Lifecycle.DeclareStockSplit, svc.contractId, arg);
-    navigate("/app/servicing/effects");
+    navigate("/app/servicing/lifecycle");
   };
 
   const declareReplacement = async () => {
@@ -141,7 +141,7 @@ export const Instrument : React.FC = () => {
       perUnitReplacement: [ { amount, unit: ccy.key } ]
     };
     await ledger.exercise(Lifecycle.DeclareReplacement, svc.contractId, arg);
-    navigate("/app/servicing/effects");
+    navigate("/app/servicing/lifecycle");
   };
 
   return (

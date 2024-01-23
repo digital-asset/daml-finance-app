@@ -1,4 +1,4 @@
--- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
 module Daml.Finance.App.Distribution.Bidding.Service where
@@ -11,7 +11,7 @@ import Daml.Finance.Interface.Account.Account qualified as Account (R)
 import Daml.Finance.Interface.Account.Util (getAccount)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..), SplitResult(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (qty)
-import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
+import Daml.Finance.Interface.Util.Lockable qualified as Lockable (Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
 import Daml.Finance.Interface.Holding.Util (getAmount, getInstrument)
 import Daml.Finance.Interface.Types.Common.Types (AccountKey)
@@ -58,7 +58,7 @@ template Service
         (_, recRef) <- fetchByKey @Account.R receivableAccount
         exercise (coerceContractId recRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (auction.id, singleton provider)
         -- Lock holding
-        collateralCid <- coerceContractId <$> exercise (coerceContractId investorHoldingCid : ContractId Holding.I) Holding.Acquire with newLockers = singleton provider; context = auction.id; lockType = Holding.Semaphore
+        collateralCid <- coerceContractId <$> exercise (coerceContractId investorHoldingCid : ContractId Lockable.I) Lockable.Acquire with newLockers = singleton provider; context = auction.id; lockType = Lockable.Semaphore
 
         let
           quantity = Instrument.qty amount auction.quantity.unit
@@ -84,7 +84,7 @@ template Service
       do
         -- Fetch Bid -> Extract their deposit -> Split and return unused allocation (if necessary) to the investor -> Update Bid Status
         bid <- fetch bidCid
-        bidCollateralCid : ContractId Disclosure.I <- coerceContractId <$> exercise (coerceContractId bid.collateralCid : ContractId Holding.I) Holding.Release with context = bid.auctionId
+        bidCollateralCid : ContractId Disclosure.I <- coerceContractId <$> exercise (coerceContractId bid.collateralCid : ContractId Lockable.I) Lockable.Release with context = bid.auctionId
         bidCollateralCid <- coerceContractId . fromSome <$> exercise bidCollateralCid Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (bid.auctionId, singleton provider)
         bidCollateral <- fetch bidCollateralCid
         bidCollateralCid <-
@@ -107,7 +107,7 @@ template Service
       controller provider
       do
         bid <- fetch bidCid
-        returnedCollateralCid <- exercise (coerceContractId bid.collateralCid : ContractId Holding.I) Holding.Release with context = bid.auctionId
+        returnedCollateralCid <- exercise (coerceContractId bid.collateralCid : ContractId Lockable.I) Lockable.Release with context = bid.auctionId
         newBidCid <- exercise bidCid UpdateStatus with newStatus
         pure (newBidCid, coerceContractId returnedCollateralCid)
 

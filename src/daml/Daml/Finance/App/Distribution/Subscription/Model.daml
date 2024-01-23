@@ -1,4 +1,4 @@
--- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
 module Daml.Finance.App.Distribution.Subscription.Model where
@@ -6,13 +6,13 @@ module Daml.Finance.App.Distribution.Subscription.Model where
 import DA.Set (fromList, singleton)
 import Daml.Finance.Interface.Account.Account qualified as Account (R)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
-import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I)
 import Daml.Finance.Interface.Account.Util (getAccount)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (Allocate(..), Approve(..), I)
 import Daml.Finance.Interface.Settlement.Types (Allocation(Pledge), Approval(TakeDelivery))
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentQuantity, Parties)
+import Daml.Finance.Interface.Util.Lockable qualified as Lockable (Acquire(..), I, LockType(..), Release(..))
 
 data Status
     = Open
@@ -68,7 +68,7 @@ template Offering
         (_, recRef) <- fetchByKey @Account.R investorAccount
         exercise (coerceContractId recRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton investor; observersToAdd = (offeringId, singleton issuer)
         -- Lock holding
-        investorHoldingCid <- coerceContractId <$> exercise (toInterfaceContractId investorHoldingCid : ContractId Holding.I) Holding.Acquire with newLockers = singleton issuer; context = offeringId; lockType = Holding.Semaphore
+        investorHoldingCid <- coerceContractId <$> exercise (toInterfaceContractId investorHoldingCid : ContractId Lockable.I) Lockable.Acquire with newLockers = singleton issuer; context = offeringId; lockType = Lockable.Semaphore
         create Subscription with holdingCid = investorHoldingCid; accountKey = investorAccount; ..
 
 template Subscription
@@ -100,9 +100,9 @@ template Subscription
       do
         fst <$> exercise instructionCid Instruction.Allocate with actors = fromList [provider, investor]; allocation = Pledge $ toInterfaceContractId transferableCid
 
-    nonconsuming choice UnlockHolding : ContractId Holding.I
+    nonconsuming choice UnlockHolding : ContractId Lockable.I
       with
-        lockableCid : ContractId Holding.I
+        lockableCid : ContractId Lockable.I
       controller provider
       do
-        exercise lockableCid Holding.Release with context = offeringId
+        exercise lockableCid Lockable.Release with context = offeringId

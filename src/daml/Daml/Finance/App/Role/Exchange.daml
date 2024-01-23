@@ -1,9 +1,10 @@
--- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
 module Daml.Finance.App.Role.Exchange where
 
 import Daml.Finance.App.Clearing.Service qualified as Clearing (Approve(..), Offer(..), Request, Service, Terminate(..))
+import Daml.Finance.App.Confirmation.Service qualified as Confirmation (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Listing.Auto.Service qualified as ListingAuto (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Listing.Service qualified as Listing (Approve(..), Offer(..), Request, Service, Terminate(..))
 import Daml.Finance.App.Quoting.Service qualified as Quoting (Approve(..), Offer(..), Request, Service, Terminate(..))
@@ -148,6 +149,27 @@ template Role
       controller provider
       do
         exerciseByKey @Clearing.Service (operator, provider, customer) Clearing.Terminate with actor = provider
+
+    nonconsuming choice OfferConfirmationService : ContractId Confirmation.Offer
+      with
+        customer : Party
+      controller provider
+      do
+        create Confirmation.Offer with ..
+
+    nonconsuming choice ApproveConfirmationServiceRequest : ContractId Confirmation.Service
+      with
+        confirmationRequestCid : ContractId Confirmation.Request
+      controller provider
+      do
+        exercise confirmationRequestCid Confirmation.Approve with ..
+
+    nonconsuming choice TerminateConfirmationService : ()
+      with
+        customer : Party
+      controller provider
+      do
+        exerciseByKey @Confirmation.Service (operator, provider, customer) Confirmation.Terminate with actor = provider
 
     choice TerminateRole : ()
       controller operator

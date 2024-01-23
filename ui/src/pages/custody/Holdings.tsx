@@ -1,9 +1,9 @@
-// Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+// Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
 import { useParty } from "@daml/react";
-import { fmt } from "../../util";
+import { fmt, shorten } from "../../util";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useParties } from "../../context/PartiesContext";
 import { useHoldings } from "../../context/HoldingContext";
@@ -34,9 +34,9 @@ export const Holdings : React.FC<HoldingsProps> = ({ showAssets }) => {
   const entries : PositionEntry[] = [];
   for (let i = 0; i < filtered.length; i++) {
     const a = filtered[i];
-    const entry = entries.find(e => e.custodian === a.payload.account.custodian && e.owner === a.payload.account.owner && e.instrument === a.payload.instrument.id.unpack && e.version === a.payload.instrument.version);
+    const entry = entries.find(e => e.custodian === a.payload.account.custodian && e.owner === a.payload.account.owner && e.instrument === a.payload.instrument.id.unpack && e.version === shorten(a.payload.instrument.version));
     const qty = parseFloat(a.payload.amount);
-    const isLocked = !!a.payload.lock;
+    const isLocked = !!a.lockable && !!a.lockable.payload.lock;
     if (!!entry) {
       entry.position += qty;
       entry.locked += isLocked ? qty : 0;
@@ -46,7 +46,7 @@ export const Holdings : React.FC<HoldingsProps> = ({ showAssets }) => {
         custodian: a.payload.account.custodian,
         owner: a.payload.account.owner,
         instrument: a.payload.instrument.id.unpack,
-        version: a.payload.instrument.version,
+        version: shorten(a.payload.instrument.version),
         position: qty,
         locked: isLocked ? qty : 0,
         available: isLocked ? 0 : qty

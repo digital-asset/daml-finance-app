@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+// Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
@@ -15,6 +15,7 @@ import { Instrument as CreditDefaultSwap } from "@daml.js/daml-finance-interface
 import { Instrument as CurrencySwap } from "@daml.js/daml-finance-interface-instrument-swap/lib/Daml/Finance/Interface/Instrument/Swap/Currency/Instrument";
 import { Instrument as ForeignExchangeSwap } from "@daml.js/daml-finance-interface-instrument-swap/lib/Daml/Finance/Interface/Instrument/Swap/ForeignExchange/Instrument";
 import { Instrument as InterestRateSwap } from "@daml.js/daml-finance-interface-instrument-swap/lib/Daml/Finance/Interface/Instrument/Swap/InterestRate/Instrument";
+import { Instrument as AssetSwap } from "@daml.js/daml-finance-interface-instrument-swap/lib/Daml/Finance/Interface/Instrument/Swap/Asset/Instrument";
 import { Instrument as Token } from "@daml.js/daml-finance-interface-instrument-token/lib/Daml/Finance/Interface/Instrument/Token/Instrument";
 import { Lifecycle } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Rule/Lifecycle";
 import { Claim } from "@daml.js/daml-finance-interface-claims/lib/Daml/Finance/Interface/Claims/Claim";
@@ -37,6 +38,7 @@ type InstrumentState = {
   currencySwaps         : InstrumentAggregate[]
   foreignExchangeSwaps  : InstrumentAggregate[]
   interestRateSwaps     : InstrumentAggregate[]
+  assetSwaps            : InstrumentAggregate[]
   getByCid              : (cid : string) => InstrumentAggregate
 };
 
@@ -55,6 +57,7 @@ export type InstrumentAggregate = CreateEvent<Base> & {
   currencySwap        : CreateEvent<CurrencySwap> | undefined
   foreignExchangeSwap : CreateEvent<ForeignExchangeSwap> | undefined
   interestRateSwap    : CreateEvent<InterestRateSwap> | undefined
+  assetSwap           : CreateEvent<AssetSwap> | undefined
   disclosure          : CreateEvent<Disclosure> | undefined
 }
 
@@ -83,6 +86,7 @@ const empty = {
   currencySwaps: [],
   foreignExchangeSwaps: [],
   interestRateSwaps: [],
+  assetSwaps: [],
   getByCid: (cid : string) => { throw new Error("Not implemented"); },
 };
 
@@ -104,8 +108,9 @@ export const InstrumentProvider : React.FC = ({ children }) => {
   const { loading: l12, contracts: currencySwaps }        = useStreamQueries(CurrencySwap);
   const { loading: l13, contracts: foreignExchangeSwaps } = useStreamQueries(ForeignExchangeSwap);
   const { loading: l14, contracts: interestRateSwaps }    = useStreamQueries(InterestRateSwap);
-  const { loading: l15, contracts: disclosures }          = useStreamQueries(Disclosure);
-  const loading = l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8 || l9 || l10 || l11 || l12 || l13 || l14 || l15;
+  const { loading: l15, contracts: assetSwaps }           = useStreamQueries(AssetSwap);
+  const { loading: l16, contracts: disclosures }          = useStreamQueries(Disclosure);
+  const loading = l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8 || l9 || l10 || l11 || l12 || l13 || l14 || l15 || l16;
 
   if (loading) {
     return (
@@ -128,10 +133,11 @@ export const InstrumentProvider : React.FC = ({ children }) => {
     const currencySwapsByCid        : Map<string, CreateEvent<CurrencySwap>>        = new Map(currencySwaps.map(c => [c.contractId, c]));
     const foreignExchangeSwapsByCid : Map<string, CreateEvent<ForeignExchangeSwap>> = new Map(foreignExchangeSwaps.map(c => [c.contractId, c]));
     const interestRateSwapsByCid    : Map<string, CreateEvent<InterestRateSwap>>    = new Map(interestRateSwaps.map(c => [c.contractId, c]));
+    const assetSwapsByCid           : Map<string, CreateEvent<AssetSwap>>           = new Map(assetSwaps.map(c => [c.contractId, c]));
     const disclosuresByCid          : Map<string, CreateEvent<Disclosure>>          = new Map(disclosures.map(c => [c.contractId, c]));
     const groupMap : Map<string, InstrumentGroup> = new Map();
     instruments.forEach(c => {
-      const aggregate = {
+      const aggregate : InstrumentAggregate = {
         ...c,
         key: key(c),
         lifecycle: lifecycleByCid.get(c.contractId),
@@ -147,6 +153,7 @@ export const InstrumentProvider : React.FC = ({ children }) => {
         currencySwap: currencySwapsByCid.get(c.contractId),
         foreignExchangeSwap: foreignExchangeSwapsByCid.get(c.contractId),
         interestRateSwap: interestRateSwapsByCid.get(c.contractId),
+        assetSwap: assetSwapsByCid.get(c.contractId),
         disclosure: disclosuresByCid.get(c.contractId)
       };
       const groupKey = c.payload.id.unpack;
@@ -180,6 +187,7 @@ export const InstrumentProvider : React.FC = ({ children }) => {
       currencySwaps: latests.filter(a => !!a.currencySwap),
       foreignExchangeSwaps: latests.filter(a => !!a.foreignExchangeSwap),
       interestRateSwaps: latests.filter(a => !!a.interestRateSwap),
+      assetSwaps: latests.filter(a => !!a.assetSwap),
       getByCid,
     };
 

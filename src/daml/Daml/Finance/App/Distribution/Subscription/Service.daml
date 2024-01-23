@@ -1,4 +1,4 @@
--- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
 module Daml.Finance.App.Distribution.Subscription.Service where
@@ -12,10 +12,10 @@ import Daml.Finance.App.Distribution.Subscription.Util (settleSubscription)
 import Daml.Finance.App.Settlement.Service qualified as Settlement (Service)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (AddObservers(..), I)
 import Daml.Finance.Interface.Account.Account qualified as Account (R)
-import Daml.Finance.Interface.Holding.Base qualified as Holding (Acquire(..), I, LockType(..), Release(..))
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
 import Daml.Finance.Interface.Account.Util (getAccount)
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentQuantity, Parties)
+import Daml.Finance.Interface.Util.Lockable qualified as Lockable (Acquire(..), I, LockType(..), Release(..))
 
 template Service
   with
@@ -51,7 +51,7 @@ template Service
         (_, recRef) <- fetchByKey @Account.R customerAccount
         exercise (coerceContractId recRef.cid : ContractId Disclosure.I) Disclosure.AddObservers with disclosers = singleton customer; observersToAdd = (offeringId, singleton provider)
         -- Lock holding
-        customerHoldingCid <- coerceContractId <$> exercise (toInterfaceContractId customerHoldingCid : ContractId Holding.I) Holding.Acquire with newLockers = fromList [ provider ]; context = offeringId; lockType = Holding.Semaphore
+        customerHoldingCid <- coerceContractId <$> exercise (toInterfaceContractId customerHoldingCid : ContractId Lockable.I) Lockable.Acquire with newLockers = fromList [ provider ]; context = offeringId; lockType = Lockable.Semaphore
 
         -- Lock back-to-back assets
         lockedB2b <-
@@ -93,7 +93,7 @@ template Service
 
         -- Unlock remaining issuer holding
         whenSome remainingIssuerHoldingCidOpt \holdingCid -> do
-          exercise (toInterfaceContractId holdingCid : ContractId Holding.I) Holding.Release with context = offering.offeringId
+          exercise (toInterfaceContractId holdingCid : ContractId Lockable.I) Lockable.Release with context = offering.offeringId
           pure ()
 
         create offering with status = Closed

@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+// Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 import React, { useState } from "react";
@@ -58,10 +58,14 @@ export const NewFloatingRateBond : React.FC = () => {
     if (!ccy) throw new Error("Couldn't find currency " + currency);
     const couponPeriod = couponFrequency === "Annual" ? PeriodEnum.Y : PeriodEnum.M;
     const couponPeriodMultiplier = couponFrequency === "Annual" ? "1" : (couponFrequency === "Semi-annual" ? "6" : "3");
+    const fixingDates = { period: "D" as const, periodMultiplier: "1", dayType: null, businessDayConvention: "NoAdjustment" as const, businessCenters: [] };
     const arg = {
       id,
       description: id,
+      notional: "1.0",
       referenceRateId,
+      referenceRateType: { tag: "SingleFixing" as const, value: "CalculationPeriodStartDate" as const },
+      fixingDates,
       couponSpread,
       issueDate: parseDate(issueDate),
       firstCouponDate: parseDate(firstCouponDate),

@@ -1,4 +1,4 @@
--- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
 module Daml.Finance.Setup.Scenario.CorporateActions where
@@ -9,7 +9,9 @@ import DA.Map (empty, fromList)
 import DA.Set (singleton)
 import DA.Time (time)
 import Daml.Finance.Account.Account qualified as Account (Factory(..))
-import Daml.Finance.Holding.Fungible qualified as Fungible (Factory(..))
+import Daml.Finance.Holding.Factory qualified as Holding (Factory(..))
+import Daml.Finance.Interface.Holding.Factory qualified as HoldingFactory (Reference(..), View(..))
+import Daml.Finance.Interface.Lifecycle.Rule.Lifecycle qualified as Lifecycle (Evolve(..))
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
 import Daml.Finance.Interface.Settlement.Types (Allocation(..), Approval(..))
 import Daml.Finance.Interface.Types.Common.Types (Id(..))
@@ -37,8 +39,9 @@ run = do
     cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = cashSettlementPaths
     secRoute = Settlement.Hierarchy with rootCustodian = issuer; pathsToRootCustodian = securitiesSettlementPaths
     paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
-  accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory    with provider = operator; observers = pub
-  holdingFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Fungible.Factory   with provider = operator; observers = pub
+  accountFactoryCid <- toInterfaceContractId <$> submit operator do createCmd Account.Factory with provider = operator; observers = pub
+  holdingFactoryCid <- toInterfaceContractId <$> submit operator do createCmd Holding.Factory with id = Id "HoldingFactory"; provider = operator; observers = pub
+  submit operator do createCmd HoldingFactory.Reference with factoryView = (HoldingFactory.View with provider = operator; id = Id "HoldingFactory"); cid = holdingFactoryCid; observers = pub
 
   -- Roles
   createOperatorRole  operator
@@ -61,7 +64,7 @@ run = do
   createIssuanceAutoService     operator registry     issuer
   createStructuringService      operator registry     issuer
   createStructuringAutoService  operator registry     issuer
-  createLifecycleService        operator registry     issuer    public
+  lifecycleServiceCid <- createLifecycleService        operator registry     issuer    public
   createSettlementService       operator issuer       registry  paths
   createSettlementService       operator registry     custodian paths
   createSettlementService       operator custodian    inv1      paths
@@ -119,7 +122,13 @@ run = do
   -- Workflows
   let
     processDividend = do
-      effectCid <- declareDividend operator registry issuer public equity todayTime [qty 0.5 usd]
+      eventCid <- declareDividend operator registry issuer public equity todayTime [qty 0.5 usd]
+      Some lifecycleService <- queryContractId issuer lifecycleServiceCid
+      (_, [effectCid]) <- submitMulti [issuer] [public] do
+        exerciseCmd lifecycleService.equityDistributionRuleCid Lifecycle.Evolve with
+          eventCid
+          instrument = equity
+          observableCids = []
 
       -- Claim registry holding
       (batchCid, instructionCids) <- claimEffect operator issuer registry public effectCid [registryEquityCid] (Id "Registry-Settlement")

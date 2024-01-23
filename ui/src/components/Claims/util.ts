@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+// Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 import { v4 as uuidv4 } from "uuid";
@@ -32,12 +32,12 @@ export const div      = (lhs : O, rhs : O) : O => ({ tag: "Div", value: { _1: lh
 export const zero : C =  ({ tag: "Zero", value: {} });
 export const one      = (id : InstrumentKey) : C => ({ tag: "One", value: id });
 export const give     = (claim : C) : C => ({ tag: "Give", value: claim });
-export const and      = (claims : C[]) : C => ({ tag: "And", value: { fst: claims[0], snd: claims[1], tail: claims.slice(2) } });
-export const or       = (claims : C[]) : C => ({ tag: "Or", value: { fst: claims[0], snd: claims[1], tail: claims.slice(2) } });
+export const and      = (claims : C[]) : C => ({ tag: "And", value: { a1: claims[0], a2: claims[1], as: claims.slice(2) } });
+export const or       = (electables : { _1 : string, _2 : C }[]) : C => ({ tag: "Or", value: { or1: electables[0], or2: electables[1], ors: electables.slice(2) } });
 export const scale    = (k : O, claim : C) : C => ({ tag: "Scale", value: { k, claim } });
 export const cond     = (predicate : I, success : C, failure : C) : C => ({ tag: "Cond", value: { predicate, success, failure } });
 export const when     = (predicate : I, claim : C) : C => ({ tag: "When", value: { predicate, claim } });
-export const anytime  = (predicate : I, claim : C) : C => ({ tag: "Anytime", value: { predicate, claim } });
+export const anytime  = (predicate : I, electable : { _1 : string, _2 : C }) : C => ({ tag: "Anytime", value: { predicate, electable } });
 export const until    = (predicate : I, claim : C) : C => ({ tag: "Until", value: { predicate, claim } });
 
 export const findObservables = (obs : O) : string[] => {
@@ -52,6 +52,8 @@ export const findObservables = (obs : O) : string[] => {
       return findObservables(obs.value._1).concat(findObservables(obs.value._2));
     case "Neg":
       return findObservables(obs.value);
+    default:
+      return [];
   }
 };
 
@@ -64,17 +66,18 @@ export const claimToNode = (claim : C) : ClaimTreeNode => {
     case "Give":
       return { id: uuidv4(), tag: claim.tag, type: "Claim", children: [ claimToNode(claim.value) ] };
     case "And":
-      return { id: uuidv4(), tag: claim.tag, type: "Claim", children: [ claimToNode(claim.value.fst), claimToNode(claim.value.snd) ].concat(claim.value.tail.map(c => claimToNode(c))) };
+      return { id: uuidv4(), tag: claim.tag, type: "Claim", children: [ claimToNode(claim.value.a1), claimToNode(claim.value.a2) ].concat(claim.value.as.map(c => claimToNode(c))) };
     case "Or":
-      return { id: uuidv4(), tag: claim.tag, type: "Claim", children: [ claimToNode(claim.value.fst), claimToNode(claim.value.snd) ].concat(claim.value.tail.map(c => claimToNode(c))) };
+      return { id: uuidv4(), tag: claim.tag, type: "Claim", children: [ claimToNode(claim.value.or1._2), claimToNode(claim.value.or2._2) ].concat(claim.value.ors.map(c => claimToNode(c._2))) };
     case "Cond":
       return { id: uuidv4(), tag: claim.tag, type: "Claim", children: [ inequalityToNode(claim.value.predicate), claimToNode(claim.value.success), claimToNode(claim.value.failure) ] };
     case "Scale":
       return { id: uuidv4(), tag: claim.tag, type: "Claim", children: [ observationToNode(claim.value.k), claimToNode(claim.value.claim) ] };
     case "When":
-    case "Anytime":
     case "Until":
       return { id: uuidv4(), tag: claim.tag, type: "Claim", children: [ inequalityToNode(claim.value.predicate), claimToNode(claim.value.claim) ] };
+    case "Anytime":
+      return { id: uuidv4(), tag: claim.tag, type: "Claim", children: [ inequalityToNode(claim.value.predicate), claimToNode(claim.value.electable._2) ] };
   }
 };
 
@@ -84,6 +87,8 @@ export const observationToNode = (obs : O) : ClaimTreeNode => {
       return { id: uuidv4(), tag: obs.tag, type: "Observation", children: [ createDecimal(obs.value.value) ] };
     case "Observe":
       return { id: uuidv4(), tag: obs.tag, type: "Observation", children: [ createObservable(obs.value.key) ] };
+    case "ObserveAt":
+      return { id: uuidv4(), tag: obs.tag, type: "Observation", children: [ createObservable(obs.value.key), createDate(obs.value.t) ] };
     case "Add":
       if (obs.value._2.tag === "Neg")
         return { id: uuidv4(), tag: obs.tag, type: "Observation", children: [ observationToNode(obs.value._1), observationToNode(obs.value._2).children[0] ], text: "-" };
@@ -93,7 +98,7 @@ export const observationToNode = (obs : O) : ClaimTreeNode => {
       return { id: uuidv4(), tag: obs.tag, type: "Observation", children: [ observationToNode(obs.value) ], text: "-" };
     case "Mul":
       return { id: uuidv4(), tag: obs.tag, type: "Observation", children: [ observationToNode(obs.value._1), observationToNode(obs.value._2) ], text: "*"  };
-   case "Div":
+    case "Div":
       return { id: uuidv4(), tag: obs.tag, type: "Observation", children: [ observationToNode(obs.value._1), observationToNode(obs.value._2) ], text: "/" };
   }
 };
@@ -118,17 +123,18 @@ export const nodeToClaim = (data : ClaimTreeNode) : C => {
     case "Give":
       return { tag: data.tag, value: nodeToClaim(data.children[0]) };
     case "And":
-      return { tag: data.tag, value: { fst: nodeToClaim(data.children[0]), snd: nodeToClaim(data.children[1]), tail: data.children.slice(2).map(c => nodeToClaim(c)) } };
+      return { tag: data.tag, value: { a1: nodeToClaim(data.children[0]), a2: nodeToClaim(data.children[1]), as: data.children.slice(2).map(c => nodeToClaim(c)) } };
     case "Or":
-      return { tag: data.tag, value: { fst: nodeToClaim(data.children[0]), snd: nodeToClaim(data.children[1]), tail: data.children.slice(2).map(c => nodeToClaim(c)) } };
+      return { tag: data.tag, value: { or1: { _1: "or1", _2: nodeToClaim(data.children[0]) }, or2: { _1: "or2", _2: nodeToClaim(data.children[1]) }, ors: data.children.slice(2).map((c, i) => ({ _1: "or" + i, _2: nodeToClaim(c) })) } };
     case "Cond":
       return { tag: data.tag, value: { predicate: nodeToInequality(data.children[0]), success: nodeToClaim(data.children[1]), failure: nodeToClaim(data.children[2]) } };
     case "Scale":
       return { tag: data.tag, value: { k: nodeToObservation(data.children[0]), claim: nodeToClaim(data.children[1])} };
     case "When":
-    case "Anytime":
     case "Until":
       return { tag: data.tag, value: { predicate: nodeToInequality(data.children[0]), claim: nodeToClaim(data.children[1]) } };
+    case "Anytime":
+      return { tag: data.tag, value: { predicate: nodeToInequality(data.children[0]), electable: { _1: "anytime", _2: nodeToClaim(data.children[1]) } } };
     default: throw new Error("Unknown claim tag");
   }
 };
@@ -140,6 +146,10 @@ export const nodeToObservation = (data : ClaimTreeNode) : Observation<Time, Deci
     case "Observe":
       const key = nodeToValue(data.children[0]);
       return { tag: data.tag, value: { key } };
+    case "ObserveAt":
+      const obs = nodeToValue(data.children[0]);
+      const t = nodeToValue(data.children[0]);
+      return { tag: data.tag, value: { key: obs, t } };
     case "Add":
     case "Mul":
     case "Div":
@@ -149,7 +159,7 @@ export const nodeToObservation = (data : ClaimTreeNode) : Observation<Time, Deci
     case "Neg":
       return { tag: data.tag, value: nodeToObservation(data.children[0]) };
     default: throw new Error("Unknown observation tag");
-    }
+  }
 };
 
 export const nodeToInequality = (data : ClaimTreeNode) : I => {
@@ -282,15 +292,17 @@ export const mapToText = (c : C) : Claim<Time, Decimal, string, string> => {
     case "Give":
       return { ...c, value: mapToText(c.value) };
     case "And":
+      return { ...c, value: { a1: mapToText(c.value.a1), a2: mapToText(c.value.a2), as: c.value.as.map(mapToText) } };
     case "Or":
-      return { ...c, value: { fst: mapToText(c.value.fst), snd: mapToText(c.value.snd), tail: c.value.tail.map(mapToText) } };
+      return { ...c, value: { or1: { _1: "or1", _2: mapToText(c.value.or1._2) }, or2: { _1: "or1", _2: mapToText(c.value.or2._2) }, ors: c.value.ors.map((o, i) => ({ _1: "or" + i, _2: mapToText(o._2) })) } };
     case "Cond":
       return { ...c, value: { ...c.value, success: mapToText(c.value.success), failure: mapToText(c.value.failure) } };
     case "Scale":
       return { ...c, value: { ...c.value, claim: mapToText(c.value.claim) } };
     case "When":
-    case "Anytime":
     case "Until":
       return { ...c, value: { ...c.value, claim: mapToText(c.value.claim) } };
+    case "Anytime":
+      return { ...c, value: { ...c.value, electable: { _1: "anytime", _2: mapToText(c.value.electable._2) } } };
   };
 }

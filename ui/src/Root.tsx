@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+// Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
@@ -22,6 +22,8 @@ import { AccountProvider } from "./context/AccountContext";
 import { DeFi } from "./apps/DeFi";
 import { Clearing } from "./apps/Clearing";
 import { Quoting } from "./apps/Quoting";
+import { Confirmation } from "./apps/Confirmation";
+import { EventProvider } from "./context/EventContext";
 
 export const Root : React.FC = () => {
 
@@ -30,23 +32,26 @@ export const Root : React.FC = () => {
       <InstrumentProvider>
         <HoldingProvider>
           <AccountProvider>
-            <Routes>
-              <Route path="/" element={<Overview />} />
-              <Route path="/clearing/*" element={<Clearing />} />
-              <Route path="/custody/*" element={<Custody />} />
-              <Route path="/defi/*" element={<DeFi />} />
-              <Route path="/distribution/*" element={<Distribution />} />
-              <Route path="/issuance/*" element={<Issuance />} />
-              <Route path="/lending/*" element={<Lending />} />
-              <Route path="/listing/*" element={<Listing />} />
-              <Route path="/network/*" element={<Network />} />
-              <Route path="/quoting/*" element={<Quoting />} />
-              <Route path="/servicing/*" element={<Servicing />} />
-              <Route path="/settlement/*" element={<Settlement />} />
-              <Route path="/simulation/*" element={<Simulation />} />
-              <Route path="/structuring/*" element={<Structuring />} />
-              <Route path="/trading/*" element={<Trading />} />
-            </Routes>
+            <EventProvider>
+              <Routes>
+                <Route path="/" element={<Overview />} />
+                <Route path="/clearing/*" element={<Clearing />} />
+                <Route path="/confirmation/*" element={<Confirmation />} />
+                <Route path="/custody/*" element={<Custody />} />
+                <Route path="/defi/*" element={<DeFi />} />
+                <Route path="/distribution/*" element={<Distribution />} />
+                <Route path="/issuance/*" element={<Issuance />} />
+                <Route path="/lending/*" element={<Lending />} />
+                <Route path="/listing/*" element={<Listing />} />
+                <Route path="/network/*" element={<Network />} />
+                <Route path="/quoting/*" element={<Quoting />} />
+                <Route path="/servicing/*" element={<Servicing />} />
+                <Route path="/settlement/*" element={<Settlement />} />
+                <Route path="/simulation/*" element={<Simulation />} />
+                <Route path="/structuring/*" element={<Structuring />} />
+                <Route path="/trading/*" element={<Trading />} />
+              </Routes>
+            </EventProvider>
           </AccountProvider>
         </HoldingProvider>
       </InstrumentProvider>

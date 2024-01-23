@@ -1,17 +1,18 @@
--- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
 module Daml.Finance.Setup.Demo where
 
-import Daml.Finance.Setup.Scenario.BondIssuance         qualified as BondIssuance
-import Daml.Finance.Setup.Scenario.CorporateActions     qualified as CorporateActions
+import Daml.Finance.Setup.Scenario.BondIssuance qualified as BondIssuance
+import Daml.Finance.Setup.Scenario.CorporateActions qualified as CorporateActions
 import Daml.Finance.Setup.Scenario.DecentralizedFinance qualified as DecentralizedFinance
-import Daml.Finance.Setup.Scenario.Default              qualified as Default
-import Daml.Finance.Setup.Scenario.FundTokenization     qualified as FundTokenization
-import Daml.Finance.Setup.Scenario.NaturalGas           qualified as NaturalGas
-import Daml.Finance.Setup.Scenario.OtcSwaps             qualified as OtcSwaps
-import Daml.Finance.Setup.Scenario.SecuritiesLending    qualified as SecuritiesLending
-import Daml.Finance.Setup.Scenario.StructuredNotes      qualified as StructuredNotes
+import Daml.Finance.Setup.Scenario.Default qualified as Default
+import Daml.Finance.Setup.Scenario.EquityTotalReturnSwaps qualified as EquityTotalReturnSwaps
+import Daml.Finance.Setup.Scenario.FundTokenization qualified as FundTokenization
+import Daml.Finance.Setup.Scenario.NaturalGas qualified as NaturalGas
+import Daml.Finance.Setup.Scenario.OtcSwaps qualified as OtcSwaps
+import Daml.Finance.Setup.Scenario.SecuritiesLending qualified as SecuritiesLending
+import Daml.Finance.Setup.Scenario.StructuredNotes qualified as StructuredNotes
 import Daml.Finance.Setup.Util.Common (PartyInfo)
 import Daml.Script
 
@@ -26,4 +27,5 @@ demo = do
   p7 <- FundTokenization.run
   p8 <- DecentralizedFinance.run
   p9 <- OtcSwaps.run
-  pure $ p1 <> p2 <> p3 <> p4 <> p5 <> p6 <> p7 <> p8 <> p9
+  p10 <- EquityTotalReturnSwaps.run
+  pure $ p1 <> p2 <> p3 <> p4 <> p5 <> p6 <> p7 <> p8 <> p9 <> p10

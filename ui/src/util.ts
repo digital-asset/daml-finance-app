@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+// Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 import { Set } from "@daml.js/97b883cd8a2b7f49f90d5d39c981cf6e110cf1f1c64427a28a6d58ec88c43657/lib/DA/Set/Types"
@@ -56,7 +56,7 @@ export const dedup = (array : string[]) : string[] => {
 };
 
 export const key = (c : CreateEvent<Instrument>) : InstrumentKey => {
-  return { depository: c.payload.depository, issuer: c.payload.issuer, id: c.payload.id, version: c.payload.version };
+  return { depository: c.payload.depository, issuer: c.payload.issuer, id: c.payload.id, version: c.payload.version, holdingStandard: c.payload.holdingStandard };
 };
 
 export const shorten = (s : string) : string => {

@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+// Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
@@ -9,7 +9,7 @@ import { CreateEvent } from "@daml/ledger";
 import { useParties } from "../../context/PartiesContext";
 import { Effect } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Effect";
 import { Claim } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Rule/Claim";
-import { Base } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Base";
+import { Holding } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Holding";
 import { SelectionTable } from "../../components/Table/SelectionTable";
 import { DetailButton } from "../../components/DetailButton/DetailButton";
 
@@ -18,7 +18,7 @@ export const Effects : React.FC = () => {
   const ledger = useLedger();
   const { getNames } = useParties();
   const { loading: l1, contracts: effects } = useStreamQueries(Effect);
-  const { loading: l2, contracts: holdings } = useStreamQueries(Base);
+  const { loading: l2, contracts: holdings } = useStreamQueries(Holding);
   const { loading: l3, contracts: claimRules } = useStreamQueries(Claim);
 
   if (l1 || l2 || l3) return <Spinner />;

@@ -1,4 +1,4 @@
--- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
 module Daml.Finance.App.Distribution.Subscription.Util where
@@ -10,13 +10,13 @@ import DA.Set (singleton)
 import Daml.Finance.App.Distribution.Subscription.Model (AllocateInstruction(..), ApproveInstruction(..), Offering, Subscription, UnlockHolding(..))
 import Daml.Finance.App.Settlement.Service qualified as Settlement (DiscoverAndInstruct(..), Service)
 import Daml.Finance.Interface.Account.Account qualified as Account (R)
-import Daml.Finance.Interface.Holding.Base qualified as Holding (I, Release(..))
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I, Split(..))
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, RemoveObservers(..))
 import Daml.Finance.Interface.Settlement.Instruction (Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Batch (Settle(..))
 import Daml.Finance.Interface.Settlement.Types (Allocation(Pledge), Approval(TakeDelivery), Step(..))
 import Daml.Finance.Interface.Types.Common.Types (Id(..))
+import Daml.Finance.Interface.Util.Lockable qualified as Lockable (I, Release(..))
 
 settleSubscription : Party -> ContractId Settlement.Service -> Offering -> (Decimal, Optional (ContractId Fungible.I)) -> (ContractId Subscription, Subscription) -> Update (Decimal, Optional (ContractId Fungible.I))
 settleSubscription actor settlementServiceCid offering (remainingQuantity, issuerHoldingCidOpt) (subscriptionCid, subscription) = do
@@ -53,7 +53,7 @@ settleSubscription actor settlementServiceCid offering (remainingQuantity, issue
     -- paymentAccountCid <- getAccountCid paymentHolding
     deliveryCid <- fst <$> exercise deliveryCid Allocate with actors = singleton actor; allocation = Pledge $ toInterfaceContractId allocatedHoldingCid
     exercise subscriptionCid ApproveInstruction with instructionCid = deliveryCid; receiverAccount = subscription.accountKey
-    paymentCid <- exercise subscriptionCid AllocateInstruction with instructionCid = paymentCid; transferableCid = toInterfaceContractId paymentHoldingCid
+    paymentCid <- exercise subscriptionCid AllocateInstruction with instructionCid = paymentCid; transferableCid = coerceContractId paymentHoldingCid
     exercise paymentCid Approve with actors = singleton actor; approval = TakeDelivery offering.issuerAccount
     transferredCids <- exercise batchCid Settle with actors = singleton actor
     forA_ transferredCids $ \cid -> exercise subscriptionCid UnlockHolding with lockableCid = toInterfaceContractId cid
@@ -66,7 +66,7 @@ settleSubscription actor settlementServiceCid offering (remainingQuantity, issue
           hCid :: _ -> Some hCid
     case remainingInvestorHoldingCids of
       [] -> do pure ()
-      hCid :: _ -> do void $ exercise (coerceContractId hCid : ContractId Holding.I) Holding.Release with context = offering.offeringId
+      hCid :: _ -> do void $ exercise (coerceContractId hCid : ContractId Lockable.I) Lockable.Release with context = offering.offeringId
 
     -- Undisclose accounts (doesn't quite work)
     (_, accountProxy) <- fetchByKey @Account.R subscription.accountKey

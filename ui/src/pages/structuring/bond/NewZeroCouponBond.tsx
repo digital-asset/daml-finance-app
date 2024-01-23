@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+// Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 import React, { useState } from "react";
@@ -46,6 +46,7 @@ export const NewZeroCouponBond : React.FC = () => {
     const arg = {
       id,
       description: id,
+      notional: "1.0",
       issueDate: parseDate(issueDate),
       maturityDate: parseDate(maturityDate),
       currency: ccy.key,

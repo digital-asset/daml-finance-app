@@ -1,4 +1,4 @@
--- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
 module Daml.Finance.Setup.Util.Workflow where
@@ -23,7 +23,7 @@ import Daml.Finance.App.Distribution.Investment.Model qualified as Investment (I
 import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (RequestInvestment(..), S)
 import Daml.Finance.App.Issuance.Model qualified as Issuance (T)
 import Daml.Finance.App.Issuance.Service qualified as Issuance (CreateIssuance(..), RequestCreateIssuance(..), Service)
-import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Service, DeclareDividend(..), DeclareStockSplit(..), DeclareReplacement(..))
+import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Service, DeclareDistribution(..), DeclareStockSplit(..), DeclareReplacement(..))
 import Daml.Finance.App.Listing.Model qualified as Listing (T)
 import Daml.Finance.App.Listing.Service qualified as Listing (CreateListing(..), RequestCreateListing(..), Service)
 import Daml.Finance.App.Quoting.Model qualified as Quoting (Side, Quote, QuoteRequest)
@@ -51,10 +51,12 @@ import Daml.Finance.Instrument.Swap.Fpml.Instrument qualified as FpmlSwap (Instr
 import Daml.Finance.Instrument.Swap.InterestRate.Instrument qualified as InterestRateSwap (Instrument(..))
 import Daml.Finance.Interface.Account.Account qualified as Account (Controllers(..), R)
 import Daml.Finance.Interface.Claims.Types (C)
-import Daml.Finance.Interface.Holding.Base qualified as Holding (I)
+import Daml.Finance.Interface.Holding.Holding qualified as Holding (I)
 import Daml.Finance.Interface.Holding.Fungible qualified as Fungible (I)
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I, Transfer(..))
 import Daml.Finance.Interface.Instrument.Base.Instrument qualified as Instrument (GetView(..), I, Reference(..))
+import Daml.Finance.Interface.Instrument.Types.FloatingRate (FloatingRate)
+import Daml.Finance.Interface.Instrument.Swap.Asset.Types (Underlying)
 import Daml.Finance.Interface.Instrument.Swap.Fpml.FpmlTypes (SwapStream)
 import Daml.Finance.Interface.Lifecycle.Event qualified as Event (I)
 import Daml.Finance.Interface.Lifecycle.Effect qualified as Effect (I)
@@ -64,11 +66,11 @@ import Daml.Finance.Interface.Lifecycle.Rule.Claim qualified as Claim (ClaimEffe
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (I)
 import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (I, Allocate(..), Approve(..))
 import Daml.Finance.Interface.Settlement.Types qualified as Settlement (Allocation, Approval)
-import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id(..), InstrumentKey, InstrumentQuantity, Parties, PartiesMap)
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, HoldingStandard(..), Id(..), InstrumentKey, InstrumentQuantity, Parties, PartiesMap)
 import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayAdjustment(..), BusinessDayConventionEnum, HolidayCalendarData(..))
 import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum)
-import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum, RollConventionEnum(..))
-import Daml.Finance.Interface.Types.Date.Schedule (Frequency(..), PeriodicSchedule(..))
+import Daml.Finance.Interface.Types.Date.RollConvention (Period(..), PeriodEnum, RollConventionEnum(..))
+import Daml.Finance.Interface.Types.Date.Schedule (Frequency(..), PeriodicSchedule(..), ScheduleFrequency(..))
 import Daml.Finance.Settlement.Instruction qualified as Instruction (T)
 import Daml.Finance.Setup.Util.Common (getHolding)
 import Daml.Script
@@ -104,11 +106,10 @@ createPaymentPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConv
           convention = businessDayConvention
       effectiveDateBusinessDayAdjustment = None
       terminationDateBusinessDayAdjustment = None
-      frequency =
+      frequency = Periodic $
         Frequency with
           rollConvention = DOM d
-          period = couponPeriod
-          periodMultiplier = couponPeriodMultiplier
+          period = Period with period = couponPeriod; periodMultiplier = couponPeriodMultiplier
       effectiveDate = issueDate
       firstRegularPeriodStartDate = Some firstCouponDate
       lastRegularPeriodEndDate = Some maturityDate
@@ -140,88 +141,116 @@ createCalendar provider id weekend holidays observers = do
 originateToken : Party -> Party -> PartiesMap -> Time -> Text -> Text -> Script InstrumentKey
 originateToken depository issuer observers validAsOf id description = do
   cid <- coerceContractId <$> submitMulti [depository, issuer] [] do
-    createCmd Token.Instrument with depository; issuer; id = Id id; version = "0"; observers; validAsOf; description
+    createCmd Token.Instrument with depository; issuer; id = Id id; version = "0"; observers; validAsOf; description; holdingStandard = TransferableFungible
   createReference cid depository issuer observers
 
 originateEquity : Party -> Party -> PartiesMap -> Time -> Text -> Text -> Script InstrumentKey
 originateEquity depository issuer observers validAsOf id description = do
   cid <- coerceContractId <$> submitMulti [depository, issuer] [] do
-    createCmd Equity.Instrument with depository; issuer; id = Id id; version = "0"; observers; validAsOf; description
+    createCmd Equity.Instrument with depository; issuer; id = Id id; version = "0"; observers; validAsOf; description; holdingStandard = TransferableFungible
   createReference cid depository issuer observers
 
 originateGeneric : Party -> Party -> PartiesMap -> Time -> Text -> Text -> C -> Script InstrumentKey
 originateGeneric depository issuer observers acquisitionTime id description claims = do
   cid <- coerceContractId <$> submitMulti [depository, issuer] [] do
-    createCmd Generic.Instrument with depository; issuer; id = Id id; description; version = "0"; acquisitionTime; claims; observers; lastEventTimestamp = acquisitionTime
+    createCmd Generic.Instrument with depository; issuer; id = Id id; description; version = "0"; acquisitionTime; claims; observers; lastEventTimestamp = acquisitionTime; holdingStandard = TransferableFungible
   createReference cid depository issuer observers
 
-originateFixedRateBond : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Date -> [Text] -> Party -> Date-> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> InstrumentKey -> Script InstrumentKey
-originateFixedRateBond depository issuer id description observers lastEventTimestamp issueDate holidayCalendarIds calendarDataProvider firstCouponDate maturityDate dayCountConvention businessDayConvention couponRate couponPeriod couponPeriodMultiplier currency = do
+originateFixedRateBond : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Decimal -> Date -> [Text] -> Party -> Date-> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> InstrumentKey -> Script InstrumentKey
+originateFixedRateBond depository issuer id description observers lastEventTimestamp notional issueDate holidayCalendarIds calendarDataProvider firstCouponDate maturityDate dayCountConvention businessDayConvention couponRate couponPeriod couponPeriodMultiplier currency = do
   let
     periodicSchedule = createPaymentPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
   cid <- toInterfaceContractId @Instrument.I <$> submitMulti [depository, issuer] [] do
-    createCmd FixedRate.Instrument with depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp; periodicSchedule; holidayCalendarIds; calendarDataProvider; dayCountConvention; couponRate; currency
+    createCmd FixedRate.Instrument with
+      depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp
+      notional; periodicSchedule; holidayCalendarIds; calendarDataProvider; dayCountConvention
+      couponRate; currency; holdingStandard = TransferableFungible
   createReference cid depository issuer observers
 
-originateZeroCouponBond : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Date -> Date -> InstrumentKey -> Script InstrumentKey
-originateZeroCouponBond depository issuer id description observers lastEventTimestamp issueDate maturityDate currency = do
+originateZeroCouponBond : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Decimal -> Date -> Date -> InstrumentKey -> Script InstrumentKey
+originateZeroCouponBond depository issuer id description observers lastEventTimestamp notional issueDate maturityDate currency = do
   cid <- toInterfaceContractId <$> submitMulti [depository, issuer] [] do
-    createCmd ZeroCoupon.Instrument with depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp; issueDate; maturityDate; currency
+    createCmd ZeroCoupon.Instrument with
+      depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp
+      notional; issueDate; maturityDate; currency; holdingStandard = TransferableFungible
   createReference cid depository issuer observers
 
-originateFloatingRateBond : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Date -> [Text] -> Party -> Date -> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> InstrumentKey -> Text -> Script InstrumentKey
-originateFloatingRateBond depository issuer id description observers lastEventTimestamp issueDate holidayCalendarIds calendarDataProvider firstCouponDate maturityDate dayCountConvention businessDayConvention couponRate couponPeriod couponPeriodMultiplier currency referenceRateId = do
+originateFloatingRateBond : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Decimal -> Date -> [Text] -> Party -> Date -> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> InstrumentKey -> FloatingRate -> Script InstrumentKey
+originateFloatingRateBond depository issuer id description observers lastEventTimestamp notional issueDate holidayCalendarIds calendarDataProvider firstCouponDate maturityDate dayCountConvention businessDayConvention couponRate couponPeriod couponPeriodMultiplier currency floatingRate = do
   let
     periodicSchedule = createPaymentPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
   cid <- toInterfaceContractId <$> submitMulti [depository, issuer] [] do
-    createCmd FloatingRate.Instrument with depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp; periodicSchedule; holidayCalendarIds; calendarDataProvider; dayCountConvention; couponSpread=couponRate; referenceRateId; currency
+    createCmd FloatingRate.Instrument with
+      depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp
+      notional; periodicSchedule; holidayCalendarIds; calendarDataProvider; dayCountConvention
+      couponSpread=couponRate; floatingRate; currency; holdingStandard = TransferableFungible
   createReference cid depository issuer observers
 
-originateInflationLinkedBond : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Date -> [Text] -> Party -> Date -> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> InstrumentKey -> Text -> Decimal -> Script InstrumentKey
-originateInflationLinkedBond depository issuer id description observers lastEventTimestamp issueDate holidayCalendarIds calendarDataProvider firstCouponDate maturityDate dayCountConvention businessDayConvention couponRate couponPeriod couponPeriodMultiplier currency inflationIndexId inflationIndexBaseValue = do
+originateInflationLinkedBond : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Decimal -> Date -> [Text] -> Party -> Date -> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> InstrumentKey -> Text -> Decimal -> Script InstrumentKey
+originateInflationLinkedBond depository issuer id description observers lastEventTimestamp notional issueDate holidayCalendarIds calendarDataProvider firstCouponDate maturityDate dayCountConvention businessDayConvention couponRate couponPeriod couponPeriodMultiplier currency inflationIndexId inflationIndexBaseValue = do
   let periodicSchedule = createPaymentPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
   cid <- toInterfaceContractId <$> submitMulti [depository, issuer] [] do
-    createCmd InflationLinked.Instrument with depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp; periodicSchedule; holidayCalendarIds; calendarDataProvider; dayCountConvention; couponRate; inflationIndexId; currency; inflationIndexBaseValue
+    createCmd InflationLinked.Instrument with
+      depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp
+      notional; periodicSchedule; holidayCalendarIds; calendarDataProvider; dayCountConvention
+      couponRate; inflationIndexId; currency; inflationIndexBaseValue; holdingStandard = TransferableFungible
   createReference cid depository issuer observers
 
-originateAssetSwap : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Date -> [Text] -> Party -> Date -> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> InstrumentKey -> Text -> Bool -> Script InstrumentKey
-originateAssetSwap depository issuer id description observers lastEventTimestamp issueDate holidayCalendarIds calendarDataProvider firstCouponDate maturityDate dayCountConvention businessDayConvention fixRate couponPeriod couponPeriodMultiplier currency referenceAssetId ownerReceivesFix = do
+originateAssetSwap : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Bool -> [Underlying] -> Date -> [Text] -> Party -> Date -> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> Optional FloatingRate -> PeriodEnum -> Int -> InstrumentKey -> Script InstrumentKey
+originateAssetSwap depository issuer id description observers lastEventTimestamp ownerReceivesRate underlyings issueDate holidayCalendarIds calendarDataProvider firstCouponDate maturityDate dayCountConvention businessDayConvention fixRate floatingRate couponPeriod couponPeriodMultiplier currency = do
   let periodicSchedule = createPaymentPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
   cid <- toInterfaceContractId <$> submitMulti [depository, issuer] [] do
-    createCmd AssetSwap.Instrument with depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp; periodicSchedule; holidayCalendarIds; calendarDataProvider; dayCountConvention; currency; fixRate; referenceAssetId; ownerReceivesFix
+    createCmd AssetSwap.Instrument with
+      depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp
+      ownerReceivesRate; underlyings; periodicSchedule; holidayCalendarIds; calendarDataProvider; dayCountConvention
+      currency; fixRate; floatingRate; holdingStandard = TransferableFungible
   createReference cid depository issuer observers
 
-originateCreditDefaultSwap : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Date -> [Text] -> Party -> Date -> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> InstrumentKey -> Text -> Text -> Bool -> Script InstrumentKey
-originateCreditDefaultSwap depository issuer id description observers lastEventTimestamp issueDate holidayCalendarIds calendarDataProvider firstCouponDate maturityDate dayCountConvention businessDayConvention fixRate couponPeriod couponPeriodMultiplier currency defaultProbabilityReferenceId recoveryRateReferenceId ownerReceivesFix = do
+originateCreditDefaultSwap : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Decimal -> Date -> [Text] -> Party -> Date -> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> InstrumentKey -> Text -> Text -> Bool -> Script InstrumentKey
+originateCreditDefaultSwap depository issuer id description observers lastEventTimestamp notional issueDate holidayCalendarIds calendarDataProvider firstCouponDate maturityDate dayCountConvention businessDayConvention fixRate couponPeriod couponPeriodMultiplier currency defaultProbabilityReferenceId recoveryRateReferenceId ownerReceivesFix = do
   let periodicSchedule = createPaymentPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
   cid <- toInterfaceContractId <$> submitMulti [depository, issuer] [] do
-    createCmd CreditDefaultSwap.Instrument with depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp; periodicSchedule; holidayCalendarIds; calendarDataProvider; dayCountConvention; currency; fixRate; defaultProbabilityReferenceId; recoveryRateReferenceId; ownerReceivesFix
+    createCmd CreditDefaultSwap.Instrument with
+      depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp
+      periodicSchedule; holidayCalendarIds; calendarDataProvider; dayCountConvention; currency; fixRate
+      defaultProbabilityReferenceId; recoveryRateReferenceId; ownerReceivesFix; holdingStandard = TransferableFungible
   createReference cid depository issuer observers
 
 originateCurrencySwap : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Date -> [Text] -> Party -> Date -> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> InstrumentKey -> Decimal -> InstrumentKey -> Decimal -> Decimal -> Bool -> Script InstrumentKey
 originateCurrencySwap depository issuer id description observers lastEventTimestamp issueDate holidayCalendarIds calendarDataProvider firstCouponDate maturityDate dayCountConvention businessDayConvention fixRate couponPeriod couponPeriodMultiplier baseCurrency baseRate foreignCurrency foreignRate fxRate ownerReceivesBase = do
   let periodicSchedule = createPaymentPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
   cid <- toInterfaceContractId <$> submitMulti [depository, issuer] [] do
-    createCmd CurrencySwap.Instrument with depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp; periodicSchedule; holidayCalendarIds; calendarDataProvider; dayCountConvention; baseCurrency; baseRate; foreignCurrency; foreignRate; fxRate; ownerReceivesBase
+    createCmd CurrencySwap.Instrument with
+      depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp
+      periodicSchedule; holidayCalendarIds; calendarDataProvider; dayCountConvention; baseCurrency
+      baseRate; foreignCurrency; foreignRate; fxRate; ownerReceivesBase; holdingStandard = TransferableFungible
   createReference cid depository issuer observers
 
 originateForeignExchangeSwap : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Date -> Date -> Date -> InstrumentKey -> InstrumentKey -> Decimal -> Decimal -> Bool -> Script InstrumentKey
 originateForeignExchangeSwap depository issuer id description observers lastEventTimestamp issueDate firstPaymentDate maturityDate baseCurrency foreignCurrency firstFxRate finalFxRate ownerReceivesBase = do
   cid <- toInterfaceContractId <$> submitMulti [depository, issuer] [] do
-    createCmd ForeignExchangeSwap.Instrument with depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp; issueDate; firstPaymentDate; maturityDate; baseCurrency; foreignCurrency; firstFxRate; finalFxRate
+    createCmd ForeignExchangeSwap.Instrument with
+      depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp
+      issueDate; firstPaymentDate; maturityDate; baseCurrency; foreignCurrency; firstFxRate
+      finalFxRate; holdingStandard = TransferableFungible
   createReference cid depository issuer observers
 
 originateFpmlSwap : Party -> Party -> Text -> Text -> PartiesMap -> Time -> [SwapStream] -> Text -> Party -> [InstrumentKey] -> Script InstrumentKey
 originateFpmlSwap depository issuer id description observers lastEventTimestamp swapStreams issuerPartyRef calendarDataProvider currencies = do
   cid <- toInterfaceContractId <$> submitMulti [depository, issuer] [] do
-    createCmd FpmlSwap.Instrument with depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp; swapStreams; issuerPartyRef; calendarDataProvider; currencies
+    createCmd FpmlSwap.Instrument with
+      depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp
+      swapStreams; issuerPartyRef; calendarDataProvider; currencies; holdingStandard = TransferableFungible
   createReference cid depository issuer observers
 
-originateInterestRateSwap : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Date -> [Text] -> Party -> Date -> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> PeriodEnum -> Int -> InstrumentKey -> Text -> Bool -> Script InstrumentKey
-originateInterestRateSwap depository issuer id description observers lastEventTimestamp issueDate holidayCalendarIds calendarDataProvider firstCouponDate maturityDate dayCountConvention businessDayConvention fixRate couponPeriod couponPeriodMultiplier currency referenceRateId ownerReceivesFix = do
+originateInterestRateSwap : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Date -> [Text] -> Party -> Date -> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> Decimal -> FloatingRate -> PeriodEnum -> Int -> InstrumentKey -> Bool -> Script InstrumentKey
+originateInterestRateSwap depository issuer id description observers lastEventTimestamp issueDate holidayCalendarIds calendarDataProvider firstCouponDate maturityDate dayCountConvention businessDayConvention fixRate floatingRate couponPeriod couponPeriodMultiplier currency ownerReceivesFix = do
   let periodicSchedule = createPaymentPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
   cid <- toInterfaceContractId <$> submitMulti [depository, issuer] [] do
-    createCmd InterestRateSwap.Instrument with depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp; periodicSchedule; holidayCalendarIds; calendarDataProvider; dayCountConvention; currency; fixRate; referenceRateId; ownerReceivesFix
+    createCmd InterestRateSwap.Instrument with
+      depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp
+      periodicSchedule; holidayCalendarIds; calendarDataProvider; dayCountConvention; currency
+      fixRate; floatingRate; ownerReceivesFix; holdingStandard = TransferableFungible
   createReference cid depository issuer observers
 
 transfer : Party -> AccountKey -> Party -> ContractId Transferable.I -> Script (ContractId Transferable.I)
@@ -282,13 +311,13 @@ processAuction operator provider customer public auctionCid bidCids = do
         auctionCid
         bidCids
 
-declareDividend : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> [InstrumentQuantity] -> Script (ContractId Effect.I)
+declareDividend : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> [InstrumentQuantity] -> Script (ContractId Event.I)
 declareDividend operator provider issuer public equity effectiveTime perUnitDistribution = do
   let
     id = "Dividend-" <> show equity.id <> "-" <> equity.version
     Some version = parseInt equity.version
-  head <$> submitMulti [issuer] [public] do
-    exerciseByKeyCmd @Lifecycle.Service (operator, provider, issuer) Lifecycle.DeclareDividend
+  submitMulti [issuer] [public] do
+    exerciseByKeyCmd @Lifecycle.Service (operator, provider, issuer) Lifecycle.DeclareDistribution
       with
         equity
         newVersion = show (version + 1)
@@ -297,24 +326,27 @@ declareDividend operator provider issuer public equity effectiveTime perUnitDist
         effectiveTime
         perUnitDistribution
 
-declareReplacement : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> [InstrumentQuantity] -> Script (ContractId Effect.I)
+declareReplacement : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> [InstrumentQuantity] -> Script (ContractId Event.I)
 declareReplacement operator provider issuer public equity effectiveTime perUnitReplacement = do
-  let id = "Replacement-" <> show equity.id <> "-" <> equity.version
-  head <$> submitMulti [issuer] [public] do
+  let
+    id = "Replacement-" <> show equity.id <> "-" <> equity.version
+    Some version = parseInt equity.version
+  submitMulti [issuer] [public] do
     exerciseByKeyCmd @Lifecycle.Service (operator, provider, issuer) Lifecycle.DeclareReplacement
       with
         equity
+        newVersion = show (version + 1)
         id = Id id
         description = id
         effectiveTime
         perUnitReplacement
 
-declareStockSplit : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> Decimal -> Script (ContractId Effect.I)
+declareStockSplit : Party -> Party -> Party -> Party -> InstrumentKey -> Time -> Decimal -> Script (ContractId Event.I)
 declareStockSplit operator provider issuer public equity effectiveTime adjustmentFactor = do
   let
     id = "StockSplit-" <> show equity.id <> "-" <> equity.version
     Some version = parseInt equity.version
-  head <$> submitMulti [issuer] [public] do
+  submitMulti [issuer] [public] do
     exerciseByKeyCmd @Lifecycle.Service (operator, provider, issuer) Lifecycle.DeclareStockSplit
       with
         equity

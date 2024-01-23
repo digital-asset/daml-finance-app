@@ -1,0 +1,58 @@
+-- Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Confirmation.Model where
+
+import DA.Map qualified as M (fromList)
+import DA.Set qualified as S (singleton)
+import Daml.Finance.Interface.Holding.Holding qualified as Holding (I)
+import Daml.Finance.Interface.Holding.Factory qualified as HoldingFactory (I, Create(..))
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentKey)
+
+data Status
+  = Unconfirmed
+  | PartiallyConfirmed
+  | Confirmed
+  | Booked
+  deriving (Eq, Show)
+
+template Trade
+  with
+    operator : Party
+    seller : Party
+    buyer : Party
+    confirmed : [Party]
+    id : Text
+    instrument : InstrumentKey
+    account : AccountKey
+    amount : Decimal
+    status : Status
+  where
+    signatory operator, confirmed
+    observer seller, buyer
+
+    key (operator, id) : (Party, Text)
+    maintainer key._1
+
+    choice Confirm : ContractId Trade
+      with
+        ctrl : Party
+      controller operator, ctrl
+      do
+        assertMsg "Only buyer or seller can confirm a trade" $ ctrl == buyer || ctrl == seller
+        let newConfirmed = ctrl :: confirmed
+        create this with confirmed = newConfirmed; status = if elem buyer newConfirmed && elem seller newConfirmed then Confirmed else PartiallyConfirmed
+
+    choice Book : (ContractId Trade, ContractId Holding.I)
+      with
+        holdingFactoryCid : ContractId HoldingFactory.I
+      controller operator
+      do
+        assertMsg "Trade has to be Confirmed to book" $ status == Confirmed
+        trdCid <- create this with status = Booked
+        holdingCid <- exercise holdingFactoryCid HoldingFactory.Create with
+          instrument
+          amount
+          account
+          observers = M.fromList [("Operator", S.singleton operator)]
+        pure (trdCid, holdingCid)

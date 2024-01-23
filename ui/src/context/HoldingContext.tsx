@@ -1,15 +1,16 @@
-// Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+// Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
 import { CreateEvent } from "@daml/ledger";
 import { useLedger, useStreamQueries } from "@daml/react";
 import { keyEquals } from "../util";
-import { Base } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Base";
+import { Holding } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Holding";
 import { Transferable } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Transferable";
 import { Fungible } from "@daml.js/daml-finance-interface-holding/lib/Daml/Finance/Interface/Holding/Fungible";
 import { InstrumentKey } from "@daml.js/daml-finance-interface-types-common/lib/Daml/Finance/Interface/Types/Common/Types";
 import { ContractId } from "@daml/types";
+import { Lockable } from "@daml.js/daml-finance-interface-util/lib/Daml/Finance/Interface/Util/Lockable";
 
 type HoldingState = {
   loading : boolean
@@ -17,9 +18,10 @@ type HoldingState = {
   getFungible : (owner : string, amount : number | string, instrument: InstrumentKey, custodian?: string ) => Promise<ContractId<Fungible>>
 };
 
-export type HoldingAggregate = CreateEvent<Base> & {
+export type HoldingAggregate = CreateEvent<Holding> & {
   transferable : CreateEvent<Transferable> | undefined
   fungible : CreateEvent<Fungible> | undefined
+  lockable : CreateEvent<Lockable> | undefined
 }
 
 const empty = {
@@ -33,11 +35,12 @@ const HoldingContext = React.createContext<HoldingState>(empty);
 export const HoldingProvider : React.FC = ({ children }) => {
 
   const ledger = useLedger();
-  const { contracts: holdings, loading: l1 } = useStreamQueries(Base);
+  const { contracts: holdings, loading: l1 } = useStreamQueries(Holding);
   const { contracts: transferables, loading: l2 } = useStreamQueries(Transferable);
   const { contracts: fungibles, loading: l3 } = useStreamQueries(Fungible);
+  const { contracts: lockables, loading: l4 } = useStreamQueries(Lockable);
 
-  const loading = l1 || l2 || l3;
+  const loading = l1 || l2 || l3 || l4;
 
   if (loading) {
     return (
@@ -48,12 +51,18 @@ export const HoldingProvider : React.FC = ({ children }) => {
   } else {
     const transferablesByCid : Map<string, CreateEvent<Transferable>> = new Map(transferables.map(c => [c.contractId, c]));
     const fungiblesByCid : Map<string, CreateEvent<Fungible>> = new Map(fungibles.map(c => [c.contractId, c]));
-    const aggregates : HoldingAggregate[] = holdings.map(c => ({ ...c, transferable: transferablesByCid.get(c.contractId), fungible: fungiblesByCid.get(c.contractId) }));
+    const lockablesByCid : Map<string, CreateEvent<Lockable>> = new Map(lockables.map(c => [c.contractId, c]));
+    const aggregates : HoldingAggregate[] = holdings.map(c => ({
+      ...c,
+      transferable: transferablesByCid.get(c.contractId),
+      fungible: fungiblesByCid.get(c.contractId),
+      lockable: lockablesByCid.get(c.contractId)
+    }));
 
     const getFungible = async (owner : string, amount : number | string, instrument: InstrumentKey, custodian?: string) : Promise<ContractId<Fungible>> => {
       const qty = typeof amount === "string" ? parseFloat(amount) : amount;
       const filtered = aggregates
-        .filter(c => c.payload.account.owner === owner && keyEquals(c.payload.instrument, instrument) && !c.payload.lock)
+        .filter(c => c.payload.account.owner === owner && keyEquals(c.payload.instrument, instrument) && (!c.lockable || !c.lockable.payload.lock))
         .filter(c => custodian === undefined || c.payload.account.custodian === custodian);
       if (filtered.length === 0) throw new Error("Could not find unencumbered holding on instrument [" + instrument.id.unpack + "]");
       if (!filtered[0].fungible) throw new Error("Holdings are not fungible, cannot right-size to correct amount.");

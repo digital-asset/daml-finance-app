@@ -1,14 +1,14 @@
--- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
 module Daml.Finance.App.Lending.Model where
 
 import DA.Set (fromList, singleton)
 import Daml.Finance.Interface.Account.Account qualified as Account (exerciseInterfaceByKey)
-import Daml.Finance.Interface.Holding.Base qualified as Holding (I, Release(..))
 import Daml.Finance.Interface.Holding.Transferable qualified as Transferable (I, Transfer(..))
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentQuantity)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I, RemoveObservers(..))
+import Daml.Finance.Interface.Util.Lockable qualified as Lockable (I, Release(..))
 
 template BorrowOfferRequest
   with
@@ -70,7 +70,7 @@ template BorrowAgreement
       do
         borrowedCid <- exercise borrowedCid Transferable.Transfer with actors = fromList [provider, customer]; newOwnerAccount = lenderBorrowedAccount
         interestCid <- exercise interestCid Transferable.Transfer with actors = fromList [provider, customer]; newOwnerAccount = lenderInterestAccount
-        unlockedCid <- coerceContractId <$> exercise (toInterfaceContractId collateralCid : ContractId Holding.I) Holding.Release with context = id
+        unlockedCid <- coerceContractId <$> exercise (toInterfaceContractId collateralCid : ContractId Lockable.I) Lockable.Release with context = id
         Account.exerciseInterfaceByKey @Disclosure.I lenderBorrowedAccount provider Disclosure.RemoveObservers with disclosers = singleton customer; observersToRemove = (id, singleton customer)
         Account.exerciseInterfaceByKey @Disclosure.I lenderInterestAccount provider Disclosure.RemoveObservers with disclosers = singleton customer; observersToRemove = (id, singleton customer)
         pure (unlockedCid, borrowedCid, interestCid)

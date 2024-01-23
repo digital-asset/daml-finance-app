@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+// Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 import { CreateEvent } from "@daml/ledger";
@@ -34,6 +34,7 @@ export const useNetwork = () : Network => {
   const services : CreateEvent<any>[] = Array.prototype.concat.apply([], [
     svc.auction,
     svc.backToBack,
+    svc.confirmation,
     svc.custody,
     svc.bidding,
     svc.fund,

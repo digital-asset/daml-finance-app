@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+// Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
@@ -9,8 +9,8 @@ import { Variant } from "@mui/material/styles/createTypography";
 export type Alignment = "inherit" | "left" | "center" | "right" | "justify";
 
 type HorizontalTableProps = {
-  title : string
-  variant : Variant
+  title? : string
+  variant? : Variant
   headers : string[]
   values : any[][]
   alignment? : Alignment[]
@@ -22,7 +22,7 @@ export const HorizontalTable : React.FC<HorizontalTableProps> = ({ title, varian
   return (
     <Grid container direction="column">
       <Grid item xs={12}>
-        <Typography variant={variant} className={classes.tableHeader}>{title}</Typography>
+        {!!title && <Typography variant={variant || "h1"} className={classes.tableHeader}>{title}</Typography>}
         <Table size="small">
           <TableHead>
             <TableRow className={classes.tableRowHeader}>

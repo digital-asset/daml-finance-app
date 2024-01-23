@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+// Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 import React, { useEffect, useState } from "react";
@@ -48,7 +48,7 @@ export const Exchange : React.FC = () => {
   const y = parseFloat(dex.payload.p2.quantity.amount);
   const xNew = isBuy ? x - quantity : x + quantity;
   const yNew = x * y / xNew;
-  const available = holdings.filter(c => c.payload.account.owner === party && !c.payload.lock);
+  const available = holdings.filter(c => c.payload.account.owner === party && (!c.lockable || !c.lockable.payload.lock));
   const tradedAssets = available.filter(c => c.payload.instrument.id.unpack === xAsset);
   const quotedAssets = available.filter(c => c.payload.instrument.id.unpack === yAsset);
   const tradedAssetsTotal = tradedAssets.reduce((acc, c) => acc + parseFloat(c.payload.amount), 0);

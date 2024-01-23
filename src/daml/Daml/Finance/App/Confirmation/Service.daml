@@ -1,0 +1,94 @@
+-- Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Confirmation.Service where
+
+import Daml.Finance.App.Confirmation.Model (Confirm(..), Status(..), Trade(..))
+import Daml.Finance.Interface.Types.Common.Types (AccountKey, InstrumentKey)
+
+template Service
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider, customer
+
+    key (operator, provider, customer) : (Party, Party, Party)
+    maintainer key._1
+
+    nonconsuming choice CreateTrade : ContractId Trade
+      with
+        ctrl : Party
+        seller : Party
+        buyer : Party
+        id : Text
+        instrument : InstrumentKey
+        account : AccountKey
+        amount : Decimal
+      controller ctrl
+      do
+        let confirmed = if ctrl == operator then [] else [ctrl]
+        create Trade with operator; seller; buyer; confirmed; id; instrument; account; amount; status = Unconfirmed
+
+    nonconsuming choice ConfirmTrade : ContractId Trade
+      with
+        ctrl : Party
+        tradeCid : ContractId Trade
+      controller ctrl
+      do
+        assertMsg "Controller must be customer or provider" $ ctrl == customer || ctrl == provider
+        exercise tradeCid Confirm with ctrl
+
+    choice Terminate : ()
+      with
+        actor : Party
+      controller actor
+      do
+        assert $ actor == operator || actor == provider || actor == customer
+        pure ()
+
+template Offer
+  with
+    operator : Party
+    provider : Party
+    customer : Party
+  where
+    signatory operator, provider
+    observer customer
+
+    choice Accept : ContractId Service
+      controller customer
+      do
+        create Service with operator; provider; customer
+
+    choice Decline : ()
+      controller customer
+      do
+        return ()
+
+    choice Withdraw : ()
+      controller provider
+      do pure ()
+
+template Request
+  with
+    customer : Party
+    provider : Party
+  where
+    signatory customer
+
+    choice Cancel : ()
+      controller customer
+      do pure ()
+
+    choice Reject : ()
+      controller provider
+      do pure ()
+
+    choice Approve : ContractId Service
+      with
+        operator : Party
+      controller operator, provider
+      do
+        create Service with operator; provider; customer
