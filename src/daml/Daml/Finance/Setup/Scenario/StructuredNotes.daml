@@ -97,7 +97,7 @@ run  = do
     aaplFixTime2 = time (date 2024 Jan 24) 0 0 0
     maturity = addDays today 365
     (todayYear, todayMonth, todayDay) = toGregorian today
-  (_, timeEventCid) <- createClockAndEvent all today (singleton public)
+  (_, timeEventCid) <- createClockAndEvent [issuer, riskTaker] today (singleton public)
 
   -- Observables
   let
@@ -128,10 +128,11 @@ run  = do
   -- inv2CashCid1    <- coerceContractId <$> deposit operator cashProvider inv2   public (qty 1_472_566.0 usd) inv2CashAccount
   -- inv3CashCid1    <- coerceContractId <$> deposit operator cashProvider inv3   public (qty 1_472_566.0 usd) inv3CashAccount
 
-  issuerCashCid2  <- coerceContractId <$> deposit operator cashProvider issuer public (qty 5_000_000.0 usd) issuerCashAccount
-  inv1CashCid2    <- coerceContractId <$> deposit operator cashProvider inv1   public (qty 950_000.0 usd) inv1CashAccount
-  inv2CashCid2    <- coerceContractId <$> deposit operator cashProvider inv2   public (qty 950_000.0 usd) inv2CashAccount
-  inv3CashCid2    <- coerceContractId <$> deposit operator cashProvider inv3   public (qty 950_000.0 usd) inv3CashAccount
+  riskTakerCashCid2  <- coerceContractId <$> deposit operator cashProvider riskTaker public (qty 20_000_000.0 usd) riskTakerCashAccount
+  issuerCashCid2  <- coerceContractId <$> deposit operator cashProvider issuer public (qty 20_000_000.0 usd) issuerCashAccount
+  -- inv1CashCid2    <- coerceContractId <$> deposit operator cashProvider inv1   public (qty 950_000.0 usd) inv1CashAccount
+  -- inv2CashCid2    <- coerceContractId <$> deposit operator cashProvider inv2   public (qty 950_000.0 usd) inv2CashAccount
+  -- inv3CashCid2    <- coerceContractId <$> deposit operator cashProvider inv3   public (qty 950_000.0 usd) inv3CashAccount
 
   issuerSecCid <- coerceContractId <$> deposit operator riskTaker issuer public (qty 10_000_000.0 ac1) issuerSecAccount
   issuerSecCid <- coerceContractId <$> deposit operator riskTaker issuer public (qty 10_000_000.0 ac2) issuerSecAccount
