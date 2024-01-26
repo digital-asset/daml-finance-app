@@ -15,6 +15,9 @@ import Daml.Finance.Account.Account qualified as Account (Factory(..))
 import Daml.Finance.Holding.Factory qualified as Holding (Factory(..))
 import Daml.Finance.Interface.Holding.Factory qualified as HoldingFactory (Reference(..), View(..))
 import Daml.Finance.Interface.Types.Common.Types (Id(..))
+import Daml.Finance.Interface.Types.Date.Calendar (BusinessDayConventionEnum(..))
+import Daml.Finance.Interface.Types.Date.DayCount (DayCountConventionEnum(..))
+import Daml.Finance.Interface.Types.Date.RollConvention (PeriodEnum(..))
 import Daml.Finance.Interface.Util.Common (qty)
 import Daml.Finance.Settlement.Hierarchy qualified as Settlement (Hierarchy(..))
 import Daml.Finance.Setup.Payoff
@@ -26,9 +29,9 @@ import Daml.Script
 
 run : Script [PartyInfo]
 run  = do
-  parties <- allocateParties "Structured Notes" ["Operator", "CentralBank", "Depository", "Issuer", "RiskTaker", "Investor1", "Investor2", "Investor3"] "Public"
+  parties <- allocateParties "Structured Notes" ["Operator", "CashProvider", "Registrar", "Issuer", "RiskTaker", "Investor1", "Investor2", "Investor3"] "Public"
   let
-    all@[operator, centralBank, depository, issuer, riskTaker, inv1, inv2, inv3, public] = map (.id) parties
+    all@[operator, cashProvider, registrar, issuer, riskTaker, inv1, inv2, inv3, public] = map (.id) parties
     pub = fromList [("Public", singleton public)]
 
   -- Factories
@@ -36,7 +39,7 @@ run  = do
     assets = ["TSLA", "FWD1", "OPT1", "BOND1", "RC1", "BRC1", "BWN1", "BWN2"]
     cashSettlementPaths = [[issuer], [riskTaker], [inv1], [inv2], [inv3]]
     secSettlementPaths = [[issuer], [riskTaker], [inv1, issuer], [inv2, issuer], [inv3, issuer]]
-    cashRoute = Settlement.Hierarchy with rootCustodian = centralBank; pathsToRootCustodian = cashSettlementPaths
+    cashRoute = Settlement.Hierarchy with rootCustodian = cashProvider; pathsToRootCustodian = cashSettlementPaths
     secRoute = Settlement.Hierarchy with rootCustodian = riskTaker; pathsToRootCustodian = secSettlementPaths
     paths = fromList $ ("USD", cashRoute) :: map (\a -> (a, secRoute)) assets
   accountFactoryCid         <- toInterfaceContractId <$> submit operator do createCmd Account.Factory with provider = operator; observers = pub
@@ -45,17 +48,17 @@ run  = do
 
   -- Roles
   createOperatorRole    operator
-  createCustodianRole   operator centralBank
+  createCustodianRole   operator cashProvider
   createCustodianRole   operator issuer
   createCustodianRole   operator riskTaker
   createDistributorRole operator issuer
 
   -- Services
-  createCustodyService            operator centralBank  issuer    paths accountFactoryCid holdingFactoryCid
-  createCustodyService            operator centralBank  riskTaker paths accountFactoryCid holdingFactoryCid
-  createCustodyService            operator centralBank  inv1      paths accountFactoryCid holdingFactoryCid
-  createCustodyService            operator centralBank  inv2      paths accountFactoryCid holdingFactoryCid
-  createCustodyService            operator centralBank  inv3      paths accountFactoryCid holdingFactoryCid
+  createCustodyService            operator cashProvider  issuer    paths accountFactoryCid holdingFactoryCid
+  createCustodyService            operator cashProvider  riskTaker paths accountFactoryCid holdingFactoryCid
+  createCustodyService            operator cashProvider  inv1      paths accountFactoryCid holdingFactoryCid
+  createCustodyService            operator cashProvider  inv2      paths accountFactoryCid holdingFactoryCid
+  createCustodyService            operator cashProvider  inv3      paths accountFactoryCid holdingFactoryCid
   createCustodyService            operator riskTaker    riskTaker paths accountFactoryCid holdingFactoryCid
   createCustodyService            operator riskTaker    issuer    paths accountFactoryCid holdingFactoryCid
   createCustodyService            operator issuer       issuer    paths accountFactoryCid holdingFactoryCid
@@ -67,15 +70,15 @@ run  = do
   createIssuanceService           operator riskTaker    riskTaker
   createBackToBackIssuanceService operator riskTaker    issuer    paths
   createLifecycleService          operator riskTaker    riskTaker public
-  createLifecycleService          operator issuer       issuer    public
+  lcSvc <- createLifecycleService          operator issuer       issuer    public
   createSubscriptionService       operator issuer       issuer    paths
 
   -- Accounts
-  riskTakerCashAccount  <- createAccount operator centralBank  riskTaker  public "RiskTaker@CentralBank" $ fromList [("b2b", singleton issuer)]
-  issuerCashAccount     <- createAccount operator centralBank  issuer     public "Issuer@CentralBank"    empty
-  inv1CashAccount       <- createAccount operator centralBank  inv1       public "Investor1@CentralBank" empty
-  inv2CashAccount       <- createAccount operator centralBank  inv2       public "Investor2@CentralBank" empty
-  inv3CashAccount       <- createAccount operator centralBank  inv3       public "Investor3@CentralBank" empty
+  riskTakerCashAccount  <- createAccount operator cashProvider  riskTaker  public "RiskTaker@CashProvider" $ fromList [("b2b", singleton issuer)]
+  issuerCashAccount     <- createAccount operator cashProvider  issuer     public "Issuer@CashProvider"    empty
+  inv1CashAccount       <- createAccount operator cashProvider  inv1       public "Investor1@CashProvider" empty
+  inv2CashAccount       <- createAccount operator cashProvider  inv2       public "Investor2@CashProvider" empty
+  inv3CashAccount       <- createAccount operator cashProvider  inv3       public "Investor3@CashProvider" empty
   issuerSecAccount      <- createAccount operator riskTaker    issuer     public "Issuer@RiskTaker"      empty
   inv1SecAccount        <- createAccount operator issuer       inv1       public "Investor1@Issuer"      empty
   inv2SecAccount        <- createAccount operator issuer       inv2       public "Investor2@Issuer"      empty
@@ -86,47 +89,61 @@ run  = do
   -- Time
   t <- getTime
   let
-    today = toDateUTC t
-    todayTime = time today 12 0 0
-    fixTime = time (date 2022 Jul 5) 12 0 0
+    epoch = time (date 1970 Jan 2) 0 0 0
+    todayTime = time (date 2024 Jan 26) 0 0 0
+    today = toDateUTC todayTime
+    fixTime = time (date 2022 Jul 5) 0 0 0
+    aaplFixTime = time (date 2023 Oct 24) 0 0 0
+    aaplFixTime2 = time (date 2024 Jan 24) 0 0 0
     maturity = addDays today 365
     (todayYear, todayMonth, todayDay) = toGregorian today
-  createClockAndEvent all today (singleton public)
+  (_, timeEventCid) <- createClockAndEvent all today (singleton public)
 
   -- Observables
   let
     amd = "AMD"
     qc = "QUALCOMM"
+    aapl = "AAPL"
     tslaO = "Close(TSLA)"
     libor3M = "LIB-USD-3M"
     libor6M = "LIB-USD-6M"
 
   -- Instruments
-  usd     <- originateToken    centralBank centralBank pub todayTime "USD"    "United States Dollar"
-  tsla    <- originateToken    depository  issuer      pub todayTime "TSLA"   "Tesla, Inc. Common Stock"
-  fwd     <- originateGeneric  depository  issuer      pub todayTime "FWD1"   "Forward on TSLA"                       $ futureDvp tsla 200.0 usd 100_000.0 today
-  opt     <- originateGeneric  depository  issuer      pub todayTime "OPT1"   "Put Option on TSLA"                    $ putOptionCash tslaO usd 1_000.0 maturity
-  bnd     <- originateGeneric  depository  issuer      pub todayTime "BOND1"  "Bond 5Y/4.875%"                        $ bond usd 1.0 0.04875 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
-  rc      <- originateGeneric  depository  issuer      pub todayTime "RC1"    "Reverse Convertible on TSLA"           $ rc tslaO usd 0.02 800.0 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
-  brc     <- originateGeneric  depository  issuer      pub todayTime "BRC1"   "Barrier Reverse Convertible on TSLA"   $ brc tslaO usd 0.05 800.0 600.0 today $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
-  bwn1    <- originateGeneric  depository  issuer      pub todayTime "BWN1"   "Synthetic Buy-Write Notes on AMD"      $ buyWriteNote (date 2022 Jul 16) (date 2023 Jul 19) (date 2023 Jul 23) amd usd 0.1776 91.6300 100.7930 -- Issue size: 77'300
-  bwn2    <- originateGeneric  depository  issuer      pub todayTime "BWN2"   "Synthetic Buy-Write Notes on QUALCOMM" $ buyWriteNote (date 2022 Jun 30) (date 2022 Jul 05) (date 2022 Jul 07) qc usd 0.1312 147.2566 161.9823
-  let securities = [tsla, fwd, opt, bnd, rc, brc, bwn1, bwn2]
+  usd     <- originateToken    cashProvider cashProvider pub todayTime "USD"    "United States Dollar"
+  tsla    <- originateToken    registrar  issuer      pub todayTime "TSLA"   "Tesla, Inc. Common Stock"
+  fwd     <- originateGeneric  registrar  issuer      pub todayTime "FWD1"   "Forward on TSLA"                       $ futureDvp tsla 200.0 usd 100_000.0 today
+  opt     <- originateGeneric  registrar  issuer      pub todayTime "OPT1"   "Put Option on TSLA"                    $ putOptionCash tslaO usd 1_000.0 maturity
+  bnd     <- originateGeneric  registrar  issuer      pub todayTime "BOND1"  "Bond 5Y/4.875%"                        $ bond usd 1.0 0.04875 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
+  rc      <- originateGeneric  registrar  issuer      pub todayTime "RC1"    "Reverse Convertible on TSLA"           $ rc tslaO usd 0.02 800.0 $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
+  brc     <- originateGeneric  registrar  issuer      pub todayTime "BRC1"   "Barrier Reverse Convertible on TSLA"   $ brc tslaO usd 0.05 800.0 600.0 today $ unrollDates todayYear (todayYear + 4) [todayMonth] todayDay
+  bwn1    <- originateGeneric  registrar  issuer      pub todayTime "BWN1"   "Synthetic Buy-Write Notes on AMD"      $ buyWriteNote (date 2022 Jul 16) (date 2023 Jul 19) (date 2023 Jul 23) amd usd 0.1776 91.6300 100.7930 -- Issue size: 77'300
+  bwn2    <- originateGeneric  registrar  issuer      pub todayTime "BWN2"   "Synthetic Buy-Write Notes on QUALCOMM" $ buyWriteNote (date 2022 Jun 30) (date 2022 Jul 05) (date 2022 Jul 07) qc usd 0.1312 147.2566 161.9823
+  ac1 <- originateAutocallable registrar issuer "AC1" "Autocallable 95%-Call 5%-Cpn on AAPL" pub epoch 1.0 usd (date 2023 Oct 24) (date 2023 Oct 26) ["EMPTY"] registrar (date 2024 Jan 24) (date 2024 Jan 26) (date 2024 Oct 24) (date 2024 Oct 26) Basis1 Following M 3 aapl 1.0 0.05 0.75 0.95 1.00
+  ac2 <- originateAutocallable registrar issuer "AC2" "Autocallable 90%-Call 5%-Cpn on AAPL" pub epoch 1.0 usd (date 2023 Oct 24) (date 2023 Oct 26) ["EMPTY"] registrar (date 2024 Jan 24) (date 2024 Jan 26) (date 2024 Oct 24) (date 2024 Oct 26) Basis1 Following M 3 aapl 1.0 0.05 0.75 0.90 1.00
+  let securities = [tsla, fwd, opt, bnd, rc, brc, bwn1, bwn2, ac1, ac2]
 
   -- Distribution
-  -- issuerCashCid1  <- coerceContractId <$> deposit operator centralBank issuer public (qty 4_417_698.0 usd) issuerCashAccount
-  -- inv1CashCid1    <- coerceContractId <$> deposit operator centralBank inv1   public (qty 1_472_566.0 usd) inv1CashAccount
-  -- inv2CashCid1    <- coerceContractId <$> deposit operator centralBank inv2   public (qty 1_472_566.0 usd) inv2CashAccount
-  -- inv3CashCid1    <- coerceContractId <$> deposit operator centralBank inv3   public (qty 1_472_566.0 usd) inv3CashAccount
+  -- issuerCashCid1  <- coerceContractId <$> deposit operator cashProvider issuer public (qty 4_417_698.0 usd) issuerCashAccount
+  -- inv1CashCid1    <- coerceContractId <$> deposit operator cashProvider inv1   public (qty 1_472_566.0 usd) inv1CashAccount
+  -- inv2CashCid1    <- coerceContractId <$> deposit operator cashProvider inv2   public (qty 1_472_566.0 usd) inv2CashAccount
+  -- inv3CashCid1    <- coerceContractId <$> deposit operator cashProvider inv3   public (qty 1_472_566.0 usd) inv3CashAccount
 
-  issuerCashCid2  <- coerceContractId <$> deposit operator centralBank issuer public (qty 5_000_000.0 usd) issuerCashAccount
-  inv1CashCid2    <- coerceContractId <$> deposit operator centralBank inv1   public (qty 950_000.0 usd) inv1CashAccount
-  inv2CashCid2    <- coerceContractId <$> deposit operator centralBank inv2   public (qty 950_000.0 usd) inv2CashAccount
-  inv3CashCid2    <- coerceContractId <$> deposit operator centralBank inv3   public (qty 950_000.0 usd) inv3CashAccount
+  issuerCashCid2  <- coerceContractId <$> deposit operator cashProvider issuer public (qty 5_000_000.0 usd) issuerCashAccount
+  inv1CashCid2    <- coerceContractId <$> deposit operator cashProvider inv1   public (qty 950_000.0 usd) inv1CashAccount
+  inv2CashCid2    <- coerceContractId <$> deposit operator cashProvider inv2   public (qty 950_000.0 usd) inv2CashAccount
+  inv3CashCid2    <- coerceContractId <$> deposit operator cashProvider inv3   public (qty 950_000.0 usd) inv3CashAccount
+
+  issuerSecCid <- coerceContractId <$> deposit operator riskTaker issuer public (qty 10_000_000.0 ac1) issuerSecAccount
+  issuerSecCid <- coerceContractId <$> deposit operator riskTaker issuer public (qty 10_000_000.0 ac2) issuerSecAccount
+  inv1SecCid <- coerceContractId <$> deposit operator issuer inv1 public (qty 10_000_000.0 ac1) inv1SecAccount
+  inv2SecCid <- coerceContractId <$> deposit operator issuer inv2 public (qty 5_000_000.0 ac2) inv2SecAccount
+  inv3SecCid <- coerceContractId <$> deposit operator issuer inv3 public (qty 5_000_000.0 ac2) inv3SecAccount
 
   -- Data
   createObservation issuer tslaO  [(todayTime, 580.0)]  pub
+  createObservation issuer aapl  [(aaplFixTime, 173.44), (aaplFixTime2, 164.50)]  pub
   createObservation issuer qc     [(fixTime, 170.0)]    pub
+  createCalendar registrar "EMPTY" [] [] pub
   createAccountDirectory riskTaker  ([(usd, riskTakerCashAccount)] <> map (\s -> (s, riskTakerOwnAccount)) securities)  $ singleton public
   createAccountDirectory issuer     ([(usd, issuerCashAccount)] <> map (\s -> (s, issuerSecAccount)) securities)        $ singleton public
   createAccountDirectory inv1       ([(usd, inv1CashAccount)] <> map (\s -> (s, inv1SecAccount)) securities)            $ singleton public

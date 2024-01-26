@@ -21,6 +21,7 @@ import Daml.Finance.App.Distribution.Fund.Model qualified as Fund (PooledInvestm
 import Daml.Finance.App.Distribution.Fund.Service qualified as Fund (FulfillPooledInvestmentRequest(..), PoolInvestmentRequests(..), S)
 import Daml.Finance.App.Distribution.Investment.Model qualified as Investment (InvestmentRequest)
 import Daml.Finance.App.Distribution.Investment.Service qualified as Investment (RequestInvestment(..), S)
+import Daml.Finance.App.Instrument.StructuredProduct.AutoCallable.Instrument qualified as AutoCallable (Instrument(..))
 import Daml.Finance.App.Issuance.Model qualified as Issuance (T)
 import Daml.Finance.App.Issuance.Service qualified as Issuance (CreateIssuance(..), RequestCreateIssuance(..), Service)
 import Daml.Finance.App.Lifecycle.Service qualified as Lifecycle (Service, DeclareDistribution(..), DeclareStockSplit(..), DeclareReplacement(..))
@@ -251,6 +252,19 @@ originateInterestRateSwap depository issuer id description observers lastEventTi
       depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp
       periodicSchedule; holidayCalendarIds; calendarDataProvider; dayCountConvention; currency
       fixRate; floatingRate; ownerReceivesFix; holdingStandard = TransferableFungible
+  createReference cid depository issuer observers
+
+originateAutocallable : Party -> Party -> Text -> Text -> PartiesMap -> Time -> Decimal -> InstrumentKey -> Date -> Date -> [Text] -> Party -> Date -> Date -> Date -> Date -> DayCountConventionEnum -> BusinessDayConventionEnum -> PeriodEnum -> Int -> Text -> Decimal -> Decimal -> Decimal -> Decimal -> Decimal -> Script InstrumentKey
+originateAutocallable depository issuer id description observers lastEventTimestamp notional currency initialFixingDate issueDate holidayCalendarIds calendarDataProvider firstObsDate firstCouponDate expiryDate maturityDate dayCountConvention businessDayConvention couponPeriod couponPeriodMultiplier referenceAssetId putStrike couponRate couponBarrier callBarrier finalBarrier = do
+  let
+    periodicSchedule = createPaymentPeriodicSchedule firstCouponDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier issueDate maturityDate
+    observationSchedule = createPaymentPeriodicSchedule firstObsDate holidayCalendarIds businessDayConvention couponPeriod couponPeriodMultiplier initialFixingDate expiryDate
+  cid <- toInterfaceContractId <$> submitMulti [depository, issuer] [] do
+    createCmd AutoCallable.Instrument with
+      depository; issuer; id = Id id; version = "0"; description; observers; lastEventTimestamp
+      holdingStandard = TransferableFungible; referenceAssetId; putStrike; couponRate; couponBarrier
+      callBarrier; finalBarrier; observationSchedule; periodicSchedule; holidayCalendarIds; calendarDataProvider
+      dayCountConvention; currency; notional; prevEvents = []
   createReference cid depository issuer observers
 
 transfer : Party -> AccountKey -> Party -> ContractId Transferable.I -> Script (ContractId Transferable.I)
