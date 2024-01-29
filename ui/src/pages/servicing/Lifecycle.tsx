@@ -17,6 +17,7 @@ import { useServices } from "../../context/ServiceContext";
 import { Service } from "@daml.js/daml-finance-app/lib/Daml/Finance/App/Lifecycle/Service";
 import { NumericObservable } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Observable/NumericObservable";
 import { useNavigate } from "react-router-dom";
+import { Claim } from "@daml.js/daml-finance-interface-lifecycle/lib/Daml/Finance/Interface/Lifecycle/Rule/Claim";
 
 export const Lifecycle : React.FC = () => {
   const [event, setEvent] = useState<EventAggregate>();
@@ -49,23 +50,27 @@ export const Lifecycle : React.FC = () => {
     if (custody.length === 0) throw new Error("No custody service found");
     if (!event) throw new Error("No event selected");
     for (const i of instruments) {
+      const arg = {
+        eventCid: event.contractId,
+        instrument: i.key,
+        observableCids: numericObservables.map(o => o.contractId),
+        ruleCid: getLifecycleRule(i),
+      };
+      const [{ _2: [effectCid] }, ] = await ledger.exercise(Service.Lifecycle, lifecycle[0].contractId, arg);
+
       const instrumentPositions = positions.filter(p => keyEquals(p.payload.instrument, i.key));
-      const custodiansAndOwners = dedup(instrumentPositions.map(p => p.payload.account.custodian + p.payload.account.owner));
+      const custodiansAndOwners = dedup(instrumentPositions.map(p => p.payload.account.custodian + "-" + p.payload.account.owner));
       for (const p of custodiansAndOwners) {
-        const filteredPositions = instrumentPositions.filter(h => h.payload.account.custodian + h.payload.account.owner === p);
+        const filteredPositions = instrumentPositions.filter(h => h.payload.account.custodian + "-" + h.payload.account.owner === p);
         const custodyService = custody.find(c => c.payload.provider === filteredPositions[0].payload.account.custodian && c.payload.customer === filteredPositions[0].payload.account.owner);
         if (!custodyService) throw new Error("No custody service found for " + filteredPositions[0].payload.account.custodian + " and " + filteredPositions[0].payload.account.owner);
         const arg = {
-          ctrl: party,
-          eventCid: event.contractId,
-          ruleCid: getLifecycleRule(i),
-          observableCids: numericObservables.map(o => o.contractId),
-          instrument: i.key,
-          batchId: { unpack: "Batch-" + event.payload.id.unpack + "-" + i.payload.id.unpack },
+          claimer: party,
+          effectCid,
+          batchId: { unpack: "Batch-" + event.payload.id.unpack + "-" + i.payload.id.unpack + "-" + p },
           holdingCids: filteredPositions.map(h => h.contractId),
-          claimRuleCid: custodyService.payload.claimRuleCid,
         }
-        await ledger.exercise(Service.LifecycleAndClaim, lifecycle[0].contractId, arg);
+        await ledger.exercise(Claim.ClaimEffect, custodyService.payload.claimRuleCid, arg);
       }
     }
     setEvent(undefined);

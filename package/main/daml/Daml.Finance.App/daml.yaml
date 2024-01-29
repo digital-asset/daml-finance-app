@@ -13,6 +13,7 @@ data-dependencies:
   - ../../../../.lib/contingent-claims-lifecycle-2.0.1.dar
   - ../../../../.lib/contingent-claims-valuation-0.2.2.dar
   - ../../../../.lib/daml-finance-claims-2.1.0.dar
+  - ../../../../.lib/daml-finance-data-3.0.0.dar
   - ../../../../.lib/daml-finance-interface-account-3.0.0.dar
   - ../../../../.lib/daml-finance-interface-claims-3.0.0.dar
   - ../../../../.lib/daml-finance-interface-data-3.1.0.dar
@@ -30,3 +31,4 @@ data-dependencies:
   - ../../../../.lib/daml-finance-interface-types-date-2.1.0.dar
   - ../../../../.lib/daml-finance-interface-util-2.1.0.dar
   - ../../../../.lib/daml-finance-lifecycle-3.0.0.dar
+  - ../../../../.lib/daml-finance-util-3.1.0.dar
