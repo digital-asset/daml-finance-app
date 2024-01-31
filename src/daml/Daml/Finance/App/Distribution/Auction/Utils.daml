@@ -74,7 +74,7 @@ generateSettlementInstruction settlementServiceCid settler issuerAccount (Some i
     delivery = Step with sender = issuer; receiver = buyer; quantity = (Instrument.qty (getAmount allocatedDeposit) (getInstrument allocatedDeposit))
     id = bid.auctionId <> "-" <> partyToText buyer
 
-  (batchCid, [deliveryCid, paymentCid]) <- exercise settlementServiceCid Settlement.DiscoverAndInstruct
+  (batchCid, [paymentCid, deliveryCid]) <- exercise settlementServiceCid Settlement.DiscoverAndInstruct
     with
       actor = settler
       contextId = Some $ Id id
