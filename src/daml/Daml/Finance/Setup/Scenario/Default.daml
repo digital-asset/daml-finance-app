@@ -154,7 +154,6 @@ run  = do
       inv2BidCid        <- createAuctionBid operator agent inv2 public auctionCid 400_000.0 0.98 inv2CollateralCid inv2SecAccount
       inv3BidCid        <- createAuctionBid operator agent inv3 public auctionCid 300_000.0 0.99 inv3CollateralCid inv3SecAccount
       processAuction operator agent issuer public auctionCid [inv1BidCid, inv2BidCid, inv3BidCid]
-      pure ()
 
     doTrade = do
       list operator exchange issuer "SWAP/USD" swp usd $ singleton public
