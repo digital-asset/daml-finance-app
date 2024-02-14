@@ -17,7 +17,6 @@ import Daml.Finance.Interface.Settlement.Instruction qualified as Instruction (A
 import Daml.Finance.Interface.Settlement.Batch qualified as Batch (Settle(..))
 import Daml.Finance.Interface.Settlement.Types (Approval(TakeDelivery))
 import Daml.Finance.Interface.Types.Common.Types (AccountKey, Id, InstrumentQuantity, Parties)
-import Daml.Finance.Interface.Util.Lockable qualified as Lockable (Acquire(..), I, LockType(..), Release(..))
 
 template Service
   with
@@ -64,8 +63,7 @@ template Service
       controller provider
       do
         CreateOrderRequest{operator; provider; customer; id; timestamp; listingId; quantity; price; side; collateralCid; account; orderCids; observers} <- fetchAndArchive createOrderRequestCid
-        lockedCollateralCid : ContractId Fungible.I <- coerceContractId <$> exercise (toInterfaceContractId collateralCid : ContractId Lockable.I) Lockable.Acquire with newLockers = singleton provider; context = show id; lockType = Lockable.Semaphore
-        orderCid <- create Order with operator; provider; customer; id; timestamp; listingId; quantity; price; side; collateralCid = lockedCollateralCid; account; observers
+        orderCid <- create Order with operator; provider; customer; id; timestamp; listingId; quantity; price; side; collateralCid = collateralCid; account; observers
         exercise self ExecuteOrder with orderCid; orderCids
 
     nonconsuming choice CancelOrder : ()
@@ -74,9 +72,7 @@ template Service
       controller provider
       do
         CancelOrderRequest{orderCid} <- fetchAndArchive cancelOrderRequestCid
-        order <- fetchAndArchive orderCid
-        exercise (toInterfaceContractId order.collateralCid : ContractId Lockable.I) Lockable.Release with context = show order.id
-        pure ()
+        archive orderCid
 
     nonconsuming choice ExecuteOrder : Optional (ContractId Order, Order)
       with
@@ -100,11 +96,9 @@ template Service
                 FillResult{orderOpt; batchCid; instructionCid} <- exercise myCid Fill with settlementServiceCid; other; isResting = False
                 exercise otherCid ApproveInstruction with instructionCid
                 [transferableCid] <- exercise batchCid Batch.Settle with actors = singleton provider
-                exercise (toInterfaceContractId transferableCid : ContractId Lockable.I) Lockable.Release with context = show my.id
                 FillResult{orderOpt = otherOpt; batchCid; instructionCid} <- exercise otherCid Fill with settlementServiceCid; other = my; isResting = True
                 exercise instructionCid Instruction.Approve with actors = fromList [provider, customer]; approval = TakeDelivery my.account
                 [transferableCid] <- exercise batchCid Batch.Settle with actors = singleton provider
-                exercise (toInterfaceContractId transferableCid : ContractId Lockable.I) Lockable.Release with context = show other.id
                 when (isNone orderOpt) do
                   Account.exerciseInterfaceByKey @Disclosure.I my.account provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (show my.id, singleton provider)
                   Account.exerciseInterfaceByKey @Disclosure.I (getAccount myCollateral) provider Disclosure.RemoveObservers with disclosers = singleton provider; observersToRemove = (show my.id, singleton provider)
