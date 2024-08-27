@@ -10,7 +10,7 @@ in
     version = "$version";
     src = tarball;
     buildPhase = "patchShebangs .";
-    installPhase = "DAML_HOME=$out ./install.sh --install-with-internal-version yes";
+    installPhase = "DAML_HOME=$out ./install.sh";
     propagatedBuildInputs = [ jdk ];
     preFixup = ''
       # Set DAML_HOME automatically.

@@ -17,7 +17,7 @@ import Daml.Finance.Interface.Types.Date.RollConvention
 import Daml.Finance.Interface.Types.Date.Schedule
 import Daml.Finance.Util.Date.DayCount
 import Daml.Finance.Util.Date.Schedule
-import Prelude hiding (and, or, (<=))
+import Prelude hiding (and, or, (<=), zero)
 
 type C = Claim Time Decimal InstrumentKey Text
 
