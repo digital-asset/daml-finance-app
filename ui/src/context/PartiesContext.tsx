@@ -5,7 +5,7 @@ import React, { useMemo, useState } from 'react';
 import { encode } from 'jwt-simple';
 import { useScenario } from './ScenarioContext';
 import parties from "../parties.json";
-import { Set } from "@daml.js/97b883cd8a2b7f49f90d5d39c981cf6e110cf1f1c64427a28a6d58ec88c43657/lib/DA/Set/Types"
+import { Set } from "@daml.js/daml-stdlib-DA-Set-Types-1.0.0/lib/DA/Set/Types"
 import { values } from '../util';
 
 const createToken = (party : string, pub : string) => {
