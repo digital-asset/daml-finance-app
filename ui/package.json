@@ -3,7 +3,7 @@
   "version": "0.1.5",
   "private": true,
   "dependencies": {
-    "@daml.js/daml-finance-app": "file:daml.js/daml-finance-app-0.1.5",
+    "@daml.js/daml-finance-app": "file:daml.js/daml-finance-app-0.1.6",
     "@daml.js/contingent-claims-core": "file:daml.js/contingent-claims-core-2.0.1",
     "@daml.js/daml-finance-interface-account": "file:daml.js/daml-finance-interface-account-3.0.0",
     "@daml.js/daml-finance-interface-claims": "file:daml.js/daml-finance-interface-claims-3.0.0",
