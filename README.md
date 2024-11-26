@@ -19,12 +19,12 @@ options to get started using the library.
 On Linux or MacOS, run the following commands:
 ```
 ./scripts/get-dependencies.sh
-daml start
+daml start --sandbox-option -C --sandbox-option canton.parameters.dev-version-support=yes,canton.participants.sandbox.parameters.dev-version-support=yes,canton.domains.local.init.domain-parameters.protocol-version=dev
 ```
 On Windows, run the following:
 ```
 ./scripts/get-dependencies.bat
-daml start
+daml start --sandbox-option -C --sandbox-option canton.parameters.dev-version-support=yes,canton.participants.sandbox.parameters.dev-version-support=yes,canton.domains.local.init.domain-parameters.protocol-version=dev
 ```
 
 Wait until the sandbox is up and running, indicated by the following output:
