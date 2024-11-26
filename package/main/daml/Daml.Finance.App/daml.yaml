@@ -32,7 +32,6 @@ data-dependencies:
   - ../../../../.lib/daml-finance-interface-util-4.0.0.dar
   - ../../../../.lib/daml-finance-lifecycle-4.0.0.dar
   - ../../../../.lib/daml-finance-util-4.0.0.dar
+  - ../Daml.Finance.Interface/.daml/dist/daml-finance-app-interface-4.0.0.dar
 build-options:
   - --target=1.17
-  - -Wno-upgrade-interfaces
-  - -Wno-upgrade-exceptions

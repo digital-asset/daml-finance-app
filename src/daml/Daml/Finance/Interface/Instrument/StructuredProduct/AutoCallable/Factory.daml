@@ -1,10 +1,10 @@
 -- Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module Daml.Finance.App.Interface.Instrument.StructuredProduct.AutoCallable.Factory where
+module Daml.Finance.Interface.Instrument.StructuredProduct.AutoCallable.Factory where
 
-import Daml.Finance.App.Interface.Instrument.StructuredProduct.AutoCallable.Instrument qualified as Instrument (I)
-import Daml.Finance.App.Interface.Instrument.StructuredProduct.AutoCallable.Types (AutoCallable)
+import Daml.Finance.Interface.Instrument.StructuredProduct.AutoCallable.Instrument qualified as Instrument (I)
+import Daml.Finance.Interface.Instrument.StructuredProduct.AutoCallable.Types (AutoCallable)
 import Daml.Finance.Interface.Types.Common.Types (PartiesMap)
 import Daml.Finance.Interface.Util.Disclosure qualified as Disclosure (I)
 

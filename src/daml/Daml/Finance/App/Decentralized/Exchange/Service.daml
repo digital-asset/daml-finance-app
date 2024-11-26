@@ -3,7 +3,8 @@
 
 module Daml.Finance.App.Decentralized.Exchange.Service where
 
-import Daml.Finance.App.Decentralized.Exchange.Interface (ExecuteAction(..), FlashSwapAction, FlashSwapPipe(..))
+import Daml.Finance.App.Decentralized.Exchange.FlashSwapPipe (FlashSwapPipe(..))
+import Daml.Finance.Interface.Decentralized.Exchange.Interface (ExecuteAction(..), FlashSwapAction)
 import Daml.Finance.App.Decentralized.Exchange.Model (Pool, switchIf)
 import Daml.Finance.Interface.Account.Account qualified as Account (Credit(..), Debit(..), I, exerciseInterfaceByKey)
 import Daml.Finance.Interface.Holding.Holding qualified as Holding (I)
