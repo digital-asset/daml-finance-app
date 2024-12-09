@@ -44,6 +44,8 @@ data-dependencies:
 start-navigator: no
 script-options:
   - --output-file=../../../../ui/src/parties.json
+json-api-options:
+  - --config=../../../../json-api.conf
 codegen:
   js:
     output-directory: ../../../../ui/daml.js

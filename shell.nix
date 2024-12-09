@@ -5,7 +5,7 @@ let
   sources = import ./nix/sources.nix;
   pkgs = import sources.nixpkgs {};
   build_daml = import ./nix/daml.nix;
-  damlYaml = builtins.fromJSON (builtins.readFile (pkgs.runCommand "daml.yaml.json" { yamlFile = ./daml.yaml; } ''
+  damlYaml = builtins.fromJSON (builtins.readFile (pkgs.runCommand "daml.yaml.json" { yamlFile = ./multi-package.yaml; } ''
                 ${pkgs.yj}/bin/yj < "$yamlFile" > $out
               ''));
   daml = (build_daml { stdenv = pkgs.stdenv;
