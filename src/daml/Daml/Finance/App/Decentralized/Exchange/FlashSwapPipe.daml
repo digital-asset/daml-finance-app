@@ -1,0 +1,18 @@
+-- Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Daml.Finance.App.Decentralized.Exchange.FlashSwapPipe where
+
+import Daml.Finance.Interface.Decentralized.Exchange.Interface
+import Daml.Finance.Interface.Holding.Holding qualified as Holding (I)
+
+-- Example of a FlashSwapAction template (used for a normal DEX Swap)
+template FlashSwapPipe with
+    provider : Party
+    outCid : ContractId Holding.I
+  where
+    signatory provider
+
+    interface instance FlashSwapAction for FlashSwapPipe where
+      view = View {}
+      executeAction holdingCid = pure (outCid, [holdingCid])

@@ -7,6 +7,7 @@ script_dir=$(cd "$(dirname $0)"; pwd -P)
 root_dir=$(cd ${script_dir}; cd ..; pwd -P)
 
 # Build
+DAML_PROJECT=${root_dir}/package/main/daml/Daml.Finance.Interface daml build
 DAML_PROJECT=${root_dir}/package/main/daml/Daml.Finance.App daml build
 DAML_PROJECT=${root_dir}/package/main/daml/Daml.Finance.Setup daml build
 
